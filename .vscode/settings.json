@@ -6,6 +6,7 @@
         "sched.h": "c",
         "list.h": "c",
         "riscv.h": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "types.h": "c"
     }
 }

@@ -2,7 +2,6 @@
 
 //这是个中介，作为链表头，需要加入调度的任务会挂载到这个链表上，调度器会从这个链表拆取任务合并到调度器自己的链表中
 LIST_HEAD(need_add_task)
-
 //这是个中介，作为链表头，需要销毁的任务会挂载到这个链表上，调度器会从这个链表读取任务，并从调度器自己的链表中拆除该任务，并释放内存
 LIST_HEAD(need_del_task)
 
@@ -20,11 +19,12 @@ void task_create(void (*task)(void* param),uint64_t time_slice,uint8_t priority)
 
     task_ctrl_block->id = task_id;
     task_ctrl_block->task = task;
+    task_ctrl_block->status = READY;
+    task_ctrl_block->priority = priority;
+    task_ctrl_block->time_slice = time_slice;
     task_ctrl_block->reg_context.ra = (uint64_t)task;
     task_ctrl_block->reg_context.mepc = (uint64_t)task;
     task_ctrl_block->reg_context.sp = (uint64_t)&task_ctrl_block->task_stack[TASK_STACK_SIZE-1];
-    task_ctrl_block->priority = priority;
-    task_ctrl_block->time_slice = time_slice;
     list_add_tail(&need_add_task,&task_ctrl_block->node);
     task_id++;
 }

@@ -11,16 +11,11 @@
 #include "printf.h"
 #include "page.h"
 #include "sched.h"
+#include "task.h"
 
 scheduler_t scheduler;
 
-void sched_init(scheduler_t *scheduler)
-{
-    scheduler->running_queue = NULL_PTR;
-    scheduler->blocked_queue = NULL_PTR;
 
-    scheduler
-}
 
 //此函数定义在switch.S文件中
 extern void _switch(reg_context_t* next);
@@ -38,27 +33,29 @@ void task_delay(volatile int count)
 
 void sched()
 {
-    if(NULL_PTR != task_current)
-    {
-        task_current->tick--;
-        if(0 == task_current->tick)
-        {
-            task_current->tick = task_current->time_slice;
-            __sw_without_save(&sched_context);
-        }
-    }
+   if(list_empty(&need_add_task))
+   {
+       return;
+   }
 }
+
 /***************************************************************
  * @description: 
  * @return {*}
 ***************************************************************/
-void switch_task()
+// void switch_task()
+// {
+//     task_current = list_entry(task_current->node.next,tcb_t,node); 
+//     __sw_save(&task_current->reg_context);
+// }
+
+void sched_init()
 {
-    task_current = list_entry(task_current->node.next,tcb_t,node); 
-    __sw_save(&task_current->reg_context);
+    scheduler.running_queue = NULL_PTR;
+    scheduler.blocked_queue = NULL_PTR;
+    mscratch_w(&scheduler.reg_context);
+
 }
-
-
 
 // p /x *task_ctrl_block
 

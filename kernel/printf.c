@@ -18,7 +18,7 @@ int num2char(char* str,unsigned int pos,unsigned int num,int decimal)
 {
     unsigned int digit = 1;//进制下位数
 
-    for(int temp = num;temp/=decimal;digit++);//记录进制下有多少位
+    for(int temp = num;temp/=decimal;digit++);//记录在decimal进制下有多少位
     if(NULL_PTR != str)
     {
         switch (decimal)

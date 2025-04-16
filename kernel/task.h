@@ -32,7 +32,7 @@ extern THIS_IS_LIST_HEAD(need_del_task);
 
 extern void task_create(void (*task)(void *param),uint64_t time_slice,uint8_t priority);
 extern void task_distory(void (*task)(void));
-extern void task_run();
+// extern void task_run();
 
 extern void task_delay(volatile int count);
 
