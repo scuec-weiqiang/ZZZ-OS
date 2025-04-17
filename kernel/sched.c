@@ -15,8 +15,6 @@
 
 scheduler_t scheduler;
 
-
-
 //此函数定义在switch.S文件中
 extern void _switch(reg_context_t* next);
 
@@ -33,10 +31,10 @@ void task_delay(volatile int count)
 
 void sched()
 {
-   if(list_empty(&need_add_task))
-   {
-       return;
-   }
+    if(!list_empty(&need_add_task)) // 如果有任务需要添加到运行队列
+    {
+        
+    }
 }
 
 /***************************************************************

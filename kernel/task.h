@@ -10,14 +10,14 @@
 typedef enum {
     RUNNING,
     READY,
-    BLOCKED
+    BLOCKED,
+    ZOMBIE
 }task_status_t;
 
 typedef struct task_ctrl_block
 {   
     uint64_t id;
     uint64_t time_slice;
-    // uint64_t tick;
     uint8_t priority;
     task_status_t status;
     reg_context_t reg_context;

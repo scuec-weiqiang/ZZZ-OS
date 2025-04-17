@@ -13,19 +13,6 @@ typedef struct reg_context
     reg_t mepc ;
 }reg_context_t;
 
-// __SELF __INLINE reg_t mhartid_r()
-// {
-//     reg_t a;
-//     asm volatile("csrr t0,mhartid");
-//     asm volatile("mv %0,t0":"=r"(a));
-//     return a;
-// }
-// 明明mhartid只能通过寄存器读写，为什么不写成上面这样：
-// 1.不能保证t0不会被其他指令占用。
-// 2.合并为单条asm语句，避免中间寄存器风险。
-// 3.直接通过%0约束让编译器分配目标寄存器。
-// 
-
 __SELF __INLINE reg_t mhartid_r()
 {
     reg_t a;

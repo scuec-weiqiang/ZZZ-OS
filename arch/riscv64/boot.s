@@ -34,16 +34,6 @@ stack_init:
     sub sp,a0,t1 # 栈底 = _stack_end - hartid * STACK_SIZE
  # 栈设置完成
 
-    csrr a0, mstatus 
-    ori a0, a0, 1<<7 # MPIE置1
-    csrw mie, a0
-
-    # 设置trap入口
-    la a0, trap_entry
-    csrw mtvec, a0
-
-    # mscratch用来存保存上下文的地址，先清0
-    csrr mscratch, zero
 
 
     mv a0, tp # 将hartid作为c语言的main函数参数

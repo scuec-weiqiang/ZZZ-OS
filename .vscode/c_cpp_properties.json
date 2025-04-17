@@ -4,7 +4,10 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/kernel"
+                "${workspaceFolder}/kernel",
+                "${workspaceFolder}/lib",
+                "${workspaceFolder}/arch/riscv64",
+                "${workspaceFolder}/drivers"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

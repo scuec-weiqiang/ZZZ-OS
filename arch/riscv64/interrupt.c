@@ -77,7 +77,7 @@ void extern_interrupt_disable()
  * @param {uint32_t} priority [in]:  外部中断的优先级
  * @return {*}
 ***************************************************************/
-void extern_interrupt_setting(uint32_t hart,uint32_t iqrn,uint32_t priority)
+void extern_interrupt_setting(uint64_t hart,uint64_t iqrn,uint64_t priority)
 { 
     __plic_priority_set(iqrn,priority);
     __plic_threshold_set(hart,0);
