@@ -22,7 +22,7 @@ extern void timer_interrupt_disable();
 extern void extern_interrupt_enable();
 extern void extern_interrupt_disable();
 
-extern void extern_interrupt_setting(uint32_t hart,uint32_t iqrn,uint32_t priority);
+extern void extern_interrupt_setting(uint64_t hart,uint64_t iqrn,uint64_t priority);
 
 extern void soft_interrupt_enable();
 extern void soft_interrupt_disable();

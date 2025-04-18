@@ -12,56 +12,58 @@
 #include "page.h"
 #include "sched.h"
 #include "task.h"
+#include "hwtimer.h"
 
 scheduler_t scheduler;
 
-//此函数定义在switch.S文件中
-extern void _switch(reg_context_t* next);
+void sched_init()
+{
+    INIT_LIST_HEAD(&scheduler.running_queue);
+    INIT_LIST_HEAD(&scheduler.blocked_queue);
+    scheduler.current_task = NULL_PTR;
+    // scheduler.task_num = 0;
+}
 
 /***************************************************************
  * @description: 
  * @param {volatile int} count [in/out]:  
  * @return {*}
 ***************************************************************/
-void task_delay(volatile int count)
-{
-	count *= 50000;
-	while (count--);
-}
 
-void sched()
+reg_t sched(reg_t epc)
 {
+
     if(!list_empty(&need_add_task)) // 如果有任务需要添加到运行队列
     {
-        
+        list_splice(&need_add_task,&scheduler.running_queue) ;
+        INIT_LIST_HEAD(&need_add_task);
     }
+
+    if(!list_empty(&scheduler.running_queue))
+    {
+
+        scheduler.current_task = list_entry(scheduler.running_queue.next,tcb_t,node);
+        hwtimer_reload_ms(scheduler.current_task->time_slice);
+        mscratch_w(&scheduler.current_task->reg_context);
+
+        if(IS_NULL_PTR(scheduler.current_task)) //第一次进入任务
+        {
+            return scheduler.current_task->reg_context.ra;
+        }
+        else
+        {
+            list_mov_tail(&scheduler.running_queue,scheduler.running_queue.next);
+            return scheduler.current_task->reg_context.mepc;
+        }
+    }
+    else
+    {
+        printf("time\n");
+        hwtimer_reload_s(1);
+        return epc;
+    }
+        
 }
-
-/***************************************************************
- * @description: 
- * @return {*}
-***************************************************************/
-// void switch_task()
-// {
-//     task_current = list_entry(task_current->node.next,tcb_t,node); 
-//     __sw_save(&task_current->reg_context);
-// }
-
-void sched_init()
-{
-    scheduler.running_queue = NULL_PTR;
-    scheduler.blocked_queue = NULL_PTR;
-    mscratch_w(&scheduler.reg_context);
-
-}
-
-// p /x *task_ctrl_block
-
-// t0 0x8000c000
-// t1 0x8000d000
-
-// x /1xw 0x8000c07c
-//x /1xw 0x8000c07c
 
 
 

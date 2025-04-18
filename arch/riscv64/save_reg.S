@@ -6,7 +6,7 @@
 #define STORE       sd
 #define REG_SIZE    8
 
-.macro save_reg addr
+.macro store_reg addr
 #   STORE zero,0*REG_SIZE(\addr)   zero值不会变，存储没有意义
     STORE ra , 1*REG_SIZE(\addr)
     STORE sp , 2*REG_SIZE(\addr)
@@ -78,20 +78,18 @@
 .endm
 
 
-.macro _save
+.macro _store
     csrrw t6,mscratch,t6
     store_reg t6
     csrr t5,mscratch
     STORE t5,31*REG_SIZE(t6)#保存t6的值
     csrr t5,mepc#保存mepc
-    STORE t5,128(t6) 
+    STORE t5,32*REG_SIZE(t6) 
     csrw mscratch,t6    #保持mscratch值不变
 .endm
 
 .macro _load
     csrr t6,mscratch
-    lw t5,128(t6)
-    csrw mepc,t5 
     load_reg t6
 .endm
 

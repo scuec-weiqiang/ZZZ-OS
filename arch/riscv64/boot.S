@@ -1,5 +1,5 @@
+#include "save_reg.S"
 .equ STACK_SIZE,4096 #定义一个处理器的栈的大小
-.equ 
 .section .text.init
 .global _start
 _start:
@@ -34,10 +34,11 @@ stack_init:
     sub sp,a0,t1 # 栈底 = _stack_end - hartid * STACK_SIZE
  # 栈设置完成
 
-
-
     mv a0, tp # 将hartid作为c语言的main函数参数
     j main
+    # la t1, main
+    # csrw mepc, t1
+    # mret
 
 wait:
     wfi
@@ -48,6 +49,21 @@ wait:
 .balign 4
 .global trap_entry
 trap_entry:
+    _store
+    # csrrw t6,mscratch,t6
+    # store_reg t6
+    # csrr t5,mscratch
+    # STORE t5,31*REG_SIZE(t6)#保存t6的值
+    # csrr t5,mepc#保存mepc
+    # STORE t5,32*REG_SIZE(t6) 
+    # csrw mscratch,t6    #保持mscratch值不变
 
+    csrr a0, mepc
+    csrr a1, mcause
+    call trap_handler
+
+    csrw mepc, a0
+    _load
+    mret
 .end
 

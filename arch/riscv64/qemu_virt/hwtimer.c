@@ -1,9 +1,9 @@
 /*******************************************************************************************
- * @FilePath     : /ZZZ/arch/riscv64/hwtimer.c
+ * @FilePath     : /ZZZ/arch/riscv64/qemu_virt/hwtimer.c
  * @Description  : 内核定时器的实现文件。
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
- * @LastEditTime : 2025-04-17 01:40:22
+ * @LastEditTime : 2025-04-18 01:46:00
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 *******************************************************************************************/
 
@@ -18,7 +18,7 @@ uint64_t hwtimer_tick = 0;
  * @param         {uint64_t} value:
  * @return        {*}
 *******************************************************************************************/
-void hwtimer_load(uint64_t hart_id,uint64_t value)
+void _hwtimer_load(uint64_t value)
 {   
     uint64_t temp = __clint_mtime_get();
     temp += value;

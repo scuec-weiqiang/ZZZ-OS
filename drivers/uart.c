@@ -38,3 +38,11 @@ void uart_puts(char *s)
         s++;
     }
 }
+
+void uart0_iqr()
+{   
+    char a = uart_getc();
+    printf("%c",a);
+    if('\r'==a)
+        printf("\n");     
+}

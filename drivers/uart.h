@@ -37,5 +37,6 @@ extern void uart_init();
 extern void uart_putc(char c);
 extern void uart_puts(char *s);
 extern char uart_getc();
+extern void uart0_iqr();
 
 #endif

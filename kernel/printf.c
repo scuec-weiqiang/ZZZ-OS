@@ -36,7 +36,7 @@ int num2char(char* str,unsigned int pos,unsigned int num,int decimal)
         }
         for(int i=digit-1;i>=0;i--)//从第一位开始将需要格式化的地方替换为字符数字
         {   
-            unsigned int temp = 0;
+            unsigned long long temp = 0;
             temp = num % decimal;
             if(temp>=10) //考虑16进制中出现字母
             {
@@ -83,7 +83,7 @@ int _vsprintf(char* out_buff,const char *str,va_list vl)
                 case 'b':decimal = 2;goto DEC;
                 case 'd':
                     DEC://整数输出
-                    long num = longarg?va_arg(vl,long):va_arg(vl,int);
+                    long long num = longarg?va_arg(vl,long long):va_arg(vl,int);
                     if(0 == decimal)
                     {
                         decimal = 10;
@@ -113,7 +113,7 @@ int _vsprintf(char* out_buff,const char *str,va_list vl)
                 break;
 
                 case 's':
-                    addr_t addr = va_arg(vl,int);
+                    uint32_t addr = va_arg(vl,int);
                     while(*(char*)addr)
                     {
                         char c = *(char*)addr;

@@ -2,7 +2,7 @@ OUTPUT_ARCH("riscv")
 ENTRY(_start)
 
 STACK_SIZE = 4096;
-NUM_CORES = 2;
+NUM_CORES = 1;
 
 RAM_BASE = 0x80000000;
 RAM_SIZE = 128M;
@@ -18,6 +18,7 @@ SECTIONS
     .text : {
         _text_start = .;
         *(.text.init)
+        *(.text.trap)
         *(.text .text.*)
         _text_end = .;
     } > RAM
@@ -42,6 +43,13 @@ SECTIONS
         . = ALIGN(8);
         _bss_end = .;
     } > RAM 
+
+   .kernel_reg_ctx (NOLOAD) : {
+        . = ALIGN(4);
+        _kernel_reg_ctx_start = .;
+        . += 8 * 33;
+        _kernel_reg_ctx_end = .;
+   } > RAM
 
     . = ALIGN(4096);
     _heap_start = .;

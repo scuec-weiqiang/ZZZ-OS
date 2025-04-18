@@ -51,7 +51,8 @@
     #define __SELF          static  
     #define __INLINE        inline  
     #define STATIC_INLINE   static inline 
-
+    #define __PROTECT(x)       do{x}while(0)
+    
     typedef enum
     {
         SUCCESS,// 成功

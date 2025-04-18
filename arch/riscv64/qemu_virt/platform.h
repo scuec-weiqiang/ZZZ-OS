@@ -15,10 +15,8 @@
 
 #define LENGTH_RAM 128*1024*1024
 
-enum HART_ID{
-    HART_0,
-    HART_1
-};
+#define  HART_0 0
+#define  HART_1 1
 
 #define SYS_CLOCK_FREQ 10000000
 

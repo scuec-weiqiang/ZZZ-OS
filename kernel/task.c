@@ -56,3 +56,9 @@ void task_distory(void (*del_task)(void))
 //     panic("\n  no task to exec!");
 // }
         
+
+void task_delay(volatile int count)
+{
+	count *= 50000;
+	while (count--);
+}
