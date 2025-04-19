@@ -53,17 +53,17 @@
     #define STATIC_INLINE   static inline 
     #define __PROTECT(x)       do{x}while(0)
     
-    typedef enum
-    {
-        SUCCESS,// 成功
-        NOT_FOUND_ERROR,// 未找到匹配的数据
-        FULL_SIZE_ERROR,// 表/缓冲区已满
-        INDEX_OUT_OF_BOUNDS_ERROR,// 标号索引越界
-        MEMORY_ALLOCATION_ERROR,// 内存分配错误
-        MEMORY_FREE_ERROR,// 内存释放错误
-        NULL_POINTER_ERROR,// 空指针
-        TIMEOUT_ERROR,// 超时
-    }status_t;
+    // typedef enum
+    // {
+    //     SUCCESS,// 成功
+    //     NOT_FOUND_ERROR,// 未找到匹配的数据
+    //     FULL_SIZE_ERROR,// 表/缓冲区已满
+    //     INDEX_OUT_OF_BOUNDS_ERROR,// 标号索引越界
+    //     MEMORY_ALLOCATION_ERROR,// 内存分配错误
+    //     MEMORY_FREE_ERROR,// 内存释放错误
+    //     NULL_POINTER_ERROR,// 空指针
+    //     TIMEOUT_ERROR,// 超时
+    // }status_t;
 
     
 #endif 

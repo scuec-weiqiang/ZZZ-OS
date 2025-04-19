@@ -19,7 +19,8 @@ void task_create(void (*task)(void* param),uint64_t time_slice,uint8_t priority)
 
     task_ctrl_block->id = task_id;
     task_ctrl_block->task = task;
-    task_ctrl_block->status = READY;
+    task_ctrl_block->status = TASK_READY;
+    task_ctrl_block->expire_time = 0;
     task_ctrl_block->priority = priority;
     task_ctrl_block->time_slice = time_slice;
     task_ctrl_block->reg_context.ra = (uint64_t)task;

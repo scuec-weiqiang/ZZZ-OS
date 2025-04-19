@@ -3,7 +3,7 @@
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
- * @LastEditTime : 2025-04-19 01:36:57
+ * @LastEditTime : 2025-04-19 21:28:07
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 *******************************************************************************************/
 #ifndef RISCV_H
@@ -187,13 +187,16 @@ __SELF __INLINE reg_t mtval_r()
 }
 
 
-#define USER_MODE_INIT  __PROTECT(  \
+#define MACHINE_TO_USER(x)    __PROTECT( \
     mstatus_w(mscratch_r() & ~(3<<11));  \
-    )\
+    mepc_w((reg_t)(x)); \
+    asm volatile("mret"); \
+)
 
-#define MACHINE_MODE_INIT  __PROTECT(  \
-mstatus_w(mscratch_r() | (3<<11));  \
-)\
-
+#define MACHINE_TO_MACHINE(x)    __PROTECT( \
+    mstatus_w(mscratch_r() | (3<<11));  \
+    mepc_w((reg_t)(x)); \
+    asm volatile("mret"); \
+)
 
 #endif

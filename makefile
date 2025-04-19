@@ -75,6 +75,12 @@ $(TARGET): $(OBJ)
 	$(LD) $(LFLAGS)  $^ -o $@
 	@echo "\033[32m生成目标文件: $@\033[0m"
 
+
+# $(DIR_OUT)/trap.o: trap.c
+# 	@mkdir -p $(dir $@)
+# 	@echo "\033[32m编译C文件: $<\033[0m"
+# 	$(CC) $(CFLAGS)  -ffixed-x8 -ffixed-x9 -ffixed-x18 -ffixed-x19 -ffixed-x20 -ffixed-x21 -ffixed-x22 -ffixed-x23 -ffixed-x24 -ffixed-x25 -ffixed-x26 -ffixed-x27 -c $< -o $@
+
 # 通用编译规则
 $(DIR_OUT)/%.o: %.c
 	@mkdir -p $(dir $@)

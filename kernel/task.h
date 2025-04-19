@@ -7,16 +7,17 @@
 
 #define TASK_STACK_SIZE 1024 //每个任务分配1k的栈大小
 
-typedef enum {
-    RUNNING,
-    READY,
-    BLOCKED,
-    ZOMBIE
+typedef enum task_status{
+    TASK_RUNNING,
+    TASK_READY,
+    TASK_BLOCKED,
+    TASK_ZOMBIE
 }task_status_t;
 
 typedef struct task_ctrl_block
 {   
     uint64_t id;
+    uint64_t expire_time;
     uint64_t time_slice;
     uint8_t priority;
     task_status_t status;

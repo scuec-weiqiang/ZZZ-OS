@@ -12,6 +12,7 @@
         "platform.h": "c",
         "uart.h": "c",
         "task.h": "c",
-        "hwtimer.h": "c"
+        "hwtimer.h": "c",
+        "systimer.h": "c"
     }
 }

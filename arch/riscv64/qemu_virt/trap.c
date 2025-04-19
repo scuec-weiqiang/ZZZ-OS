@@ -1,7 +1,7 @@
 #include "uart.h"
 #include "printf.h"
 #include "riscv.h"
-#include "hwtimer.h"
+#include "systimer.h"
 #include "plic.h"
 #include "uart.h"
 #include "sched.h"
@@ -51,9 +51,40 @@ reg_t trap_handler(reg_t epc,reg_t cause)
     }
     else
     {
-        printf("casue code is %d\n",cause_code);
-        printf("mtval is %x\n",mtval_r());
-        panic("trap!\n"); 
+        switch (cause_code)
+        {
+            case 0:
+                printf("mtval is %x\n",mtval_r());
+                panic("instruction address misaligned!\n");
+                break;
+            case 1:
+                printf("mtval is %x\n",mtval_r());
+                panic("instruction access fault!\n");
+                break;
+            case 2:
+                printf("mtval is %x\n",mtval_r());
+                panic("illegal instruction !\n");
+                break;
+            case 3:
+                printf("mtval is %x\n",mtval_r());
+                printf("breakpiont!\n");
+                break;
+            case 8:
+                printf("environment call from U-mode");
+                break;
+            case 9:
+                printf("environment call from S-mode");
+                break;
+            case 11:
+                // printf("external interruption!\n");
+                printf("environment call from M-mode");
+                break;
+            default:
+                printf("unknown sync exception!\n cause code is %l\n",cause_code);
+                printf("mtval is %x\n",mtval_r());
+                panic("trap!");
+                break;
+        }
     }
     return return_epc;
 }
@@ -90,10 +121,16 @@ void extern_interrupt_handler()
 ***************************************************************/
 reg_t timer_interrupt_handler(reg_t epc )
 {
-    // hwtimer_reload_s(1);
+   
     reg_t r;
-    // swtimer_check();
-    r = sched(epc);
+    uint64_t now_time = systimer_get_time();
+    systimer_tick++;
+
+    r = sched(epc,now_time);
+    
+    swtimer_check();
+    systimer_load(HART_0,systimer_hz);
+
     return r;
 }
 

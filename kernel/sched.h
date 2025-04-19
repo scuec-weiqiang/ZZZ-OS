@@ -5,6 +5,7 @@
 #include "riscv.h"
 #include "task.h"
 
+enum sched_state { SCHED_IDLE, SCHED_FIRST, SCHED_RUNNING, SCHED_SWITCHING };
 
 typedef struct{ 
     // uint64_t task_num;
@@ -16,6 +17,5 @@ typedef struct{
 extern scheduler_t scheduler;
 
 extern void sched_init();
-extern reg_t sched(reg_t epc);
-
+extern reg_t sched(reg_t epc,uint64_t now_time);
 #endif
