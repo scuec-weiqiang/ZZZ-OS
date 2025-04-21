@@ -1,10 +1,10 @@
 /*******************************************************************************************
- * @FilePath     : /ZZZ/kernel/sched.c
+ * @FilePath: /ZZZ/kernel/sched.c
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @Date         : 2025-04-16 21:02:39
- * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
- * @LastEditTime : 2025-04-20 01:35:37
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2025-04-20 16:59:37
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 *******************************************************************************************/
 
@@ -19,6 +19,11 @@ static uint64_t         _sched_check(uint64_t now_time);
 static reg_t            _setup_next_task(uint64_t now_time);
 static enum sched_state _get_sched_state(uint64_t now_time);
 
+
+/*******************************************************************************************
+ * @brief: 
+ * @return {*}
+*******************************************************************************************/
 void sched_init()
 {
     INIT_LIST_HEAD(&scheduler.running_queue);
@@ -27,8 +32,12 @@ void sched_init()
     // scheduler.task_num = 0;
 }
 
-
-
+/*******************************************************************************************
+ * @brief: 
+ * @param {reg_t} epc
+ * @param {uint64_t} now_time
+ * @return {*}
+*******************************************************************************************/
 reg_t sched(reg_t epc,uint64_t now_time)
 {
     if(!list_empty(&need_add_task)) // 如果有任务需要添加到运行队列
@@ -59,31 +68,45 @@ reg_t sched(reg_t epc,uint64_t now_time)
             list_mov_tail(&scheduler.running_queue,scheduler.running_queue.next);//将到期任务移动到链表尾部
             return _setup_next_task(now_time);
             break;
+        default:
+            return epc;
      }
-        
 }
 
+/*******************************************************************************************
+ * @brief: 
+ * @param {uint64_t} now_time
+ * @return {*}
+*******************************************************************************************/
 static reg_t _setup_next_task(uint64_t now_time)
 {
     scheduler.current_task = list_entry(scheduler.running_queue.next,tcb_t,node);//获取下一个任务
     scheduler.current_task->expire_time = now_time  + scheduler.current_task->time_slice;
-    mscratch_w(&scheduler.current_task->reg_context);
+    mscratch_w((reg_t)&scheduler.current_task->reg_context);
     return scheduler.current_task->reg_context.mepc;
 }
 
-
+/*******************************************************************************************
+ * @brief: 
+ * @param {uint64_t} now_time
+ * @return {*}
+*******************************************************************************************/
 static uint64_t _sched_check(uint64_t now_time)
 {
     return now_time >= scheduler.current_task->expire_time?1:0;
 }
 
 
-
+/*******************************************************************************************
+ * @brief: 
+ * @param {uint64_t} now_time
+ * @return {*}
+*******************************************************************************************/
 static enum sched_state _get_sched_state(uint64_t now_time)
 {
     if (IS_NULL_PTR(scheduler.current_task))//如果没有任务在执行
     {
-        if (list_empty(&scheduler.running_queue)) //当前没有任务在执行，且运行队列为空，表明系统空闲，直接返回。
+        if (list_empty(&scheduler.running_queue)) //当前没有任务在执行，且运行队列为空，表明系统空闲
         {
             return SCHED_IDLE;
         }
@@ -93,7 +116,7 @@ static enum sched_state _get_sched_state(uint64_t now_time)
         }
     }
 
-    //检查当前任务时间是否到期
+    //如果有任务在执行,检查当前任务时间是否到期
     if (!_sched_check(now_time))
     {
         return SCHED_RUNNING; // 时间片未用完，继续执行当前任务

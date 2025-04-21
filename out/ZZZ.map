@@ -15,7 +15,7 @@ Linker script and memory map
                 0x0000000008000000                RAM_SIZE = 0x8000000
                 0x0000000080000000                . = ORIGIN (RAM)
 
-.text           0x0000000080000000     0x1d20
+.text           0x0000000080000000     0x1d50
                 0x0000000080000000                _text_start = .
  *(.text.init)
  .text.init     0x0000000080000000       0x50 out/arch/riscv64/boot.o
@@ -24,155 +24,154 @@ Linker script and memory map
  .text.trap     0x0000000080000050      0x116 out/arch/riscv64/boot.o
                 0x0000000080000050                trap_entry
  *(.text .text.*)
- .text          0x0000000080000166       0xce out/kernel/init.o
-                0x00000000800001b4                main
- .text          0x0000000080000234      0x31a out/kernel/page.o
-                0x0000000080000234                page_init
-                0x0000000080000356                page_alloc
-                0x00000000800004c2                page_free
- .text          0x000000008000054e      0x524 out/kernel/printf.o
-                0x000000008000054e                num2char
-                0x000000008000073c                _vsprintf
-                0x000000008000098c                _vprintf
-                0x00000000800009fe                printf
-                0x0000000080000a52                panic
- .text          0x0000000080000a72      0x3a0 out/kernel/sched.o
-                0x0000000080000bf2                sched_init
-                0x0000000080000c54                sched
- .text          0x0000000080000e12      0x2f8 out/kernel/swtimer.o
-                0x0000000080000ed6                swtimer_distory
-                0x0000000080000f94                swtimer_check
-                0x0000000080000ff6                swtimer_create
- .text          0x000000008000110a      0x1ca out/kernel/task.o
-                0x000000008000117a                task_create
-                0x0000000080001252                task_distory
-                0x0000000080001292                task_delay
- .text          0x00000000800012d4      0x2e0 out/arch/riscv64/qemu_virt/interrupt.o
-                0x000000008000144c                global_interrupt_enable
-                0x000000008000146e                global_interrupt_disable
-                0x000000008000148e                timer_interrupt_enable
-                0x00000000800014b0                timer_interrupt_disable
-                0x00000000800014d2                extern_interrupt_enable
-                0x00000000800014f8                extern_interrupt_disable
-                0x000000008000151e                extern_interrupt_setting
-                0x0000000080001572                soft_interrupt_enable
-                0x0000000080001594                soft_interrupt_disable
- .text          0x00000000800015b4       0xe0 out/arch/riscv64/qemu_virt/systimer.o
-                0x0000000080001606                systimer_init
-                0x000000008000163c                systimer_load
-                0x000000008000167c                systimer_get_time
- .text          0x0000000080001694      0x37a out/arch/riscv64/qemu_virt/trap.o
-                0x000000008000176a                trap_init
-                0x000000008000178a                trap_handler
-                0x0000000080001948                extern_interrupt_handler
-                0x000000008000199c                timer_interrupt_handler
-                0x0000000080001a00                soft_interrupt_handler
- .text          0x0000000080001a0e      0x1ac out/drivers/uart.o
-                0x0000000080001a0e                uart_init
-                0x0000000080001ad0                uart_putc
-                0x0000000080001b06                uart_getc
-                0x0000000080001b34                uart_puts
-                0x0000000080001b70                uart0_iqr
- *fill*         0x0000000080001bba        0x2 
- .text          0x0000000080001bbc      0x164 out/user/user.o
-                0x0000000080001bbc                task0_timer
-                0x0000000080001bfe                task0
-                0x0000000080001c32                task1
-                0x0000000080001c66                task2
-                0x0000000080001c9a                task3
-                0x0000000080001cd0                os_main
- .text          0x0000000080001d20        0x0 out/arch/riscv64/boot.o
- .text          0x0000000080001d20        0x0 out/arch/riscv64/save_reg.o
- .text          0x0000000080001d20        0x0 out/arch/riscv64/usys.o
-                0x0000000080001d20                gethid
-                0x0000000080001d20                _text_end = .
+ .text          0x0000000080000166       0xc8 out/kernel/init.o
+                0x00000000800001b4                init
+ .text          0x000000008000022e      0x31a out/kernel/page.o
+                0x000000008000022e                page_init
+                0x0000000080000350                page_alloc
+                0x00000000800004bc                page_free
+ .text          0x0000000080000548      0x4fa out/kernel/printf.o
+                0x0000000080000548                num2char
+                0x0000000080000736                _vsprintf
+                0x000000008000095c                _vprintf
+                0x00000000800009ce                printf
+                0x0000000080000a22                panic
+ .text          0x0000000080000a42      0x3a4 out/kernel/sched.o
+                0x0000000080000bc2                sched_init
+                0x0000000080000c24                sched
+ .text          0x0000000080000de6      0x2f4 out/kernel/swtimer.o
+                0x0000000080000eaa                swtimer_distory
+                0x0000000080000f68                swtimer_check
+                0x0000000080000fca                swtimer_create
+ .text          0x00000000800010da      0x1c4 out/kernel/task.o
+                0x000000008000114a                task_create
+                0x000000008000121c                task_distory
+                0x000000008000125c                task_delay
+ .text          0x000000008000129e      0x2da out/arch/riscv64/qemu_virt/interrupt.o
+                0x0000000080001410                global_interrupt_enable
+                0x0000000080001432                global_interrupt_disable
+                0x0000000080001452                timer_interrupt_enable
+                0x0000000080001474                timer_interrupt_disable
+                0x0000000080001496                extern_interrupt_enable
+                0x00000000800014bc                extern_interrupt_disable
+                0x00000000800014e2                extern_interrupt_setting
+                0x0000000080001536                soft_interrupt_enable
+                0x0000000080001558                soft_interrupt_disable
+ .text          0x0000000080001578       0xd6 out/arch/riscv64/qemu_virt/systimer.o
+                0x00000000800015c0                systimer_init
+                0x00000000800015f6                systimer_load
+                0x0000000080001636                systimer_get_time
+ .text          0x000000008000164e      0x3b6 out/arch/riscv64/qemu_virt/trap.o
+                0x0000000080001730                trap_init
+                0x0000000080001750                trap_handler
+                0x000000008000193e                extern_interrupt_handler
+                0x0000000080001992                timer_interrupt_handler
+                0x00000000800019f6                soft_interrupt_handler
+ .text          0x0000000080001a04      0x1ac out/drivers/uart.o
+                0x0000000080001a04                uart_init
+                0x0000000080001ac6                uart_putc
+                0x0000000080001afc                uart_getc
+                0x0000000080001b2a                uart_puts
+                0x0000000080001b66                uart0_iqr
+ *fill*         0x0000000080001bb0        0x0 
+ .text          0x0000000080001bb0      0x1a0 out/user/user.o
+                0x0000000080001bca                task0_timer
+                0x0000000080001c0c                task0
+                0x0000000080001c62                task1
+                0x0000000080001c96                task2
+                0x0000000080001cca                task3
+                0x0000000080001d00                os_main
+ .text          0x0000000080001d50        0x0 out/arch/riscv64/boot.o
+ .text          0x0000000080001d50        0x0 out/arch/riscv64/save_reg.o
+ .text          0x0000000080001d50        0x0 out/arch/riscv64/usys.o
+                0x0000000080001d50                gethid
+                0x0000000080001d50                _text_end = .
 
-.rodata         0x0000000080001d20      0x3a9
-                0x0000000080001d20                _rodata_start = .
+.rodata         0x0000000080001d50      0x3d9
+                0x0000000080001d50                _rodata_start = .
  *(.rodata .rodata.*)
- .rodata        0x0000000080001d20       0x1f out/kernel/init.o
- *fill*         0x0000000080001d3f        0x1 
- .rodata        0x0000000080001d40       0xa3 out/kernel/page.o
- *fill*         0x0000000080001de3        0x5 
- .rodata        0x0000000080001de8       0x92 out/kernel/printf.o
- *fill*         0x0000000080001e7a        0x6 
- .rodata        0x0000000080001e80      0x1ad out/arch/riscv64/qemu_virt/trap.o
- *fill*         0x000000008000202d        0x3 
- .rodata        0x0000000080002030        0xa out/drivers/uart.o
- *fill*         0x000000008000203a        0x6 
- .rodata        0x0000000080002040       0x89 out/user/user.o
-                0x00000000800020c9                _rodata_end = .
+ .rodata        0x0000000080001d50       0x1f out/kernel/init.o
+ *fill*         0x0000000080001d6f        0x1 
+ .rodata        0x0000000080001d70       0xa3 out/kernel/page.o
+ *fill*         0x0000000080001e13        0x5 
+ .rodata        0x0000000080001e18       0x92 out/kernel/printf.o
+ *fill*         0x0000000080001eaa        0x6 
+ .rodata        0x0000000080001eb0      0x1cd out/arch/riscv64/qemu_virt/trap.o
+ *fill*         0x000000008000207d        0x3 
+ .rodata        0x0000000080002080        0xa out/drivers/uart.o
+ *fill*         0x000000008000208a        0x6 
+ .rodata        0x0000000080002090       0x99 out/user/user.o
+                0x0000000080002129                _rodata_end = .
 
-.rela.dyn       0x00000000800020d0        0x0
- .rela.text     0x00000000800020d0        0x0 out/kernel/init.o
+.rela.dyn       0x0000000080002130        0x0
+ .rela.text     0x0000000080002130        0x0 out/kernel/init.o
  .rela.text.init
-                0x00000000800020d0        0x0 out/kernel/init.o
+                0x0000000080002130        0x0 out/kernel/init.o
 
-.data           0x00000000800020d0       0x20
-                0x00000000800020d0                _data_start = .
+.data           0x0000000080002130       0x20
+                0x0000000080002130                _data_start = .
  *(.data .data,*)
- .data          0x00000000800020d0        0x0 out/kernel/init.o
- .data          0x00000000800020d0        0x0 out/kernel/page.o
- .data          0x00000000800020d0        0x0 out/kernel/printf.o
- .data          0x00000000800020d0        0x0 out/kernel/sched.o
- .data          0x00000000800020d0        0x0 out/kernel/swtimer.o
- .data          0x00000000800020d0       0x20 out/kernel/task.o
-                0x00000000800020d0                need_add_task
-                0x00000000800020e0                need_del_task
- .data          0x00000000800020f0        0x0 out/arch/riscv64/qemu_virt/interrupt.o
- .data          0x00000000800020f0        0x0 out/arch/riscv64/qemu_virt/systimer.o
- .data          0x00000000800020f0        0x0 out/arch/riscv64/qemu_virt/trap.o
- .data          0x00000000800020f0        0x0 out/drivers/uart.o
- .data          0x00000000800020f0        0x0 out/user/user.o
- .data          0x00000000800020f0        0x0 out/arch/riscv64/boot.o
- .data          0x00000000800020f0        0x0 out/arch/riscv64/save_reg.o
- .data          0x00000000800020f0        0x0 out/arch/riscv64/usys.o
-                0x00000000800020f0                _data_end = .
+ .data          0x0000000080002130        0x0 out/kernel/init.o
+ .data          0x0000000080002130        0x0 out/kernel/page.o
+ .data          0x0000000080002130        0x0 out/kernel/printf.o
+ .data          0x0000000080002130        0x0 out/kernel/sched.o
+ .data          0x0000000080002130        0x0 out/kernel/swtimer.o
+ .data          0x0000000080002130       0x20 out/kernel/task.o
+                0x0000000080002130                need_add_task
+                0x0000000080002140                need_del_task
+ .data          0x0000000080002150        0x0 out/arch/riscv64/qemu_virt/interrupt.o
+ .data          0x0000000080002150        0x0 out/arch/riscv64/qemu_virt/systimer.o
+ .data          0x0000000080002150        0x0 out/arch/riscv64/qemu_virt/trap.o
+ .data          0x0000000080002150        0x0 out/drivers/uart.o
+ .data          0x0000000080002150        0x0 out/user/user.o
+ .data          0x0000000080002150        0x0 out/arch/riscv64/boot.o
+ .data          0x0000000080002150        0x0 out/arch/riscv64/save_reg.o
+ .data          0x0000000080002150        0x0 out/arch/riscv64/usys.o
+                0x0000000080002150                _data_end = .
 
-.sdata          0x00000000800020f0        0x8
- .sdata         0x00000000800020f0        0x4 out/kernel/task.o
- .sdata         0x00000000800020f4        0x4 out/arch/riscv64/qemu_virt/systimer.o
-                0x00000000800020f4                systimer_hz
+.sdata          0x0000000080002150        0xc
+ .sdata         0x0000000080002150        0x8 out/kernel/task.o
+ .sdata         0x0000000080002158        0x4 out/arch/riscv64/qemu_virt/systimer.o
+                0x0000000080002158                systimer_hz
 
-.bss            0x00000000800020f8      0x448
-                0x00000000800020f8                . = ALIGN (0x8)
-                0x00000000800020f8                _bss_start = .
+.bss            0x0000000080002160      0x448
+                0x0000000080002160                . = ALIGN (0x8)
+                0x0000000080002160                _bss_start = .
  *(.bss .bss.*)
- .bss           0x00000000800020f8        0x0 out/kernel/init.o
- .bss           0x00000000800020f8       0x18 out/kernel/page.o
- .bss           0x0000000080002110      0x400 out/kernel/printf.o
- .bss           0x0000000080002510       0x28 out/kernel/sched.o
-                0x0000000080002510                scheduler
- .bss           0x0000000080002538        0x4 out/kernel/swtimer.o
- .bss           0x000000008000253c        0x0 out/kernel/task.o
- .bss           0x000000008000253c        0x0 out/arch/riscv64/qemu_virt/interrupt.o
- .bss           0x000000008000253c        0x0 out/arch/riscv64/qemu_virt/systimer.o
- .bss           0x000000008000253c        0x0 out/arch/riscv64/qemu_virt/trap.o
- .bss           0x000000008000253c        0x0 out/drivers/uart.o
- .bss           0x000000008000253c        0x0 out/user/user.o
- .bss           0x000000008000253c        0x0 out/arch/riscv64/boot.o
- .bss           0x000000008000253c        0x0 out/arch/riscv64/save_reg.o
- .bss           0x000000008000253c        0x0 out/arch/riscv64/usys.o
+ .bss           0x0000000080002160        0x0 out/kernel/init.o
+ .bss           0x0000000080002160       0x18 out/kernel/page.o
+ .bss           0x0000000080002178      0x400 out/kernel/printf.o
+ .bss           0x0000000080002578       0x28 out/kernel/sched.o
+                0x0000000080002578                scheduler
+ .bss           0x00000000800025a0        0x8 out/kernel/swtimer.o
+ .bss           0x00000000800025a8        0x0 out/kernel/task.o
+ .bss           0x00000000800025a8        0x0 out/arch/riscv64/qemu_virt/interrupt.o
+ .bss           0x00000000800025a8        0x0 out/arch/riscv64/qemu_virt/systimer.o
+ .bss           0x00000000800025a8        0x0 out/arch/riscv64/qemu_virt/trap.o
+ .bss           0x00000000800025a8        0x0 out/drivers/uart.o
+ .bss           0x00000000800025a8        0x0 out/user/user.o
+ .bss           0x00000000800025a8        0x0 out/arch/riscv64/boot.o
+ .bss           0x00000000800025a8        0x0 out/arch/riscv64/save_reg.o
+ .bss           0x00000000800025a8        0x0 out/arch/riscv64/usys.o
  *(COMMON)
-                0x0000000080002540                . = ALIGN (0x8)
- *fill*         0x000000008000253c        0x4 
-                0x0000000080002540                _bss_end = .
+                0x00000000800025a8                . = ALIGN (0x8)
+                0x00000000800025a8                _bss_end = .
 
-.sbss           0x0000000080002540       0x18
- .sbss          0x0000000080002540        0x8 out/kernel/swtimer.o
-                0x0000000080002540                swtimer_head
- .sbss          0x0000000080002548        0x8 out/arch/riscv64/qemu_virt/systimer.o
-                0x0000000080002548                systimer_tick
- .sbss          0x0000000080002550        0x8 out/user/user.o
-                0x0000000080002550                t
+.sbss           0x00000000800025a8       0x18
+ .sbss          0x00000000800025a8        0x8 out/kernel/swtimer.o
+                0x00000000800025a8                swtimer_head
+ .sbss          0x00000000800025b0        0x8 out/arch/riscv64/qemu_virt/systimer.o
+                0x00000000800025b0                systimer_tick
+ .sbss          0x00000000800025b8        0x8 out/user/user.o
+                0x00000000800025b8                t
 
 .kernel_reg_ctx
-                0x0000000080002558      0x108
-                0x0000000080002558                . = ALIGN (0x4)
-                0x0000000080002558                _kernel_reg_ctx_start = .
-                0x0000000080002660                . = (. + 0x108)
- *fill*         0x0000000080002558      0x108 
-                0x0000000080002660                _kernel_reg_ctx_end = .
+                0x00000000800025c0      0x108
+                0x00000000800025c0                . = ALIGN (0x4)
+                0x00000000800025c0                _kernel_reg_ctx_start = .
+                0x00000000800026c8                . = (. + 0x108)
+ *fill*         0x00000000800025c0      0x108 
+                0x00000000800026c8                _kernel_reg_ctx_end = .
                 0x0000000080003000                . = ALIGN (0x1000)
                 0x0000000080003000                _heap_start = .
                 0x0000000088000000                _stack_end = (RAM_BASE + RAM_SIZE)
@@ -195,33 +194,33 @@ LOAD out/arch/riscv64/save_reg.o
 LOAD out/arch/riscv64/usys.o
 OUTPUT(out/ZZZ.elf elf64-littleriscv)
 
-.debug_info     0x0000000000000000     0x23cc
- .debug_info    0x0000000000000000      0x212 out/kernel/init.o
- .debug_info    0x0000000000000212      0x24f out/kernel/page.o
- .debug_info    0x0000000000000461      0x37b out/kernel/printf.o
- .debug_info    0x00000000000007dc      0x6be out/kernel/sched.o
- .debug_info    0x0000000000000e9a      0x3b9 out/kernel/swtimer.o
- .debug_info    0x0000000000001253      0x535 out/kernel/task.o
- .debug_info    0x0000000000001788      0x2ee out/arch/riscv64/qemu_virt/interrupt.o
- .debug_info    0x0000000000001a76      0x1d9 out/arch/riscv64/qemu_virt/systimer.o
- .debug_info    0x0000000000001c4f      0x3a6 out/arch/riscv64/qemu_virt/trap.o
- .debug_info    0x0000000000001ff5      0x1dd out/drivers/uart.o
- .debug_info    0x00000000000021d2      0x1d7 out/user/user.o
- .debug_info    0x00000000000023a9       0x23 out/arch/riscv64/boot.o
+.debug_info     0x0000000000000000     0x2446
+ .debug_info    0x0000000000000000      0x205 out/kernel/init.o
+ .debug_info    0x0000000000000205      0x24f out/kernel/page.o
+ .debug_info    0x0000000000000454      0x36e out/kernel/printf.o
+ .debug_info    0x00000000000007c2      0x6be out/kernel/sched.o
+ .debug_info    0x0000000000000e80      0x3ad out/kernel/swtimer.o
+ .debug_info    0x000000000000122d      0x52b out/kernel/task.o
+ .debug_info    0x0000000000001758      0x320 out/arch/riscv64/qemu_virt/interrupt.o
+ .debug_info    0x0000000000001a78      0x1ee out/arch/riscv64/qemu_virt/systimer.o
+ .debug_info    0x0000000000001c66      0x3be out/arch/riscv64/qemu_virt/trap.o
+ .debug_info    0x0000000000002024      0x1dd out/drivers/uart.o
+ .debug_info    0x0000000000002201      0x222 out/user/user.o
+ .debug_info    0x0000000000002423       0x23 out/arch/riscv64/boot.o
 
-.debug_abbrev   0x0000000000000000     0x1076
+.debug_abbrev   0x0000000000000000     0x1093
  .debug_abbrev  0x0000000000000000      0x157 out/kernel/init.o
  .debug_abbrev  0x0000000000000157      0x156 out/kernel/page.o
  .debug_abbrev  0x00000000000002ad      0x12b out/kernel/printf.o
  .debug_abbrev  0x00000000000003d8      0x250 out/kernel/sched.o
  .debug_abbrev  0x0000000000000628      0x1aa out/kernel/swtimer.o
- .debug_abbrev  0x00000000000007d2      0x205 out/kernel/task.o
- .debug_abbrev  0x00000000000009d7       0xf1 out/arch/riscv64/qemu_virt/interrupt.o
- .debug_abbrev  0x0000000000000ac8      0x137 out/arch/riscv64/qemu_virt/systimer.o
- .debug_abbrev  0x0000000000000bff      0x20d out/arch/riscv64/qemu_virt/trap.o
- .debug_abbrev  0x0000000000000e0c      0x149 out/drivers/uart.o
- .debug_abbrev  0x0000000000000f55      0x10f out/user/user.o
- .debug_abbrev  0x0000000000001064       0x12 out/arch/riscv64/boot.o
+ .debug_abbrev  0x00000000000007d2      0x1ef out/kernel/task.o
+ .debug_abbrev  0x00000000000009c1      0x114 out/arch/riscv64/qemu_virt/interrupt.o
+ .debug_abbrev  0x0000000000000ad5      0x140 out/arch/riscv64/qemu_virt/systimer.o
+ .debug_abbrev  0x0000000000000c15      0x201 out/arch/riscv64/qemu_virt/trap.o
+ .debug_abbrev  0x0000000000000e16      0x147 out/drivers/uart.o
+ .debug_abbrev  0x0000000000000f5d      0x124 out/user/user.o
+ .debug_abbrev  0x0000000000001081       0x12 out/arch/riscv64/boot.o
 
 .debug_aranges  0x0000000000000000      0x250
  .debug_aranges
@@ -249,62 +248,62 @@ OUTPUT(out/ZZZ.elf elf64-littleriscv)
  .debug_aranges
                 0x0000000000000210       0x40 out/arch/riscv64/boot.o
 
-.debug_line     0x0000000000000000     0x1c8c
- .debug_line    0x0000000000000000      0x14d out/kernel/init.o
- .debug_line    0x000000000000014d      0x345 out/kernel/page.o
- .debug_line    0x0000000000000492      0x4fb out/kernel/printf.o
- .debug_line    0x000000000000098d      0x314 out/kernel/sched.o
- .debug_line    0x0000000000000ca1      0x2f5 out/kernel/swtimer.o
- .debug_line    0x0000000000000f96      0x1d3 out/kernel/task.o
- .debug_line    0x0000000000001169      0x292 out/arch/riscv64/qemu_virt/interrupt.o
- .debug_line    0x00000000000013fb      0x100 out/arch/riscv64/qemu_virt/systimer.o
- .debug_line    0x00000000000014fb      0x346 out/arch/riscv64/qemu_virt/trap.o
- .debug_line    0x0000000000001841      0x1f2 out/drivers/uart.o
- .debug_line    0x0000000000001a33      0x16f out/user/user.o
- .debug_line    0x0000000000001ba2       0xea out/arch/riscv64/boot.o
+.debug_line     0x0000000000000000     0x1cb6
+ .debug_line    0x0000000000000000      0x149 out/kernel/init.o
+ .debug_line    0x0000000000000149      0x345 out/kernel/page.o
+ .debug_line    0x000000000000048e      0x4ad out/kernel/printf.o
+ .debug_line    0x000000000000093b      0x31a out/kernel/sched.o
+ .debug_line    0x0000000000000c55      0x2f5 out/kernel/swtimer.o
+ .debug_line    0x0000000000000f4a      0x1cc out/kernel/task.o
+ .debug_line    0x0000000000001116      0x2a2 out/arch/riscv64/qemu_virt/interrupt.o
+ .debug_line    0x00000000000013b8      0x100 out/arch/riscv64/qemu_virt/systimer.o
+ .debug_line    0x00000000000014b8      0x35d out/arch/riscv64/qemu_virt/trap.o
+ .debug_line    0x0000000000001815      0x1fd out/drivers/uart.o
+ .debug_line    0x0000000000001a12      0x1ba out/user/user.o
+ .debug_line    0x0000000000001bcc       0xea out/arch/riscv64/boot.o
 
-.debug_str      0x0000000000000000      0x87d
- .debug_str     0x0000000000000000      0x87d out/kernel/init.o
+.debug_str      0x0000000000000000      0x8b1
+ .debug_str     0x0000000000000000      0x8b1 out/kernel/init.o
                                         0x1da (size before relaxing)
- .debug_str     0x000000000000087d      0x19e out/kernel/page.o
- .debug_str     0x000000000000087d      0x19d out/kernel/printf.o
- .debug_str     0x000000000000087d      0x314 out/kernel/sched.o
- .debug_str     0x000000000000087d      0x235 out/kernel/swtimer.o
- .debug_str     0x000000000000087d      0x264 out/kernel/task.o
- .debug_str     0x000000000000087d      0x244 out/arch/riscv64/qemu_virt/interrupt.o
- .debug_str     0x000000000000087d      0x1ac out/arch/riscv64/qemu_virt/systimer.o
- .debug_str     0x000000000000087d      0x267 out/arch/riscv64/qemu_virt/trap.o
- .debug_str     0x000000000000087d      0x14c out/drivers/uart.o
- .debug_str     0x000000000000087d      0x148 out/user/user.o
- .debug_str     0x000000000000087d       0x2e out/arch/riscv64/boot.o
+ .debug_str     0x00000000000008b1      0x19e out/kernel/page.o
+ .debug_str     0x00000000000008b1      0x194 out/kernel/printf.o
+ .debug_str     0x00000000000008b1      0x314 out/kernel/sched.o
+ .debug_str     0x00000000000008b1      0x22c out/kernel/swtimer.o
+ .debug_str     0x00000000000008b1      0x264 out/kernel/task.o
+ .debug_str     0x00000000000008b1      0x270 out/arch/riscv64/qemu_virt/interrupt.o
+ .debug_str     0x00000000000008b1      0x1bb out/arch/riscv64/qemu_virt/systimer.o
+ .debug_str     0x00000000000008b1      0x272 out/arch/riscv64/qemu_virt/trap.o
+ .debug_str     0x00000000000008b1      0x14c out/drivers/uart.o
+ .debug_str     0x00000000000008b1      0x158 out/user/user.o
+ .debug_str     0x00000000000008b1       0x2e out/arch/riscv64/boot.o
 
 .debug_line_str
-                0x0000000000000000      0x1d8
+                0x0000000000000000      0x1e2
  .debug_line_str
-                0x0000000000000000      0x1d8 out/kernel/init.o
+                0x0000000000000000      0x1e2 out/kernel/init.o
                                          0xbc (size before relaxing)
  .debug_line_str
-                0x00000000000001d8       0x6d out/kernel/page.o
+                0x00000000000001e2       0x6d out/kernel/page.o
  .debug_line_str
-                0x00000000000001d8       0x99 out/kernel/printf.o
+                0x00000000000001e2       0x99 out/kernel/printf.o
  .debug_line_str
-                0x00000000000001d8       0x79 out/kernel/sched.o
+                0x00000000000001e2       0x79 out/kernel/sched.o
  .debug_line_str
-                0x00000000000001d8       0x84 out/kernel/swtimer.o
+                0x00000000000001e2       0x84 out/kernel/swtimer.o
  .debug_line_str
-                0x00000000000001d8       0x6e out/kernel/task.o
+                0x00000000000001e2       0x75 out/kernel/task.o
  .debug_line_str
-                0x00000000000001d8       0x96 out/arch/riscv64/qemu_virt/interrupt.o
+                0x00000000000001e2       0x96 out/arch/riscv64/qemu_virt/interrupt.o
  .debug_line_str
-                0x00000000000001d8       0x96 out/arch/riscv64/qemu_virt/systimer.o
+                0x00000000000001e2       0x96 out/arch/riscv64/qemu_virt/systimer.o
  .debug_line_str
-                0x00000000000001d8       0xb9 out/arch/riscv64/qemu_virt/trap.o
+                0x00000000000001e2       0xc3 out/arch/riscv64/qemu_virt/trap.o
  .debug_line_str
-                0x00000000000001d8       0x54 out/drivers/uart.o
+                0x00000000000001e2       0x64 out/drivers/uart.o
  .debug_line_str
-                0x00000000000001d8       0x5e out/user/user.o
+                0x00000000000001e2       0x73 out/user/user.o
  .debug_line_str
-                0x00000000000001d8       0x22 out/arch/riscv64/boot.o
+                0x00000000000001e2       0x22 out/arch/riscv64/boot.o
 
 .comment        0x0000000000000000       0x22
  .comment       0x0000000000000000       0x22 out/kernel/init.o
@@ -343,15 +342,15 @@ OUTPUT(out/ZZZ.elf elf64-littleriscv)
  .riscv.attributes
                 0x00000000000002fb       0x53 out/drivers/uart.o
  .riscv.attributes
-                0x000000000000034e       0x53 out/user/user.o
+                0x000000000000034e       0x57 out/user/user.o
  .riscv.attributes
-                0x00000000000003a1       0x55 out/arch/riscv64/boot.o
+                0x00000000000003a5       0x55 out/arch/riscv64/boot.o
  .riscv.attributes
-                0x00000000000003f6       0x51 out/arch/riscv64/save_reg.o
+                0x00000000000003fa       0x51 out/arch/riscv64/save_reg.o
  .riscv.attributes
-                0x0000000000000447       0x51 out/arch/riscv64/usys.o
+                0x000000000000044b       0x51 out/arch/riscv64/usys.o
 
-.debug_frame    0x0000000000000000      0xf80
+.debug_frame    0x0000000000000000      0xfb0
  .debug_frame   0x0000000000000000       0xc8 out/kernel/init.o
  .debug_frame   0x00000000000000c8       0xa0 out/kernel/page.o
  .debug_frame   0x0000000000000168       0xf8 out/kernel/printf.o
@@ -362,7 +361,7 @@ OUTPUT(out/ZZZ.elf elf64-littleriscv)
  .debug_frame   0x0000000000000a50      0x100 out/arch/riscv64/qemu_virt/systimer.o
  .debug_frame   0x0000000000000b50      0x228 out/arch/riscv64/qemu_virt/trap.o
  .debug_frame   0x0000000000000d78      0x100 out/drivers/uart.o
- .debug_frame   0x0000000000000e78      0x108 out/user/user.o
+ .debug_frame   0x0000000000000e78      0x138 out/user/user.o
 
 .debug_rnglists
                 0x0000000000000000       0x22

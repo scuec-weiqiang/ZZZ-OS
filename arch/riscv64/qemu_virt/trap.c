@@ -2,6 +2,7 @@
 #include "printf.h"
 #include "riscv.h"
 #include "systimer.h"
+#include "swtimer.h"
 #include "plic.h"
 #include "uart.h"
 #include "sched.h"
@@ -54,19 +55,22 @@ reg_t trap_handler(reg_t epc,reg_t cause)
         switch (cause_code)
         {
             case 0:
-                printf("mtval is %x\n",mtval_r());
+                printf("\nmtval is %x\n",mtval_r());
+                printf("occour in %x\n",epc);
                 panic("instruction address misaligned!\n");
                 break;
             case 1:
-                printf("mtval is %x\n",mtval_r());
+                printf("\nmtval is %x\n",mtval_r());
+                printf("occour in %x\n",epc);
                 panic("instruction access fault!\n");
                 break;
             case 2:
-                printf("mtval is %x\n",mtval_r());
+                printf("\nmtval is %x\n",mtval_r());
+                printf("occour in %x\n",epc);
                 panic("illegal instruction !\n");
                 break;
             case 3:
-                printf("mtval is %x\n",mtval_r());
+                printf("\nmtval is %x\n",mtval_r());
                 printf("breakpiont!\n");
                 break;
             case 8:
@@ -101,7 +105,6 @@ void extern_interrupt_handler()
     {
         case 10:
             uart0_iqr();
-            // printf("uart!\n");
         break;
 
         default:

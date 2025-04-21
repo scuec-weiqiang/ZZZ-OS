@@ -39,7 +39,7 @@ stack_init:
     csrw mscratch, a0
 
     mv a0, tp # 将hartid作为c语言的main函数参数
-    j main
+    j init
 
 wait:
     wfi

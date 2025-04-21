@@ -1,3 +1,12 @@
+/*******************************************************************************************
+ * @FilePath: /ZZZ/kernel/init.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-15 00:43:47
+ * @LastEditTime: 2025-04-20 15:07:52
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*******************************************************************************************/
 #include "riscv.h"
 #include "plic.h"
 #include "maddr_def.h"
@@ -13,7 +22,7 @@
 
 extern void os_main();
 
-void main(int hartid)
+void init(int hartid)
 {   
     if(hartid == 0)
     {
@@ -42,10 +51,7 @@ void main(int hartid)
     {
 
     }
-    uint64_t a;
     while(1)
     {
-        a++;
-        // *((volatile uint8_t*)a ) = 0;
     }
 }

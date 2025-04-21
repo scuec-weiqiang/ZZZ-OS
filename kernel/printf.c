@@ -69,7 +69,9 @@ int _vsprintf(char* out_buff,const char *str,va_list vl)
 {
     uint8_t format = 0;//置一表明遍历到了需要格式化输出的位置，比如%d
 	size_t pos = 0;//这是输出缓冲区的下标
+    #if SYSTEM_BITS != 64
     uint8_t longarg = 0;//long型标志位
+    #endif
     uint8_t decimal = 0;//进制标志位
 
     for(;(*str);str++)//遍历整个字符串
@@ -78,12 +80,24 @@ int _vsprintf(char* out_buff,const char *str,va_list vl)
         {
             switch( (*str) )
             {   
-                case 'l':longarg = 1;goto DEC;
+                case 'l': 
+
+                #if SYSTEM_BITS != 64
+                    longarg = 1;
+                #endif
+                goto DEC;
+
                 case 'x':decimal = 16;goto DEC;
                 case 'b':decimal = 2;goto DEC;
                 case 'd':
                     DEC://整数输出
-                    long long num = longarg?va_arg(vl,long long):va_arg(vl,int);
+
+                    #if SYSTEM_BITS != 64 
+                    int64_t num = longarg?va_arg(vl,int64_t):va_arg(vl,int32_t);
+                    #else
+                    int64_t num = va_arg(vl,int64_t);
+                    #endif
+                    
                     if(0 == decimal)
                     {
                         decimal = 10;
@@ -97,13 +111,16 @@ int _vsprintf(char* out_buff,const char *str,va_list vl)
                     pos += num2char(out_buff,pos,num,decimal); //将数字转化为字符串
                     //更新输出缓冲区的下标,指向下一个空白位置
 
-                    longarg = 0;//清除标志位
+                    #if SYSTEM_BITS != 64 
+                        longarg = 0;//清除标志位
+                    #endif
+
                     format = 0;
                     decimal = 0;
                 break;
 
                 case 'c':
-                    int c = va_arg(vl,int);
+                    uint64_t c = va_arg(vl,uint64_t);
                     if(NULL_PTR != out_buff)
                     {
                         out_buff[pos] = (char)c;
@@ -113,7 +130,7 @@ int _vsprintf(char* out_buff,const char *str,va_list vl)
                 break;
 
                 case 's':
-                    uint32_t addr = va_arg(vl,int);
+                    uint64_t addr = va_arg(vl,uint64_t);
                     while(*(char*)addr)
                     {
                         char c = *(char*)addr;

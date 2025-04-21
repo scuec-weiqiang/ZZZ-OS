@@ -1,9 +1,9 @@
 /*******************************************************************************************
- * @FilePath     : /ZZZ/user/user.c
+ * @FilePath: /ZZZ/user/user.c
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
- * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
- * @LastEditTime : 2025-04-20 01:31:09
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2025-04-20 15:52:48
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 *******************************************************************************************/
 #include "types.h"
@@ -24,7 +24,7 @@ void task0()
 {
     uint32_t a = 0;
     // swtimer_create(task0_timer,100,5);
-    // uint32_t b = 1;
+    uint32_t b = 1;
     while (1)
     {
         a++;        
@@ -33,8 +33,8 @@ void task0()
 
         // printf("task0 running\r");
 
-        // b = mhartid_r();
-        // printf("hartid = %d\n",b);
+        b = mhartid_r();
+        printf("hartid = %d\n",b);
     }
     
 }

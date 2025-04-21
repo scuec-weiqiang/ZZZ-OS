@@ -13,6 +13,7 @@
         "uart.h": "c",
         "task.h": "c",
         "hwtimer.h": "c",
-        "systimer.h": "c"
+        "systimer.h": "c",
+        "stdarg.h": "c"
     }
 }

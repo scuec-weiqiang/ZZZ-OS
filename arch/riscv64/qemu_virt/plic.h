@@ -1,9 +1,9 @@
 /*******************************************************************************************
- * @FilePath     : /ZZZ/arch/riscv64/plic.h
+ * @FilePath: /ZZZ/arch/riscv64/qemu_virt/plic.h
  * @Description  : 平台中断控制器头文件，用于屏蔽中断和设置中断优先级等操作。
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
- * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
- * @LastEditTime : 2025-04-17 01:47:51
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2025-04-20 15:03:12
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 *******************************************************************************************/
 #ifndef PLIC_H
@@ -31,7 +31,8 @@
 ***************************************************************/
 __SELF __INLINE void __plic_priority_set(uint32_t irqn,uint32_t priority)
 {
-    *(uint32_t*)(PLIC_PRIORITY_BASE  + irqn*4) = priority;
+    volatile uint32_t *plic_priority = (volatile uint32_t *)PLIC_PRIORITY_BASE;
+    plic_priority[irqn] = priority;  // 直接数组访问，编译器自动计算偏移
 }
 
 /***************************************************************
@@ -41,7 +42,8 @@ __SELF __INLINE void __plic_priority_set(uint32_t irqn,uint32_t priority)
 ***************************************************************/
 __SELF __INLINE uint32_t __plic_priority_get(uint32_t irqn)
 {
-    return *(uint32_t*)(PLIC_PRIORITY_BASE  + irqn*4);
+    volatile uint32_t *plic_priority = (volatile uint32_t *)PLIC_PRIORITY_BASE;
+    return plic_priority[irqn];
 }
 
 /***************************************************************
@@ -51,7 +53,8 @@ __SELF __INLINE uint32_t __plic_priority_get(uint32_t irqn)
 ***************************************************************/
 __SELF __INLINE uint32_t __plic_pending_get(uint32_t irqn)
 {
-    return ( (*(uint32_t*)(PLIC_PENDING_BASE  + irqn/32)) & (1<<(irqn%32)) )?1:0;
+    volatile uint32_t *plic_pending = (volatile uint32_t *)PLIC_PENDING_BASE;
+    return plic_pending[irqn/32] & (1<<(irqn%32)) ?1:0;
 }
 
 /***************************************************************
@@ -62,7 +65,8 @@ __SELF __INLINE uint32_t __plic_pending_get(uint32_t irqn)
 ***************************************************************/
 __SELF __INLINE void __plic_interrupt_enable(uint32_t hart,uint32_t irqn)
 {
-    (*(uint32_t*)(PLIC_INT_EN_BASE + hart*0x80 + 4*(irqn/32))) |= (1<<(irqn%32));
+    volatile uint32_t *plic_int_en = (volatile uint32_t *)PLIC_INT_EN_BASE;
+    plic_int_en[hart*0x80 + 4*(irqn/32)] |= (1<<(irqn%32));
 }
 
 /***************************************************************
@@ -73,7 +77,8 @@ __SELF __INLINE void __plic_interrupt_enable(uint32_t hart,uint32_t irqn)
 ***************************************************************/
 __SELF __INLINE void __plic_interrupt_disable(uint32_t hart,uint32_t irqn)
 {
-    (*(uint32_t*)(PLIC_INT_EN_BASE + hart*0x80 +  4*(irqn/32))) &= ~(1<<(irqn%32));
+    volatile uint32_t *plic_int_en = (volatile uint32_t *)PLIC_INT_EN_BASE;
+    plic_int_en[hart*0x80 + 4*(irqn/32)]  &= ~(1<<(irqn%32));
 }
 
 /***************************************************************
@@ -84,7 +89,8 @@ __SELF __INLINE void __plic_interrupt_disable(uint32_t hart,uint32_t irqn)
 ***************************************************************/
 __SELF __INLINE void __plic_threshold_set(uint32_t hart,uint32_t threshold)
 {
-    (*(uint32_t*)(PLIC_INT_THRSHOLD_BASE + hart*0x1000 )) = threshold;
+    volatile uint32_t *plic_int_thrshold = (volatile uint32_t *)PLIC_INT_THRSHOLD_BASE;
+    plic_int_thrshold[hart*0x1000] = threshold;
 }
 
 /***************************************************************
@@ -94,7 +100,8 @@ __SELF __INLINE void __plic_threshold_set(uint32_t hart,uint32_t threshold)
 ***************************************************************/
 __SELF __INLINE uint32_t __plic_claim(uint32_t hart)
 {
-    return (*(uint32_t*)(PLIC_CLAIM_BASE  + hart*0x1000 ));
+    volatile uint32_t *plic_claim = (volatile uint32_t *)PLIC_CLAIM_BASE ;
+    return  plic_claim[hart*0x1000];
 }
 
 /***************************************************************
@@ -105,7 +112,8 @@ __SELF __INLINE uint32_t __plic_claim(uint32_t hart)
 ***************************************************************/
 __SELF __INLINE void __plic_complete(uint32_t hart,uint32_t irqn)
 {
-    (*(uint32_t*)(PLIC_CLAIM_BASE  + hart*0x1000)) = irqn;
+    volatile uint32_t *plic_claim = (volatile uint32_t *)PLIC_CLAIM_BASE ;
+    plic_claim[hart*0x1000]= irqn;
 }
 
 

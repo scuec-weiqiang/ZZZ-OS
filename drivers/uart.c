@@ -1,4 +1,14 @@
+/*******************************************************************************************
+ * @FilePath: /ZZZ/drivers/uart.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-15 17:10:59
+ * @LastEditTime: 2025-04-20 16:31:48
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*******************************************************************************************/
 #include "uart.h"
+#include "printf.h"
 
 void uart_init()
 {

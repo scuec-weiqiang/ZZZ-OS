@@ -1,11 +1,21 @@
+/*******************************************************************************************
+ * @FilePath: /ZZZ/kernel/task.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-16 21:02:39
+ * @LastEditTime: 2025-04-20 16:26:12
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*******************************************************************************************/
 #include "task.h"
+#include "page.h"
 
 //这是个中介，作为链表头，需要加入调度的任务会挂载到这个链表上，调度器会从这个链表拆取任务合并到调度器自己的链表中
 LIST_HEAD(need_add_task)
 //这是个中介，作为链表头，需要销毁的任务会挂载到这个链表上，调度器会从这个链表读取任务，并从调度器自己的链表中拆除该任务，并释放内存
 LIST_HEAD(need_del_task)
 
-static task_id = 1;
+static uint64_t task_id = 1;
 
 /***************************************************************
  * @description: 
