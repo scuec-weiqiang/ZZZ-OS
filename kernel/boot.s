@@ -1,5 +1,4 @@
 .equ STACK_SIZE,4096 #定义一个处理器的栈的大小
-.equ 
 .section .text.init
 .global _start
 _start:

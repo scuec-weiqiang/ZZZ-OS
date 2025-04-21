@@ -33,7 +33,7 @@ void task_delay(volatile int count)
 
 void sched()
 {
-   if(list_empty(&need_add_task))
+   if(!list_empty(&need_add_task))
    {
        return;
    }
