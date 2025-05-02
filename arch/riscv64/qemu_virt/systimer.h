@@ -1,11 +1,13 @@
-/*******************************************************************************************
- * @FilePath     : /ZZZ/arch/riscv64/qemu_virt/systimer.h
- * @Description  :  
- * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
- * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
- * @LastEditTime : 2025-04-20 00:15:52
+/**
+ * @FilePath: /ZZZ/arch/riscv64/qemu_virt/systimer.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-17 00:52:26
+ * @LastEditTime: 2025-05-01 22:35:51
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
-*******************************************************************************************/
+*/
+
 #ifndef __HWTIMER_H
 #define __HWTIMER_H
 
@@ -24,8 +26,8 @@ enum SYS_CONFIG_HZ{
 
 extern enum SYS_CONFIG_HZ systimer_hz;
 extern uint64_t systimer_tick;
-extern void systimer_init(enum SYS_CONFIG_HZ hz);
-extern void systimer_load(uint64_t hartid,uint64_t value);
+extern void systimer_init(hart_id_t hart_id,enum SYS_CONFIG_HZ hz);
+extern void systimer_load(hart_id_t hartid,uint64_t value);
 extern uint64_t systimer_get_time();
 
 #endif 

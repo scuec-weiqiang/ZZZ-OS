@@ -45,9 +45,9 @@ typedef struct list
 
 /***************************************************************
  * @description: 在两个节点之间插入新节点
- * @param {list_t} *node [in]:  需要插入的节点
- * @param {list_t} *prev [in]:  插入位置的前一个节点
- * @param {list_t} *next [in]:  插入位置的后一个节点
+ * @param {list_t} *node [in]:  需要插入的节点的指针
+ * @param {list_t} *prev [in]:  插入位置的前一个节点的指针
+ * @param {list_t} *next [in]:  插入位置的后一个节点的指针
  * @return {*}
 ***************************************************************/
 __SELF __INLINE void __list_add(list_t *node,list_t *prev,list_t *next)
@@ -60,8 +60,8 @@ __SELF __INLINE void __list_add(list_t *node,list_t *prev,list_t *next)
 
 /***************************************************************
  * @description: 卸载两个节点之间的节点
- * @param {list_t} *prev [in]:  卸载位置的前一个节点 
- * @param {list_t} *next [in]:  卸载位置的后一个节点
+ * @param {list_t} *prev [in]:  卸载位置的前一个节点的指针 
+ * @param {list_t} *next [in]:  卸载位置的后一个节点的指针
  * @return {*}
 ***************************************************************/
 __SELF __INLINE void __list_del(list_t *prev,list_t *next)
@@ -73,8 +73,8 @@ __SELF __INLINE void __list_del(list_t *prev,list_t *next)
 
 /***************************************************************
  * @description: 将链表<head>合并到某一链表节点<node>的后面
- * @param {list_t} *head [in]:  被合并的链表的头
- * @param {list_t} *node [in]:  需要合并位置的节点
+ * @param {list_t} *head [in]:  被合并的链表头的指针
+ * @param {list_t} *node [in]:  需要合并位置的节点的指针
  * @return {*}
 ***************************************************************/
 __SELF __INLINE void __list_splice(list_t *head,list_t *node)
@@ -92,7 +92,7 @@ __SELF __INLINE void __list_splice(list_t *head,list_t *node)
 
 /***************************************************************
  * @description: 在链表头部插入新节点
- * @param {list_t} *node [in]:  需要插入的新节点
+ * @param {list_t} *node [in]:  需要插入的新节点的指针
  * @param {list_t} *head [in]:  头节点
  * @return {*}
 ***************************************************************/
@@ -122,8 +122,8 @@ STATIC_INLINE void list_add_tail(list_t *head,list_t *node)
 STATIC_INLINE void list_del(list_t *node)
 {
     __list_del(node->prev,node->next);
-    // node->prev = NULL_PTR;
-    // node->next = NULL_PTR;
+    node->prev = NULL;
+    node->next = NULL;
 }
 
 
@@ -195,24 +195,38 @@ STATIC_INLINE void list_splice_init(list_t *head,list_t *node)
 
 
 /***************************************************************
- * @description: 由链表节点访问其所在的结构体
-***************************************************************/
+ * @description: 访问链表成员所在的结构体
+ * @mptr: 链表成员的地址
+ * @stype: 结构体的类型
+ * @member:结构体的成员名
+***************************************************************/  
 #define list_entry(mptr,stype,member) \
     container_of(mptr,stype,member)
 
 /***************************************************************
  * @description: 从前向后遍历链表
+ * @pos: 一个链表指针
+ * @head: 链表头节点地址
 ***************************************************************/
 #define list_for_each(pos,head) \
     for( (pos)=(head)->next;(pos)!=(head);(pos)=(pos)->next)
 
 /***************************************************************
  * @description: 从后向前遍历链表
+ * @pos: 一个链表指针
+ * @head: 链表头节点地址
 ***************************************************************/
 #define list_for_each_prev(pos,head) \
     for( (pos)=(head)->prev;(pos)!=(head);(pos)=(pos)->prev)
 
 
+/***************************************************************
+ * @description: 遍历由链表成员串起来的结构体
+ * @pos: 一个结构体指针
+ * @head: 链表头节点地址
+ * @stype: 结构体类型,如tcb_t
+ * @member: 结构体中链表成员的名字
+***************************************************************/
 #define list_for_each_entry(pos,head,stype,member) \
     for( (pos)=list_entry((head)->next,stype,member); \
         &(pos->member)!=(head); \

@@ -5,7 +5,7 @@
             "name": "RISC-V QEMU Debug (WSL)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/out/ZZZ.elf",
+            "program": "${workspaceFolder}/out/${workspaceFolderBasename}.elf",
             "miDebuggerPath": "/usr/bin/gdb-multiarch",
             "miDebuggerServerAddress": "localhost:1234",
             "cwd": "${workspaceFolder}",
@@ -22,7 +22,7 @@
                 },
                 {
                     "description": "Load symbols",
-                    "text": "file ${workspaceFolder}/out/ZZZ.elf"
+                    "text": "file ${workspaceFolder}/out/${workspaceFolderBasename}.elf"
                 },
                 {
                     "description": "Break at entry",

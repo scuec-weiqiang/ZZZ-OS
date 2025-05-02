@@ -7,10 +7,10 @@
             "command": "qemu-system-riscv64",
             "args": [
                 "-nographic",
-                "-smp", "1",
+                "-smp", "2",
                 "-machine", "virt",
                 "-bios", "none",
-                "-kernel", "/home/wei/ZZZ/out/ZZZ.elf",
+                "-kernel", "${workspaceFolder}/out/${workspaceFolderBasename}.elf",
                 "-s", "-S"
             ],
             "isBackground": true,

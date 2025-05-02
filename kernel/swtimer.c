@@ -31,7 +31,7 @@ typedef struct swtimer
     list_t swtimer_node;    
 }swtimer_t;
 
-swtimer_t *swtimer_head = NULL_PTR;
+swtimer_t *swtimer_head = NULL;
 
 /***************************************************************
  * @description: 
@@ -80,9 +80,9 @@ static void _check_timeout(swtimer_t **swtimer_currrent)
 ***************************************************************/
 void swtimer_check()
 {
-    swtimer_t *swtimer_currrent = NULL_PTR;
-    // swtimer_t *next = NULL_PTR;
-    if(NULL_PTR != swtimer_head)
+    swtimer_t *swtimer_currrent = NULL;
+    // swtimer_t *next = NULL;
+    if(NULL != swtimer_head)
     {   
         list_for_each_entry(swtimer_currrent,&swtimer_head->swtimer_node,swtimer_t,swtimer_node) 
         {   
@@ -102,11 +102,11 @@ void swtimer_check()
 swtimer_t* swtimer_create(void (*timer_task)(),uint64_t period,uint8_t mode)
 {
     swtimer_t *new_timer = page_alloc(1);        
-    if((swtimer_t*)NULL_PTR == new_timer) return NULL_PTR;
+    if((swtimer_t*)NULL == new_timer) return NULL;
  
     switch ((uint64_t)swtimer_head)
     {
-        case (uint64_t)NULL_PTR:
+        case (uint64_t)NULL:
             static uint64_t id = 0;
             swtimer_head = page_alloc(1); 
             INIT_LIST_HEAD(&swtimer_head->swtimer_node);

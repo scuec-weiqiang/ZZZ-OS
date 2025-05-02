@@ -6,8 +6,8 @@ _start:
     csrw mie, zero # 首先关闭所有中断
 
     csrr tp, mhartid # 读取hartid暂存到tp中
-    # bne tp, zero, stack_init # 0核去清bss段，其他核心直接去设置自己的栈
-    bne tp, zero, wait # 0核去清bss段，其他核心休眠
+    bne tp, zero, stack_init # 0核去清bss段，其他核心直接去设置自己的栈
+    # bne tp, zero, wait # 0核去清bss段，其他核心休眠
 
 bss_init:
     # 核心0初始化bss段,一次写入4个字节
@@ -20,7 +20,7 @@ bss_clear_loop:
 
 stack_init:
     li t0 , STACK_SIZE
-    mul t1 , s0 , t0 # t0 = hartid * STACK_SIZE 
+    mul t1 , tp , t0 # t1 = hartid * STACK_SIZE 
 
 # _stack_start/end定义在链接文件中
 #             (1)                              (2)                                  (3)
@@ -34,16 +34,20 @@ stack_init:
     sub sp,a0,t1 # 栈底 = _stack_end - hartid * STACK_SIZE
  # 栈设置完成
 
-    # 给内核分配一个上下文，在没有任务执行时，内核用这个上下文运行
-    la a0,_kernel_reg_ctx_start
-    csrw mscratch, a0
+    # 给每个内核分配一个上下文，在没有任务执行时，内核用这个上下文运行
+    li t0 , CONTEXT_SIZE
+    mul t1 , tp , t0 # t1 = hartid * CONTEXT_SIZE 
+    la a0, _kernel_reg_ctx_start
+    add a1,a0,t1 
+    csrw mscratch, a1
+    # bne tp, zero, wait
 
     mv a0, tp # 将hartid作为c语言的main函数参数
     j init
 
-wait:
-    wfi
-    j wait
+# wait:
+#     wfi
+#     j wait
 
 # ################### 异常与中断向量表 #########################
 .section .text.trap
@@ -52,8 +56,16 @@ wait:
 trap_entry:
     _store
 
+    #切换到内核栈
+    li t0 , CONTEXT_SIZE
+    mul t1 , tp , t0 # t1 = hartid * CONTEXT_SIZE 
+    la a0, _kernel_reg_ctx_start
+    add a1,a0,t1 
+    LOAD sp, 2*REG_SIZE(a1) 
+
     csrr a0, mepc
     csrr a1, mcause
+    csrr a2, mscratch
     call trap_handler
 
     csrw mepc, a0

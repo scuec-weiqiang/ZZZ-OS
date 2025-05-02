@@ -1,6 +1,9 @@
 #include <stdarg.h>
 #include "types.h"
 #include "uart.h"
+#include "spinlock.h"
+
+spinlock_t printf_lock = SPINLOCK_INIT;
 
 #define __PBUFF_SIZE 1024
 
@@ -19,7 +22,7 @@ int num2char(char* str,unsigned int pos,unsigned int num,int decimal)
     unsigned int digit = 1;//进制下位数
 
     for(int temp = num;temp/=decimal;digit++);//记录在decimal进制下有多少位
-    if(NULL_PTR != str)
+    if(NULL != str)
     {
         switch (decimal)
         {
@@ -101,7 +104,7 @@ int _vsprintf(char* out_buff,const char *str,va_list vl)
                     if(0 == decimal)
                     {
                         decimal = 10;
-                        if(num<0 && NULL_PTR != out_buff)
+                        if(num<0 && NULL != out_buff)
                         {
                             num = -num; 
                             out_buff[pos] = '-';
@@ -121,7 +124,7 @@ int _vsprintf(char* out_buff,const char *str,va_list vl)
 
                 case 'c':
                     uint64_t c = va_arg(vl,uint64_t);
-                    if(NULL_PTR != out_buff)
+                    if(NULL != out_buff)
                     {
                         out_buff[pos] = (char)c;
                     }
@@ -134,7 +137,7 @@ int _vsprintf(char* out_buff,const char *str,va_list vl)
                     while(*(char*)addr)
                     {
                         char c = *(char*)addr;
-                        if(NULL_PTR != out_buff)
+                        if(NULL != out_buff)
                         {
                             out_buff[pos] = (char)c;
                         }
@@ -155,14 +158,14 @@ int _vsprintf(char* out_buff,const char *str,va_list vl)
         }
         else//遍历到普通字符
         {
-            if(NULL_PTR != out_buff)
+            if(NULL != out_buff)
             {
                 out_buff[pos] = (*str);//不用处理直接写入到输出缓冲区
             }
             pos++;//指向输出缓冲区的下一个位置
         }
     }
-    if(NULL_PTR != out_buff)//在结尾加上结束符
+    if(NULL != out_buff)//在结尾加上结束符
     {
         out_buff[pos] = 0;
     }
@@ -178,7 +181,7 @@ int _vsprintf(char* out_buff,const char *str,va_list vl)
 ***************************************************************/
 int _vprintf(const char* str,va_list vl)
 {
-    int n =  _vsprintf(NULL_PTR,str,vl);//统计一下格式化字符串
+    int n =  _vsprintf(NULL,str,vl);//统计一下格式化字符串
     if(n>__PBUFF_SIZE)
     {
         uart_puts("Error: Output string size overflow!\n");
@@ -203,15 +206,21 @@ int _vprintf(const char* str,va_list vl)
 ***************************************************************/
 int printf(const char *str, ...)
 {
+    spin_lock(&printf_lock);
     va_list vl;
     va_start(vl,str);
     int n = _vprintf(str,vl);
     va_end(vl);
+    spin_unlock(&printf_lock);
     return n;
 }
 
-int panic(const char *str)
+void panic(const char *str, ...)
 {
-    printf("panic:%s\n",str);
+    printf("panic: ");
+    va_list vl;
+    va_start(vl,str);
+    _vprintf(str,vl);
+    va_end(vl);
     while(1){}
 }
