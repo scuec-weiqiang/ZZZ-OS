@@ -11,9 +11,7 @@
 #include "printf.h"
 #include "types.h"
 
-extern char _heap_start[];
-extern char _heap_end[];
-extern char _heap_size[];
+#include "maddr_def.h"
 
 //page management struct
 typedef struct PageM

@@ -5,16 +5,17 @@
 #include "riscv.h"
 #include "task.h"
 
+enum sched_state { SCHED_IDLE, SCHED_FIRST, SCHED_RUNNING, SCHED_SWITCHING };
 
-typedef struct{
-    reg_context_t reg_context;
-    uint8_t __attribute__((aligned(16))) stack[1024]; 
-    list_t* running_queue;
-    list_t* blocked_queue; 
+typedef struct{ 
+    // uint64_t task_num;
+    list_t running_queue;
+    list_t blocked_queue; 
+    tcb_t *current_task;
 }scheduler_t;
 
 extern scheduler_t scheduler;
 
 extern void sched_init();
-
+extern reg_t sched(reg_t epc,uint64_t now_time);
 #endif

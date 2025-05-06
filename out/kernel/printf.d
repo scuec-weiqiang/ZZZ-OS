@@ -1,3 +1,3 @@
-out/kernel/printf.o: kernel/printf.c kernel/types.h kernel/uart.h
-kernel/types.h:
-kernel/uart.h:
+out/kernel/printf.o: kernel/printf.c lib/types.h drivers/uart.h
+lib/types.h:
+drivers/uart.h:

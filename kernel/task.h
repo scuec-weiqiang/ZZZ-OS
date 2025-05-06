@@ -1,3 +1,12 @@
+/*******************************************************************************************
+ * @FilePath: /ZZZ/kernel/task.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-16 21:02:39
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2025-04-20 01:40:34
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*******************************************************************************************/
 #ifndef TASK_H
 #define TASK_H
 
@@ -7,17 +16,18 @@
 
 #define TASK_STACK_SIZE 1024 //每个任务分配1k的栈大小
 
-typedef enum {
-    RUNNING,
-    READY,
-    BLOCKED
+typedef enum task_status{
+    TASK_RUNNING,
+    TASK_READY,
+    TASK_BLOCKED,
+    TASK_ZOMBIE
 }task_status_t;
 
 typedef struct task_ctrl_block
 {   
     uint64_t id;
+    uint64_t expire_time;
     uint64_t time_slice;
-    // uint64_t tick;
     uint8_t priority;
     task_status_t status;
     reg_context_t reg_context;
@@ -32,7 +42,6 @@ extern THIS_IS_LIST_HEAD(need_del_task);
 
 extern void task_create(void (*task)(void *param),uint64_t time_slice,uint8_t priority);
 extern void task_distory(void (*task)(void));
-// extern void task_run();
 
 extern void task_delay(volatile int count);
 

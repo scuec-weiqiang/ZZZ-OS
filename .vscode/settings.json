@@ -7,6 +7,13 @@
         "list.h": "c",
         "riscv.h": "c",
         "typeinfo": "c",
-        "types.h": "c"
+        "types.h": "c",
+        "clint.h": "c",
+        "platform.h": "c",
+        "uart.h": "c",
+        "task.h": "c",
+        "hwtimer.h": "c",
+        "systimer.h": "c",
+        "stdarg.h": "c"
     }
 }

@@ -3,14 +3,22 @@
 #*******************************************************************************
 
 # 添加你的源文件目录
+ARCH ?= riscv64
+BOARD?= qemu_virt
+
 DIR = 	kernel \
+        arch/$(ARCH)\
+        arch/$(ARCH)/$(BOARD)\
+		drivers \
+		lib \
+		user \
 
 PROJ_NAME = $(notdir $(shell pwd))
 DIR_SOURCES = $(DIR)     
 DIR_INCLUDE = $(addprefix -I, $(DIR))     
 DIR_OUT     = out
 TARGET      = $(DIR_OUT)/$(PROJ_NAME).elf
-LINK_SCRIPT = os.ld
+LINK_SCRIPT = arch/$(ARCH)/$(BOARD)/os.ld
 
 # 编译工具链配置
 CC = riscv64-unknown-elf-gcc
@@ -32,27 +40,27 @@ ifeq ($(PART),1)#如果开启部分编译
     ifneq ($(wildcard $(CONFIG)),)# 且文件不为空	
         include $(CONFIG)
         $(warning 开启部分编译模式)
-        SRC_C   = $(wildcard $(FILES:.s=.c))
-        SRC_ASM = $(wildcard $(FILES:.c=.s))
+        SRC_C   = $(wildcard $(FILES:.S=.c))
+        SRC_ASM = $(wildcard $(FILES:.c=.S))
     else
         $(warning 未找到配置文件: $(CONFIG))
         $(warning 退回到全部编译模式) 
         SRC_C   = $(foreach dir, $(DIR_SOURCES), $(wildcard $(dir)/*.c))
-        SRC_ASM = $(foreach dir, $(DIR_SOURCES), $(wildcard $(dir)/*.s))
+        SRC_ASM = $(foreach dir, $(DIR_SOURCES), $(wildcard $(dir)/*.S))
     endif
 else
  	$(warning 全部编译模式) 
     SRC_C   = $(foreach dir, $(DIR_SOURCES), $(wildcard $(dir)/*.c))
-    SRC_ASM = $(foreach dir, $(DIR_SOURCES), $(wildcard $(dir)/*.s))
+    SRC_ASM = $(foreach dir, $(DIR_SOURCES), $(wildcard $(dir)/*.S))
 endif
 
 # 生成目标文件列表（保持目录结构）
 OBJ = $(patsubst %.c, $(DIR_OUT)/%.o, $(SRC_C))
-OBJ += $(patsubst %.s, $(DIR_OUT)/%.o, $(SRC_ASM))
+OBJ += $(patsubst %.S, $(DIR_OUT)/%.o, $(SRC_ASM))
 DEP = $(OBJ:.o=.d) 
 # 设置源文件搜索路径
 vpath %.c $(sort $(dir $(SRC_C)))
-vpath %.s $(sort $(dir $(SRC_ASM)))
+vpath %.S $(sort $(dir $(SRC_ASM)))
 
 # 包含依赖文件
 -include $(DEP)
@@ -66,6 +74,12 @@ $(TARGET): $(OBJ)
 	@echo "\033[32m正在链接......\033[0m"
 	$(LD) $(LFLAGS)  $^ -o $@
 	@echo "\033[32m生成目标文件: $@\033[0m"
+
+
+# $(DIR_OUT)/trap.o: trap.c
+# 	@mkdir -p $(dir $@)
+# 	@echo "\033[32m编译C文件: $<\033[0m"
+# 	$(CC) $(CFLAGS)  -ffixed-x8 -ffixed-x9 -ffixed-x18 -ffixed-x19 -ffixed-x20 -ffixed-x21 -ffixed-x22 -ffixed-x23 -ffixed-x24 -ffixed-x25 -ffixed-x26 -ffixed-x27 -c $< -o $@
 
 # 通用编译规则
 $(DIR_OUT)/%.o: %.c
@@ -88,28 +102,28 @@ clean:
 #********************************************************************************
 #qemu模拟器
 QEMU = qemu-system-riscv64
-QFLAGS = -nographic -smp 2 -machine virt -bios none
+QFLAGS = -nographic -smp 1 -machine virt -bios none -cpu rv64,pmp=false
 
 #gdb
 GDB = gdb-multiarch
 GFLAGS = -tui -q -x gdbinit
 
 .PHONY:run
-run: all
+run: os 
 	@${QEMU} -M ? | grep virt >/dev/null || exit
 	@echo "\033[32m先按 Ctrl+A 再按 X 退出 QEMU"
 	@echo "------------------------------------\033[0m"
-	@${QEMU} ${QFLAGS} -kernel $(TARGET) 
+	${QEMU} ${QFLAGS} -kernel $(TARGET) 
 
 .PHONY:debug
-debug:all	
+debug:os
 	@${QEMU} ${QFLAGS} -kernel $(TARGET)  -s -S &
 	@${GDB}  ${GFLAGS} ${TARGET}  
 
 .PHONY:qemu
-qemu:all
+qemu:os
 	@${QEMU} ${QFLAGS} -kernel $(TARGET)  -s -S 
 	
 .PHONY:gdb
-gdb:all
+gdb:os
 	@$(GDB) $(TARGET)  -tui -q -x gdbinit
