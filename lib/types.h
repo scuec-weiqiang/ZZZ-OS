@@ -1,3 +1,12 @@
+/**
+ * @FilePath: /ZZZ/lib/types.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-15 17:27:48
+ * @LastEditTime: 2025-05-01 14:45:46
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 #ifndef TYPES_H
 #define TYPES_H
 
@@ -45,8 +54,10 @@
         typedef uint16_t    reg_t;
     #endif  
 
-    #define NULL_PTR ((void *)0)
-    #define IS_NULL_PTR(ptr)    (NULL_PTR==ptr?1:0)
+    typedef enum { false, true } bool;
+
+    #define NULL ((void *)0)
+    #define IS_NULL_PTR(ptr)    (NULL==ptr?1:0)
 
     #define __SELF          static  
     #define __INLINE        inline  

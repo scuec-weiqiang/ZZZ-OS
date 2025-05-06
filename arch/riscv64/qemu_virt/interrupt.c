@@ -14,6 +14,7 @@
 #include "riscv.h"
 
 #include "types.h"
+#include "platform.h"
 
 /***************************************************************
  * @description: 开启全局中断
@@ -77,11 +78,11 @@ void extern_interrupt_disable()
  * @param {uint32_t} priority [in]:  外部中断的优先级
  * @return {*}
 ***************************************************************/
-void extern_interrupt_setting(uint32_t hart,uint32_t iqrn,uint32_t priority)
+void extern_interrupt_setting(hart_id_t hart_id,uint32_t iqrn,uint32_t priority)
 { 
     __plic_priority_set(iqrn,priority);
-    __plic_threshold_set(hart,0);
-    __plic_interrupt_enable(hart,iqrn);
+    __plic_threshold_set(hart_id,0);
+    __plic_interrupt_enable(hart_id,iqrn);
 } 
 
 

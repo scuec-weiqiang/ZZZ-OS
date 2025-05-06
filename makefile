@@ -102,7 +102,7 @@ clean:
 #********************************************************************************
 #qemu模拟器
 QEMU = qemu-system-riscv64
-QFLAGS = -nographic -smp 1 -machine virt -bios none -cpu rv64,pmp=false
+QFLAGS = -nographic -smp 2 -machine virt -bios none -cpu rv64,pmp=false
 
 #gdb
 GDB = gdb-multiarch

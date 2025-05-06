@@ -1,16 +1,15 @@
-/***************************************************************
- * @Author: weiqiang scuec_weiqiang@qq.com
- * @Date: 2024-10-26 16:37:48
- * @LastEditors: weiqiang scuec_weiqiang@qq.com
- * @LastEditTime: 2024-11-07 19:42:01
- * @FilePath: /my_code/include/printf.h
- * @Description: 
- * @
- * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
-***************************************************************/
+/*******************************************************************************************
+ * @FilePath: /ZZZ/kernel/printf.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-15 17:26:39
+ * @LastEditTime: 2025-04-30 17:38:32
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*******************************************************************************************/
 #ifndef PRINTF_H
 #define PRINTF_H
 
 extern int printf(const char* s, ...);
-extern int panic(const char* s);
+extern void panic(const char* s, ...);
 #endif

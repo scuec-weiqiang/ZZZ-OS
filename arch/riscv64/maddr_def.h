@@ -13,9 +13,12 @@ extern char _text_start[], _text_end[];
 extern char _rodata_start[], _rodata_end[];
 extern char _data_start[], _data_end[];
 extern char _bss_start[], _bss_end[];
+
 extern char _kernel_reg_ctx_start[], _kernel_reg_ctx_end[];
+extern char _kernel_stack_start[], _kernel_stack_end[];
+
 extern char _heap_start[], _heap_end[],_heap_size[];
-extern char _stack_start[], _stack_end[];
+
 
 
 #endif

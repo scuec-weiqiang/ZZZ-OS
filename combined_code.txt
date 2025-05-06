@@ -1,0 +1,2715 @@
+
+
+=== ./drivers/uart.c ===
+
+/*******************************************************************************************
+ * @FilePath: /ZZZ/drivers/uart.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-15 17:10:59
+ * @LastEditTime: 2025-04-20 16:31:48
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*******************************************************************************************/
+#include "uart.h"
+#include "printf.h"
+
+void uart_init()
+{
+    UART0.IER_DLM = 0x00;//关闭中断
+
+    UART0.LCR |= (1<<7);//允许访问除数锁寄存器
+    UART0.IER_DLM = 0x00;//波特率38.4k
+    UART0.RHR_THR_DLL = 0x03;
+    UART0.LCR &= ~(1<<7);//禁止访问除数锁寄存器
+
+    UART0.LCR |= (0x03<<0);//设置传输字长为8位
+    UART0.LCR &= ~(1<<2);//停止位 1位
+
+    uint32_t a = UART0.IER_DLM;
+    a |= 0x01;
+    UART0.IER_DLM = a;//打开中断
+}
+
+void uart_putc(char c)
+{
+    WAIT_FOR_TRANS_READY(UART0);
+    UART0.RHR_THR_DLL = c;
+}
+
+char uart_getc()
+{
+    WAIT_FOR_RECEIVE_READY(UART0);
+    return UART0.RHR_THR_DLL;
+    
+}
+
+void uart_puts(char *s)
+{
+    while(*s)
+    {
+        uart_putc(*s);
+        s++;
+    }
+}
+
+void uart0_iqr()
+{   
+    char a = uart_getc();
+    printf("%c",a);
+    if('\r'==a)
+        printf("\n");     
+}
+
+=== ./drivers/uart.h ===
+
+/***************************************************************
+ * @Author: weiqiang scuec_weiqiang@qq.com
+ * @Date: 2024-10-26 16:38:03
+ * @LastEditors: weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2024-11-13 00:22:28
+ * @FilePath: /my_code/include/uart.h
+ * @Description: 
+ * @
+ * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
+***************************************************************/
+#ifndef UART_H
+#define UART_H
+
+#include "types.h"
+
+typedef struct UART_REG
+{
+   uint8_t RHR_THR_DLL;
+   uint8_t IER_DLM;
+   uint8_t FCR_ISR;
+   uint8_t LCR;
+   uint8_t MCR;
+   uint8_t LSR;
+   uint8_t MSR;
+   uint8_t SPR;
+}UART_REG_t;
+
+#define UART0     (*(volatile UART_REG_t*)(0x10000000))
+
+#define UART_TX_IDLE (1<<5)
+#define UART_RX_IDLE (1<<0)
+
+#define WAIT_FOR_TRANS_READY(uartx)    while(0==(uartx.LSR & UART_TX_IDLE )) 
+#define WAIT_FOR_RECEIVE_READY(uartx)  while(0==(uartx.LSR & UART_RX_IDLE))
+
+extern void uart_init();
+extern void uart_putc(char c);
+extern void uart_puts(char *s);
+extern char uart_getc();
+extern void uart0_iqr();
+
+#endif
+
+=== ./arch/riscv64/maddr_def.h ===
+
+/*******************************************************************************************
+ * @FilePath     : /ZZZ/arch/riscv64/maddr_def.h
+ * @Description  :  这里定义了一些链接脚本中的内存地址，方便在其他文件中引用。
+ * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime : 2025-04-17 19:55:34
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*******************************************************************************************/
+#ifndef __MADDR_DEF_H__
+#define __MADDR_DEF_H__
+
+extern char _text_start[], _text_end[];
+extern char _rodata_start[], _rodata_end[];
+extern char _data_start[], _data_end[];
+extern char _bss_start[], _bss_end[];
+extern char _kernel_reg_ctx_start[], _kernel_reg_ctx_end[];
+extern char _heap_start[], _heap_end[],_heap_size[];
+extern char _stack_start[], _stack_end[];
+
+
+#endif
+
+=== ./arch/riscv64/spinlock.h ===
+
+/**
+ * @FilePath: /ZZZ/arch/riscv64/spinlock.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-05-01 23:29:09
+ * @LastEditTime: 2025-05-02 00:24:09
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
+// spinlock.h
+#ifndef __SPINLOCK_H__
+#define __SPINLOCK_H__
+
+#include "types.h"
+
+typedef struct {
+    volatile uint32_t lock;
+} spinlock_t;
+
+#define SPINLOCK_INIT {0}
+
+/**
+ * @brief 自旋锁函数
+ *
+ * 尝试获取自旋锁。如果锁已经被其他线程持有，则当前线程将自旋等待直到锁被释放。
+ *
+ * @param lock 自旋锁指针
+ */
+__SELF __INLINE void spin_lock(spinlock_t *lock) {
+    uint32_t value = 1;
+    do{
+        asm volatile (
+            "amoswap.w.aq %0, %1, (%2)"
+            : "=r"(value)
+            : "r"(value), "r"(&lock->lock)
+            : "memory"
+        );
+    }while(value != 0);
+}
+
+/**
+ * @brief 解除自旋锁
+ *
+ * 使用原子操作解除自旋锁，确保多线程环境下的线程安全。
+ *
+ * @param lock 指向自旋锁对象的指针
+ */
+__SELF __INLINE void spin_unlock(spinlock_t *lock) {
+    asm volatile (
+        "amoswap.w.rl zero,zero,(%0)"
+        :
+        : "r"(&lock->lock)
+        : "memory"
+    );
+}
+
+#endif
+
+=== ./arch/riscv64/riscv.h ===
+
+/*******************************************************************************************
+ * @FilePath: /ZZZ/arch/riscv64/riscv.h
+ * @Description  :  
+ * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2025-04-30 13:45:35
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*******************************************************************************************/
+#ifndef RISCV_H
+#define RISCV_H
+
+#include "types.h"
+
+typedef struct reg_context
+{
+    reg_t zero, ra, sp, gp, tp;
+    reg_t t0, t1, t2, s0, s1;
+    reg_t a0, a1, a2, a3, a4, a5, a6, a7;
+    reg_t s2, s3, s4, s5, s6, s7, s8, s9, s10, s11;
+    reg_t t3, t4, t5, t6;
+    reg_t mepc ;
+}reg_context_t;
+
+#define MCAUSE_MASK_INTERRUPT 0x8000000000000000
+#define MCAUSE_MASK_CAUSECODE 0x7fffffffffffffff
+
+/*******************************************************************************************
+ * @brief        : 
+ * @return        {*}
+*******************************************************************************************/
+__SELF __INLINE reg_t mhartid_r()
+{
+    reg_t a;
+    asm volatile("csrr %0,mhartid" : "=r"(a));
+    return a;
+}
+
+
+
+/***************************************************************
+ * @description: 
+ * @return {*}
+***************************************************************/
+__SELF __INLINE reg_t mip_r()
+{
+    reg_t a;
+    asm volatile("csrr %0,mip" : "=r"(a));
+    return a;
+}
+/***************************************************************
+ * @description: 
+ * @param {reg_t} a [in/out]:  
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void mip_w(reg_t a)
+{
+    asm volatile("csrw mip,%0"::"r"(a));
+}
+
+
+
+/***************************************************************
+ * @description: 
+ * @return {*}
+***************************************************************/
+__SELF __INLINE reg_t mie_r()
+{   
+    reg_t a;
+    asm volatile("csrr %0,mie" : "=r"(a));
+    return a;
+}
+/***************************************************************
+ * @description: 
+ * @param {reg_t} a [in/out]:  
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void mie_w(reg_t a)
+{   
+    asm volatile("csrw mie,%0"::"r"(a));
+}
+
+
+
+
+/***************************************************************
+ * @description: 
+ * @return {*}
+***************************************************************/
+__SELF __INLINE reg_t mcause_r()
+{   
+    reg_t a;
+    asm volatile("csrr %0,mcause" : "=r"(a));
+    return a;
+}
+
+
+
+/***************************************************************
+ * @description: 
+ * @return {*}
+***************************************************************/
+__SELF __INLINE reg_t mepc_r()
+{   
+    reg_t a;
+    asm volatile("csrr %0,mepc" : "=r"(a));
+    return a;
+}
+__SELF __INLINE void mepc_w(reg_t a)
+{   
+    asm volatile("csrw mepc,%0"::"r"(a));
+}
+
+
+
+
+/***************************************************************
+ * @description: 
+ * @return {*}
+***************************************************************/
+__SELF __INLINE reg_t mstatus_r()
+{   
+    reg_t a;
+    asm volatile("csrr %0,mstatus" : "=r"(a));
+    return a;
+}
+/***************************************************************
+ * @description: 
+ * @param {reg_t} a [in/out]:  
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void mstatus_w(reg_t a)
+{   
+    asm volatile("csrw mstatus,%0"::"r"(a));
+}
+
+
+
+
+/***************************************************************
+ * @description: 
+ * @return {*}
+***************************************************************/
+__SELF __INLINE reg_t mscratch_r()
+{   
+    reg_t a;
+    asm volatile("csrr %0,mscratch" : "=r"(a));
+    return a;
+}
+/***************************************************************
+ * @description: 
+ * @param {reg_t} a [in/out]:  
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void mscratch_w(reg_t a)
+{   
+    asm volatile("csrw mscratch,%0"::"r"(a));
+}
+
+
+
+
+/*******************************************************************************************
+ * @brief        : 
+ * @return        {*}
+*******************************************************************************************/
+__SELF __INLINE reg_t mtvec_r()
+{
+    reg_t a;
+    asm volatile("csrr %0,mtvec" : "=r"(a));
+    return a;
+}
+/***************************************************************
+ * @description: 
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void mtvec_w(reg_t a)
+{   
+    asm volatile("csrw mtvec,%0"::"r"(a));
+}
+
+
+__SELF __INLINE reg_t mtval_r()
+{
+    reg_t a;
+    asm volatile("csrr %0,mtvec" : "=r"(a));
+    return a;
+}
+
+
+__SELF __INLINE reg_t sp_r()
+{   
+    reg_t a;
+    asm volatile("mv %0,sp" : "=r"(a));
+    return a;
+}
+
+__SELF __INLINE void satp_w(reg_t a)
+{   
+    asm volatile("csrw satp,%0"::"r"(a));
+}
+
+#define MACHINE_TO_USER(x)    __PROTECT( \
+    mstatus_w(mscratch_r() & ~(3<<11));  \
+    mepc_w((reg_t)(x)); \
+    asm volatile ("mv a0, %0": : "r"(mhartid_r())); \
+    asm volatile("mret"); \
+)
+
+#define MACHINE_TO_MACHINE(x)    __PROTECT( \
+    mstatus_w(mscratch_r() | (3<<11));  \
+    mepc_w((reg_t)(x)); \
+    asm volatile ("mv a0, %0": : "r"(mhartid_r())); \
+    asm volatile("mret"); \
+)
+
+#endif
+
+=== ./arch/riscv64/qemu_virt/trap.h ===
+
+/*******************************************************************************************
+ * @FilePath     : /ZZZ/arch/riscv64/trap.h
+ * @Description  :  
+ * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime : 2025-04-18 00:46:49
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*******************************************************************************************/
+#ifndef TRAP_H
+#define TRAP_H
+
+extern void trap_init();
+
+#endif
+
+=== ./arch/riscv64/qemu_virt/systimer.h ===
+
+/**
+ * @FilePath: /ZZZ/arch/riscv64/qemu_virt/systimer.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-17 00:52:26
+ * @LastEditTime: 2025-05-01 22:35:51
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
+
+#ifndef __HWTIMER_H
+#define __HWTIMER_H
+
+#include "types.h"
+#include "platform.h"
+
+#define tick_s      SYS_CLOCK_FREQ
+#define tick_ms     (tick_s/1000)
+#define tick_us     (tick_ms/1000)
+
+enum SYS_CONFIG_HZ{
+    SYS_HZ_1000 = 1*tick_ms,
+    SYS_HZ_250 = 4*tick_ms,
+    SYS_HZ_100 = 10*tick_ms,
+};
+
+extern enum SYS_CONFIG_HZ systimer_hz;
+extern uint64_t systimer_tick;
+extern void systimer_init(hart_id_t hart_id,enum SYS_CONFIG_HZ hz);
+extern void systimer_load(hart_id_t hartid,uint64_t value);
+extern uint64_t systimer_get_time();
+
+#endif 
+
+=== ./arch/riscv64/qemu_virt/systimer.c ===
+
+/**
+ * @FilePath: /ZZZ/arch/riscv64/qemu_virt/systimer.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-19 21:58:52
+ * @LastEditTime: 2025-05-01 22:34:56
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
+
+#include "types.h"
+#include "platform.h"
+#include "interrupt.h"
+#include "clint.h" 
+#include "systimer.h"
+
+uint64_t systimer_tick = 0;
+enum SYS_CONFIG_HZ systimer_hz = SYS_HZ_100;
+
+void systimer_init(hart_id_t hart_id, enum SYS_CONFIG_HZ hz)
+{
+    systimer_hz = hz;
+    systimer_load(hart_id,(uint64_t)hz); //系统时钟以0核为基准
+    timer_interrupt_enable();
+}
+
+void systimer_load(hart_id_t hartid,uint64_t value)
+{   
+    uint64_t temp = __clint_mtime_get();
+    temp += value;
+    __clint_mtimecmp_set(hartid,temp);
+}
+
+uint64_t systimer_get_time()
+{
+    return __clint_mtime_get();
+}
+
+=== ./arch/riscv64/qemu_virt/platform.h ===
+
+/**
+ * @FilePath: /ZZZ/arch/riscv64/qemu_virt/platform.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-16 23:59:39
+ * @LastEditTime: 2025-05-01 22:25:40
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
+#ifndef PALTFORM_H
+#define PALTFORM_H
+
+#define LENGTH_RAM 128*1024*1024
+
+typedef enum hart_id{
+    HART_0,
+    HART_1,
+    MAX_HARTS,
+}hart_id_t;
+
+#define SYS_CLOCK_FREQ 10000000
+
+#endif
+
+=== ./arch/riscv64/qemu_virt/clint.h ===
+
+/*******************************************************************************************
+ * @FilePath: /ZZZ/arch/riscv64/qemu_virt/clint.h
+ * @Description  : 核心本地中断控制器(Core Local Interruptor)头文件 ，用于定时器中断和软件中断的触发。
+ * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2025-04-20 16:29:49
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*******************************************************************************************/
+
+#ifndef CLINT_H
+#define CLINT_H
+
+#include "types.h"
+
+#define CLINT_BASE          0x02000000
+
+#define CLINT_MTIME                 (CLINT_BASE + (0xbff8))
+#define CLINT_MTIMECMP_BASE         (CLINT_BASE + (0x4000))
+
+#define CLINT_MSIP(hartid)          (CLINT_BASE + 4*(hartid))
+
+#define RELEASE_CORE(hartid)        (*(uint32_t*)CLINT_MSIP(hartid)=1)
+
+__SELF __INLINE uint64_t __clint_mtime_get()
+{
+    return *(uint64_t*)CLINT_MTIME;
+}
+
+__SELF __INLINE void __clint_mtimecmp_set(uint32_t hartid,uint64_t value)
+{
+    uint64_t *clint_mtimecmp = (uint64_t*)CLINT_MTIMECMP_BASE;
+    clint_mtimecmp[hartid] = value;
+}
+
+#endif 
+
+=== ./arch/riscv64/qemu_virt/trap.c ===
+
+#include "uart.h"
+#include "printf.h"
+#include "riscv.h"
+#include "systimer.h"
+#include "swtimer.h"
+#include "plic.h"
+#include "uart.h"
+#include "sched.h"
+
+extern void trap_entry();
+
+reg_t timer_interrupt_handler(reg_t epc);
+void extern_interrupt_handler();
+
+void trap_init()
+{
+    mtvec_w((reg_t)trap_entry);
+}
+
+
+/***************************************************************
+ * @description: 
+ * @param {uint32_t} mcause [in/out]:  
+ * @param {uint32_t} mtval [in/out]:  
+ * @param {uint32_t} mepc [in/out]:  
+ * @return {*}
+***************************************************************/
+reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
+{
+    reg_t return_epc = epc;
+    uint64_t cause_code = cause & MCAUSE_MASK_CAUSECODE;
+
+    if((cause & MCAUSE_MASK_INTERRUPT))
+    {
+        switch (cause_code)
+        {
+            case 3:
+                // printf("software interruption!\n");
+                break;
+            case 7:
+                // printf("timer interruption!\n");
+                return_epc =  timer_interrupt_handler(epc);
+                break;
+            case 11:
+                // printf("external interruption!\n");
+                extern_interrupt_handler();
+                break;
+            default:
+                printf("unknown async exception!\n cause code is %l\n",cause_code);
+                printf("mstatus:%x,mie:%x\n",mstatus_r(),mie_r());
+                break;
+        }
+    }
+    else
+    {
+        // printf("\nmtval is %x\n",mtval_r());
+        // printf("occour in %x\n",epc);
+        switch (cause_code)
+        {
+            case 0:
+                panic("Instruction address misaligned!\n");
+                break;
+            case 1:
+                panic("Instruction access fault!\n");
+                break;
+            case 2:
+                panic("Illegal instruction !\n");
+                break;
+            case 3:
+                printf("Breakpiont!\n");
+                break;
+            case 4:
+                panic("Load address misaligned\n");
+                break;
+            case 5:
+                panic("Load access fault\n");
+                break;
+            case 6:
+                panic("Store/AMO address misaligned\n");
+                break;
+            case 7:
+                // panic("\033[32mStore/AMO access fault\n\033[0m");
+                panic("Store/AMO access fault\n");
+                break;    
+            case 8:
+                // printf("Environment call from U-mode\n");
+                extern do_syscall(reg_context_t *ctx);
+                do_syscall(ctx);
+                return_epc += 4;
+                break;
+            case 9:
+                // printf("Environment call from S-mode\n");
+                panic("Environment call from S-mode\n");
+                break;
+            case 11:
+                // printf("Environment call from M-mode");
+                panic("Environment call from M-mode\n");
+                break;
+            case 12:
+                panic("Instruction page fault\n");
+                break;
+            case 13:
+                panic("Load page fault\n");
+                break;
+            case 15:
+                panic("Store/AMO page fault\n");
+                break;
+            default:
+                panic("unknown sync exception!\ntrap!\n");
+                break;
+        }
+    }
+    return return_epc;
+}
+
+/***************************************************************
+ * @description: 
+ * @param {uint32_t} mepc [in/out]:  
+ * @return {*}
+***************************************************************/
+void extern_interrupt_handler()
+{
+    hart_id_t hart_id = mhartid_r();
+    uint32_t irqn = __plic_claim(hart_id);
+    switch (irqn)
+    {
+        case 10:
+            uart0_iqr();
+        break;
+
+        default:
+            printf("unexpected extern interrupt!");
+        break;
+    }
+    if(irqn)
+    {
+        __plic_complete(0,irqn);
+    }
+}
+
+/***************************************************************
+ * @description: 
+ * @param {uint32_t} mepc [in/out]:  
+ * @return {*}
+***************************************************************/
+reg_t timer_interrupt_handler(reg_t epc )
+{
+    reg_t r;
+    hart_id_t hart_id = mhartid_r();
+    // printf("hart %d timer interrupt!\n",hart_id);
+    uint64_t now_time = systimer_get_time();
+    // systimer_tick++;
+
+    r = sched(epc,now_time,hart_id);
+    
+    // swtimer_check();
+    systimer_load(hart_id,systimer_hz);
+
+    return r;
+}
+
+void soft_interrupt_handler()
+{
+    
+    // *(uint32_t*)CLINT_MSIP(0)=0;
+    // __sw_without_save(&sched_context);
+}
+
+
+
+=== ./arch/riscv64/qemu_virt/interrupt.h ===
+
+/***************************************************************
+ * @Author: weiqiang scuec_weiqiang@qq.com
+ * @Date: 2024-11-12 23:46:59
+ * @LastEditors: weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2024-11-27 23:20:36
+ * @FilePath: /my_code/include/interrupt.h
+ * @Description: 
+ * @
+ * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
+***************************************************************/
+#ifndef __INTERRUPT_H
+#define __INTERRUPT_H
+
+#include "types.h"
+
+extern void global_interrupt_enable();
+extern void global_interrupt_disable();
+
+extern void timer_interrupt_enable();
+extern void timer_interrupt_disable();
+
+extern void extern_interrupt_enable();
+extern void extern_interrupt_disable();
+
+extern void extern_interrupt_setting(uint64_t hart,uint64_t iqrn,uint64_t priority);
+
+extern void soft_interrupt_enable();
+extern void soft_interrupt_disable();
+
+#endif
+
+
+=== ./arch/riscv64/qemu_virt/interrupt.c ===
+
+/***************************************************************
+ * @Author: weiqiang scuec_weiqiang@qq.com
+ * @Date: 2024-11-12 23:18:55
+ * @LastEditors: weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2024-11-27 23:20:09
+ * @FilePath: /my_code/source/interrupt.c
+ * @Description: 
+ * @
+ * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
+***************************************************************/
+#include "plic.h"
+#include "clint.h"
+
+#include "riscv.h"
+
+#include "types.h"
+#include "platform.h"
+
+/***************************************************************
+ * @description: 开启全局中断
+ * @return {*}
+***************************************************************/
+void global_interrupt_enable()
+{
+    mstatus_w(mstatus_r()|(0x08));
+}
+
+/***************************************************************
+ * @description: 关闭全局中断
+ * @return {*}
+***************************************************************/
+void global_interrupt_disable()
+{
+    mstatus_w(mstatus_r()&(~0x08));
+}
+
+/***************************************************************
+ * @description: 开启内核tick定时器中断
+ * @return {*}
+***************************************************************/
+void timer_interrupt_enable()
+{
+    mie_w(mie_r()|0x80);
+}
+
+/***************************************************************
+ * @description: 关闭内核tick定时器中断
+ * @return {*}
+***************************************************************/
+void timer_interrupt_disable()
+{
+    mie_w(mie_r()&(~0x80));
+}
+
+/***************************************************************
+ * @description: 开启外部中断
+ * @return {*}
+***************************************************************/
+void extern_interrupt_enable()
+{
+    mie_w(mie_r()|0x800);
+}
+
+/***************************************************************
+ * @description: 关闭外部中断
+ * @return {*}
+***************************************************************/
+void extern_interrupt_disable()
+{
+    mie_w(mie_r()&(~0x800));
+}
+
+
+/***************************************************************
+ * @description: 外部中断设置
+ * @param {uint32_t} hart [in]:  指定某一hartid
+ * @param {uint32_t} iqrn [in]:  外部中断源的中断号
+ * @param {uint32_t} priority [in]:  外部中断的优先级
+ * @return {*}
+***************************************************************/
+void extern_interrupt_setting(hart_id_t hart_id,uint32_t iqrn,uint32_t priority)
+{ 
+    __plic_priority_set(iqrn,priority);
+    __plic_threshold_set(hart_id,0);
+    __plic_interrupt_enable(hart_id,iqrn);
+} 
+
+
+/***************************************************************
+ * @description: 开启soft中断
+ * @return {*}
+***************************************************************/
+void soft_interrupt_enable()
+{
+    mie_w(mie_r()|0x08);
+}
+
+/***************************************************************
+ * @description: 关闭soft中断
+ * @return {*}
+***************************************************************/
+void soft_interrupt_disable()
+{
+    mie_w(mie_r()&(~0x08));
+}
+
+=== ./arch/riscv64/qemu_virt/plic.h ===
+
+/*******************************************************************************************
+ * @FilePath: /ZZZ/arch/riscv64/qemu_virt/plic.h
+ * @Description  : 平台中断控制器头文件，用于屏蔽中断和设置中断优先级等操作。
+ * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2025-04-20 15:03:12
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*******************************************************************************************/
+#ifndef PLIC_H
+#define PLIC_H
+
+#include "types.h"
+#include "platform.h"
+
+
+#define PLIC_BASE                    0x0c000000
+#define PLIC_PRIORITY_BASE            (PLIC_BASE + (0x0000))
+#define PLIC_PENDING_BASE             (PLIC_BASE + (0x1000))
+#define PLIC_INT_EN_BASE              (PLIC_BASE + (0x2000))
+#define PLIC_INT_THRSHOLD_BASE        (PLIC_BASE + (0x200000))
+#define PLIC_CLAIM_BASE               (PLIC_BASE + (0x200004))
+#define PLIC_COMPLETE_BASE            (PLIC_BASE + (0x200004))
+
+#define UART0_IRQN 10
+
+/***************************************************************
+ * @description: 
+ * @param {uint32_t} irqn [in/out]:  
+ * @param {uint32_t} priority [in/out]:  
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void __plic_priority_set(uint32_t irqn,uint32_t priority)
+{
+    volatile uint32_t *plic_priority = (volatile uint32_t *)PLIC_PRIORITY_BASE;
+    plic_priority[irqn] = priority;  // 直接数组访问，编译器自动计算偏移
+}
+
+/***************************************************************
+ * @description: 
+ * @param {uint32_t} irqn [in/out]:  
+ * @return {*}
+***************************************************************/
+__SELF __INLINE uint32_t __plic_priority_get(uint32_t irqn)
+{
+    volatile uint32_t *plic_priority = (volatile uint32_t *)PLIC_PRIORITY_BASE;
+    return plic_priority[irqn];
+}
+
+/***************************************************************
+ * @description: 
+ * @param {uint32_t} irqn [in/out]:  
+ * @return {*}
+***************************************************************/
+__SELF __INLINE uint32_t __plic_pending_get(uint32_t irqn)
+{
+    volatile uint32_t *plic_pending = (volatile uint32_t *)PLIC_PENDING_BASE;
+    return plic_pending[irqn/32] & (1<<(irqn%32)) ?1:0;
+}
+
+/***************************************************************
+ * @description: 
+ * @param {uint32_t} hart [in/out]:  
+ * @param {uint32_t} irqn [in/out]:  
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void __plic_interrupt_enable(uint32_t hart,uint32_t irqn)
+{
+    volatile uint32_t *plic_int_en = (volatile uint32_t *)PLIC_INT_EN_BASE;
+    plic_int_en[hart*0x80 + 4*(irqn/32)] |= (1<<(irqn%32));
+}
+
+/***************************************************************
+ * @description: 
+ * @param {uint32_t} hart [in/out]:  
+ * @param {uint32_t} irqn [in/out]:  
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void __plic_interrupt_disable(uint32_t hart,uint32_t irqn)
+{
+    volatile uint32_t *plic_int_en = (volatile uint32_t *)PLIC_INT_EN_BASE;
+    plic_int_en[hart*0x80 + 4*(irqn/32)]  &= ~(1<<(irqn%32));
+}
+
+/***************************************************************
+ * @description: 
+ * @param {uint32_t} hart [in/out]:  
+ * @param {uint32_t} threshold [in/out]:  
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void __plic_threshold_set(uint32_t hart,uint32_t threshold)
+{
+    volatile uint32_t *plic_int_thrshold = (volatile uint32_t *)PLIC_INT_THRSHOLD_BASE;
+    plic_int_thrshold[hart*0x1000] = threshold;
+}
+
+/***************************************************************
+ * @description: 
+ * @param {uint32_t} hart [in/out]:  
+ * @return {*}
+***************************************************************/
+__SELF __INLINE uint32_t __plic_claim(uint32_t hart)
+{
+    volatile uint32_t *plic_claim = (volatile uint32_t *)PLIC_CLAIM_BASE ;
+    return  plic_claim[hart*0x1000];
+}
+
+/***************************************************************
+ * @description: 
+ * @param {uint32_t} hart [in/out]:  
+ * @param {uint32_t} irqn [in/out]:  
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void __plic_complete(uint32_t hart,uint32_t irqn)
+{
+    volatile uint32_t *plic_claim = (volatile uint32_t *)PLIC_CLAIM_BASE ;
+    plic_claim[hart*0x1000]= irqn;
+}
+
+
+#endif
+
+=== ./kernel/page.c ===
+
+/***************************************************************
+ * @Author: weiqiang scuec_weiqiang@qq.com
+ * @Date: 2024-10-16 11:39:24
+ * @LastEditors: weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2024-11-14 00:52:08
+ * @FilePath: /my_code/source/page.c
+ * @Description: 
+ * @
+ * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
+***************************************************************/
+#include "printf.h"
+#include "types.h"
+#include "spinlock.h"
+#include "maddr_def.h"
+
+spinlock_t page_lock = SPINLOCK_INIT;
+
+//page management struct
+typedef struct PageM
+{
+    uint8_t flags;
+}PageM_t;
+
+#define PAGE_SIZE                   4096
+#define NUM_RESERVED_PAGES          8
+#define RESERVED_PAGE_SIZE          NUM_RESERVED_PAGES*PAGE_SIZE 
+#define PAGE_ORDER                  12
+
+#define PAGE_TOKEN              0x01
+#define PAGE_LAST               0x02
+#define _CLEAR(x)               (x->flags = 0)
+#define _IS_FREE(x)             (!(x->flags&PAGE_TOKEN))
+#define _IS_LAST(x)             ((x->flags&PAGE_LAST)>>1)
+#define _SET_FLAG(x,y)          (x->flags|=y)
+#define _PAGE_IS_ALIGNED(addr)  (((addr) & ((1<<PAGE_ORDER) - 1))==0?1:0)
+
+static addr_t _alloc_start = 0;
+static addr_t  _alloc_end = 0;
+static uint64_t _num_pages = 0;
+
+/***************************************************************
+ * @description: 
+ * @return {*}
+***************************************************************/
+void page_init()
+{
+    /*
+    保留 8*PAGE_SIZE 大小的内存用来管理page
+    */
+    _num_pages = ((addr_t)_heap_size-RESERVED_PAGE_SIZE)/PAGE_SIZE;
+    _alloc_start = (addr_t)_heap_start + RESERVED_PAGE_SIZE; 
+    _alloc_end = _alloc_start + _num_pages*PAGE_SIZE;
+    printf("page init ... \n");
+    printf("_heap_start = %x -----------------_heap_end = %x \n",_heap_start,_heap_end);
+    printf("_alloc_start = %x\n",_alloc_start);
+    printf("_alloc_end = %x\n",_alloc_end);
+    printf("_num_pages = %x\n",_num_pages);
+    PageM_t *pagem_i = (PageM_t*)_heap_start;
+    for(int i=0;i<_num_pages;i++)
+    {
+        _CLEAR(pagem_i);
+        pagem_i++;
+    }
+    printf("page init success\n");
+}
+
+
+/***************************************************************
+ * @description: 
+ * @param {uint32_t} npages [in/out]:  
+ * @return {*}
+***************************************************************/
+void* page_alloc(uint64_t npages)
+{   
+    spin_lock(&page_lock);
+    addr_t reserved_end = (addr_t)_heap_start + _num_pages*sizeof(PageM_t);
+    uint64_t num_blank = 0;
+    PageM_t *pagem_i = (PageM_t*)_heap_start;
+    PageM_t *pagem_j = pagem_i;
+    for(;(uint64_t)pagem_i < reserved_end; pagem_i++)
+    {
+        if(_IS_FREE(pagem_i))//如果是空白page
+        {   
+            //搜索此空白page以及后面page，是否连续空白page数满足分配要求
+            for(pagem_j = pagem_i;((uint64_t)pagem_j < reserved_end);pagem_j++)
+            {
+                if(_IS_FREE(pagem_j))
+                {
+                    num_blank++;//对连续空白page计数
+                    if(num_blank == npages)//达到要求直接退出循环
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    num_blank = 0;
+                    break;
+                }
+
+            }
+            if(num_blank < npages)//如果找不到足够数量的pages直接置零
+            //这样只要判断num_blank是否为0就知道能不能找到了
+            {
+                num_blank = 0;
+            }
+
+        }
+        if(0 == num_blank)//没找到接着后面继续找
+        {
+            pagem_i  = pagem_j++;
+        }
+        else//找到了，对pagem_i到pagem_j标志位置1，表明他们管理的内存被占用了
+        {
+            for(PageM_t *pagem_k = pagem_i;pagem_k<pagem_j;pagem_k++)
+            {
+                _SET_FLAG(pagem_k,PAGE_TOKEN);
+            }
+            _SET_FLAG(pagem_j,PAGE_TOKEN);
+            _SET_FLAG(pagem_j,PAGE_LAST);//表明它是末尾的内存page
+            spin_unlock(&page_lock);
+            return (void*)(_alloc_start + ((((addr_t)pagem_i - (addr_t)_heap_start)/sizeof(PageM_t))*PAGE_SIZE));//找到直接返回
+        }
+        
+    }
+    spin_unlock(&page_lock);
+    return NULL;
+}
+
+
+/***************************************************************
+ * @description: 
+ * @param {void*} p [in/out]:  
+ * @return {*}
+***************************************************************/
+void page_free(void* p)
+{  
+    spin_lock(&page_lock);
+    if((NULL == p)//传入的地址是空指针
+        || ((addr_t)p > (_alloc_end-PAGE_SIZE))//传入的地址在最后一个page之后
+        || !(_PAGE_IS_ALIGNED((addr_t)p))//传入的地址不是4096对齐的
+        )
+    {
+        printf("page_free error\n");
+        return;
+    }
+
+    PageM_t *pagem_i = (PageM_t *)(_heap_start + ((((addr_t)p-_alloc_start)/PAGE_SIZE)*sizeof(PageM_t)));
+
+    for(;!_IS_LAST(pagem_i);pagem_i++)
+    {
+        _CLEAR(pagem_i);
+    }
+    _CLEAR(pagem_i);
+    spin_unlock(&page_lock);
+}
+
+=== ./kernel/task.h ===
+
+/**
+ * @FilePath: /ZZZ/kernel/task.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-16 21:02:39
+ * @LastEditTime: 2025-05-02 16:43:09
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
+
+#ifndef TASK_H
+#define TASK_H
+
+#include "types.h"
+#include "riscv.h"
+#include "list.h"
+#include "platform.h"
+
+#define TASK_STACK_SIZE 1024 //每个任务分配1k的栈大小
+
+typedef enum task_status{
+    TASK_READY,
+    TASK_WAIT,
+    TASK_ZOMBIE
+}task_status_t;
+
+typedef enum task_priority{
+    TASK_PRIO_IDLE,
+    TASK_PRIO_NORMAL,
+    TASK_PRIO_HIGH,
+}task_priority_t;
+
+typedef struct task_ctrl_block
+{   
+    uint64_t id;
+    uint64_t expire_time;
+    uint64_t time_slice;
+    task_priority_t priority;
+    task_status_t status;
+    reg_context_t reg_context;
+    uint8_t  __attribute__((aligned(16))) task_stack[TASK_STACK_SIZE];
+    void (*task)(void *param);
+    list_t node;
+
+}tcb_t;
+
+typedef tcb_t* task_handle_t;
+
+//这是个中介，作为链表头，需要加入调度的任务会挂载到这个链表上，调度器会从这个链表拆取任务合并到调度器自己的链表中
+extern list_t need_add_task[MAX_HARTS];
+
+extern void task_init();
+extern task_handle_t  task_create(hart_id_t hart_id,void (*task)(void *param),uint64_t time_slice,uint8_t priority);
+extern void task_delete(task_handle_t del_task);
+
+extern void task_delay(volatile int count);
+
+#endif
+// #ifndef TASK_H
+// #define TASK_H
+
+// #include "types.h"
+
+// #include "riscv.h"
+// #include "list.h"
+
+// // 调度策略类型
+// typedef enum {
+//     SCHED_POLICY_RR,    // 时间片轮转调度
+//     SCHED_POLICY_IDLE   // 空闲调度
+// } sched_policy_t;
+
+// /**
+//  * @brief: 调度基类
+// */
+// typedef struct sched_entity{
+//     sched_policy_t policy;
+//     list_t sched_entity_node;
+// }sched_entity_t;
+
+// /**
+//  * @brief: 空闲调度
+// */
+// typedef struct idle_sched_entity{
+//     sched_entity_t base;
+// } idle_sched_entity_t;
+
+// /**
+//  * @brief: 时间片轮转调度
+// */
+// typedef struct rr_sched_entity{
+//     sched_entity_t base;
+//     uint8_t priority;
+//     uint64_t remaining;
+//     uint64_t time_slice;
+// } rr_sched_entity_t;
+
+// /**
+//  * @brief: 任务状态枚举
+// */
+// typedef enum task_status{
+//     TASK_RUNNING,
+//     TASK_READY,
+//     TASK_BLOCKED,
+//     TASK_ZOMBIE
+// }task_status_t;
+
+// #define TASK_STACK_SIZE 1024 //每个任务分配1k的栈大小
+
+// typedef struct task_ctrl_block
+// {   
+//     uint64_t id;
+//     task_status_t status;
+//     reg_context_t reg_context;
+//     uint8_t  __attribute__((aligned(16))) task_stack[TASK_STACK_SIZE];
+//     void (*entry)(void *param);
+//     union {
+//         rr_sched_entity_t rr_entity;
+//         idle_sched_entity_t idle_entity;
+//     } se;
+// }tcb_t;
+
+// typedef tcb_t* task_handle_t;
+
+// extern task_handle_t task_create(sched_policy_t policy, void (*entry)(void*), uint64_t time_slice, uint8_t priority);
+// extern void task_distory(task_handle_t task_handle);
+// extern void task_delay(volatile int count);
+// // extern void task_set_priority(task_handle_t task, uint8_t priority); // 新增优先级设置接口
+// // extern task_status_t task_get_status(task_handle_t task);
+// #endif
+
+=== ./kernel/page.h ===
+
+/***************************************************************
+ * @Author: weiqiang scuec_weiqiang@qq.com
+ * @Date: 2024-10-26 16:38:14
+ * @LastEditors: weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2024-11-03 23:44:02
+ * @FilePath: /my_code/include/page.h
+ * @Description: 
+ * @
+ * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
+***************************************************************/
+#ifndef PAGE_H
+#define PAGE_H
+
+#include "types.h"
+
+extern void page_init();
+extern void* page_alloc(uint64_t npages);
+extern void page_free(void* p);
+
+#endif
+
+
+=== ./kernel/syscall.c ===
+
+/**
+ * @FilePath: /ZZZ/kernel/syscall.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-05-02 18:11:27
+ * @LastEditTime: 2025-05-02 18:59:49
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
+#include "types.h"
+#include "riscv.h"
+#include "usys.h"
+#include "printf.h"
+
+uint64_t sys_get_hart_id(void)
+{
+    return mhartid_r(); // 返回当前线程的 ID
+}
+
+typedef uint64_t (*sysfuncPtr)(void); // 定义函数指针类型 FuncPtr
+static sysfuncPtr syscalls[] = {
+    [SYSCALL_NUM_GET_HART_ID] = sys_get_hart_id, // 初始化函数指针数组，将系统调用号与对应的处理函数关联起来
+};
+
+void do_syscall(reg_context_t *ctx)
+{
+    uint64_t num = ctx->a7; // 获取系统调用号
+    if (num < SYSCALL_NUM_END)
+    {
+        ctx->a0 = syscalls[num](); // 执行对应的处理函数，并将返回值存入 a0 中
+    }
+    else
+    {
+        printf("syscall %l not implemented\n", num);
+        ctx->a0 = -1; // 如果系统调用号超出范围，则返回错误码 -1
+    }
+}
+
+
+=== ./kernel/usys.h ===
+
+/**
+ * @FilePath: /ZZZ/kernel/usys.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-05-02 17:42:59
+ * @LastEditTime: 2025-05-02 18:58:30
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
+#ifndef USYS_H
+#define USYS_H
+
+#define SYSCALL_NUM_GET_HART_ID 0
+#define SYSCALL_NUM_END 1
+
+#endif
+
+=== ./kernel/printf.c ===
+
+#include <stdarg.h>
+#include "types.h"
+#include "uart.h"
+#include "spinlock.h"
+
+spinlock_t printf_lock = SPINLOCK_INIT;
+
+#define __PBUFF_SIZE 1024
+
+static char printf_buff[__PBUFF_SIZE];//输出缓冲区1k字节
+
+/***************************************************************
+ * @description: 将一个无符号整型数转换为字符串
+ * @param {char*} str [out]:  字符串
+ * @param {unsigned int} pos [in]:  从<str>的哪个位置开始写入字符串
+ * @param {int} num [in]:  需要转化的数字
+ * @param {int} decimal [in]:  进制,可选2，10，16
+ * @return {int} 返回转化后字符串长度
+***************************************************************/
+int num2char(char* str,unsigned int pos,unsigned int num,int decimal)
+{
+    unsigned int digit = 1;//进制下位数
+
+    for(int temp = num;temp/=decimal;digit++);//记录在decimal进制下有多少位
+    if(NULL != str)
+    {
+        switch (decimal)
+        {
+            case 16:
+                str[pos] = '0';pos++;str[pos] = 'x';pos++;
+                break;
+            case 2:
+                str[pos] = '0';pos++;str[pos] = 'b';pos++;
+                break;   
+            case 10:
+                break;
+            default:
+                return -1;
+        }
+        for(int i=digit-1;i>=0;i--)//从第一位开始将需要格式化的地方替换为字符数字
+        {   
+            unsigned long long temp = 0;
+            temp = num % decimal;
+            if(temp>=10) //考虑16进制中出现字母
+            {
+                temp -= 10; 
+                temp +='a';
+                str[pos+i] = temp;
+            }
+            else
+            {
+                str[pos+i] = '0' + temp;//替换为数字字符
+            }
+            num /= decimal;
+        }
+    }
+
+    if(10 == decimal) return digit;
+    else              return digit+2;//这里返回的是数字转化为字符串之后的长度，16进制与2进制因为前面有0x或0b所以要多加两位
+
+    
+}
+
+/***************************************************************
+ * @description: 
+ * @param {char*} out_buff [out]:  输出缓冲区
+ * @param {char} *str [in]:  源字符串
+ * @param {va_list} valist [in]:  可变参数列表
+ * @return {*}
+***************************************************************/
+int _vsprintf(char* out_buff,const char *str,va_list vl)
+{
+    uint8_t format = 0;//置一表明遍历到了需要格式化输出的位置，比如%d
+	size_t pos = 0;//这是输出缓冲区的下标
+    #if SYSTEM_BITS != 64
+    uint8_t longarg = 0;//long型标志位
+    #endif
+    uint8_t decimal = 0;//进制标志位
+
+    for(;(*str);str++)//遍历整个字符串
+    {
+        if(1 == format)//遍历到需要格式化输出的部分
+        {
+            switch( (*str) )
+            {   
+                case 'l': 
+
+                #if SYSTEM_BITS != 64
+                    longarg = 1;
+                #endif
+                goto DEC;
+
+                case 'x':decimal = 16;goto DEC;
+                case 'b':decimal = 2;goto DEC;
+                case 'd':
+                    DEC://整数输出
+
+                    #if SYSTEM_BITS != 64 
+                    int64_t num = longarg?va_arg(vl,int64_t):va_arg(vl,int32_t);
+                    #else
+                    int64_t num = va_arg(vl,int64_t);
+                    #endif
+                    
+                    if(0 == decimal)
+                    {
+                        decimal = 10;
+                        if(num<0 && NULL != out_buff)
+                        {
+                            num = -num; 
+                            out_buff[pos] = '-';
+                            pos++;
+                        }
+                    }
+                    pos += num2char(out_buff,pos,num,decimal); //将数字转化为字符串
+                    //更新输出缓冲区的下标,指向下一个空白位置
+
+                    #if SYSTEM_BITS != 64 
+                        longarg = 0;//清除标志位
+                    #endif
+
+                    format = 0;
+                    decimal = 0;
+                break;
+
+                case 'c':
+                    uint64_t c = va_arg(vl,uint64_t);
+                    if(NULL != out_buff)
+                    {
+                        out_buff[pos] = (char)c;
+                    }
+                    pos++;
+                    format = 0;
+                break;
+
+                case 's':
+                    uint64_t addr = va_arg(vl,uint64_t);
+                    while(*(char*)addr)
+                    {
+                        char c = *(char*)addr;
+                        if(NULL != out_buff)
+                        {
+                            out_buff[pos] = (char)c;
+                        }
+                        pos++;
+                        addr++;
+                    }
+                    format = 0;
+                break;
+                
+                default:
+                    format = 0;
+                break;
+            }
+        }
+        else if ( '%' == (*str) )//遇到了%,代表后面需要格式化输出
+        {   
+            format = 1;
+        }
+        else//遍历到普通字符
+        {
+            if(NULL != out_buff)
+            {
+                out_buff[pos] = (*str);//不用处理直接写入到输出缓冲区
+            }
+            pos++;//指向输出缓冲区的下一个位置
+        }
+    }
+    if(NULL != out_buff)//在结尾加上结束符
+    {
+        out_buff[pos] = 0;
+    }
+    return pos;
+}
+
+
+/***************************************************************
+ * @description: 
+ * @param {char*} str [in/out]:  
+ * @param {va_list} vl [in/out]:  
+ * @return {*}
+***************************************************************/
+int _vprintf(const char* str,va_list vl)
+{
+    int n =  _vsprintf(NULL,str,vl);//统计一下格式化字符串
+    if(n>__PBUFF_SIZE)
+    {
+        uart_puts("Error: Output string size overflow!\n");
+        while (1)
+        {
+           
+        }
+    }
+    _vsprintf(printf_buff,str,vl);
+
+    /*重定向只需要改下面这个输出*/
+    uart_puts(printf_buff);
+    
+    return n;
+}
+
+
+/***************************************************************
+ * @description: 格式化输出
+ * @param {char*} str [in]:  
+ * @return {*}
+***************************************************************/
+int printf(const char *str, ...)
+{
+    spin_lock(&printf_lock);
+    va_list vl;
+    va_start(vl,str);
+    int n = _vprintf(str,vl);
+    va_end(vl);
+    spin_unlock(&printf_lock);
+    return n;
+}
+
+void panic(const char *str, ...)
+{
+    printf("panic: ");
+    va_list vl;
+    va_start(vl,str);
+    _vprintf(str,vl);
+    va_end(vl);
+    while(1){}
+}
+
+=== ./kernel/swtimer.h ===
+
+/***************************************************************
+ * @Author: weiqiang scuec_weiqiang@qq.com
+ * @Date: 2024-12-04 19:04:50
+ * @LastEditors: weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2024-12-05 19:31:23
+ * @FilePath: /my_code/include/swtimer.h
+ * @Description: 
+ * @
+ * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
+***************************************************************/
+#ifndef SWTIMER_H
+#define SWTIMER_H
+
+#include "types.h"
+
+typedef struct swtimer swtimer_t;
+
+extern swtimer_t *swtimer_head;
+
+extern swtimer_t* swtimer_create(void (*timer_task)(),uint64_t set_time,uint8_t mode);
+extern void swtimer_distory(swtimer_t *swtimer_d);
+extern void swtimer_check();
+
+
+#endif
+
+=== ./kernel/swtimer.c ===
+
+/***************************************************************
+ * @Author: weiqiang scuec_weiqiang@qq.com
+ * @Date: 2024-12-04 19:04:33
+ * @LastEditors: weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2024-12-08 23:05:56
+ * @FilePath: /my_code/source/swtimer.c
+ * @Description: 
+ * @
+ * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
+***************************************************************/
+#include "types.h"
+#include "page.h"
+#include "list.h"
+#include "systimer.h"
+#include "printf.h"
+#include "sched.h"
+
+#define SWTIMER_ON (1)
+#define SWTIMER_OFF (0)
+#define SWTIMER_DISTORY (-1)
+#define SWTIMER_TIMEOUT (2)
+
+typedef struct swtimer
+{
+    uint64_t timer_id;
+    uint64_t period; 
+    int8_t status;//-1:销毁，0:暂停，1:开启
+    uint64_t tick;
+    uint64_t mode;
+    void (*timer_task)();
+    list_t swtimer_node;    
+}swtimer_t;
+
+swtimer_t *swtimer_head = NULL;
+
+/***************************************************************
+ * @description: 
+ * @param {swtimer_t} *swtimer_d [in/out]:  
+ * @return {*}
+***************************************************************/
+void swtimer_distory(swtimer_t *swtimer_d)
+{
+    list_del(&swtimer_d->swtimer_node);
+    page_free(swtimer_d);
+}
+
+/***************************************************************
+ * @description: 检查当前定时器是否超时
+ * @param {swtimer_t} *swtimer_currrent [in/out]:  
+ * @return {*}
+***************************************************************/
+static void _check_timeout(swtimer_t **swtimer_currrent)
+{
+    if(systimer_tick >= (*swtimer_currrent)->tick
+    &&(*swtimer_currrent)->status == SWTIMER_ON)
+    {
+        (*swtimer_currrent)->tick =  (*swtimer_currrent)->period + systimer_tick;
+        (*swtimer_currrent)->timer_task();
+        switch ( (*swtimer_currrent)->mode)
+        {
+            case 0: 
+            break;
+
+            case 1:
+                // (*swtimer_currrent)->status = SWTIMER_DISTORY;//标记为需要销毁
+                swtimer_distory((*swtimer_currrent));
+            break;
+
+            default:
+                (*swtimer_currrent)->mode--;
+            break;
+        }
+    } 
+}
+
+
+/***************************************************************
+ * @description: 检查用户设定的定时器任务是否可以执行，如果满足条件就执行
+ * @return {*}
+***************************************************************/
+void swtimer_check()
+{
+    swtimer_t *swtimer_currrent = NULL;
+    // swtimer_t *next = NULL;
+    if(NULL != swtimer_head)
+    {   
+        list_for_each_entry(swtimer_currrent,&swtimer_head->swtimer_node,swtimer_t,swtimer_node) 
+        {   
+            _check_timeout(&swtimer_currrent);
+        }
+    }
+}
+ 
+/***************************************************************
+ * @description: 创建一个软件定时器
+ * @param void (*timer_task)() [in]: 定时器任务
+ * @param {uint64_t} period [in]:  执行的周期长短，以硬件定时器的tick为单位
+ * @param {uint8_t} mode [in]:  执行次数，达到次数后会被销毁
+ *                  mode == 0 --> 无限次
+ * @return {swtimer_t*} 返回创建的定时器指针
+***************************************************************/
+swtimer_t* swtimer_create(void (*timer_task)(),uint64_t period,uint8_t mode)
+{
+    swtimer_t *new_timer = page_alloc(1);        
+    if((swtimer_t*)NULL == new_timer) return NULL;
+ 
+    switch ((uint64_t)swtimer_head)
+    {
+        case (uint64_t)NULL:
+            static uint64_t id = 0;
+            swtimer_head = page_alloc(1); 
+            INIT_LIST_HEAD(&swtimer_head->swtimer_node);
+        default:
+            new_timer->timer_task = timer_task;
+            new_timer->period = period;
+            new_timer->mode = mode; 
+            new_timer->timer_id = id;
+            new_timer->tick =  period + systimer_tick;
+            new_timer->status = SWTIMER_ON;
+            list_add_tail(&swtimer_head->swtimer_node,&new_timer->swtimer_node);
+            id++;
+        break;
+    }
+    return new_timer;
+}
+
+
+=== ./kernel/printf.h ===
+
+/*******************************************************************************************
+ * @FilePath: /ZZZ/kernel/printf.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-15 17:26:39
+ * @LastEditTime: 2025-04-30 17:38:32
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*******************************************************************************************/
+#ifndef PRINTF_H
+#define PRINTF_H
+
+extern int printf(const char* s, ...);
+extern void panic(const char* s, ...);
+#endif
+
+=== ./kernel/sched.h ===
+
+/**
+ * @FilePath: /ZZZ/kernel/sched.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-05-01 02:29:14
+ * @LastEditTime: 2025-05-02 16:25:03
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
+
+#ifndef SCHED_H
+#define SCHED_H
+
+#include "list.h"
+#include "riscv.h"
+#include "task.h"
+#include "platform.h"
+
+typedef enum sched_state { 
+    SCHED_IDLE,
+    SCHED_CONTINUE,
+    SCHED_SWITCHING 
+}sched_state_t;
+
+typedef struct{ 
+    // uint64_t task_num;
+    list_t ready_queue;
+    list_t wait_queue; 
+    tcb_t *current_task;
+}scheduler_t;
+
+extern scheduler_t scheduler[MAX_HARTS];
+
+extern void sched_init(hart_id_t hart_id);
+extern reg_t sched(reg_t epc,uint64_t now_time,hart_id_t hart_id);
+#endif
+
+
+// #ifndef SCHEDULER_H
+// #define SCHEDULER_H
+
+// #include "task.h"
+// enum sched_state { SCHED_IDLE, SCHED_FIRST, SCHED_RUNNING, SCHED_SWITCHING };
+
+// typedef struct sched_interface {
+//     // 初始化调度器
+//     void (*init)(struct sched_class* self);
+//     // 调度任务
+//     reg_t (*pick_next)(struct sched_class* self, reg_t epc, uint64_t now_time);
+//     // 添加任务
+//     void (*add_queue)(struct sched_class* self, tcb_t* task);
+//     // 删除任务
+//     void (*del_queue)(struct sched_class* self, tcb_t* task);
+//     // 获取当前任务
+//     tcb_t* (*get_current)(struct sched_class* self);
+// } sched_i;
+
+// void scheduler_init(void);
+// void schedule(void);
+// // 注册调度类
+// void sched_register_class(sched_policy_t policy, sched_i *cls);
+// #endif
+
+
+// //xxxx.h
+// struct led_device;
+
+// struct led_ops {
+// int (*toggle)(struct led_device *);
+// };
+
+// #define to_led_device(_d) container_of(_d, struct led_device, dev)
+// //xxxx.c
+// static int id = 0;
+// static struct led_device led_devices[10] = {0};
+
+// struct led_device {
+//     char name[32]; 
+//     int id;
+//     struct led_ops *ops;
+// };
+
+// void *alloc_led_device(const char *name, const struct led_ops *ops, int priv_size)
+// {
+//     struct led_device *led_dev = malloc(sizeof(struct led_device) +priv_size);
+//     led_dev->ops = ops;
+//     strcpy(led_dev->name, name);
+//     led_dev->id = id++;
+//     return led_dev - sizeof(*led_dev);
+// }
+// void toggle_led(struct led_device *dev)
+// {
+//     dev->ops->toggle(dev);
+// }
+// int led_device_register(struct led_device *dev)
+// {
+//     led_devices[dev->id] = dev;
+//     return dev->id;
+// }
+
+// struct led_device *get_led_dev_byid(int id)
+// {
+//     return led_devices[id];
+// }
+
+=== ./kernel/sched.c ===
+
+/*******************************************************************************************
+ * @FilePath: /ZZZ/kernel/sched.c
+ * @Description  :  
+ * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date         : 2025-04-16 21:02:39
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2025-04-20 16:59:37
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*******************************************************************************************/
+
+#include "printf.h"
+#include "page.h"
+#include "sched.h"
+#include "task.h"
+#include "maddr_def.h"
+#include "platform.h"
+
+scheduler_t scheduler[MAX_HARTS];
+
+
+__SELF uint64_t         _check_expire(uint64_t now_time,uint64_t expire_time);
+__SELF tcb_t*           _get_current_task(hart_id_t hart_id);
+__SELF tcb_t*           _get_next_task(hart_id_t hart_id);
+__SELF reg_t            _setup_task(uint64_t now_time,hart_id_t hart_id,tcb_t* task);
+__SELF sched_state_t    _get_sched_state(uint64_t now_time,tcb_t* current_task);
+
+/*******************************************************************************************
+ * @brief: 
+ * @return {*}
+*******************************************************************************************/
+void sched_init(hart_id_t hart_id)
+{
+    INIT_LIST_HEAD(&scheduler[hart_id].ready_queue);
+    INIT_LIST_HEAD(&scheduler[hart_id].wait_queue);
+    scheduler[hart_id].current_task = NULL;
+    // scheduler[hart_id].task_num = 0;
+}
+
+/**
+ * @brief 调度函数，根据当前时间和调度状态决定下一个执行的任务
+ *
+ * @param epc 当前任务的入口地址
+ * @param now_time 当前时间
+ *
+ * @return 下一个执行的任务的入口地址
+ *
+ * 如果存在需要添加到运行队列的任务，则将其添加到运行队列。
+ * 根据当前时间和调度状态决定下一个执行的任务，并返回其入口地址。
+ * 调度状态包括：
+ * - SCHED_IDLE：空闲状态，不执行任何任务
+ * - SCHED_FIRST：第一次调度，设置下一个任务的上下文并返回任务入口地址
+ * - SCHED_CONTINUE：继续执行当前任务，返回当前任务的入口地址
+ * - SCHED_SWITCHING：切换任务，将到期任务移动到链表尾部，设置下一个任务的上下文并返回任务入口地址
+ */
+reg_t sched(reg_t epc,uint64_t now_time,hart_id_t hart_id)
+{
+    reg_t ret = epc;
+
+    if(!list_empty(&need_add_task[hart_id])) // 如果有任务需要添加到运行队列
+    {
+        list_splice(&need_add_task[hart_id],&scheduler[hart_id].ready_queue) ;//把任务添加到运行队列
+        INIT_LIST_HEAD(&need_add_task[hart_id]);
+    }
+
+    tcb_t* current_task = _get_current_task(hart_id); //获取当前任务
+    scheduler[hart_id].current_task = current_task; 
+    
+    tcb_t* del_task;
+
+    if(current_task->status == TASK_ZOMBIE) //如果当前任务是僵尸状态，则将其从链表中删除
+    {
+        list_del(&current_task->node);
+        page_free(current_task);
+        current_task = NULL;
+    }
+    
+    sched_state_t sched_state = _get_sched_state(now_time,current_task);
+
+    switch (sched_state)
+    {
+        case SCHED_IDLE:    
+            printf("core %d sched_idle\n",hart_id);
+            ret = _setup_task(now_time,hart_id,NULL);
+            break;
+
+        case SCHED_CONTINUE:
+            break;
+
+        case SCHED_SWITCHING:
+            // printf("sched_switching\n");
+            ret = _setup_task(now_time,hart_id,_get_next_task(hart_id));//设置下一个任务的上下文并返回任务入口地址
+            list_mov_tail(&scheduler[hart_id].ready_queue,&current_task->node);//将到期任务移动到链表尾部,但还没有更新current_task
+            break;
+
+        default:
+            break;
+    }
+    return ret;
+}
+
+__SELF  tcb_t* _get_current_task(hart_id_t hart_id)
+{
+    if(list_empty(&scheduler[hart_id].ready_queue))
+    {
+        return NULL;
+    }
+    else
+    {
+        return list_entry(scheduler[hart_id].ready_queue.next,tcb_t,node); //获取下一个任务
+    }
+}
+
+__SELF tcb_t* _get_next_task(hart_id_t hart_id)
+{
+    if(list_empty(&scheduler[hart_id].ready_queue))
+    {
+        return NULL;
+    }
+    else
+    {
+        return list_entry(scheduler[hart_id].ready_queue.next->next,tcb_t,node);;
+    }
+}
+
+/**
+ * @brief 设置任务上下文
+ *
+ * 根据给定的参数设置任务上下文。
+ *
+ * @param now_time 当前时间戳
+ * @param hart_id 硬件线程ID
+ * @param task 指向任务控制块的指针
+ *
+ * @return 返回机器异常程序计数器（mepc）的值
+ *
+ * 如果 task 为 NULL，则使用 kernel_reg_ctx_start 和 hart_id 计算内核上下文地址，
+ * 并将该地址写入 mscratch 寄存器，最后返回该上下文的 mepc 值。
+ *
+ * 如果 task 不为 NULL，则更新任务的到期时间，并将任务的上下文地址写入 mscratch 寄存器，
+ * 最后返回该任务的 mepc 值。
+ */
+__SELF reg_t _setup_task(uint64_t now_time,hart_id_t hart_id,tcb_t* task)
+{
+    if(task == NULL)//
+    {
+        reg_t* kernel_context = (_kernel_reg_ctx_start+hart_id*sizeof(reg_context_t));
+        mscratch_w((reg_t*)kernel_context);
+        return ((reg_context_t*)kernel_context)->mepc;
+    }
+    else
+    {
+        task->expire_time = now_time  + task->time_slice;
+        mscratch_w((reg_t)&task->reg_context);
+        return task->reg_context.mepc;
+    }
+}
+
+/*******************************************************************************************
+ * @brief: 
+ * @param {uint64_t} now_time
+ * @return {*}
+*******************************************************************************************/
+__SELF __INLINE uint64_t _check_expire(uint64_t now_time,uint64_t expire_time)
+{
+    return now_time >= expire_time?1:0;
+}
+
+/*******************************************************************************************
+ * @brief: 
+ * @param {uint64_t} now_time
+ * @return {*}
+*******************************************************************************************/
+__SELF enum sched_state _get_sched_state(uint64_t now_time,tcb_t* current_task)
+{
+    if(current_task == NULL)
+    {
+        return SCHED_IDLE;
+    }
+    else 
+    {
+        // if(current_task->expire_time == 0)
+        // {
+        //     return  SCHED_FIRST;
+        // }
+        // else
+        // {
+            if(_check_expire(now_time,current_task->expire_time))
+            {
+                return  SCHED_SWITCHING;
+            }
+            else
+            {
+                return  SCHED_CONTINUE;
+            }
+        // }
+    }
+
+}
+
+
+=== ./kernel/init.c ===
+
+/**
+ * @FilePath: /ZZZ/kernel/init.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-15 00:43:47
+ * @LastEditTime: 2025-05-02 19:24:34
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
+#include "riscv.h"
+#include "plic.h"
+#include "maddr_def.h"
+#include "interrupt.h"
+#include "systimer.h"
+
+#include "printf.h"
+#include "page.h"
+#include "uart.h"
+#include "sched.h"
+#include "trap.h"
+#include "systimer.h"
+
+extern void os_main();
+uint8_t is_init = 0;
+
+void init(hart_id_t hart_id)
+{  
+    if(hart_id == HART_0) // hart0 初始化全局资源
+    {
+        uart_init();
+        page_init();
+        extern_interrupt_enable();
+        extern_interrupt_setting(hart_id,UART0_IRQN,1);
+        task_init();
+        // is_init = 1;
+    }
+
+    // while (is_init == 0){}
+    
+    //每个核心初始化自己的资源
+    systimer_init(hart_id,SYS_HZ_100);
+    trap_init();
+    sched_init(hart_id);
+    global_interrupt_enable();
+    MACHINE_TO_USER(os_main);
+}
+
+=== ./kernel/task.c ===
+
+/**
+ * @FilePath: /ZZZ/kernel/task.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-16 21:02:39
+ * @LastEditTime: 2025-05-02 17:05:58
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
+/*******************************************************************************************
+ * @FilePath: /ZZZ/kernel/task.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-16 21:02:39
+ * @LastEditTime: 2025-04-30 22:15:24
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*******************************************************************************************/
+#include "task.h"
+#include "page.h"
+#include "riscv.h"
+#include "systimer.h"
+#include "list.h"
+#include "spinlock.h"
+
+spinlock_t task_create_lock = SPINLOCK_INIT;
+
+//这是个中介，作为链表头，需要加入调度的任务会挂载到这个链表上，调度器会从这个链表拆取任务合并到调度器自己的链表中
+list_t need_add_task[MAX_HARTS] ;
+
+__SELF uint64_t task_id = 1;
+
+// __SELF void idle_task(void* param) {
+//     while (1) {
+//         // 低功耗指令（如WFI）
+//         // asm volatile ("wfi");
+//         printf("task idle running  \r\n");
+//     }
+// }
+
+void task_init()
+{
+   for(hart_id_t hart_id = HART_0;hart_id < MAX_HARTS; hart_id++)
+   {
+       INIT_LIST_HEAD(&need_add_task[hart_id])
+   }
+}
+
+/***************************************************************
+ * @description: 
+ * @return {*}
+***************************************************************/
+task_handle_t task_create(hart_id_t hart_id, void (*task)(void* param),uint64_t time_slice,uint8_t priority)
+{   
+    if(IS_NULL_PTR(task)) return NULL;
+    tcb_t* task_ctrl_block = page_alloc(1);
+    if(IS_NULL_PTR(task_ctrl_block)) return NULL;
+
+    spin_lock(&task_create_lock);
+    task_ctrl_block->id = task_id++;
+    spin_unlock(&task_create_lock);
+    task_ctrl_block->task = task;
+    task_ctrl_block->status = TASK_READY;
+    task_ctrl_block->expire_time = 0;
+    task_ctrl_block->priority = priority;
+    task_ctrl_block->time_slice = time_slice;
+    task_ctrl_block->reg_context.ra = (uint64_t)task;
+    task_ctrl_block->reg_context.mepc = (uint64_t)task;
+    task_ctrl_block->reg_context.sp = (uint64_t)&task_ctrl_block->task_stack[TASK_STACK_SIZE-1];
+    list_add_tail(&need_add_task[hart_id],&task_ctrl_block->node);
+
+    return (task_handle_t)task_ctrl_block;
+}
+
+/***************************************************************
+ * @description: 
+ * @return {*}
+***************************************************************/
+void task_delete(task_handle_t del_task)
+{
+    if(IS_NULL_PTR(del_task)) return;
+    tcb_t* task_block = (tcb_t*)del_task;
+    task_block->status = TASK_ZOMBIE;
+}
+
+// void task_exit(int exit_code)
+//  {
+
+//     current_task->state = TASK_ZOMBIE;
+//     current_task->exit_code = exit_code;
+//     list_del(&current_task->node);
+//     add_to_zombie_list(current_task);
+//     schedule(); // 触发调度器选择新任务
+// }
+/***************************************************************
+ * @description: 
+ * @return {*}
+***************************************************************/
+// void task_run()
+// {   
+//     if(NULL_PTR != task_head)
+//     {
+//         task_current = task_head;
+//         // printf("task will run\n");
+//         printf("taskRUn:%x\n",mstatus_r());
+//         __task_entry(&task_current->reg_context);
+//     }
+//     panic("\n  no task to exec!");
+// }
+        
+
+void task_delay(volatile int count)
+{
+	count *= 50000;
+	while (count--);
+}
+
+=== ./lib/color.h ===
+
+#ifndef COLOR_H
+#define COLOR_H
+
+#define GREEN(msg)          "\033[32m" msg "\033[0m"
+#define RED(msg)            "\033[31m" msg "\033[0m"
+#define BLUE(msg)           "\033[34m" msg "\033[0m"
+#define YELLOW(msg)         "\033[33m" msg "\033[0m"
+#define CYAN(msg)           "\033[36m" msg "\033[0m"
+#define WHITE(msg)          "\033[37m" msg "\033[0m"
+#define BOLD(msg)           "\033[1m" msg "\033[0m"
+#define ITALIC(msg)         "\033[3m" msg "\033[0m"
+#define UNDERLINE(msg)      "\033[4m" msg "\033[0m"
+#define BLINK(msg)          "\033[5m" msg "\033[0m"
+#define INVERSE(msg)        "\033[7m" msg "\033[0m"
+#define HIDDEN(msg)         "\033[8m" msg "\033[0m"
+#define STRIKE(msg)         "\033[9m" msg "\033[0m"
+
+#endif COLOR_H
+
+=== ./lib/list.h ===
+
+#ifndef list_H
+#define list_H
+
+#include "types.h"
+
+/***************************************************************
+ * @description: 返回结构体成员的偏移地址
+ * @stype: 结构体的类型
+ * @member:结构体的一个成员名
+***************************************************************/
+#define offsetof(stype,member)  \
+    ((size_t)(&(((stype*)0)->member))) \
+            
+/***************************************************************
+ * @description: 返回某个成员所在结构体的首地址
+ * @mptr: 成员的地址
+ * @stype: 结构体的类型
+ * @member:结构体的成员名
+***************************************************************/   
+// 现在我有一个b的地址，我想知道这个b所在的A结构体的首地址，就可以用这个宏
+#define container_of(mptr,stype,member) \
+    ((stype*)((size_t)mptr-offsetof(stype,member))) \
+
+
+typedef struct list
+{
+    struct list *prev;
+    struct list *next;
+}list_t;
+
+#define LIST_HEAD_INIT(name)  {&(name),&(name)} 
+   
+// 用这个宏声明的变量会自动初始化，不需要手动调用INIT_LIST_HEAD函数来初始化链表头
+#define LIST_HEAD(name) \
+    list_t name = LIST_HEAD_INIT(name); \
+
+// 这玩意可以用来声明一个不带初始化的链表头，用这个宏声明的变量需要用INIT_LIST_HEAD初始化
+#define THIS_IS_LIST_HEAD(name) \
+    list_t name; \
+
+#define INIT_LIST_HEAD(ptr) do{ \
+    (ptr)->prev = (ptr); \
+    (ptr)->next = (ptr); \
+}while(0); 
+
+/***************************************************************
+ * @description: 在两个节点之间插入新节点
+ * @param {list_t} *node [in]:  需要插入的节点的指针
+ * @param {list_t} *prev [in]:  插入位置的前一个节点的指针
+ * @param {list_t} *next [in]:  插入位置的后一个节点的指针
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void __list_add(list_t *node,list_t *prev,list_t *next)
+{   
+    prev->next = node;
+    node->prev = prev;
+    next->prev = node;
+    node->next = next;
+}
+
+/***************************************************************
+ * @description: 卸载两个节点之间的节点
+ * @param {list_t} *prev [in]:  卸载位置的前一个节点的指针 
+ * @param {list_t} *next [in]:  卸载位置的后一个节点的指针
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void __list_del(list_t *prev,list_t *next)
+{
+    prev->next = next;
+    next->prev = prev;
+}
+
+
+/***************************************************************
+ * @description: 将链表<head>合并到某一链表节点<node>的后面
+ * @param {list_t} *head [in]:  被合并的链表头的指针
+ * @param {list_t} *node [in]:  需要合并位置的节点的指针
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void __list_splice(list_t *head,list_t *node)
+{
+    list_t *first = head->next;
+    list_t *last =  head->prev;
+    list_t *at = node->next;
+
+    node->next = first;
+    first->prev = node;
+    last->next = at;
+    at->prev = last;
+}
+
+
+/***************************************************************
+ * @description: 在链表头部插入新节点
+ * @param {list_t} *node [in]:  需要插入的新节点的指针
+ * @param {list_t} *head [in]:  头节点
+ * @return {*}
+***************************************************************/
+STATIC_INLINE  void list_add(list_t *head,list_t *node)
+{
+    __list_add(node,head,head->next);
+}
+
+
+/***************************************************************
+ * @description: 在链表尾部插入新节点
+ * @param {list_t} *node [in]:  需要插入的新节点
+ * @param {list_t} *head [in]:  头节点
+ * @return {*}
+***************************************************************/
+STATIC_INLINE void list_add_tail(list_t *head,list_t *node)
+{
+    __list_add(node,head->prev,head);
+}
+
+
+/***************************************************************
+ * @description:删除节点
+ * @param {list_t} *node [in]:  需要删除的节点
+ * @return {*}
+***************************************************************/
+STATIC_INLINE void list_del(list_t *node)
+{
+    __list_del(node->prev,node->next);
+    node->prev = NULL;
+    node->next = NULL;
+}
+
+
+/***************************************************************
+ * @description: 将一个链表节点卸下，插入到链表头部
+ * @param {list_t} *node [in]:  需要卸下的节点
+ * @param {list_t} *head [in]:  头节点
+ * @return {*}
+***************************************************************/
+STATIC_INLINE void list_mov(list_t *head,list_t *node)
+{
+    __list_del(node->prev,node->next);
+    __list_add(node,head,head->next);
+}
+
+
+/***************************************************************
+ * @description: 将一个链表节点卸下，插入到链表尾部
+ * @param {list_t} *node [in]:  需要卸下的节点
+ * @param {list_t} *head [in]:  头节点
+ * @return {*}
+***************************************************************/
+STATIC_INLINE void list_mov_tail(list_t *head,list_t *node)
+{
+    __list_del(node->prev,node->next);
+    __list_add(node,head->prev,head);
+}
+
+
+/***************************************************************
+ * @description: 判断链表是否为空
+ * @param {list} *head [in/out]:  
+ * @return {*}
+***************************************************************/
+STATIC_INLINE int list_empty(const list_t *head)
+{
+    return head->next == head;
+}
+
+
+/***************************************************************
+ * @description: 
+ * @param {list} *head [in/out]:  
+ * @param {list_t} *node [in/out]:  
+ * @return {*}
+***************************************************************/
+STATIC_INLINE void list_splice(list_t *head,list_t *node)
+{
+    if(!list_empty(head))
+        __list_splice(head,node);
+}
+
+
+/***************************************************************
+ * @description: 
+ * @param {list} *head [in/out]:  
+ * @param {list_t} *node [in/out]:  
+ * @return {*}
+***************************************************************/
+STATIC_INLINE void list_splice_init(list_t *head,list_t *node)
+{
+    if(!list_empty(head))
+    {
+        __list_splice(head,node);
+        INIT_LIST_HEAD(head);
+    }
+        
+}
+
+
+/***************************************************************
+ * @description: 访问链表成员所在的结构体
+ * @mptr: 链表成员的地址
+ * @stype: 结构体的类型
+ * @member:结构体的成员名
+***************************************************************/  
+#define list_entry(mptr,stype,member) \
+    container_of(mptr,stype,member)
+
+/***************************************************************
+ * @description: 从前向后遍历链表
+ * @pos: 一个链表指针
+ * @head: 链表头节点地址
+***************************************************************/
+#define list_for_each(pos,head) \
+    for( (pos)=(head)->next;(pos)!=(head);(pos)=(pos)->next)
+
+/***************************************************************
+ * @description: 从后向前遍历链表
+ * @pos: 一个链表指针
+ * @head: 链表头节点地址
+***************************************************************/
+#define list_for_each_prev(pos,head) \
+    for( (pos)=(head)->prev;(pos)!=(head);(pos)=(pos)->prev)
+
+
+/***************************************************************
+ * @description: 遍历由链表成员串起来的结构体
+ * @pos: 一个结构体指针
+ * @head: 链表头节点地址
+ * @stype: 结构体类型,如tcb_t
+ * @member: 结构体中链表成员的名字
+***************************************************************/
+#define list_for_each_entry(pos,head,stype,member) \
+    for( (pos)=list_entry((head)->next,stype,member); \
+        &(pos->member)!=(head); \
+        (pos)=list_entry((pos->member.next),stype,member))
+
+
+#define list_for_each_entry_prev(pos,head,stype,member) \
+    for( (pos)=list_entry((head)->prev,stype,member); \
+        &(pos->member)!=(head); \
+        (pos)=list_entry((pos->member.prev),stype,member))        
+
+#endif
+
+=== ./lib/types.h ===
+
+/**
+ * @FilePath: /ZZZ/lib/types.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-15 17:27:48
+ * @LastEditTime: 2025-05-01 14:45:46
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
+#ifndef TYPES_H
+#define TYPES_H
+
+    #define SYSTEM_BITS 64
+
+    #if 64==SYSTEM_BITS
+        typedef char                int8_t;
+        typedef unsigned char       uint8_t;
+        typedef short               int16_t;
+        typedef unsigned short      uint16_t;       
+        typedef int                 int32_t;
+        typedef unsigned int        uint32_t;
+        typedef long long           int64_t;
+        typedef unsigned long long  uint64_t;
+        typedef uint64_t            max_uint_t;
+        typedef uint64_t            addr_t;
+        typedef uint64_t            size_t;
+        typedef uint64_t            reg_t;
+    #endif 
+
+    #if 32==SYSTEM_BITS
+        typedef char                 int8_t;
+        typedef unsigned char        uint8_t;
+        typedef short                int16_t;
+        typedef unsigned short       uint16_t;       
+        typedef int                  int32_t;
+        typedef unsigned int         uint32_t;
+        typedef long long            int64_t;
+        typedef unsigned long long   uint64_t;
+        typedef uint64_t             max_uint_t;
+        typedef uint32_t             addr_t;
+        typedef uint32_t             size_t;
+        typedef uint32_t             reg_t;
+    #endif 
+    
+    #if 16==SYSTEM_BITS
+        typedef char        int8_t;
+        typedef unsigned    char uint8_t;
+        typedef short       int16_t;
+        typedef unsigned    short uint16_t;   
+        typedef long        uint32_t;
+        typedef uint32_t    max_uint_t;
+        typedef uint16_t    addr_t;
+        typedef uint16_t    size_t;
+        typedef uint16_t    reg_t;
+    #endif  
+
+    typedef enum { false, true } bool;
+
+    #define NULL ((void *)0)
+    #define IS_NULL_PTR(ptr)    (NULL==ptr?1:0)
+
+    #define __SELF          static  
+    #define __INLINE        inline  
+    #define STATIC_INLINE   static inline 
+    #define __PROTECT(x)       do{x}while(0)
+    
+    // typedef enum
+    // {
+    //     SUCCESS,// 成功
+    //     NOT_FOUND_ERROR,// 未找到匹配的数据
+    //     FULL_SIZE_ERROR,// 表/缓冲区已满
+    //     INDEX_OUT_OF_BOUNDS_ERROR,// 标号索引越界
+    //     MEMORY_ALLOCATION_ERROR,// 内存分配错误
+    //     MEMORY_FREE_ERROR,// 内存释放错误
+    //     NULL_POINTER_ERROR,// 空指针
+    //     TIMEOUT_ERROR,// 超时
+    // }status_t;
+
+    
+#endif 
+
+=== ./user/user.c ===
+
+/**
+ * @FilePath: /ZZZ/user/user.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-17 18:55:35
+ * @LastEditTime: 2025-05-02 19:23:58
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
+#include "types.h"
+#include "task.h"
+#include "printf.h"
+#include "systimer.h"
+#include "swtimer.h"
+#include "color.h"
+
+task_handle_t task0_handle;
+task_handle_t task1_handle;
+
+uint64_t t = 0;
+void task0_timer()
+{
+    t++;
+    printf("t = %d\n",t);
+}
+
+void task0()
+{
+    uint32_t a = 0;
+    // swtimer_create(task0_timer,100,5);
+    // uint32_t b = 1;
+    while (1)
+    {
+        a++;        
+        task_delay(1000);
+        hart_id_t id = get_hart_id();
+        if(id==0)
+            printf(YELLOW("hart %d ---> task0 running  %d\r\n"),id,a);
+        else
+            printf(GREEN("hart %d ---> task0 running  %d\r\n"),id,a);
+        // printf("in task0,sp = %x",sp_r());
+        // printf("task0 running\r");
+        // mhartid_r();
+        // printf("hartid = %d\n",b);
+    }
+    
+}
+
+void task1()
+{
+    uint32_t a = 0;
+    while (1)
+    {
+        a++;   
+        if(a==5)
+        {
+            printf("task1 delete \n");
+            task_delete(task1_handle);
+        }
+        task_delay(1000);    
+        hart_id_t id = get_hart_id();
+        if(id==0)
+            printf(RED("hart %d ---> task1 running  %d\r\n"),id,a);
+        else
+            printf(BLUE("hart %d ---> task1 running  %d\r\n"),id,a);
+        // printf("task1 running\r");
+    }
+}
+
+void task2()
+{
+    uint32_t a = 0;
+    while (1)
+    {
+        a++;       
+        task_delay(200); 
+        printf("task2 running  %d\r\n",a);
+    }
+}
+
+void task3()
+{
+    uint32_t a = 0;
+    while (1)
+    {
+        a++;        
+        task_delay(200);
+        printf("task3 running  %d\r\n",a);
+    }
+}
+
+void __attribute((aligned(4))) os_main(hart_id_t hart_id)
+{
+    printf("hart%d init complete!\n",hart_id);
+    task0_handle =  task_create(hart_id,task0,(hart_id+1)*40*tick_ms,0);
+    task1_handle =  task_create(hart_id,task1,(hart_id+1)*30*tick_ms,0);
+    
+    // printf("create 2 tasks \n");
+    // task_create(task2,300*tick_ms,0);
+    // task_create(task3,100*tick_ms,0);
+    while(1){} 
+
+}

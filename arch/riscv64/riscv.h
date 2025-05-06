@@ -1,9 +1,9 @@
 /*******************************************************************************************
- * @FilePath     : /ZZZ/arch/riscv64/riscv.h
+ * @FilePath: /ZZZ/arch/riscv64/riscv.h
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
- * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
- * @LastEditTime : 2025-04-19 21:28:07
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime: 2025-04-30 13:45:35
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 *******************************************************************************************/
 #ifndef RISCV_H
@@ -187,15 +187,29 @@ __SELF __INLINE reg_t mtval_r()
 }
 
 
+__SELF __INLINE reg_t sp_r()
+{   
+    reg_t a;
+    asm volatile("mv %0,sp" : "=r"(a));
+    return a;
+}
+
+__SELF __INLINE void satp_w(reg_t a)
+{   
+    asm volatile("csrw satp,%0"::"r"(a));
+}
+
 #define MACHINE_TO_USER(x)    __PROTECT( \
     mstatus_w(mscratch_r() & ~(3<<11));  \
     mepc_w((reg_t)(x)); \
+    asm volatile ("mv a0, %0": : "r"(mhartid_r())); \
     asm volatile("mret"); \
 )
 
 #define MACHINE_TO_MACHINE(x)    __PROTECT( \
     mstatus_w(mscratch_r() | (3<<11));  \
     mepc_w((reg_t)(x)); \
+    asm volatile ("mv a0, %0": : "r"(mhartid_r())); \
     asm volatile("mret"); \
 )
 

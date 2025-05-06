@@ -7,7 +7,7 @@
             "command": "qemu-system-riscv64",
             "args": [
                 "-nographic",
-                "-smp", "1",
+                "-smp", "2",
                 "-machine", "virt",
                 "-bios", "none",
                 "-kernel", "${workspaceFolder}/out/${workspaceFolderBasename}.elf",

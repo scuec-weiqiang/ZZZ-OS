@@ -21,15 +21,55 @@
 
 #define RELEASE_CORE(hartid)        (*(uint32_t*)CLINT_MSIP(hartid)=1)
 
+/**
+ * @brief 获取当前机器时间（Machine Time）
+ *
+ * 该函数用于获取当前的系统机器时间。机器时间是一个连续的计数器，从系统启动开始计时。
+ *
+ * @return 返回当前机器时间的64位无符号整数值。
+ */
 __SELF __INLINE uint64_t __clint_mtime_get()
 {
     return *(uint64_t*)CLINT_MTIME;
 }
 
+/**
+ * @brief 设置CLINT的时间比较寄存器
+ *
+ * 该函数用于将指定的hartid对应的时间比较寄存器设置为指定的值。
+ *
+ * @param hartid  hartid，表示要设置的hart的ID
+ * @param value   要设置的值
+ */
 __SELF __INLINE void __clint_mtimecmp_set(uint32_t hartid,uint64_t value)
 {
     uint64_t *clint_mtimecmp = (uint64_t*)CLINT_MTIMECMP_BASE;
     clint_mtimecmp[hartid] = value;
 }
 
+
+/**
+ * @brief 向指定的 hart 发送 MSIP 中断
+ *
+ * 通过向指定的 hart 写入 1 来触发 MSIP 中断。
+ *
+ * @param hart_id 指定发送中断的 hart 的 ID
+ */
+__SELF __INLINE void __clint_send_ipi(hart_id_t hart_id) {
+    volatile uint32_t *msip = (volatile uint32_t*)(CLINT_BASE + CLINT_MSIP(hart_id));
+    *msip = 1;  // 写1触发MSIP中断
+}
+
+
+/**
+ * @brief 清除指定HART的MSIP中断
+ *
+ * 该函数用于清除指定HART（硬件线程）的MSIP（Machine Software Interrupt）中断。
+ *
+ * @param hart_id 要清除MSIP中断的HART ID
+ */
+__SELF __INLINE void __clint_clear_ipi(hart_id_t hart_id) {
+    volatile uint32_t *msip = (volatile uint32_t*)(CLINT_BASE + CLINT_MSIP(hart_id));
+    *msip = 0;  // 写0清除MSIP中断
+}
 #endif 

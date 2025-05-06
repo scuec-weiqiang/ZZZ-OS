@@ -5,6 +5,7 @@
 #define LOAD        ld
 #define STORE       sd
 #define REG_SIZE    8
+#define CONTEXT_SIZE  REG_SIZE*33
 
 .macro store_reg addr
 #   STORE zero,0*REG_SIZE(\addr)   zero值不会变，存储没有意义

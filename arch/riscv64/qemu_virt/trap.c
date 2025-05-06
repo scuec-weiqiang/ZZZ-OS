@@ -25,16 +25,17 @@ void trap_init()
  * @param {uint32_t} mepc [in/out]:  
  * @return {*}
 ***************************************************************/
-reg_t trap_handler(reg_t epc,reg_t cause)
+reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
 {
     reg_t return_epc = epc;
     uint64_t cause_code = cause & MCAUSE_MASK_CAUSECODE;
+
     if((cause & MCAUSE_MASK_INTERRUPT))
     {
         switch (cause_code)
         {
             case 3:
-                // printf("software interruption!\n");
+                printf("software interruption!\n");
                 break;
             case 7:
                 // printf("timer interruption!\n");
@@ -52,41 +53,60 @@ reg_t trap_handler(reg_t epc,reg_t cause)
     }
     else
     {
+        // printf("\nmtval is %x\n",mtval_r());
+        // printf("occour in %x\n",epc);
         switch (cause_code)
         {
             case 0:
-                printf("\nmtval is %x\n",mtval_r());
-                printf("occour in %x\n",epc);
-                panic("instruction address misaligned!\n");
+                panic("Instruction address misaligned!\n");
                 break;
             case 1:
-                printf("\nmtval is %x\n",mtval_r());
-                printf("occour in %x\n",epc);
-                panic("instruction access fault!\n");
+                panic("Instruction access fault!\n");
                 break;
             case 2:
-                printf("\nmtval is %x\n",mtval_r());
-                printf("occour in %x\n",epc);
-                panic("illegal instruction !\n");
+                panic("Illegal instruction !\n");
                 break;
             case 3:
-                printf("\nmtval is %x\n",mtval_r());
-                printf("breakpiont!\n");
+                printf("Breakpiont!\n");
                 break;
+            case 4:
+                panic("Load address misaligned\n");
+                break;
+            case 5:
+                panic("Load access fault\n");
+                break;
+            case 6:
+                panic("Store/AMO address misaligned\n");
+                break;
+            case 7:
+                // panic("\033[32mStore/AMO access fault\n\033[0m");
+                panic("Store/AMO access fault\n");
+                break;    
             case 8:
-                printf("environment call from U-mode");
+                // printf("Environment call from U-mode\n");
+                extern do_syscall(reg_context_t *ctx);
+                do_syscall(ctx);
+                return_epc += 4;
                 break;
             case 9:
-                printf("environment call from S-mode");
+                // printf("Environment call from S-mode\n");
+                panic("Environment call from S-mode\n");
                 break;
             case 11:
-                // printf("external interruption!\n");
-                printf("environment call from M-mode");
+                // printf("Environment call from M-mode");
+                panic("Environment call from M-mode\n");
+                break;
+            case 12:
+                panic("Instruction page fault\n");
+                break;
+            case 13:
+                panic("Load page fault\n");
+                break;
+            case 15:
+                panic("Store/AMO page fault\n");
                 break;
             default:
-                printf("unknown sync exception!\n cause code is %l\n",cause_code);
-                printf("mtval is %x\n",mtval_r());
-                panic("trap!");
+                panic("unknown sync exception!\ntrap!\n");
                 break;
         }
     }
@@ -100,7 +120,8 @@ reg_t trap_handler(reg_t epc,reg_t cause)
 ***************************************************************/
 void extern_interrupt_handler()
 {
-    uint32_t irqn = __plic_claim(0);
+    hart_id_t hart_id = mhartid_r();
+    uint32_t irqn = __plic_claim(hart_id);
     switch (irqn)
     {
         case 10:
@@ -124,21 +145,23 @@ void extern_interrupt_handler()
 ***************************************************************/
 reg_t timer_interrupt_handler(reg_t epc )
 {
-   
     reg_t r;
+    hart_id_t hart_id = mhartid_r();
+    // printf("hart %d timer interrupt!\n",hart_id);
     uint64_t now_time = systimer_get_time();
-    systimer_tick++;
+    // systimer_tick++;
 
-    r = sched(epc,now_time);
+    r = sched(epc,now_time,hart_id);
     
-    swtimer_check();
-    systimer_load(HART_0,systimer_hz);
+    // swtimer_check();
+    systimer_load(hart_id,systimer_hz);
 
     return r;
 }
 
 void soft_interrupt_handler()
 {
+    __clint_clear_ipi(mhartid_r());
     // *(uint32_t*)CLINT_MSIP(0)=0;
     // __sw_without_save(&sched_context);
 }

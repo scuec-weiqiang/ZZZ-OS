@@ -10,8 +10,10 @@
 ***************************************************************/
 #include "printf.h"
 #include "types.h"
-
+#include "spinlock.h"
 #include "maddr_def.h"
+
+spinlock_t page_lock = SPINLOCK_INIT;
 
 //page management struct
 typedef struct PageM
@@ -70,6 +72,7 @@ void page_init()
 ***************************************************************/
 void* page_alloc(uint64_t npages)
 {   
+    spin_lock(&page_lock);
     addr_t reserved_end = (addr_t)_heap_start + _num_pages*sizeof(PageM_t);
     uint64_t num_blank = 0;
     PageM_t *pagem_i = (PageM_t*)_heap_start;
@@ -115,11 +118,13 @@ void* page_alloc(uint64_t npages)
             }
             _SET_FLAG(pagem_j,PAGE_TOKEN);
             _SET_FLAG(pagem_j,PAGE_LAST);//表明它是末尾的内存page
+            spin_unlock(&page_lock);
             return (void*)(_alloc_start + ((((addr_t)pagem_i - (addr_t)_heap_start)/sizeof(PageM_t))*PAGE_SIZE));//找到直接返回
         }
         
     }
-    return NULL_PTR;
+    spin_unlock(&page_lock);
+    return NULL;
 }
 
 
@@ -130,11 +135,13 @@ void* page_alloc(uint64_t npages)
 ***************************************************************/
 void page_free(void* p)
 {  
-    if((NULL_PTR == p)//传入的地址是空指针
-        ||((addr_t)p > (_alloc_end-PAGE_SIZE))//传入的地址在最后一个page之后
-        ||(_PAGE_IS_ALIGNED((addr_t)p))//传入的地址不是4096对齐的
+    spin_lock(&page_lock);
+    if((NULL == p)//传入的地址是空指针
+        || ((addr_t)p > (_alloc_end-PAGE_SIZE))//传入的地址在最后一个page之后
+        || !(_PAGE_IS_ALIGNED((addr_t)p))//传入的地址不是4096对齐的
         )
     {
+        printf("page_free error\n");
         return;
     }
 
@@ -145,4 +152,5 @@ void page_free(void* p)
         _CLEAR(pagem_i);
     }
     _CLEAR(pagem_i);
+    spin_unlock(&page_lock);
 }
