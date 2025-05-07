@@ -80,17 +80,17 @@
 
 
 .macro _store
-    csrrw t6,mscratch,t6
+    csrrw t6,sscratch,t6
     store_reg t6
-    csrr t5,mscratch
+    csrr t5,sscratch
     STORE t5,31*REG_SIZE(t6)#保存t6的值
     csrr t5,mepc#保存mepc
     STORE t5,32*REG_SIZE(t6) 
-    csrw mscratch,t6    #保持mscratch值不变
+    csrw sscratch,t6    #保持mscratch值不变
 .endm
 
 .macro _load
-    csrr t6,mscratch
+    csrr t6,sscratch
     load_reg t6
 .endm
 

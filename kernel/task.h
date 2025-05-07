@@ -37,7 +37,6 @@ typedef struct task_ctrl_block
     uint64_t time_slice;
     task_priority_t priority;
     task_status_t status;
-    reg_context_t reg_context;
     uint8_t  __attribute__((aligned(16))) task_stack[TASK_STACK_SIZE];
     void (*task)(void *param);
     list_t node;

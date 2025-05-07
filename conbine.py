@@ -13,7 +13,7 @@ import os
 
 def combine_code_files(root_dir, output_file='combined_code.txt'):
     # 支持的扩展名集合
-    valid_extensions = {'.c', '.h', '.S'}
+    valid_extensions = {'.c', '.h', '.S','.ld'}
     
     with open(output_file, 'w', encoding='utf-8') as outfile:
         for root, dirs, files in os.walk(root_dir):

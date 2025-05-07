@@ -12,10 +12,13 @@ _start:
     mul t1 , tp , t0 # t1 = hartid * STACK_SIZE 
     la t2, _kernel_stack_end
     sub sp,t2,t1 # 栈底 = _stack_end - hartid * STACK_SIZE
- 
+
+    # 初始化mscratch指向栈顶（中断入口用）
+    csrw mscratch, sp
+
     # 跳转到C函数
     mv a0, tp
-    call init_kernel
+    call init
     j .
 
 wait_hart:

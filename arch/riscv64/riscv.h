@@ -199,6 +199,28 @@ __SELF __INLINE void satp_w(reg_t a)
     asm volatile("csrw satp,%0"::"r"(a));
 }
 
+__SELF __INLINE medeleg_w(reg_t a)
+{   
+    asm volatile("csrw medeleg,%0"::"r"(a));
+}
+
+__SELF __INLINE mideleg_w(reg_t a)
+{
+    asm volatile("csrw mideleg,%0"::"r"(a));
+}
+
+__SELF __INLINE sie_w(reg_t a)
+{
+    asm volatile("csrw sie,%0"::"r"(a));
+}
+
+__SELF __INLINE reg_t sie_r()
+{   
+    reg_t a;
+    asm volatile("csrr %0,sie" : "=r"(a));
+    return a;
+}
+
 #define MACHINE_TO_USER(x)    __PROTECT( \
     mstatus_w(mscratch_r() & ~(3<<11));  \
     mepc_w((reg_t)(x)); \
