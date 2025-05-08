@@ -3,12 +3,12 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-15 17:27:48
- * @LastEditTime: 2025-05-01 14:45:46
+ * @LastEditTime: 2025-05-09 02:44:13
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#ifndef TYPES_H
-#define TYPES_H
+#ifndef _TYPES_H
+#define _TYPES_H
 
     #define SYSTEM_BITS 64
 

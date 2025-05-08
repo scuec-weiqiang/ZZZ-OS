@@ -1,15 +1,14 @@
-/***************************************************************
- * @Author: weiqiang scuec_weiqiang@qq.com
- * @Date: 2024-10-26 16:38:14
- * @LastEditors: weiqiang scuec_weiqiang@qq.com
- * @LastEditTime: 2024-11-03 23:44:02
- * @FilePath: /my_code/include/page.h
- * @Description: 
- * @
- * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
-***************************************************************/
-#ifndef PAGE_H
-#define PAGE_H
+/**
+ * @FilePath: /ZZZ/kernel/page.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-15 17:26:52
+ * @LastEditTime: 2025-05-09 02:42:15
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
+#ifndef _PAGE_H
+#define _PAGE_H
 
 #include "types.h"
 

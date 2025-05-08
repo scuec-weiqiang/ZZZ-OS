@@ -18,7 +18,9 @@
         "ischeduler.h": "c",
         "kernel_defs.h": "c",
         "interrupt.h": "c",
-        "plic.h": "c"
+        "plic.h": "c",
+        "mm.h": "c",
+        "random": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

@@ -3,13 +3,13 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-01 02:29:14
- * @LastEditTime: 2025-05-02 16:25:03
+ * @LastEditTime: 2025-05-09 02:44:29
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 
-#ifndef SCHED_H
-#define SCHED_H
+#ifndef _SCHED_H
+#define _SCHED_H
 
 #include "list.h"
 #include "riscv.h"
@@ -29,7 +29,7 @@ typedef struct{
     tcb_t *current_task;
 }scheduler_t;
 
-extern scheduler_t scheduler[MAX_HARTS];
+extern scheduler_t scheduler[MAX_HARTS_NUM];
 
 extern void sched_init(hart_id_t hart_id);
 extern reg_t sched(reg_t epc,uint64_t now_time,hart_id_t hart_id);

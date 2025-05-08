@@ -1,5 +1,14 @@
-#ifndef COLOR_H
-#define COLOR_H
+/**
+ * @FilePath: /ZZZ/lib/color.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-05-07 19:18:08
+ * @LastEditTime: 2025-05-09 02:43:58
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
+#ifndef _COLOR_H
+#define _COLOR_H
 
 #define GREEN(msg)          "\033[32m" msg "\033[0m"
 #define RED(msg)            "\033[31m" msg "\033[0m"

@@ -1,3 +1,12 @@
+/**
+ * @FilePath: /ZZZ/kernel/swtimer.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-16 21:02:39
+ * @LastEditTime: 2025-05-09 02:42:51
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 /***************************************************************
  * @Author: weiqiang scuec_weiqiang@qq.com
  * @Date: 2024-12-04 19:04:50
@@ -8,8 +17,8 @@
  * @
  * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
 ***************************************************************/
-#ifndef SWTIMER_H
-#define SWTIMER_H
+#ifndef _SWTIMER_H
+#define _SWTIMER_H
 
 #include "types.h"
 
