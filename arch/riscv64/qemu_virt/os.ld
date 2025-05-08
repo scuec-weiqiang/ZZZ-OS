@@ -30,6 +30,10 @@ SECTIONS
     .data : ALIGN(8) {
         _data_start = .;
         *(.data .data,*)
+        . = ALIGN(8);
+        _systimer_ctx = .;
+        . += 5*8*CORE_NUM;
+        . = ALIGN(8);
         _data_end = .; 
     } > RAM 
 
@@ -85,4 +89,6 @@ SECTIONS
     PROVIDE_HIDDEN(_heap_start = _heap_start);
     PROVIDE_HIDDEN(_heap_end = _heap_end);
     PROVIDE_HIDDEN(_heap_size = _heap_size);
+
+    PROVIDE_HIDDEN(_systimer_ctx = _systimer_ctx);
 }

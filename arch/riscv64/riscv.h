@@ -35,8 +35,17 @@ __SELF __INLINE reg_t mhartid_r()
     return a;
 }
 
+__SELF __INLINE void tp_w(reg_t a)
+{
+    asm volatile("mv tp,%0"::"r"(a));
+}
 
-
+__SELF __INLINE reg_t tp_r()
+{
+    reg_t a;
+    asm volatile("mv %0,tp" : "=r"(a));
+    return a;
+}
 /***************************************************************
  * @description: 
  * @return {*}
@@ -209,10 +218,16 @@ __SELF __INLINE mideleg_w(reg_t a)
     asm volatile("csrw mideleg,%0"::"r"(a));
 }
 
+// Supervisor Interrupt Enable
+#define SIE_SEIE (1L << 9) // external
+#define SIE_STIE (1L << 5) // timer
+#define SIE_SSIE (1L << 1) // software
+
 __SELF __INLINE sie_w(reg_t a)
 {
     asm volatile("csrw sie,%0"::"r"(a));
 }
+
 
 __SELF __INLINE reg_t sie_r()
 {   
@@ -221,18 +236,132 @@ __SELF __INLINE reg_t sie_r()
     return a;
 }
 
-#define MACHINE_TO_USER(x)    __PROTECT( \
-    mstatus_w(mscratch_r() & ~(3<<11));  \
+/***************************************************************
+ * @description: Read supervisor status register
+ * @return {*} Current sstatus value
+***************************************************************/
+__SELF __INLINE reg_t sstatus_r()
+{
+    reg_t a;
+    asm volatile("csrr %0,sstatus" : "=r"(a));
+    return a;
+}
+
+/***************************************************************
+ * @description: Write supervisor status register
+ * @param {reg_t} a [in]: Value to write
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void sstatus_w(reg_t a)
+{
+    asm volatile("csrw sstatus,%0"::"r"(a));
+}
+
+/***************************************************************
+ * @description: Read supervisor trap handler base address
+ * @return {*} Current stvec value
+***************************************************************/
+__SELF __INLINE reg_t stvec_r()
+{
+    reg_t a;
+    asm volatile("csrr %0,stvec" : "=r"(a));
+    return a;
+}
+
+/***************************************************************
+ * @description: Write supervisor trap handler base address
+ * @param {reg_t} a [in]: Value to write
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void stvec_w(reg_t a)
+{
+    asm volatile("csrw stvec,%0"::"r"(a));
+}
+
+/***************************************************************
+ * @description: Read supervisor exception program counter
+ * @return {*} Current sepc value
+***************************************************************/
+__SELF __INLINE reg_t sepc_r()
+{
+    reg_t a;
+    asm volatile("csrr %0,sepc" : "=r"(a));
+    return a;
+}
+
+/***************************************************************
+ * @description: Write supervisor exception program counter
+ * @param {reg_t} a [in]: Value to write
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void sepc_w(reg_t a)
+{
+    asm volatile("csrw sepc,%0"::"r"(a));
+}
+
+/***************************************************************
+ * @description: Read supervisor trap cause
+ * @return {*} Current scause value
+***************************************************************/
+__SELF __INLINE reg_t scause_r()
+{
+    reg_t a;
+    asm volatile("csrr %0,scause" : "=r"(a));
+    return a;
+}
+
+/***************************************************************
+ * @description: Read supervisor trap value
+ * @return {*} Current stval value
+***************************************************************/
+__SELF __INLINE reg_t stval_r()
+{
+    reg_t a;
+    asm volatile("csrr %0,stval" : "=r"(a));
+    return a;
+}
+
+/***************************************************************
+ * @description: Read supervisor address translation register
+ * @return {*} Current satp value
+***************************************************************/
+__SELF __INLINE reg_t satp_r()
+{
+    reg_t a;
+    asm volatile("csrr %0,satp" : "=r"(a));
+    return a;
+}
+
+__SELF __INLINE pmpcfg0_w(reg_t a)
+{
+    asm volatile("csrw pmpcfg0,%0"::"r"(a));
+}
+
+
+__SELF __INLINE pmpaddr0_w(reg_t a)
+{
+    asm volatile("csrw pmpaddr0,%0"::"r"(a));
+}
+
+
+// #define M_TO_U(x)    __PROTECT( \
+//     mstatus_w(mscratch_r() & ~(3<<11));  \
+//     mepc_w((reg_t)(x)); \
+//     asm volatile ("mv a0, %0": : "r"(mhartid_r())); \
+//     asm volatile("mret"); \
+// )
+
+#define M_TO_S(x)    __PROTECT( \
+    mstatus_w(mstatus_r() | (1<<11));  \
     mepc_w((reg_t)(x)); \
-    asm volatile ("mv a0, %0": : "r"(mhartid_r())); \
     asm volatile("mret"); \
 )
 
-#define MACHINE_TO_MACHINE(x)    __PROTECT( \
-    mstatus_w(mscratch_r() | (3<<11));  \
-    mepc_w((reg_t)(x)); \
-    asm volatile ("mv a0, %0": : "r"(mhartid_r())); \
-    asm volatile("mret"); \
-)
+// #define M_TO_M(x)    __PROTECT( \
+//     mstatus_w(mscratch_r() | (3<<11));  \
+//     mepc_w((reg_t)(x)); \
+//     asm volatile ("mv a0, %0": : "r"(mhartid_r())); \
+//     asm volatile("mret"); \
+// )
 
 #endif

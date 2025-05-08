@@ -1,6 +1,16 @@
+/**
+ * @FilePath: /ZZZ/kernel/kernel.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-05-07 19:18:08
+ * @LastEditTime: 2025-05-08 13:33:56
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 
 #include "riscv.h"
 #include "plic.h"
+#include "clint.h"
 #include "maddr_def.h"
 #include "interrupt.h"
 #include "systimer.h"
@@ -34,26 +44,26 @@ void wakeup_other_harts() {
     for (hart_id_t hart = 1; hart < MAX_HARTS_NUM; hart++) 
     {
         // 向其他核心发送软件中断，触发其从wfi唤醒
-        clint_send_ipi(hart);
+        __clint_send_ipi(hart);
     }
 }
 
 
-void init_kernel(hart_id_t hart_id)
+void init_kernel()
 {  
+    hart_id_t hart_id = mhartid_r();
     if(hart_id == HART_0) // hart0 初始化全局资源
     {
         zero_bss();
         uart_init();
         page_init();
-        extern_interrupt_enable();
         extern_interrupt_setting(hart_id,UART0_IRQN,1);
         task_init();
-        // is_init = 1;
+        is_init = 1;
     }
 
-    // while (is_init == 0){}
-    wakeup_other_harts();
+    while (is_init == 0){}
+    // wakeup_other_harts();
     
     //每个核心初始化自己的资源
     systimer_init(hart_id,SYS_HZ_100);

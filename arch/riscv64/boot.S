@@ -13,11 +13,10 @@ _start:
     la t2, _kernel_stack_end
     sub sp,t2,t1 # 栈底 = _stack_end - hartid * STACK_SIZE
 
-    # 初始化mscratch指向栈顶（中断入口用）
-    csrw mscratch, sp
+    # # 初始化mscratch指向栈顶（中断入口用）
+    # csrw mscratch, _kernel_stack_start
 
     # 跳转到C函数
-    mv a0, tp
     call init
     j .
 

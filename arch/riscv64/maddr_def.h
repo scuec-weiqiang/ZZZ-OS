@@ -1,3 +1,12 @@
+/**
+ * @FilePath: /ZZZ/arch/riscv64/maddr_def.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-05-07 19:18:08
+ * @LastEditTime: 2025-05-07 23:11:46
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 /*******************************************************************************************
  * @FilePath     : /ZZZ/arch/riscv64/maddr_def.h
  * @Description  :  这里定义了一些链接脚本中的内存地址，方便在其他文件中引用。
@@ -13,7 +22,7 @@ extern char _text_start[], _text_end[];
 extern char _rodata_start[], _rodata_end[];
 extern char _data_start[], _data_end[];
 extern char _bss_start[], _bss_end[];
-
+extern char _systimer_ctx[];
 extern char _kernel_reg_ctx_start[], _kernel_reg_ctx_end[];
 extern char _kernel_stack_start[], _kernel_stack_end[];
 

@@ -2,8 +2,33 @@
 
 .section .text.trap
 .balign 4
-.global trap_entry
-trap_entry:
+.global machine_timer_trap_entry
+machine_timer_trap_entry:
+    csrrw a3, mscratch, a3
+    sd a0, 0(a3)
+    sd a1, 8(a3)
+    sd a2, 16(a3)
+
+    ld a0, 24(a3)# timecmp(hartid)的地址
+    ld a1, 0(a0)# timecmp(hartid)的值
+    ld a2, 32(a3)# systimer_hz的值
+    add a2, a2, a1# 装载定时器
+    sd a2, 0(a0)
+
+    #手动触发software interrupt
+    li a1, 2
+    csrw sip, a1
+
+    ld a2, 16(a3)
+    ld a1, 8(a3)
+    ld a0, 0(a3)
+    csrrw a3, mscratch, a3
+
+    mret
+
+.balign 4
+.global kernel_trap_entry
+kernel_trap_entry:
     SAVE_CTX    
 
     csrr a0, mepc
@@ -14,6 +39,7 @@ trap_entry:
 
     RESTORE_CTX
 
+    sret
     # # #切换到内核栈
     # # li t0 , CONTEXT_SIZE
     # # mul t1 , tp , t0 # t1 = hartid * CONTEXT_SIZE 

@@ -16,7 +16,9 @@
         "systimer.h": "c",
         "stdarg.h": "c",
         "ischeduler.h": "c",
-        "kernel_defs.h": "c"
+        "kernel_defs.h": "c",
+        "interrupt.h": "c",
+        "plic.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }
