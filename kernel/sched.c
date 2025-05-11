@@ -9,7 +9,7 @@
 *******************************************************************************************/
 
 #include "printf.h"
-#include "page.h"
+#include "page_alloc.h"
 #include "sched.h"
 #include "task.h"
 #include "maddr_def.h"
@@ -141,18 +141,18 @@ __SELF tcb_t* _get_next_task(hart_id_t hart_id)
  */
 __SELF reg_t _setup_task(uint64_t now_time,hart_id_t hart_id,tcb_t* task)
 {
-    if(task == NULL)//
-    {
-        reg_t* kernel_context = (_kernel_reg_ctx_start+hart_id*sizeof(reg_context_t));
-        mscratch_w((reg_t*)kernel_context);
-        return ((reg_context_t*)kernel_context)->mepc;
-    }
-    else
-    {
-        task->expire_time = now_time  + task->time_slice;
-        mscratch_w((reg_t)&task->reg_context);
-        return task->reg_context.mepc;
-    }
+    // if(task == NULL)//
+    // {
+    //     reg_t* kernel_context = (_kernel_reg_ctx_start+hart_id*sizeof(reg_context_t));
+    //     mscratch_w((reg_t*)kernel_context);
+    //     return ((reg_context_t*)kernel_context)->mepc;
+    // }
+    // else
+    // {
+    //     task->expire_time = now_time  + task->time_slice;
+    //     mscratch_w((reg_t)&task->reg_context);
+    //     return task->reg_context.mepc;
+    // }
 }
 
 /*******************************************************************************************

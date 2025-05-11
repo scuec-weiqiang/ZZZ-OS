@@ -205,7 +205,9 @@ __SELF __INLINE reg_t sp_r()
 
 __SELF __INLINE void satp_w(reg_t a)
 {   
+    asm volatile("sfence.vma zero, zero");
     asm volatile("csrw satp,%0"::"r"(a));
+    asm volatile("sfence.vma zero, zero");
 }
 
 __SELF __INLINE medeleg_w(reg_t a)
@@ -236,6 +238,22 @@ __SELF __INLINE reg_t sie_r()
     return a;
 }
 
+__SELF __INLINE reg_t sip_r()
+{
+    reg_t a;
+    asm volatile("csrr %0,sip" : "=r"(a));
+    return a;
+}
+#define SIP_SSIP (1 << 2) // software
+/***************************************************************
+ * @description: 
+ * @param {reg_t} a [in/out]:  
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void sip_w(reg_t a)
+{
+    asm volatile("csrw sip,%0"::"r"(a));
+}
 /***************************************************************
  * @description: Read supervisor status register
  * @return {*} Current sstatus value
@@ -343,6 +361,11 @@ __SELF __INLINE pmpaddr0_w(reg_t a)
     asm volatile("csrw pmpaddr0,%0"::"r"(a));
 }
 
+__SELF __INLINE void sfence_vma()
+{
+  // the zero, zero means flush all TLB entries.
+  asm volatile("sfence.vma zero, zero");
+}
 
 // #define M_TO_U(x)    __PROTECT( \
 //     mstatus_w(mscratch_r() & ~(3<<11));  \
@@ -351,7 +374,15 @@ __SELF __INLINE pmpaddr0_w(reg_t a)
 //     asm volatile("mret"); \
 // )
 
+__SELF __INLINE reg_t get_hart_id_s()
+{
+    reg_t a;
+    asm volatile("mv %0,tp" : "=r"(a));
+    return a;
+}
+
 #define M_TO_S(x)    __PROTECT( \
+    mstatus_w(mstatus_r() & ~(3<<11));\
     mstatus_w(mstatus_r() | (1<<11));  \
     mepc_w((reg_t)(x)); \
     asm volatile("mret"); \

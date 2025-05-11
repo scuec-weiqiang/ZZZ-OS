@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-16 21:02:39
- * @LastEditTime: 2025-05-02 17:05:58
+ * @LastEditTime: 2025-05-09 21:57:53
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -17,7 +17,7 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 *******************************************************************************************/
 #include "task.h"
-#include "page.h"
+#include "page_alloc.h"
 #include "riscv.h"
 #include "systimer.h"
 #include "list.h"
@@ -64,9 +64,9 @@ task_handle_t task_create(hart_id_t hart_id, void (*task)(void* param),uint64_t 
     task_ctrl_block->expire_time = 0;
     task_ctrl_block->priority = priority;
     task_ctrl_block->time_slice = time_slice;
-    task_ctrl_block->reg_context.ra = (uint64_t)task;
-    task_ctrl_block->reg_context.mepc = (uint64_t)task;
-    task_ctrl_block->reg_context.sp = (uint64_t)&task_ctrl_block->task_stack[TASK_STACK_SIZE-1];
+    // task_ctrl_block->reg_context.ra = (uint64_t)task;
+    // task_ctrl_block->reg_context.mepc = (uint64_t)task;
+    // task_ctrl_block->reg_context.sp = (uint64_t)&task_ctrl_block->task_stack[TASK_STACK_SIZE-1];
     list_add_tail(&need_add_task[hart_id],&task_ctrl_block->node);
 
     return (task_handle_t)task_ctrl_block;

@@ -30,7 +30,7 @@ LD = riscv64-unknown-elf-ld
 LFLAGS = -T$(LINK_SCRIPT) -Map=$(DIR_OUT)/$(PROJ_NAME).map
 # 默认情况下，编译工程里的全部文件；
 # 在某些情况下（比如有的模块只写了一半编译无法通过但是又需要半路去测试其他模块了，或者我完全不需要编译一些模块）
-# 可以只编译在part.mk文件中指明的文件，便于测试，在shell中输入make <你的其他指令> PART=1,就可以开启部分编译
+# 可以只编译在part.cfg文件中指明的文件，便于测试，在shell中输入make <你的其他指令> PART=1,就可以开启部分编译
 PART ?= 0
 CONFIG ?= part.cfg
 
@@ -102,7 +102,7 @@ clean:
 #********************************************************************************
 #qemu模拟器
 QEMU = qemu-system-riscv64
-QFLAGS = -nographic -smp 2 -machine virt -bios none -cpu rv64,pmp=false
+QFLAGS = -nographic -smp 1 -machine virt -bios none -cpu rv64
 
 #gdb
 GDB = gdb-multiarch

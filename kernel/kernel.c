@@ -3,10 +3,16 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-05-08 13:33:56
+ * @LastEditTime: 2025-05-10 18:09:34
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
+#include "printf.h"
+#include "page_alloc.h"
+#include "uart.h"
+#include "sched.h"
+#include "systimer.h"
+#include "vm.h"
 
 #include "riscv.h"
 #include "plic.h"
@@ -15,11 +21,7 @@
 #include "interrupt.h"
 #include "systimer.h"
 
-#include "printf.h"
-#include "page.h"
-#include "uart.h"
-#include "sched.h"
-#include "systimer.h"
+
 
 extern void os_main();
 uint8_t is_init = 0;
@@ -51,23 +53,31 @@ void wakeup_other_harts() {
 
 void init_kernel()
 {  
-    hart_id_t hart_id = mhartid_r();
+    trap_init();
+    hart_id_t hart_id = 0;
     if(hart_id == HART_0) // hart0 初始化全局资源
     {
         zero_bss();
         uart_init();
-        page_init();
+        page_alloc_init();
+        kernel_page_table_init();
         extern_interrupt_setting(hart_id,UART0_IRQN,1);
-        task_init();
+        // task_init();
         is_init = 1;
     }
-
+    printf("hart_id:%d\n", hart_id);
     while (is_init == 0){}
     // wakeup_other_harts();
     
     //每个核心初始化自己的资源
-    systimer_init(hart_id,SYS_HZ_100);
-    sched_init(hart_id);
-    global_interrupt_enable();
-    MACHINE_TO_USER(os_main);
-}
+    // systimer_init(hart_id,SYS_HZ_100);
+    // sched_init(hart_id);
+    // __clint_send_ipi(0);
+    // sip_w(sip_r() | 2);
+    while(1)
+    {
+
+    }
+    // global_interrupt_enable();
+    // M_TO_U(os_main);
+ }

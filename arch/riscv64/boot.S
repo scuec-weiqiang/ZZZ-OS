@@ -5,12 +5,12 @@ _start:
     csrw mie, zero
 
     csrr tp, mhartid # 读取hartid暂存到tp中
-    bnez t0, wait_hart
+    bnez tp, wait_hart
 
     # 栈设置
-    li t0 , STACK_SIZE
+    la t0 , _stack_size 
     mul t1 , tp , t0 # t1 = hartid * STACK_SIZE 
-    la t2, _kernel_stack_end
+    la t2, _stack_end
     sub sp,t2,t1 # 栈底 = _stack_end - hartid * STACK_SIZE
 
     # # 初始化mscratch指向栈顶（中断入口用）
@@ -23,6 +23,8 @@ _start:
 wait_hart:
     wfi
     j wait_hart
+
+.end
 
 
 

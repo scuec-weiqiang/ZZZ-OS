@@ -206,12 +206,12 @@ int _vprintf(const char* str,va_list vl)
 ***************************************************************/
 int printf(const char *str, ...)
 {
-    spin_lock(&printf_lock);
+    // spin_lock(&printf_lock);
     va_list vl;
     va_start(vl,str);
     int n = _vprintf(str,vl);
     va_end(vl);
-    spin_unlock(&printf_lock);
+    // spin_unlock(&printf_lock);
     return n;
 }
 

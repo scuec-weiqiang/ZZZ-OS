@@ -6,15 +6,16 @@
 #include "plic.h"
 #include "uart.h"
 #include "sched.h"
+#include "clint.h"
 
-extern void trap_entry();
+extern void kernel_trap_entry();
 
 reg_t timer_interrupt_handler(reg_t epc);
 void extern_interrupt_handler();
 
 void trap_init()
 {
-    mtvec_w((reg_t)trap_entry);
+    stvec_w((reg_t)kernel_trap_entry);
 }
 
 
@@ -34,8 +35,13 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
     {
         switch (cause_code)
         {
+            case 1:
+                printf("Supervisor software interruption!\n");
+                soft_interrupt_handler();
+                break;
             case 3:
-                printf("software interruption!\n");
+                printf("Machine software interruption!\n");
+                soft_interrupt_handler();
                 break;
             case 7:
                 // printf("timer interruption!\n");
@@ -53,8 +59,8 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
     }
     else
     {
-        // printf("\nmtval is %x\n",mtval_r());
-        // printf("occour in %x\n",epc);
+        printf("\nstval is %x\n",stval_r());
+        printf("occour in %x\n",epc);
         switch (cause_code)
         {
             case 0:
@@ -161,7 +167,8 @@ reg_t timer_interrupt_handler(reg_t epc )
 
 void soft_interrupt_handler()
 {
-    __clint_clear_ipi(mhartid_r());
+    sip_w(sip_r() & ~SIP_SSIP);
+    // __clint_clear_ipi(get_hart_id_s());
     // *(uint32_t*)CLINT_MSIP(0)=0;
     // __sw_without_save(&sched_context);
 }

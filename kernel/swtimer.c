@@ -9,7 +9,7 @@
  * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
 ***************************************************************/
 #include "types.h"
-#include "page.h"
+#include "page_alloc.h"
 #include "list.h"
 #include "systimer.h"
 #include "printf.h"

@@ -20,7 +20,9 @@
         "interrupt.h": "c",
         "plic.h": "c",
         "mm.h": "c",
-        "random": "c"
+        "random": "c",
+        "page_alloc.h": "c",
+        "maddr_def.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

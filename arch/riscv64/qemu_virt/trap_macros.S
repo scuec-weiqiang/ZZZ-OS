@@ -1,39 +1,15 @@
-#include "trap_macros.S"  // 包含宏定义
+#ifndef TRAP_MACROS_S          
+#define TRAP_MACROS_S          
 
-.section .text.trap
-.balign 4
-.global machine_timer_trap_entry
-machine_timer_trap_entry:
-    csrrw a3, mscratch, a3
-    sd a0, 0(a3)
-    sd a1, 8(a3)
-    sd a2, 16(a3)
 
-    ld a0, 24(a3)# timecmp(hartid)的地址
-    ld a1, 0(a0)# timecmp(hartid)的值
-    ld a2, 32(a3)# systimer_hz的值
-    add a2, a2, a1# 装载定时器
-    sd a2, 0(a0)
+#define LOAD        ld         // 定义LOAD为ld指令（加载寄存器）
+#define STORE       sd         // 定义STORE为sd指令（存储寄存器）
+#define REG_SIZE    8          // 定义寄存器大小为8字节（64位系统）
 
-    # 手动触发software interrupt
-    li a1, 2
-    csrw sip, a1
-
-    # li a0, 0x02000000    # MSIP 基地址
-    # li a1, 1             
-    # sw a1, 0(a0)         # 触发软件中断
-
-    ld a2, 16(a3)
-    ld a1, 8(a3)
-    ld a0, 0(a3)
-    csrrw a3, mscratch, a3
-
-    mret
-
-.balign 4
-.global kernel_trap_entry
-kernel_trap_entry:
-    # SAVE_CTX  
+.macro SAVE_CTX            
+    beq sscratch, zero, 1; # if sscratch == zero then 1
+    csrrw sp, sscratch, sp     
+    1:
     addi sp, sp, -288
     STORE ra,  1*REG_SIZE(sp)  
     STORE sp,  2*REG_SIZE(sp)  
@@ -73,15 +49,11 @@ kernel_trap_entry:
     csrr t0, scause            
     STORE t0, 35*REG_SIZE(sp)  
     csrr t0, stval             
-    STORE t0, 36*REG_SIZE(sp)    
-   
-    csrr a0, sepc
-    csrr a1, scause
-    csrr a2, sscratch
-    call trap_handler
-    # csrw sepc, a0
+    STORE t0, 36*REG_SIZE(sp)  
+.endm
+                
 
-    # RESTORE_CTX
+.macro RESTORE_CTX           
     LOAD t0, 36*REG_SIZE(sp)  
     csrw stval, t0            
     LOAD t0, 35*REG_SIZE(sp)  
@@ -122,6 +94,6 @@ kernel_trap_entry:
     LOAD sp, 2*REG_SIZE(sp)   
     LOAD ra, 1*REG_SIZE(sp) 
     addi sp, sp, 288  
+.endm
 
-    sret
-.end
+#endif                     

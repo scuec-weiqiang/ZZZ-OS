@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-09 00:45:04
- * @LastEditTime: 2025-05-09 02:42:04
+ * @LastEditTime: 2025-05-10 01:45:21
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -26,6 +26,10 @@
 
 #define PA2PTE(pa) (((uint64_t)(pa) >> 12) << 10)
 #define PTE2PA(pte) (((pte&0x3fffffffffffff) >> 10) << 12)
+
+#define SATP_SV39 (8L << 60)
+#define SATP_MODE SATP_SV39 
+#define MAKE_SATP(pagetable) (SATP_MODE | (((uint64_t)pagetable) >> 12))
 
 typedef uint64_t pte_t;
 typedef pte_t pgtbl_t;

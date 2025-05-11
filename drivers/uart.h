@@ -1,13 +1,12 @@
-/***************************************************************
- * @Author: weiqiang scuec_weiqiang@qq.com
- * @Date: 2024-10-26 16:38:03
- * @LastEditors: weiqiang scuec_weiqiang@qq.com
- * @LastEditTime: 2024-11-13 00:22:28
- * @FilePath: /my_code/include/uart.h
- * @Description: 
- * @
- * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
-***************************************************************/
+/**
+ * @FilePath: /ZZZ/drivers/uart.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-04-15 17:10:49
+ * @LastEditTime: 2025-05-09 21:44:04
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 #ifndef UART_H
 #define UART_H
 
@@ -25,7 +24,8 @@ typedef struct UART_REG
    uint8_t SPR;
 }UART_REG_t;
 
-#define UART0     (*(volatile UART_REG_t*)(0x10000000))
+#define UART_BASE  0x10000000
+#define UART0     (*(volatile UART_REG_t*)(UART_BASE))
 
 #define UART_TX_IDLE (1<<5)
 #define UART_RX_IDLE (1<<0)

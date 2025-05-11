@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-05-07 23:11:46
+ * @LastEditTime: 2025-05-09 21:21:39
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -18,16 +18,14 @@
 #ifndef __MADDR_DEF_H__
 #define __MADDR_DEF_H__
 
-extern char _text_start[], _text_end[];
-extern char _rodata_start[], _rodata_end[];
-extern char _data_start[], _data_end[];
-extern char _bss_start[], _bss_end[];
-extern char _systimer_ctx[];
-extern char _kernel_reg_ctx_start[], _kernel_reg_ctx_end[];
-extern char _kernel_stack_start[], _kernel_stack_end[];
-
+extern char _text_start[], _text_end[], _text_size[];
+extern char _rodata_start[], _rodata_end[], _rodata_size[];
+extern char _data_start[], _data_end[], _data_size[];
+extern char _bss_start[], _bss_end[], _bss_size[];
+extern char _stack_start[], _stack_end[], _stack_size[];
 extern char _heap_start[], _heap_end[],_heap_size[];
 
+extern char _systimer_ctx[];
 
 
 #endif

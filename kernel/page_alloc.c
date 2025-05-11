@@ -8,10 +8,12 @@
  * @
  * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
 ***************************************************************/
+#include "page_alloc.h"
 #include "printf.h"
 #include "types.h"
 #include "spinlock.h"
 #include "maddr_def.h"
+#include "string.h"
 
 spinlock_t page_lock = SPINLOCK_INIT;
 
@@ -21,18 +23,13 @@ typedef struct PageM
     uint8_t flags;
 }PageM_t;
 
-#define PAGE_SIZE                   4096
-#define NUM_RESERVED_PAGES          8
-#define RESERVED_PAGE_SIZE          NUM_RESERVED_PAGES*PAGE_SIZE 
-#define PAGE_ORDER                  12
-
 #define PAGE_TOKEN              0x01
 #define PAGE_LAST               0x02
 #define _CLEAR(x)               (x->flags = 0)
 #define _IS_FREE(x)             (!(x->flags&PAGE_TOKEN))
 #define _IS_LAST(x)             ((x->flags&PAGE_LAST)>>1)
 #define _SET_FLAG(x,y)          (x->flags|=y)
-#define _PAGE_IS_ALIGNED(addr)  (((addr) & ((1<<PAGE_ORDER) - 1))==0?1:0)
+#define _PAGE_IS_ALIGNED(addr)  (((addr) & ((1<<PAGE_SHIFT) - 1))==0?1:0)
 
 static addr_t _alloc_start = 0;
 static addr_t  _alloc_end = 0;
@@ -42,7 +39,7 @@ static uint64_t _num_pages = 0;
  * @description: 
  * @return {*}
 ***************************************************************/
-void page_init()
+void page_alloc_init()
 {
     /*
     保留 8*PAGE_SIZE 大小的内存用来管理page
@@ -118,8 +115,10 @@ void* page_alloc(uint64_t npages)
             }
             _SET_FLAG(pagem_j,PAGE_TOKEN);
             _SET_FLAG(pagem_j,PAGE_LAST);//表明它是末尾的内存page
+            addr_t pgaddr =  _alloc_start + ((((addr_t)pagem_i - (addr_t)_heap_start)/sizeof(PageM_t))*PAGE_SIZE);
+            memset(pgaddr,0x00,npages*PAGE_SIZE);
             spin_unlock(&page_lock);
-            return (void*)(_alloc_start + ((((addr_t)pagem_i - (addr_t)_heap_start)/sizeof(PageM_t))*PAGE_SIZE));//找到直接返回
+            return (void*)(pgaddr);//找到直接返回
         }
         
     }

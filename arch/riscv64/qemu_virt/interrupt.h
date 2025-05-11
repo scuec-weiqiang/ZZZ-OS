@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-15 21:14:52
- * @LastEditTime: 2025-05-08 00:24:22
+ * @LastEditTime: 2025-05-10 16:31:21
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -48,8 +48,8 @@ extern void s_extern_interrupt_disable();
 extern void s_soft_interrupt_enable();
 extern void s_soft_interrupt_disable();
 
+extern void extern_interrupt_setting(hart_id_t hart_id,uint32_t iqrn,uint32_t priority);
 
 
-extern void extern_interrupt_setting(uint64_t hart,uint64_t iqrn,uint64_t priority);
 
 #endif

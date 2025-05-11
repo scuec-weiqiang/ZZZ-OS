@@ -1,3 +1,12 @@
+/**
+ * @FilePath: /ZZZ/arch/riscv64/qemu_virt/clint.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-05-07 19:18:08
+ * @LastEditTime: 2025-05-10 17:37:11
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 /*******************************************************************************************
  * @FilePath: /ZZZ/arch/riscv64/qemu_virt/clint.h
  * @Description  : 核心本地中断控制器(Core Local Interruptor)头文件 ，用于定时器中断和软件中断的触发。
@@ -11,6 +20,7 @@
 #define CLINT_H
 
 #include "types.h"
+#include "platform.h"
 
 #define CLINT_BASE          0x02000000
 
@@ -56,7 +66,7 @@ __SELF __INLINE void __clint_mtimecmp_set(uint32_t hartid,uint64_t value)
  * @param hart_id 指定发送中断的 hart 的 ID
  */
 __SELF __INLINE void __clint_send_ipi(hart_id_t hart_id) {
-    volatile uint32_t *msip = (volatile uint32_t*)(CLINT_BASE + CLINT_MSIP(hart_id));
+    volatile uint32_t *msip = (volatile uint32_t*)(CLINT_MSIP(hart_id));
     *msip = 1;  // 写1触发MSIP中断
 }
 
@@ -69,7 +79,8 @@ __SELF __INLINE void __clint_send_ipi(hart_id_t hart_id) {
  * @param hart_id 要清除MSIP中断的HART ID
  */
 __SELF __INLINE void __clint_clear_ipi(hart_id_t hart_id) {
-    volatile uint32_t *msip = (volatile uint32_t*)(CLINT_BASE + CLINT_MSIP(hart_id));
+    volatile uint32_t *msip = (volatile uint32_t*)(CLINT_MSIP(hart_id));
     *msip = 0;  // 写0清除MSIP中断
 }
+
 #endif 

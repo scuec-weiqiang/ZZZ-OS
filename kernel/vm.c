@@ -3,16 +3,22 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-05-09 02:41:02
+ * @LastEditTime: 2025-05-10 21:05:08
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
+#include "clint.h"
+#include "plic.h"
+#include "uart.h"
+#include "page_alloc.h"
+
+#include "riscv.h"
 #include "mm.h"
 #include "platform.h"
-#include "page.h"
 #include "string.h"
+#include "maddr_def.h"
 
-pgtbl_t kernel_pgd;//kernel_page_global_directory 内核页全局目录
+pgtbl_t* kernel_pgd = NULL;//kernel_page_global_directory 内核页全局目录
 
 /**
  * @brief 从父页表中获取子页表
@@ -43,7 +49,7 @@ pgtbl_t* get_child_pgtbl(pgtbl_t *parent_pgd, uint64_t vpn_level, uint64_t va, b
             child_pgd = (pgtbl_t*)page_alloc(1);
             if(child_pgd == NULL) return NULL;
             memset(child_pgd,0,PAGE_SIZE);
-            //设置对应pmd的物理地址，并标记为有效（PTE_V
+            //设置对应子页表的物理地址，并标记为有效（PTE_V
             parent_pgd[vpn_level] = PA2PTE(child_pgd) | PTE_V;
             return child_pgd;
         }
@@ -81,10 +87,10 @@ pte_t* page_walk(pgtbl_t *pgd, uint64_t va, bool create)
     pmd = get_child_pgtbl(pgd,vpn2,va,true);//获取对应pmd的物理地址
     if(pmd == NULL) return NULL;
     
-    pte = get_child_page(pmd,vpn1,va,true);
+    pte = get_child_pgtbl(pmd,vpn1,va,true);
     if (pte == NULL) return NULL;
-     
-    return (pte_t*)pte;
+    
+    return (pte_t*)&pte[vpn0];
 }
 
 /**
@@ -110,18 +116,43 @@ int map_pages(pgtbl_t *pgd, uint64_t vaddr, uint64_t paddr, size_t size, uint64_
     if(vaddr % PAGE_SIZE != 0 || paddr % PAGE_SIZE != 0) return -1;
     // 检查 size 是否为页面大小的整数倍
     if(size % PAGE_SIZE != 0) return -1;
-
     // 遍历所有需要映射的页，并设置对应的页表项（PTE）
-    for(uint64_t va = vaddr; va < vaddr+size; va += PAGE_SIZE, paddr += PAGE_SIZE) 
+    for(uint64_t va = vaddr; va <= vaddr+size; va += PAGE_SIZE, paddr += PAGE_SIZE) 
     {
         // 在页表中查找或创建页表项（PTE）
-        pte_t *pte = page_walk(&pgd, va, true);
+        pte_t *pte = page_walk(pgd, va, true);
         if (pte == NULL)
         {
             // 无法找到或创建页表项，返回错误码
             return -1;
         }
         // 设置页表项（PTE）的值
-        *pte = ((paddr >> 12) << 10) | flags | PTE_V;
+        *pte = PA2PTE(paddr) | flags | PTE_V;
+        // printf("va = %x,pa = %x,pte = %x,pte_value = %x\n",va,paddr,*pte,((paddr>>12)<<10));
     }
+}
+
+
+void kernel_page_table_init()
+{
+    kernel_pgd = (pgtbl_t*)page_alloc(1);
+    if(kernel_pgd == NULL) return;
+    memset(kernel_pgd,0,PAGE_SIZE);
+
+    // map_pages(kernel_pgd,0x80000000,0x80000000,0x8000000,PTE_R | PTE_W |PTE_X);
+    // 映射内核代码段，数据段，栈以及堆的保留页到虚拟地址空间 
+    map_pages(kernel_pgd,_text_start,_text_start,_text_size,PTE_R | PTE_X);
+    map_pages(kernel_pgd,_rodata_start,_rodata_start,_rodata_size,PTE_R);
+    map_pages(kernel_pgd,_data_start,_data_start,_data_size,PTE_R | PTE_W);
+    map_pages(kernel_pgd,_bss_start,_bss_start,_bss_size,PTE_R | PTE_W);
+    map_pages(kernel_pgd,_stack_start,_stack_start,_stack_size,PTE_R | PTE_W);
+    map_pages(kernel_pgd,_heap_start,_heap_start,RESERVED_PAGE_SIZE,PTE_R | PTE_W);
+
+    //映射外设寄存器地址空间到内核虚拟地址空间
+    map_pages(kernel_pgd,CLINT_BASE,CLINT_BASE,PAGE_SIZE,PTE_R | PTE_W);
+    map_pages(kernel_pgd,PLIC_BASE,PLIC_BASE,0x200*PAGE_SIZE,PTE_R | PTE_W);
+    map_pages(kernel_pgd,UART_BASE,UART_BASE,PAGE_SIZE,PTE_R | PTE_W);
+    
+    //设置satp寄存器
+    satp_w(MAKE_SATP(kernel_pgd));
 }

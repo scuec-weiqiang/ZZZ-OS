@@ -88,50 +88,6 @@ void m_soft_interrupt_disable()
     mie_w(mie_r()&(~0x08));
 }
 
-/***************************************************************
- * @description: 开启全局中断
- * @return {*}
-***************************************************************/
-void s_global_interrupt_enable()
-{
-    sstatus_w(sstatus_r()|(0x08));
-}
-
-/***************************************************************
- * @description: 关闭全局中断
- * @return {*}
-***************************************************************/
-void s_global_interrupt_disable()
-{
-    sstatus_w(sstatus_r()&(~0x08));
-}
-
-/***************************************************************
- * @description: 开启内核tick定时器中断
- * @return {*}
-***************************************************************/
-void s_timer_interrupt_enable()
-{
-    sie_w(sie_r()|0x80);
-}
-
-/***************************************************************
- * @description: 开启外部中断
- * @return {*}
-***************************************************************/
-void s_extern_interrupt_enable()
-{
-    sie_w(sie_r()|0x800);
-}
-
-/***************************************************************
- * @description: 关闭外部中断
- * @return {*}
-***************************************************************/
-void s_extern_interrupt_disable()
-{
-    sie_w(sie_r()&(~0x800));
-}
 
 /***************************************************************
  * @description: 外部中断设置
@@ -147,21 +103,51 @@ void extern_interrupt_setting(hart_id_t hart_id,uint32_t iqrn,uint32_t priority)
     __plic_interrupt_enable(hart_id,iqrn);
 } 
 
+void s_global_interrupt_enable()
+{
+    sstatus_w(sstatus_r()|(0x02));
+}
 
+void s_global_interrupt_disable()
+{
+    sstatus_w(sstatus_r()&(~0x02));
+}
+
+void s_timer_interrupt_enable()
+{
+    sie_w(sie_r()|0x20);
+}
+
+void s_timer_interrupt_disable()
+{
+    sie_w(sie_r()&(~0x20));
+}
 /***************************************************************
- * @description: 开启soft中断
+ * @description: 开启外部中断
  * @return {*}
 ***************************************************************/
-void s_soft_interrupt_enable()
+void s_extern_interrupt_enable()
 {
-    sie_w(sie_r()|0x08);
+    sie_w(sie_r()|0x200);
 }
 
 /***************************************************************
- * @description: 关闭soft中断
+ * @description: 关闭外部中断
  * @return {*}
 ***************************************************************/
+void s_extern_interrupt_disable()
+{
+    sie_w(sie_r()&(~0x100));
+}
+
+
+
+void s_soft_interrupt_enable()
+{
+    sie_w(sie_r()|0x02);
+}
+
 void s_soft_interrupt_disable()
 {
-    sie_w(sie_r()&(~0x08));
+    sie_w(sie_r()&(~0x02));
 }
