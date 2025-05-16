@@ -127,3 +127,7 @@ qemu:os
 .PHONY:gdb
 gdb:os
 	@$(GDB) $(TARGET)  -tui -q -x gdbinit
+
+.PHONY:disk
+disk:
+	dd if=/dev/zero of=disk.img bs=1M count=64

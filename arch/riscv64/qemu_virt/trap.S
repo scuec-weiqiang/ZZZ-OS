@@ -19,10 +19,6 @@ machine_timer_trap_entry:
     li a1, 2
     csrw sip, a1
 
-    # li a0, 0x02000000    # MSIP 基地址
-    # li a1, 1             
-    # sw a1, 0(a0)         # 触发软件中断
-
     ld a2, 16(a3)
     ld a1, 8(a3)
     ld a0, 0(a3)
