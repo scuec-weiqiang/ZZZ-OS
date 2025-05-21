@@ -3,10 +3,11 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-05-10 21:05:08
+ * @LastEditTime: 2025-05-20 21:32:28
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
+#include "virtio.h"
 #include "clint.h"
 #include "plic.h"
 #include "uart.h"
@@ -152,7 +153,7 @@ void kernel_page_table_init()
     map_pages(kernel_pgd,CLINT_BASE,CLINT_BASE,PAGE_SIZE,PTE_R | PTE_W);
     map_pages(kernel_pgd,PLIC_BASE,PLIC_BASE,0x200*PAGE_SIZE,PTE_R | PTE_W);
     map_pages(kernel_pgd,UART_BASE,UART_BASE,PAGE_SIZE,PTE_R | PTE_W);
-    
+    map_pages(kernel_pgd,VIRTIO_MMIO_BASE,VIRTIO_MMIO_BASE,PAGE_SIZE,PTE_R | PTE_W);
     //设置satp寄存器
     satp_w(MAKE_SATP(kernel_pgd));
 }
