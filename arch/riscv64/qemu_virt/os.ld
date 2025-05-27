@@ -34,7 +34,7 @@ SECTIONS
     .data : ALIGN(8) {
         _data_start = .;
         . = ALIGN(4096);
-        *(.data .data.*)
+        *(.data .data.* .sdata)
         . = ALIGN(8);
         _systimer_ctx = .;
         . += 5*8*CORE_NUM;  /* 为每个核心预留定时器上下文空间 */
@@ -43,9 +43,8 @@ SECTIONS
     } > RAM 
 
     .bss : ALIGN(8) {
-        . = ALIGN(4096);
         _bss_start = .;
-        *(.bss .bss.*)
+        *(.bss .bss.* .sbss)
         *(COMMON)
         . = ALIGN(4096);
         _bss_end = .;

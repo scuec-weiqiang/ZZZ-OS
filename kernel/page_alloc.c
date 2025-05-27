@@ -14,7 +14,6 @@
 #include "spinlock.h"
 #include "maddr_def.h"
 #include "string.h"
-
 spinlock_t page_lock = SPINLOCK_INIT;
 
 //page management struct
@@ -35,6 +34,17 @@ static addr_t _alloc_start = 0;
 static addr_t  _alloc_end = 0;
 static uint64_t _num_pages = 0;
 
+void print_maddr()
+{
+    printf("_text_start = %x---->",&_text_start);printf("_text_end = %x\n",&_text_end);
+    printf("_rodata_start = %x---->",&_rodata_start);printf("_rodata_end = %x\n",&_rodata_end);
+    printf("_data_start = %x---->",&_data_start);printf("_data_end = %x\n",&_data_end);
+    printf("_bss_start = %x---->",&_bss_start);printf("_bss_end = %x\n",&_bss_end);
+    printf("_heap_start = %x---->",&_heap_start);printf("_heap_end = %x\n",&_heap_end);
+    printf("_heap_size = %x\n",&_heap_size);
+    printf("_stack_start = %x---->",&_stack_start);printf("_stack_end = %x\n",&_stack_end);
+
+}
 /***************************************************************
  * @description: 
  * @return {*}
@@ -44,6 +54,7 @@ void page_alloc_init()
     /*
     保留 8*PAGE_SIZE 大小的内存用来管理page
     */
+    print_maddr();
     _num_pages = ((addr_t)_heap_size-RESERVED_PAGE_SIZE)/PAGE_SIZE;
     _alloc_start = (addr_t)_heap_start + RESERVED_PAGE_SIZE; 
     _alloc_end = _alloc_start + _num_pages*PAGE_SIZE;
@@ -60,7 +71,6 @@ void page_alloc_init()
     }
     printf("page init success\n");
 }
-
 
 /***************************************************************
  * @description: 
@@ -103,6 +113,7 @@ void* page_alloc(uint64_t npages)
             }
 
         }
+
         if(0 == num_blank)//没找到接着后面继续找
         {
             pagem_i  = pagem_j++;
@@ -116,7 +127,8 @@ void* page_alloc(uint64_t npages)
             _SET_FLAG(pagem_j,PAGE_TOKEN);
             _SET_FLAG(pagem_j,PAGE_LAST);//表明它是末尾的内存page
             addr_t pgaddr =  _alloc_start + ((((addr_t)pagem_i - (addr_t)_heap_start)/sizeof(PageM_t))*PAGE_SIZE);
-            memset(pgaddr,0x00,npages*PAGE_SIZE);
+            printf("pgaddr = %x\n",pgaddr);
+            // memset((void*)pgaddr,0x00,npages*PAGE_SIZE);
             spin_unlock(&page_lock);
             return (void*)(pgaddr);//找到直接返回
         }
@@ -124,6 +136,15 @@ void* page_alloc(uint64_t npages)
     }
     spin_unlock(&page_lock);
     return NULL;
+}
+void print_page(uint64_t start,uint64_t end)
+{
+    PageM_t *pagem_i = (PageM_t*)_heap_start+start;
+    for(int i=start;i<end;i++)
+    {
+        printf("pagem %x ->>%x = %x\n",pagem_i, _alloc_start + ((((addr_t)pagem_i - (addr_t)_heap_start)/sizeof(PageM_t))*PAGE_SIZE),_IS_FREE(pagem_i));
+        pagem_i++;
+    }
 }
 
 

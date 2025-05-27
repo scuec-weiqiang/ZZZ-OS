@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-05-10 18:09:34
+ * @LastEditTime: 2025-05-27 14:10:49
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -13,6 +13,7 @@
 #include "sched.h"
 #include "systimer.h"
 #include "vm.h"
+#include "virt_disk.h"
 
 #include "riscv.h"
 #include "plic.h"
@@ -60,8 +61,16 @@ void init_kernel()
         zero_bss();
         uart_init();
         page_alloc_init();
-        kernel_page_table_init();
+        // kernel_page_table_init();
         extern_interrupt_setting(hart_id,UART0_IRQN,1);
+        virt_disk_init(); 
+        uint8_t *buffer1 = (uint8_t *)page_alloc(1);
+        uint8_t *buffer2 = (uint8_t *)page_alloc(1);
+        buffer1[0] = 1;
+        virt_disk_rw(buffer1, 0, VIRT_DISK_WRITE);
+        virt_disk_rw(buffer2, 0, VIRT_DISK_READ);
+        printf("virt_disk_rw:%d\n", buffer2[0]);
+
         // task_init();
         is_init = 1;
     }

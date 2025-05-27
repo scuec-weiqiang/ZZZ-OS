@@ -36,7 +36,7 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
         switch (cause_code)
         {
             case 1:
-                printf("Supervisor software interruption!\n");
+                // printf("Supervisor software interruption!\n");
                 soft_interrupt_handler();
                 break;
             case 3:

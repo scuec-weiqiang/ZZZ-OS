@@ -10,8 +10,12 @@
                 "-smp", "1",
                 "-machine", "virt",
                 "-bios", "none",
+                "-cpu","rv64",
                 "-kernel", "${workspaceFolder}/out/${workspaceFolderBasename}.elf",
-                "-s", "-S"
+                "-drive", "file=${workspaceFolder}/disk.img,format=raw,if=none,id=disk0",
+                "-device", "virtio-blk-device,drive=disk0,bus=virtio-mmio-bus.0",
+                "-global", "virtio-mmio.force-legacy=false",
+                "-s", "-S",
             ],
             "isBackground": true,
             "problemMatcher": {

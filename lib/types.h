@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-15 17:27:48
- * @LastEditTime: 2025-05-09 02:44:13
+ * @LastEditTime: 2025-05-27 13:50:19
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -19,8 +19,8 @@
         typedef unsigned short      uint16_t;       
         typedef int                 int32_t;
         typedef unsigned int        uint32_t;
-        typedef long long           int64_t;
-        typedef unsigned long long  uint64_t;
+        typedef long                int64_t;
+        typedef unsigned long       uint64_t;
         typedef uint64_t            max_uint_t;
         typedef uint64_t            addr_t;
         typedef uint64_t            size_t;

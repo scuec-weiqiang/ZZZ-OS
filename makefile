@@ -103,7 +103,9 @@ clean:
 #qemu模拟器
 QEMU = qemu-system-riscv64
 QFLAGS = -nographic -smp 1 -machine virt -bios none -cpu rv64
-
+QFLAGS += -drive file=disk.img,if=none,format=raw,id=disk0
+QFLAGS += -device virtio-blk-device,drive=disk0,bus=virtio-mmio-bus.0
+QFLAGS += -global virtio-mmio.force-legacy=false
 #gdb
 GDB = gdb-multiarch
 GFLAGS = -tui -q -x gdbinit
@@ -127,3 +129,11 @@ qemu:os
 .PHONY:gdb
 gdb:os
 	@$(GDB) $(TARGET)  -tui -q -x gdbinit
+
+.PHONY:disk
+disk:
+	dd if=/dev/zero of=disk.img bs=1M count=64
+
+.PHONY:dump
+dump:
+	riscv64-unknown-elf-objdump -D -m riscv $(TARGET) > $(DIR_OUT)/disassembly.asm
