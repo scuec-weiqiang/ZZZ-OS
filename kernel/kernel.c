@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-05-27 14:10:49
+ * @LastEditTime: 2025-05-28 16:32:20
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -69,7 +69,7 @@ void init_kernel()
         buffer1[0] = 1;
         virt_disk_rw(buffer1, 0, VIRT_DISK_WRITE);
         virt_disk_rw(buffer2, 0, VIRT_DISK_READ);
-        printf("virt_disk_rw:%d\n", buffer2[0]);
+        printf("virt_disk_rw:%x\n", (uint8_t*)buffer2[0]);
 
         // task_init();
         is_init = 1;

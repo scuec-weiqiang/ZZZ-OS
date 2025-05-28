@@ -22,7 +22,9 @@
         "mm.h": "c",
         "random": "c",
         "page_alloc.h": "c",
-        "maddr_def.h": "c"
+        "maddr_def.h": "c",
+        "spinlock.h": "c",
+        "virtio.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

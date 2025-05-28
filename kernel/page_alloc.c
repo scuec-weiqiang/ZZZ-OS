@@ -54,7 +54,7 @@ void page_alloc_init()
     /*
     保留 8*PAGE_SIZE 大小的内存用来管理page
     */
-    print_maddr();
+    // print_maddr();
     _num_pages = ((addr_t)_heap_size-RESERVED_PAGE_SIZE)/PAGE_SIZE;
     _alloc_start = (addr_t)_heap_start + RESERVED_PAGE_SIZE; 
     _alloc_end = _alloc_start + _num_pages*PAGE_SIZE;
@@ -127,7 +127,7 @@ void* page_alloc(uint64_t npages)
             _SET_FLAG(pagem_j,PAGE_TOKEN);
             _SET_FLAG(pagem_j,PAGE_LAST);//表明它是末尾的内存page
             addr_t pgaddr =  _alloc_start + ((((addr_t)pagem_i - (addr_t)_heap_start)/sizeof(PageM_t))*PAGE_SIZE);
-            printf("pgaddr = %x\n",pgaddr);
+            // printf("pgaddr = %x\n",pgaddr);
             // memset((void*)pgaddr,0x00,npages*PAGE_SIZE);
             spin_unlock(&page_lock);
             return (void*)(pgaddr);//找到直接返回

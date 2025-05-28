@@ -132,7 +132,11 @@ gdb:os
 
 .PHONY:disk
 disk:
-	dd if=/dev/zero of=disk.img bs=1M count=64
+	dd if=/dev/urandom of=disk.img bs=1M count=64
+
+.PHONY:disk_clean
+disk_clean:
+	rm disk.img
 
 .PHONY:dump
 dump:

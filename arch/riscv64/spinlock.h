@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-01 23:29:09
- * @LastEditTime: 2025-05-26 18:38:05
+ * @LastEditTime: 2025-05-28 01:27:15
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -13,7 +13,7 @@
 
 #include "types.h"
 
-typedef struct {
+typedef struct spinlock {
     volatile uint32_t lock;
 } spinlock_t;
 

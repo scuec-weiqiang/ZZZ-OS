@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-23 15:56:44
- * @LastEditTime: 2025-05-27 14:32:04
+ * @LastEditTime: 2025-05-28 16:32:06
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -37,7 +37,7 @@ typedef struct virt_disk
     // disk command headers.
     // one-for-one with descriptors, for convenience.
     struct virtio_blk_req req[QUEUE_NUM];
-    uint8_t status;
+    uint8_t status[QUEUE_NUM];
 }virt_disk_t;
 
 virt_disk_t virt_disk;
@@ -45,6 +45,17 @@ virt_disk_t virt_disk;
 void virt_disk_init(void)
 {
     virtio_blk_init();
+
+    virtio->queue_sel = VIRT_DISK_QUEUE;
+
+    if(virtio->queue_num_max == 0)
+    {
+        panic(RED("virtio disk has no queue!\n"));
+    }
+    else if(virtio->queue_num_max < QUEUE_NUM)
+    {
+        panic(RED("virtio disk has too few queues!\n"));
+    }
 
     virt_disk.disk_queue.desc = (virtq_desc_t*)page_alloc(1);
     virt_disk.disk_queue.avail = (virtq_avail_t*)page_alloc(1);
@@ -54,33 +65,26 @@ void virt_disk_init(void)
     memset(virt_disk.disk_queue.avail, 0, 4096);
     memset(virt_disk.disk_queue.used, 0, 4096);
 
-    virtio->queue_sel = VIRT_DISK_QUEUE;
-    __sync_synchronize();
     virtio->queue_num = QUEUE_NUM;
-
-    __sync_synchronize();
 
     virtio->queue_desc_low = (uint32_t)((uint64_t) virt_disk.disk_queue.desc & 0xFFFFFFFF);
     virtio->queue_desc_high = (uint32_t)((uint64_t)virt_disk.disk_queue.desc >> 32);
 
-    __sync_synchronize();
-    
-    virtio->queue_driver_low = (uint32_t)((uint64_t)virt_disk.disk_queue.avail & 0xFFFFFFFF);
-    virtio->queue_driver_high = (uint32_t)((uint64_t)virt_disk.disk_queue.avail >> 32);
+    virtio->queue_avail_low = (uint32_t)((uint64_t)virt_disk.disk_queue.avail & 0xFFFFFFFF);
+    virtio->queue_avail_high = (uint32_t)((uint64_t)virt_disk.disk_queue.avail >> 32);
 
-    __sync_synchronize();
-    
-    virtio->queue_device_low = (uint32_t)((uint64_t)virt_disk.disk_queue.used & 0xFFFFFFFF);
-    virtio->queue_device_high = (uint32_t)((uint64_t)virt_disk.disk_queue.used >> 32);
+    virtio->queue_used_low= (uint32_t)((uint64_t)virt_disk.disk_queue.used & 0xFFFFFFFF);
+    virtio->queue_used_high = (uint32_t)((uint64_t)virt_disk.disk_queue.used >> 32);
 
-    __sync_synchronize();
 
     virtio->queue_ready = 1;
-    __sync_synchronize();
-    if(virtio->queue_ready != 1)
+
+    if(!virtio->queue_ready)
     {
         panic(RED("virtio disk is not ready!\n"));
     }
+
+    __sync_synchronize();
 
 
     for(uint32_t i = 0;i < QUEUE_NUM;i++)
@@ -189,20 +193,21 @@ int virt_disk_rw(void *buffer, uint64_t sector, virt_disk_rw_t rwflag)
     virt_disk.disk_queue.desc[index[1]].len = BLOCK_SIZE;
     if (rwflag == VIRT_DISK_READ)// 如果是从磁盘读数据 
     {
-        virt_disk.disk_queue.desc[index[1]].flags = VIRTQ_DESC_F_WRITE; // 那就要告诉设备，表明设备需要往这里写数据
+        virt_disk.disk_queue.desc[index[1]].flags = VIRTQ_DESC_F_NEXT|VIRTQ_DESC_F_WRITE; // 那就要告诉设备，表明设备需要往这里写数据
     }
     else // 如果是向磁盘写数据
     {
-        virt_disk.disk_queue.desc[index[1]].flags = 0; // 则不需要指明
+        virt_disk.disk_queue.desc[index[1]].flags =  VIRTQ_DESC_F_NEXT|0; // 则不需要指明
     }
     virt_disk.disk_queue.desc[index[1]].next = index[2];
 
     // 配置状态码
-    virt_disk.disk_queue.desc[index[2]].addr = (uint64_t)virt_disk.status;
+    virt_disk.disk_queue.desc[index[2]].addr = (uint64_t)&virt_disk.status[index[0]];
     virt_disk.disk_queue.desc[index[2]].len = 1;
     virt_disk.disk_queue.desc[index[2]].flags = VIRTQ_DESC_F_WRITE;
     virt_disk.disk_queue.desc[index[2]].next = 0;
 
+    
     virt_disk.disk_queue.avail->ring[virt_disk.disk_queue.avail->idx % QUEUE_NUM] = index[0];
     __sync_synchronize();
     virt_disk.disk_queue.avail->idx += 1;
@@ -213,9 +218,15 @@ int virt_disk_rw(void *buffer, uint64_t sector, virt_disk_rw_t rwflag)
 
     while(virt_disk.last_used_idx == virt_disk.disk_queue.used->idx){}
     virt_disk.last_used_idx = virt_disk.disk_queue.used->idx;
+   
     spin_unlock(&virt_disk.disk_lock);
-    if (virt_disk.status != 0)
+    if (virt_disk.status[index[0]] != 0)
+    {
         return -1;
+    }
     else
+    {
         return 0;
+    }
+
 }

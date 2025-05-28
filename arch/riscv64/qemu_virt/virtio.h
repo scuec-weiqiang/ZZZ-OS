@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-20 20:12:02
- * @LastEditTime: 2025-05-27 14:30:45
+ * @LastEditTime: 2025-05-28 15:24:35
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -44,11 +44,11 @@ typedef volatile struct virtio_mmio_regs {
 /*0x080*/    volatile uint32_t queue_desc_low;
 /*0x084*/    volatile uint32_t queue_desc_high;
 /*0x088*/    volatile uint8_t  reserved_8[8];
-/*0x090*/    volatile uint32_t queue_driver_low;
-/*0x094*/    volatile uint32_t queue_driver_high;
+/*0x090*/    volatile uint32_t queue_avail_low;
+/*0x094*/    volatile uint32_t queue_avail_high;
 /*0x098*/    volatile uint8_t  reserved_9[8];
-/*0x0a0*/    volatile uint32_t queue_device_low;
-/*0x0a4*/    volatile uint32_t queue_device_high;
+/*0x0a0*/    volatile uint32_t queue_used_low;
+/*0x0a4*/    volatile uint32_t queue_used_high;
 /*0x0a8*/    volatile uint8_t reserved_10[84];
 /*0x0fc*/    volatile uint32_t config_generation; // 配置生成号（忽略） 
 /*0x100*/    volatile uint32_t config[0];     // 设备配置空间（块设备为 struct virtio_blk_config）
@@ -144,12 +144,14 @@ typedef struct virtq
 
 #define VIRTIO_BLK_T_IN  0 // read the disk
 #define VIRTIO_BLK_T_OUT 1 // write the disk
-typedef struct virtio_blk_req
+struct virtio_blk_req
 {
     uint32_t type;
     uint32_t reserved;
     uint64_t sector;
-}virtio_blk_req_t;;
+} __attribute__((packed));
+
+typedef struct virtio_blk_req virtio_blk_req_t;
 
 extern void virtio_blk_init();
 
