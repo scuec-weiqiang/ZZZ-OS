@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-21 14:21:01
- * @LastEditTime: 2025-05-28 15:47:21
+ * @LastEditTime: 2025-06-30 01:12:24
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -23,6 +23,7 @@
 
 volatile virtio_mmio_regs_t *virtio = (volatile virtio_mmio_regs_t *)VIRTIO_MMIO_BASE;
 
+
 void virtio_blk_init()
 {
     printf("magic=%x, version=%x, vendor_id=%x\n", virtio->magic, virtio->version, virtio->vendor_id);
@@ -41,7 +42,6 @@ void virtio_blk_init()
     // 2. Set the ACKNOWLEDGE status bit: the guest OS has noticed the device
     status |= VIRTIO_CONFIG_S_ACKNOWLEDGE;
     virtio->status = status;
-    printf("status = %x,addr=%x\n", virtio->status,&virtio->status);
     __sync_synchronize();
 
     // 3. Set the DRIVER status bit: the guest OS knows how to drive the device.

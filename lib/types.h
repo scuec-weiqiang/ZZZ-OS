@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-15 17:27:48
- * @LastEditTime: 2025-05-27 13:50:19
+ * @LastEditTime: 2025-05-31 14:23:10
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -25,6 +25,12 @@
         typedef uint64_t            addr_t;
         typedef uint64_t            size_t;
         typedef uint64_t            reg_t;
+
+        #define UINT8_MAX     (0xff)
+        #define UINT16_MAX    (0xffff)
+        #define UINT32_MAX    (0xffffffff)
+        #define UINT64_MAX    (0xffffffffffffffff)
+
     #endif 
 
     #if 32==SYSTEM_BITS
@@ -64,17 +70,18 @@
     #define STATIC_INLINE   static inline 
     #define __PROTECT(x)       do{x}while(0)
     
-    // typedef enum
-    // {
-    //     SUCCESS,// 成功
-    //     NOT_FOUND_ERROR,// 未找到匹配的数据
-    //     FULL_SIZE_ERROR,// 表/缓冲区已满
-    //     INDEX_OUT_OF_BOUNDS_ERROR,// 标号索引越界
-    //     MEMORY_ALLOCATION_ERROR,// 内存分配错误
-    //     MEMORY_FREE_ERROR,// 内存释放错误
-    //     NULL_POINTER_ERROR,// 空指针
-    //     TIMEOUT_ERROR,// 超时
-    // }status_t;
+    typedef enum
+    {
+        SUCCESS,// 成功
+        NOT_FOUND_ERROR,// 未找到匹配的数据
+        FULL_SIZE_ERROR,// 表/缓冲区已满
+        INDEX_OUT_OF_BOUNDS_ERROR,// 标号索引越界
+        MEMORY_ALLOCATION_ERROR,// 内存分配错误
+        MEMORY_FREE_ERROR,// 内存释放错误
+        NULL_POINTER_ERROR,// 空指针
+        TIMEOUT_ERROR,// 超时
+        PARAMETER_ERROR,// 参数错误
+    }status_t;
 
     
 #endif 

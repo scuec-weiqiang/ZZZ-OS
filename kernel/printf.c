@@ -3,224 +3,146 @@
 #include "uart.h"
 #include "spinlock.h"
 
+#define __PBUFF_SIZE 4096
+
+// 全局 printf 锁
 spinlock_t printf_lock = SPINLOCK_INIT;
 
-#define __PBUFF_SIZE 1024
+// 对齐，避免 64 位 RISC-V 栈错位
+static char printf_buff[__PBUFF_SIZE] __attribute__((aligned(8)));
 
-static char printf_buff[__PBUFF_SIZE];//输出缓冲区1k字节
-
-/***************************************************************
- * @description: 将一个无符号整型数转换为字符串
- * @param {char*} str [out]:  字符串
- * @param {unsigned int} pos [in]:  从<str>的哪个位置开始写入字符串
- * @param {int} num [in]:  需要转化的数字
- * @param {int} decimal [in]:  进制,可选2，10，16
- * @return {int} 返回转化后字符串长度
-***************************************************************/
-int num2char(char* str,unsigned int pos,unsigned int num,int decimal)
+/**
+ * 数字转字符串（支持 10/16/2 进制）
+ */
+int num2char(char* str, unsigned int pos, unsigned long long num, int decimal)
 {
-    unsigned int digit = 1;//进制下位数
+    unsigned int digit = 1;
+    for (unsigned long long temp = num; temp /= decimal; digit++);
 
-    for(int temp = num;temp/=decimal;digit++);//记录在decimal进制下有多少位
-    if(NULL != str)
-    {
-        switch (decimal)
-        {
-            case 16:
-                str[pos] = '0';pos++;str[pos] = 'x';pos++;
-                break;
-            case 2:
-                str[pos] = '0';pos++;str[pos] = 'b';pos++;
-                break;   
-            case 10:
-                break;
-            default:
-                return -1;
+    if (str) {
+        if (decimal == 16) {
+            str[pos++] = '0'; str[pos++] = 'x';
+        } else if (decimal == 2) {
+            str[pos++] = '0'; str[pos++] = 'b';
         }
-        for(int i=digit-1;i>=0;i--)//从第一位开始将需要格式化的地方替换为字符数字
-        {   
-            unsigned long long temp = 0;
-            temp = num % decimal;
-            if(temp>=10) //考虑16进制中出现字母
-            {
-                temp -= 10; 
-                temp +='a';
-                str[pos+i] = temp;
-            }
-            else
-            {
-                str[pos+i] = '0' + temp;//替换为数字字符
-            }
+        for (int i = digit - 1; i >= 0; i--) {
+            int rem = num % decimal;
+            str[pos + i] = (rem < 10) ? ('0' + rem) : ('a' + rem - 10);
             num /= decimal;
         }
     }
-
-    if(10 == decimal) return digit;
-    else              return digit+2;//这里返回的是数字转化为字符串之后的长度，16进制与2进制因为前面有0x或0b所以要多加两位
-
-    
+    return digit + ((decimal == 10) ? 0 : 2);
 }
 
-/***************************************************************
- * @description: 
- * @param {char*} out_buff [out]:  输出缓冲区
- * @param {char} *str [in]:  源字符串
- * @param {va_list} valist [in]:  可变参数列表
- * @return {*}
-***************************************************************/
-int _vsprintf(char* out_buff,const char *str,va_list vl)
+/**
+ * 格式化核心
+ */
+int _vsprintf(char* out_buff, const char *fmt, va_list vl)
 {
-    uint8_t format = 0;//置一表明遍历到了需要格式化输出的位置，比如%d
-	size_t pos = 0;//这是输出缓冲区的下标
-    #if SYSTEM_BITS != 64
-    uint8_t longarg = 0;//long型标志位
-    #endif
-    uint8_t decimal = 0;//进制标志位
+    int pos = 0, format = 0, decimal = 0;
 
-    for(;(*str);str++)//遍历整个字符串
-    {
-        if(1 == format)//遍历到需要格式化输出的部分
-        {
-            switch( (*str) )
-            {   
-                case 'l': 
-
-                #if SYSTEM_BITS != 64
-                    longarg = 1;
-                #endif
-                goto DEC;
-
-                case 'x':decimal = 16;goto DEC;
-                case 'b':decimal = 2;goto DEC;
-                case 'd':
-                    DEC://整数输出
-
-                    #if SYSTEM_BITS != 64 
-                    int64_t num = longarg?va_arg(vl,int64_t):va_arg(vl,int32_t);
-                    #else
-                    int64_t num = va_arg(vl,int64_t);
-                    #endif
-                    
-                    if(0 == decimal)
-                    {
-                        decimal = 10;
-                        if(num<0 && NULL != out_buff)
-                        {
-                            num = -num; 
-                            out_buff[pos] = '-';
-                            pos++;
-                        }
+    for (; *fmt; fmt++) {
+        if (format) {
+            switch (*fmt) {
+                case 'x': decimal = 16; goto DEC;
+                case 'b': decimal = 2; goto DEC;
+                case 'd': 
+                DEC: {
+                    long long num = va_arg(vl, long long);
+                    if (decimal == 0) decimal = 10;
+                    if (num < 0 && out_buff) {
+                        out_buff[pos++] = '-';
+                        num = -num;
                     }
-                    pos += num2char(out_buff,pos,num,decimal); //将数字转化为字符串
-                    //更新输出缓冲区的下标,指向下一个空白位置
-
-                    #if SYSTEM_BITS != 64 
-                        longarg = 0;//清除标志位
-                    #endif
-
-                    format = 0;
+                    pos += num2char(out_buff, pos, num, decimal);
                     decimal = 0;
-                break;
-
-                case 'c':
-                    uint64_t c = va_arg(vl,uint64_t);
-                    if(NULL != out_buff)
-                    {
-                        out_buff[pos] = (char)c;
-                    }
+                    format = 0;
+                    break;
+                }
+                case 'c': {
+                    int c = va_arg(vl, int);
+                    if (out_buff) out_buff[pos] = (char)c;
                     pos++;
                     format = 0;
-                break;
-
-                case 's':
-                    uint64_t addr = va_arg(vl,uint64_t);
-                    while(*(char*)addr)
-                    {
-                        char c = *(char*)addr;
-                        if(NULL != out_buff)
-                        {
-                            out_buff[pos] = (char)c;
-                        }
+                    break;
+                }
+                case 's': {
+                    const char *s = va_arg(vl, const char*);
+                    while (*s) {
+                        if (out_buff) out_buff[pos] = *s;
                         pos++;
-                        addr++;
+                        s++;
                     }
                     format = 0;
-                break;
-                
+                    break;
+                }
                 default:
                     format = 0;
-                break;
+                    break;
             }
-        }
-        else if ( '%' == (*str) )//遇到了%,代表后面需要格式化输出
-        {   
+        } else if (*fmt == '%') {
             format = 1;
-        }
-        else//遍历到普通字符
-        {
-            if(NULL != out_buff)
-            {
-                out_buff[pos] = (*str);//不用处理直接写入到输出缓冲区
-            }
-            pos++;//指向输出缓冲区的下一个位置
+        } else {
+            if (out_buff) out_buff[pos] = *fmt;
+            pos++;
         }
     }
-    if(NULL != out_buff)//在结尾加上结束符
-    {
-        out_buff[pos] = 0;
-    }
+
+    if (out_buff) out_buff[pos] = '\0';
     return pos;
 }
 
-
-/***************************************************************
- * @description: 
- * @param {char*} str [in/out]:  
- * @param {va_list} vl [in/out]:  
- * @return {*}
-***************************************************************/
-int _vprintf(const char* str,va_list vl)
+/**
+ * vprintf: 先计算长度，再格式化
+ */
+int _vprintf(const char *fmt, va_list vl)
 {
-    int n =  _vsprintf(NULL,str,vl);//统计一下格式化字符串
-    if(n>__PBUFF_SIZE)
-    {
-        uart_puts("Error: Output string size overflow!\n");
-        while (1)
-        {
-           
-        }
+    va_list vl_copy;
+    va_copy(vl_copy, vl);
+
+    int n = _vsprintf(NULL, fmt, vl);
+    if (n >= __PBUFF_SIZE) {
+        uart_puts("printf overflow!\n");
+        while (1) {} // 死机
     }
-    _vsprintf(printf_buff,str,vl);
 
-    /*重定向只需要改下面这个输出*/
+    _vsprintf(printf_buff, fmt, vl_copy);
+    va_end(vl_copy);
+
     uart_puts(printf_buff);
-    
     return n;
 }
 
-
-/***************************************************************
- * @description: 格式化输出
- * @param {char*} str [in]:  
- * @return {*}
-***************************************************************/
-int printf(const char *str, ...)
+/**
+ * printf: 有锁
+ */
+int printf(const char *fmt, ...)
 {
-    // spin_lock(&printf_lock);
+    spin_lock(&printf_lock);
+
     va_list vl;
-    va_start(vl,str);
-    int n = _vprintf(str,vl);
+    va_start(vl, fmt);
+    int n = _vprintf(fmt, vl);
     va_end(vl);
-    // spin_unlock(&printf_lock);
+
+    spin_unlock(&printf_lock);
     return n;
 }
 
-void panic(const char *str, ...)
+/**
+ * panic: 不可重入 printf
+ */
+void panic(const char *fmt, ...)
 {
-    printf("panic: ");
+    uart_puts("\npanic: ");
+
     va_list vl;
-    va_start(vl,str);
-    _vprintf(str,vl);
+    va_start(vl, fmt);
+    _vsprintf(printf_buff, fmt, vl);
     va_end(vl);
-    while(1){}
+
+    uart_puts(printf_buff);
+    uart_puts("\n");
+
+    while (1) {}
 }

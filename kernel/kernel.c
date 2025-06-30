@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-05-28 16:32:20
+ * @LastEditTime: 2025-06-29 22:07:36
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -14,6 +14,7 @@
 #include "systimer.h"
 #include "vm.h"
 #include "virt_disk.h"
+#include "ext2.h"
 
 #include "riscv.h"
 #include "plic.h"
@@ -21,7 +22,7 @@
 #include "maddr_def.h"
 #include "interrupt.h"
 #include "systimer.h"
-
+#include "string.h"
 
 
 extern void os_main();
@@ -61,19 +62,15 @@ void init_kernel()
         zero_bss();
         uart_init();
         page_alloc_init();
-        // kernel_page_table_init();
+        kernel_page_table_init();
         extern_interrupt_setting(hart_id,UART0_IRQN,1);
         virt_disk_init(); 
-        uint8_t *buffer1 = (uint8_t *)page_alloc(1);
-        uint8_t *buffer2 = (uint8_t *)page_alloc(1);
-        buffer1[0] = 1;
-        virt_disk_rw(buffer1, 0, VIRT_DISK_WRITE);
-        virt_disk_rw(buffer2, 0, VIRT_DISK_READ);
-        printf("virt_disk_rw:%x\n", (uint8_t*)buffer2[0]);
-
+        file_system_test();
         // task_init();
         is_init = 1;
+
     }
+    // ext2_create_dir_by_path(fs, "/a/b/");
     printf("hart_id:%d\n", hart_id);
     while (is_init == 0){}
     // wakeup_other_harts();
@@ -83,10 +80,11 @@ void init_kernel()
     // sched_init(hart_id);
     // __clint_send_ipi(0);
     // sip_w(sip_r() | 2);
+   
     while(1)
     {
 
     }
-    // global_interrupt_enable();
-    // M_TO_U(os_main);
+    global_interrupt_enable();
+    M_TO_U(os_main);
  }

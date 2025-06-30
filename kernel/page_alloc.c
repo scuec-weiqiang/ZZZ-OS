@@ -174,3 +174,44 @@ void page_free(void* p)
     _CLEAR(pagem_i);
     spin_unlock(&page_lock);
 }
+
+void* malloc(size_t size)
+{
+    if(size == 0)
+    {
+        return NULL;
+    }
+    if(size > _num_pages*PAGE_SIZE)
+    {
+        printf("malloc error: size too large\n");
+        return NULL;
+    }
+    uint64_t npages = (size + PAGE_SIZE - 1) / PAGE_SIZE; // 向上取整
+    void *p = page_alloc(npages);
+    if(p == NULL)
+    {
+        printf("malloc error: no enough memory\n");
+        return NULL;
+    }
+    return p;
+}
+
+void free(void* p)
+{
+    if(p == NULL)
+    {
+        return;
+    }
+    addr_t addr = (addr_t)p;
+    if(addr < _alloc_start || addr >= _alloc_end)
+    {
+        printf("free error: address out of range\n");
+        return;
+    }
+    if(!_PAGE_IS_ALIGNED(addr))
+    {
+        printf("free error: address not aligned\n");
+        return;
+    }
+    page_free(p);
+}

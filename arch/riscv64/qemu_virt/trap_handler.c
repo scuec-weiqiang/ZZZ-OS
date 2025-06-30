@@ -7,11 +7,14 @@
 #include "uart.h"
 #include "sched.h"
 #include "clint.h"
+#include "vm.h"
 
 extern void kernel_trap_entry();
 
 reg_t timer_interrupt_handler(reg_t epc);
 void extern_interrupt_handler();
+void page_fault_handler(addr_t addr);
+reg_t soft_interrupt_handler(reg_t epc);
 
 void trap_init()
 {
@@ -37,11 +40,11 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
         {
             case 1:
                 // printf("Supervisor software interruption!\n");
-                soft_interrupt_handler();
+                return_epc = soft_interrupt_handler(epc);
                 break;
             case 3:
                 printf("Machine software interruption!\n");
-                soft_interrupt_handler();
+                return_epc = soft_interrupt_handler(epc);
                 break;
             case 7:
                 // printf("timer interruption!\n");
@@ -107,9 +110,11 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
                 break;
             case 13:
                 panic("Load page fault\n");
+                page_fault_handler(stval_r());
                 break;
             case 15:
                 panic("Store/AMO page fault\n");
+                page_fault_handler(stval_r());
                 break;
             default:
                 panic("unknown sync exception!\ntrap!\n");
@@ -152,7 +157,7 @@ void extern_interrupt_handler()
 reg_t timer_interrupt_handler(reg_t epc )
 {
     reg_t r;
-    hart_id_t hart_id = mhartid_r();
+    hart_id_t hart_id = tp_r();
     // printf("hart %d timer interrupt!\n",hart_id);
     uint64_t now_time = systimer_get_time();
     // systimer_tick++;
@@ -165,11 +170,44 @@ reg_t timer_interrupt_handler(reg_t epc )
     return r;
 }
 
-void soft_interrupt_handler()
+reg_t soft_interrupt_handler(reg_t epc)
 {
     sip_w(sip_r() & ~SIP_SSIP);
-    // __clint_clear_ipi(get_hart_id_s());
-    // *(uint32_t*)CLINT_MSIP(0)=0;
-    // __sw_without_save(&sched_context);
+    
+    reg_t r;
+    hart_id_t hart_id = tp_r();
+    // printf("hart %d timer interrupt!\n",hart_id);
+    uint64_t now_time = systimer_get_time();
+    // printf("now time is %l\n",now_time);
+    // systimer_tick++;
+
+    // r = sched(epc,now_time,hart_id);
+    
+    // swtimer_check();
+    
+    return r;
+    
 }
 
+void page_fault_handler(addr_t addr)
+{
+    satp_w(satp_r() & ~(SATP_MODE)); // 切换到bare模式
+    // 检查是否为合法地址
+    if (addr < RAM_BASE || addr >= (RAM_BASE + RAM_SIZE)) 
+    {
+        printf("Invalid page fault at %x\n", addr);
+        panic("Page fault");
+    }
+    
+    // 分配物理页并建立映射
+    // addr_t pa = (addr_t)page_alloc(1);
+    // if (!pa) panic("Out of memory");
+    
+    // 设置映射 (RW权限)
+    map_pages(kernel_pgd, addr, addr, PAGE_SIZE, PTE_R | PTE_W);
+    
+    printf("Handled page fault: VA=%x -> PA=%x\n", addr, addr);
+    satp_w(satp_r() | SATP_MODE); 
+    // 刷新TLB
+    asm volatile("sfence.vma");
+}

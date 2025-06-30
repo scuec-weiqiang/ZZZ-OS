@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-09 02:40:09
- * @LastEditTime: 2025-05-09 02:40:40
+ * @LastEditTime: 2025-06-29 14:38:19
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -41,4 +41,52 @@ void* memcpy(void *dest, const void *src, size_t size) {
     return dest;
 }
 
+
+/**
+ * @brief 比较两个字符串
+ *
+ * 比较两个字符串s1和s2，返回其字典序的差值。
+ *
+ * @param s1 第一个字符串指针
+ * @param s2 第二个字符串指针
+ *
+ * @return 如果s1小于s2，则返回负值；
+ *         如果s1等于s2，则返回0；
+ *         如果s1大于s2，则返回正值。
+ */
+int strcpy(char *dest, const char *src) {
+    size_t i;
+    for (i = 0; src[i] != '\0'; i++) {
+        dest[i] = src[i];
+    }
+    dest[i] = '\0'; // 确保目标字符串以'\0'结尾
+    return 0;
+}
+
+int strncpy(char *dest, const char *src, size_t n) {
+    size_t i;
+    for (i = 0; i < n && src[i] != '\0'; i++) {
+        dest[i] = src[i];
+    }
+    for (; i < n; i++) {
+        dest[i] = '\0'; // 填充剩余部分为'\0'
+    }
+    return 0;
+}
+
+int strlen(const char *s) {
+    const char *p = s;
+    while (*p != '\0') {
+        p++;
+    }
+    return p - s; // 返回字符串长度
+}
+
+int strcmp(const char *s1, const char *s2) {
+    while (*s1 && (*s1 == *s2)) {
+        s1++;
+        s2++;
+    }
+    return *(unsigned char *)s1 - *(unsigned char *)s2; // 返回差值
+}
 // 其他函数：memmove、memcmp、strlen 等

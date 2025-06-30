@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-05-28 01:40:24
+ * @LastEditTime: 2025-05-30 13:39:24
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -147,14 +147,14 @@ void kernel_page_table_init()
     map_pages(kernel_pgd,_rodata_start,_rodata_start,_rodata_size,PTE_R);
     map_pages(kernel_pgd,_data_start,_data_start,_data_size,PTE_R | PTE_W);
     map_pages(kernel_pgd,_bss_start,_bss_start,_bss_size,PTE_R | PTE_W);
+    map_pages(kernel_pgd,_heap_start,_heap_start,_heap_size,PTE_R | PTE_W);
     map_pages(kernel_pgd,_stack_start,_stack_start,_stack_size,PTE_R | PTE_W);
-    map_pages(kernel_pgd,_heap_start,_heap_start,RESERVED_PAGE_SIZE,PTE_R | PTE_W);
 
     //映射外设寄存器地址空间到内核虚拟地址空间
-    map_pages(kernel_pgd,CLINT_BASE,CLINT_BASE,PAGE_SIZE,PTE_R | PTE_W);
+    map_pages(kernel_pgd,CLINT_BASE,CLINT_BASE,11*PAGE_SIZE,PTE_R | PTE_W);
     map_pages(kernel_pgd,PLIC_BASE,PLIC_BASE,0x200*PAGE_SIZE,PTE_R | PTE_W);
     map_pages(kernel_pgd,UART_BASE,UART_BASE,PAGE_SIZE,PTE_R | PTE_W);
-    // map_pages(kernel_pgd,VIRTIO_MMIO_BASE,VIRTIO_MMIO_BASE,PAGE_SIZE,PTE_R | PTE_W);
+    map_pages(kernel_pgd,VIRTIO_MMIO_BASE,VIRTIO_MMIO_BASE,PAGE_SIZE,PTE_R | PTE_W);
     //设置satp寄存器
     satp_w(MAKE_SATP(kernel_pgd));
     printf("kernel page table init success!\n");

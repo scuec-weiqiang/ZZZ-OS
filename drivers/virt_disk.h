@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-23 15:56:58
- * @LastEditTime: 2025-05-28 01:46:38
+ * @LastEditTime: 2025-06-30 00:02:58
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -12,6 +12,8 @@
 #define VIRT_DISK_H
 
 #include "types.h"
+#include "printf.h"
+#include "color.h"
 
 #define VIRT_DISK_QUEUE 0
 
@@ -23,6 +25,11 @@ typedef enum {
 }virt_disk_rw_t;
 
 extern void virt_disk_init(void);
-extern int virt_disk_rw(void *buffer, uint64_t sector, virt_disk_rw_t rwflag);
+extern uint64_t virt_disk_get_capacity(void);
+extern int disk_read(void *buffer, uint64_t sector);
+extern int disk_write(void *buffer, uint64_t sector);
+extern int disknwrite(void *data, uint64_t start, uint64_t num);
+extern int disknread(void *buf, uint64_t start, uint64_t num);
 
+    
 #endif

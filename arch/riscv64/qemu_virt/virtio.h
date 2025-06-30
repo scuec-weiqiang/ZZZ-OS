@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-20 20:12:02
- * @LastEditTime: 2025-05-28 15:24:35
+ * @LastEditTime: 2025-06-30 01:11:19
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -57,12 +57,33 @@ typedef volatile struct virtio_mmio_regs {
 extern volatile virtio_mmio_regs_t *virtio;
 
 // // 块设备配置结构（位于 config 字段）
-// typedef struct virtio_blk_config {
-//     uint64_t capacity;      // 磁盘容量（扇区数）
-//     uint32_t size_max;      // 最大请求大小
-//     uint32_t seg_max;       // 最大段数
-//     // ... 其他字段（可忽略）
-// }virtio_blk_config_t;
+typedef struct virtio_blk_config {
+    uint64_t capacity;      // 磁盘容量（扇区数）
+    uint32_t size_max;      // 最大请求大小
+    uint32_t seg_max;       // 最大段数
+
+    // ... 其他字段（可忽略）
+    struct virtio_blk_geometry { 
+        uint16_t cylinders; 
+        uint8_t heads; 
+        uint8_t sectors; 
+    } geometry; 
+
+    uint32_t blk_size; 
+
+    struct virtio_blk_topology { 
+        // # of logical blocks per physical block (log2) 
+        uint8_t physical_block_exp; 
+        // offset of first aligned logical block 
+        uint8_t alignment_offset; 
+        // suggested minimum I/O size in blocks 
+        uint16_t min_io_size; 
+        // optimal (suggested maximum) I/O size in blocks 
+        uint32_t opt_io_size; 
+    } topology; 
+
+    uint8_t reserved; 
+}virtio_blk_config_t;
 
 #define VIRTIO_MMIO_MAGIC_VALUE		0x74726976 // 0x74726976
 #define VIRTIO_MMIO_VERSION		    0x002 // version; should be 2
@@ -78,6 +99,7 @@ extern volatile virtio_mmio_regs_t *virtio;
 // device feature bits
 #define VIRTIO_BLK_F_RO              5	/* Disk is read-only */
 #define VIRTIO_BLK_F_SCSI            7	/* Supports scsi command passthru */
+#define VIRTIO_BLK_F_FLUSH           9
 #define VIRTIO_BLK_F_CONFIG_WCE     11	/* Writeback mode available in config */
 #define VIRTIO_BLK_F_MQ             12	/* support more than one vq */
 #define VIRTIO_F_ANY_LAYOUT         27
