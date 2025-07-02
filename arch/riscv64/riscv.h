@@ -244,7 +244,7 @@ __SELF __INLINE reg_t sip_r()
     asm volatile("csrr %0,sip" : "=r"(a));
     return a;
 }
-#define SIP_SSIP (1 << 2) // software
+#define SIP_SSIP (1 << 1) // software
 /***************************************************************
  * @description: 
  * @param {reg_t} a [in/out]:  

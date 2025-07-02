@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-31 15:28:54
- * @LastEditTime: 2025-06-30 12:15:12
+ * @LastEditTime: 2025-07-03 02:01:45
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -474,6 +474,7 @@ static int64_t ext2_get_entry(ext2_fs_t *fs, uint64_t inode_idx, const char *nam
             ext2_dir_entry_t entry;
             entry = ((ext2_dir_entry_t*)entry_buf)[i]; // 读取目录项 
             // 检查文件名是否匹配
+                printf("entry found: %s,name: %s inode_idx: %d\n", entry.name,name, entry.inode_idx);
             if (entry.inode_idx != 0 && strcmp(entry.name, name) == 0)
             {
                 *entry_ret = entry; // 将找到的目录项复制到输出参数
@@ -683,11 +684,13 @@ void print_entry(ext2_fs_t *fs,const ext2_dir_entry_t *entry)
     if (inode->type == FILE_TYPE_DIR) {
        
         type_indicator = "/";
-        printf(BLUE("%s%s  type: DIR  size: %d bytes\n"),  entry->name, type_indicator, inode->size);
+        // printf(BLUE("%s%s  type: DIR  size: %d bytes\n"),  entry->name, type_indicator, inode->size);
+        printf(BLUE("%s%s  "),  entry->name, type_indicator);
     } else if (inode->type == FILE_TYPE_FILE) {
         
         type_indicator = "";
-        printf(WHITE("%s%s  type: FILE  size: %d bytes\n"),  entry->name, type_indicator, inode->size);
+        // printf(WHITE("%s%s  type: FILE  size: %d bytes\n"),  entry->name, type_indicator, inode->size);
+        printf(WHITE("%s%s  "),  entry->name, type_indicator);
     }
     
     // 输出带颜色的文件名和类型指示符
@@ -728,6 +731,7 @@ int64_t ext2_walk_entry(ext2_fs_t *fs, uint64_t dir_inode_idx, void (*callback)(
             }
         }
     }
+    printf("\n");
 
     return 0;
 }
@@ -833,6 +837,8 @@ static int64_t ext2_find_inode_by_path(ext2_fs_t *fs,const char *path,uint64_t a
     char* token = ext2_path_split(copy_path,"/");
     while(token) 
     {
+        printf("Processing token: %s\n", token);
+        printf("Current parent inode index: %d\n", parent_inode_idx);
         child_inode_idx = ext2_find_entry(fs, parent_inode_idx, token);
         if(child_inode_idx < 0) // 如果没有找到父目录,那就建立对应目录
         {
@@ -1464,21 +1470,12 @@ int file_system_test()
     CHECK(fs!=NULL,"fs create err",return -1;);
 
     // 格式化ext2文件系统
-    // if(ext2_fs_format(fs) < 0)
-    // {
-    //     printf("Failed to format ext2 file system.\n");
-    //     free(fs->inode_table);
-    //     free(fs->inode_bitmap);
-    //     free(fs->block_bitmap);
-    //     free(fs->group);
-    //     free(fs->super);
-    //     free(fs);
-    //     return -1;
-    // }
-    
+    ext2_fs_format(fs);
+
     // 加载ext2文件系统
     // ext2_fs_destroy(fs); // 先销毁之前的文件系统
     // fs = ext2_fs_create(); // 重新创建文件系统
+
     if(ext2_fs_load(fs) < 0)
     {
         printf("Failed to load ext2 file system.\n");
@@ -1492,20 +1489,18 @@ int file_system_test()
     }
 
   
-    
-
-    // ext2_create_dir_by_path(fs, "/b");
+    ext2_create_dir_by_path(fs, "/b");
     // ext2_create_dir_by_path(fs, "/c");
     // ext2_create_dir_by_path(fs, "/d");
     
  
-    ext2_create_file_by_path(fs, "/testfile.txt");
-    ext2_append_file_by_path(fs, "/testfile.txt", "long_data", 10);
+    // ext2_create_file_by_path(fs, "/testfile.txt");
+    // ext2_append_file_by_path(fs, "/testfile.txt", "long_data", 10);
     // ext2_append_file_by_path(fs, "/testfile.txt", "long_data", 10);
 
     // ext2_unlink_by_path(fs, "/b");
 
-    // ext2_create_dir_by_path(fs, "/b");
+    // ext2_create_file_by_path(fs, "/helloworld.elf");
 
     ext2_list_dir_by_path(fs,"/");
 

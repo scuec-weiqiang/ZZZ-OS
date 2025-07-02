@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-17 00:52:26
- * @LastEditTime: 2025-05-09 22:05:05
+ * @LastEditTime: 2025-07-03 02:07:49
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -22,6 +22,12 @@ typedef enum SYS_CONFIG_HZ{
     SYS_HZ_1000 = 1*tick_ms,
     SYS_HZ_250 = 4*tick_ms,
     SYS_HZ_100 = 10*tick_ms,
+    SYS_HZ_50 = 20*tick_ms,
+    SYS_HZ_20 = 50*tick_ms,
+    SYS_HZ_10 = 100*tick_ms,
+    SYS_HZ_5 = 200*tick_ms,
+    SYS_HZ_2 = 500*tick_ms,
+    SYS_HZ_1 = 1000*tick_ms,
 }SYS_CONFIG_HZ_t;
 
 extern SYS_CONFIG_HZ_t systimer_hz[MAX_HARTS_NUM];

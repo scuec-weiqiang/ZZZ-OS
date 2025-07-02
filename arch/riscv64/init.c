@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-15 00:43:47
- * @LastEditTime: 2025-06-29 19:32:18
+ * @LastEditTime: 2025-07-03 02:11:16
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -22,8 +22,8 @@ void init()
     
 
     // // 使能S模式外部中断，定时器中断和软件中断
-    s_extern_interrupt_enable();
-    // s_timer_interrupt_enable();
+    // s_extern_interrupt_enable();
+    s_timer_interrupt_enable();
     s_soft_interrupt_enable();
     s_global_interrupt_enable();
 
@@ -31,10 +31,10 @@ void init()
     pmpaddr0_w(0x3fffffffffffffull);
     pmpcfg0_w(0xf);
     
-    // systimer_init(mhartid_r(),SYS_HZ_100);
+    systimer_init(mhartid_r(),SYS_HZ_1000);
 
-    m_global_interrupt_enable();    
-    m_soft_interrupt_enable();
-    m_extern_interrupt_enable();
+    // m_global_interrupt_enable();    
+    // m_soft_interrupt_enable();
+    // m_extern_interrupt_enable();
     M_TO_S(init_kernel);
 }

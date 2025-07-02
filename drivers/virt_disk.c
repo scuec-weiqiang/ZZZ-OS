@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-23 15:56:44
- * @LastEditTime: 2025-06-30 01:11:50
+ * @LastEditTime: 2025-07-03 02:04:15
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -217,7 +217,6 @@ int virt_disk_flush(void)
 int virt_disk_rw(void *buffer, uint64_t sector, virt_disk_rw_t rwflag)
 {
     spin_lock(&virt_disk.disk_lock);
-
     // 一次读写需要3个描述符，分别是：
     // 1. 请求头
     // 2. 数据缓冲区
@@ -276,7 +275,9 @@ int virt_disk_rw(void *buffer, uint64_t sector, virt_disk_rw_t rwflag)
     // 通知设备处理队列0中的请求
     virtio->queue_notify = 0;
 
-    while(virt_disk.last_used_idx == virt_disk.disk_queue.used->idx){}
+    while(virt_disk.last_used_idx == virt_disk.disk_queue.used->idx){
+        // printf(YELLOW("virt_disk_rw: waiting for disk operation to complete..."));
+    }
     virt_disk.last_used_idx = virt_disk.disk_queue.used->idx;
     free_disk_chain(index[0]);
     spin_unlock(&virt_disk.disk_lock);

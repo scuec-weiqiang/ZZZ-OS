@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-06-29 22:07:36
+ * @LastEditTime: 2025-07-03 02:11:41
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -63,7 +63,7 @@ void init_kernel()
         uart_init();
         page_alloc_init();
         kernel_page_table_init();
-        extern_interrupt_setting(hart_id,UART0_IRQN,1);
+        // extern_interrupt_setting(hart_id,UART0_IRQN,1);
         virt_disk_init(); 
         file_system_test();
         // task_init();

@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-15 21:14:52
- * @LastEditTime: 2025-05-10 16:31:21
+ * @LastEditTime: 2025-07-03 01:20:21
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -21,6 +21,7 @@
 #define __INTERRUPT_H
 
 #include "types.h"
+#include "platform.h"
 
 extern void m_global_interrupt_enable();
 extern void m_global_interrupt_disable();

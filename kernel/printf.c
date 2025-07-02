@@ -118,14 +118,14 @@ int _vprintf(const char *fmt, va_list vl)
  */
 int printf(const char *fmt, ...)
 {
-    spin_lock(&printf_lock);
+    // spin_lock(&printf_lock);
 
     va_list vl;
     va_start(vl, fmt);
     int n = _vprintf(fmt, vl);
     va_end(vl);
 
-    spin_unlock(&printf_lock);
+    // spin_unlock(&printf_lock);
     return n;
 }
 

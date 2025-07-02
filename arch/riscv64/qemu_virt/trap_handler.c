@@ -33,7 +33,7 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
 {
     reg_t return_epc = epc;
     uint64_t cause_code = cause & MCAUSE_MASK_CAUSECODE;
-
+    // printf("in trap_handler, epc is %x\n",epc);
     if((cause & MCAUSE_MASK_INTERRUPT))
     {
         switch (cause_code)
@@ -41,10 +41,12 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
             case 1:
                 // printf("Supervisor software interruption!\n");
                 return_epc = soft_interrupt_handler(epc);
+                // return_epc += 4;
+                // printf("out trap_handler, return_epc is %x\n",return_epc);
                 break;
             case 3:
                 printf("Machine software interruption!\n");
-                return_epc = soft_interrupt_handler(epc);
+                // return_epc = soft_interrupt_handler(epc);
                 break;
             case 7:
                 // printf("timer interruption!\n");
@@ -52,7 +54,7 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
                 break;
             case 11:
                 // printf("external interruption!\n");
-                extern_interrupt_handler();
+                // extern_interrupt_handler();
                 break;
             default:
                 printf("unknown async exception!\n cause code is %l\n",cause_code);
@@ -157,16 +159,14 @@ void extern_interrupt_handler()
 reg_t timer_interrupt_handler(reg_t epc )
 {
     reg_t r;
-    hart_id_t hart_id = tp_r();
+    // hart_id_t hart_id = tp_r();
     // printf("hart %d timer interrupt!\n",hart_id);
-    uint64_t now_time = systimer_get_time();
+    // uint64_t now_time = systimer_get_time();
     // systimer_tick++;
 
-    r = sched(epc,now_time,hart_id);
+    // r = sched(epc,now_time,hart_id);
     
     // swtimer_check();
-    systimer_load(hart_id,systimer_hz);
-
     return r;
 }
 
@@ -174,10 +174,10 @@ reg_t soft_interrupt_handler(reg_t epc)
 {
     sip_w(sip_r() & ~SIP_SSIP);
     
-    reg_t r;
-    hart_id_t hart_id = tp_r();
+    // reg_t r;
+    // hart_id_t hart_id = tp_r();
     // printf("hart %d timer interrupt!\n",hart_id);
-    uint64_t now_time = systimer_get_time();
+    // uint64_t now_time = systimer_get_time();
     // printf("now time is %l\n",now_time);
     // systimer_tick++;
 
@@ -185,7 +185,7 @@ reg_t soft_interrupt_handler(reg_t epc)
     
     // swtimer_check();
     
-    return r;
+    return epc;
     
 }
 

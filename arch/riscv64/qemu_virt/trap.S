@@ -16,8 +16,8 @@ machine_timer_trap_entry:
     sd a2, 0(a0)
 
     # 手动触发software interrupt
-    li a1, 2
-    csrw sip, a1
+    li a1,2
+    csrc sip, a1
 
     ld a2, 16(a3)
     ld a1, 8(a3)
@@ -75,7 +75,7 @@ kernel_trap_entry:
     csrr a1, scause
     csrr a2, sscratch
     call trap_handler
-    # csrw sepc, a0
+    csrw sepc, a0
 
     # RESTORE_CTX
     LOAD t0, 36*REG_SIZE(sp)  
