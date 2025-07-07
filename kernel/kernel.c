@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-07-03 02:11:41
+ * @LastEditTime: 2025-07-06 01:56:11
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -23,7 +23,8 @@
 #include "interrupt.h"
 #include "systimer.h"
 #include "string.h"
-
+#include "elf.h"
+#include "user_program.h"
 
 extern void os_main();
 uint8_t is_init = 0;
@@ -42,20 +43,9 @@ void zero_bss() {
     }
 }
 
-// 主核心初始化完成后，唤醒其他核心
-void wakeup_other_harts() {
-    // 跳过主核心（hart 0）
-    for (hart_id_t hart = 1; hart < MAX_HARTS_NUM; hart++) 
-    {
-        // 向其他核心发送软件中断，触发其从wfi唤醒
-        __clint_send_ipi(hart);
-    }
-}
-
 
 void init_kernel()
 {  
-    trap_init();
     hart_id_t hart_id = 0;
     if(hart_id == HART_0) // hart0 初始化全局资源
     {
@@ -63,18 +53,22 @@ void init_kernel()
         uart_init();
         page_alloc_init();
         kernel_page_table_init();
-        // extern_interrupt_setting(hart_id,UART0_IRQN,1);
+        extern_interrupt_setting(hart_id,UART0_IRQN,1);
         virt_disk_init(); 
         file_system_test();
+        elf_info_t *info = malloc(sizeof(elf_info_t));
+        elf_prase(user_user_program_elf, info);
         // task_init();
         is_init = 1;
 
     }
+   
     // ext2_create_dir_by_path(fs, "/a/b/");
     printf("hart_id:%d\n", hart_id);
     while (is_init == 0){}
     // wakeup_other_harts();
-    
+ 
+    s_global_interrupt_enable(); 
     //每个核心初始化自己的资源
     // systimer_init(hart_id,SYS_HZ_100);
     // sched_init(hart_id);
@@ -83,8 +77,8 @@ void init_kernel()
    
     while(1)
     {
-
+        // printf("hart_id:%d\n", hart_id++);
     }
-    global_interrupt_enable();
-    M_TO_U(os_main);
+    // global_interrupt_enable();
+    // M_TO_U(os_main);
  }

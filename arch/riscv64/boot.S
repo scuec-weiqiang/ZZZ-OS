@@ -1,8 +1,6 @@
 .section .text.init
 .global _start
 _start:
-    # 关闭中断
-    csrw mie, zero
 
     csrr tp, mhartid # 读取hartid暂存到tp中
     bnez tp, wait_hart

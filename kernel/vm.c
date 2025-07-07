@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-05-30 13:39:24
+ * @LastEditTime: 2025-07-06 02:07:02
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -141,7 +141,6 @@ void kernel_page_table_init()
     if(kernel_pgd == NULL) return;
     memset(kernel_pgd,0,PAGE_SIZE);
 
-    // map_pages(kernel_pgd,0x80000000,0x80000000,0x8000000,PTE_R | PTE_W |PTE_X);
     // 映射内核代码段，数据段，栈以及堆的保留页到虚拟地址空间 
     map_pages(kernel_pgd,_text_start,_text_start,_text_size,PTE_R | PTE_X);
     map_pages(kernel_pgd,_rodata_start,_rodata_start,_rodata_size,PTE_R);

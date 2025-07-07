@@ -141,3 +141,13 @@ disk_clean:
 .PHONY:dump
 dump:
 	riscv64-unknown-elf-objdump -D -m riscv $(TARGET) > $(DIR_OUT)/disassembly.asm
+
+.PHONY:user
+user:
+	riscv64-unknown-elf-as user/user_program.s -o user/user_program.o
+	riscv64-unknown-elf-ld user/user_program.o -o user/user_program.elf -Ttext=0x10000
+	xxd -i user/user_program.elf > lib/user_program.h
+
+.PHONY:user_clean
+user_clean:
+	rm -f user/user.o user/user_program.elf user/user_program.elf lib/user_program.h

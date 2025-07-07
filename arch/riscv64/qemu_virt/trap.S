@@ -15,9 +15,8 @@ machine_timer_trap_entry:
     add a2, a2, a1# 装载定时器
     sd a2, 0(a0)
 
-    # 手动触发software interrupt
-    li a1,2
-    csrc sip, a1
+    li a0,2
+    csrs sip, a0  # 清除机器模式的软中断标志
 
     ld a2, 16(a3)
     ld a1, 8(a3)

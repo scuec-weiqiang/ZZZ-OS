@@ -210,14 +210,27 @@ __SELF __INLINE void satp_w(reg_t a)
     asm volatile("sfence.vma zero, zero");
 }
 
-__SELF __INLINE medeleg_w(reg_t a)
+__SELF __INLINE void medeleg_w(reg_t a)
 {   
     asm volatile("csrw medeleg,%0"::"r"(a));
 }
+__SELF __INLINE reg_t medeleg_r()
+{   
+    reg_t a;
+    asm volatile("csrr %0,medeleg" : "=r"(a));
+    return a;
+}
 
-__SELF __INLINE mideleg_w(reg_t a)
+__SELF __INLINE void mideleg_w(reg_t a)
 {
     asm volatile("csrw mideleg,%0"::"r"(a));
+}
+
+__SELF __INLINE reg_t mideleg_r()
+{   
+    reg_t a;
+    asm volatile("csrr %0,mideleg" : "=r"(a));
+    return a;
 }
 
 // Supervisor Interrupt Enable
@@ -225,7 +238,7 @@ __SELF __INLINE mideleg_w(reg_t a)
 #define SIE_STIE (1L << 5) // timer
 #define SIE_SSIE (1L << 1) // software
 
-__SELF __INLINE sie_w(reg_t a)
+__SELF __INLINE void sie_w(reg_t a)
 {
     asm volatile("csrw sie,%0"::"r"(a));
 }
@@ -273,6 +286,22 @@ __SELF __INLINE reg_t sstatus_r()
 __SELF __INLINE void sstatus_w(reg_t a)
 {
     asm volatile("csrw sstatus,%0"::"r"(a));
+}
+__SELF __INLINE reg_t sscratch_r()
+{   
+    reg_t a;
+    asm volatile("csrr %0,sscratch" : "=r"(a));
+    return a;
+}
+
+/***************************************************************
+ * @description: 
+ * @param {reg_t} a [in/out]:  
+ * @return {*}
+***************************************************************/
+__SELF __INLINE void sscratch_w(reg_t a)
+{   
+    asm volatile("csrw sscratch,%0"::"r"(a));
 }
 
 /***************************************************************
@@ -350,13 +379,13 @@ __SELF __INLINE reg_t satp_r()
     return a;
 }
 
-__SELF __INLINE pmpcfg0_w(reg_t a)
+__SELF __INLINE void pmpcfg0_w(reg_t a)
 {
     asm volatile("csrw pmpcfg0,%0"::"r"(a));
 }
 
 
-__SELF __INLINE pmpaddr0_w(reg_t a)
+__SELF __INLINE void pmpaddr0_w(reg_t a)
 {
     asm volatile("csrw pmpaddr0,%0"::"r"(a));
 }

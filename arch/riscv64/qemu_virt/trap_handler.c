@@ -9,7 +9,8 @@
 #include "clint.h"
 #include "vm.h"
 
-extern void kernel_trap_entry();
+extern void kernel_trap_entry(void); //定义在trap.S文件中
+extern void machine_timer_trap_entry(void); //定义在trap.S文件中
 
 reg_t timer_interrupt_handler(reg_t epc);
 void extern_interrupt_handler();
@@ -19,6 +20,7 @@ reg_t soft_interrupt_handler(reg_t epc);
 void trap_init()
 {
     stvec_w((reg_t)kernel_trap_entry);
+    mtvec_w((reg_t)machine_timer_trap_entry);
 }
 
 
@@ -48,9 +50,18 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
                 printf("Machine software interruption!\n");
                 // return_epc = soft_interrupt_handler(epc);
                 break;
+            case 5:
+                // printf("timer interruption!\n");
+                return_epc =  timer_interrupt_handler(epc);
             case 7:
                 // printf("timer interruption!\n");
                 return_epc =  timer_interrupt_handler(epc);
+                break;
+            case 8:
+                panic("sys_exit!\n");
+                break;
+            // printf("timer interruption!\n");
+            return_epc =  timer_interrupt_handler(epc);
                 break;
             case 11:
                 // printf("external interruption!\n");
@@ -158,16 +169,18 @@ void extern_interrupt_handler()
 ***************************************************************/
 reg_t timer_interrupt_handler(reg_t epc )
 {
-    reg_t r;
+    // reg_t r;
     // hart_id_t hart_id = tp_r();
     // printf("hart %d timer interrupt!\n",hart_id);
+    // sip_w(sip_r() | SIP_SSIP);
     // uint64_t now_time = systimer_get_time();
     // systimer_tick++;
 
     // r = sched(epc,now_time,hart_id);
     
     // swtimer_check();
-    return r;
+    return epc;
+    // return r;
 }
 
 reg_t soft_interrupt_handler(reg_t epc)
@@ -178,7 +191,7 @@ reg_t soft_interrupt_handler(reg_t epc)
     // hart_id_t hart_id = tp_r();
     // printf("hart %d timer interrupt!\n",hart_id);
     // uint64_t now_time = systimer_get_time();
-    // printf("now time is %l\n",now_time);
+    // printf("now time is %d\n",now_time);
     // systimer_tick++;
 
     // r = sched(epc,now_time,hart_id);
