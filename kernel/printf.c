@@ -50,7 +50,7 @@ int _vsprintf(char* out_buff, const char *fmt, va_list vl)
                 DEC: {
                     long long num = va_arg(vl, long long);
                     if (decimal == 0) decimal = 10;
-                    if (num < 0 && out_buff) {
+                    if (num < 0 && out_buff && *(fmt+1)!='u') {
                         out_buff[pos++] = '-';
                         num = -num;
                     }

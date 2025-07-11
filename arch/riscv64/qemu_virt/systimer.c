@@ -34,7 +34,7 @@ void systimer_init(hart_id_t hart_id, enum SYS_CONFIG_HZ hz)
 
     mtvec_w((reg_t)machine_timer_trap_entry);
     mscratch_w(&systimer_ctx[hart_id]);
-    m_timer_interrupt_enable();
+    // m_timer_interrupt_enable();
 }
 
 void systimer_load(hart_id_t hartid,uint64_t value)

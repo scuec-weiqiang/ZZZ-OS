@@ -203,6 +203,11 @@ __SELF __INLINE reg_t sp_r()
     return a;
 }
 
+__SELF __INLINE void sp_w(reg_t a)
+{   
+    asm volatile("mv sp,%0"::"r"(a));
+}
+
 __SELF __INLINE void satp_w(reg_t a)
 {   
     asm volatile("sfence.vma zero, zero");

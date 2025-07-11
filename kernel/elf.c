@@ -30,8 +30,10 @@ int64_t elf_prase(const uint8_t *elf, elf_info_t *info)
     info->phnum = ehdr->e_phnum;
     printf("ELF entry point: %xu, program header count: %du\n", info->entry, info->phnum);
 
-    for (int i = 0; i < ehdr->e_phnum; i++) {
-        if (phdr[i].p_type == PT_LOAD) {
+    for (int i = 0; i < ehdr->e_phnum; i++) 
+    {
+        if (phdr[i].p_type == PT_LOAD) 
+        {
             info->segs[i].vaddr = phdr[i].p_vaddr;
             info->segs[i].filesz = phdr[i].p_filesz;
             info->segs[i].memsz = phdr[i].p_memsz;

@@ -75,8 +75,8 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
     }
     else
     {
-        printf("\nstval is %x\n",stval_r());
-        printf("occour in %x\n",epc);
+        printf("\nstval is %xu\n",stval_r());
+        printf("occour in %xu\n",epc);
         switch (cause_code)
         {
             case 0:

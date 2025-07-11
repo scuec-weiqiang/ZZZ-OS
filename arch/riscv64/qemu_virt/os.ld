@@ -17,7 +17,9 @@ SECTIONS
         . = ALIGN(4096);
         _text_start = .;
         *(.text.init)
+        _trap_start = .;  /* trap处理函数起始地址 */
         *(.text.trap)
+        _trap_end = .;    /* trap处理函数结束地址 */
         *(.text .text.*)
         . = ALIGN(4096);
         _text_end = .;
@@ -66,6 +68,10 @@ SECTIONS
     PROVIDE_HIDDEN(_text_start = _text_start);
     PROVIDE_HIDDEN(_text_end = _text_end);
     PROVIDE_HIDDEN(_text_size = _text_end - _text_start);
+
+    PROVIDE_HIDDEN(_trap_start = _trap_start);
+    PROVIDE_HIDDEN(_trap_end = _trap_end);
+    PROVIDE_HIDDEN(_trap_size = _trap_end - _trap_start);
 
     PROVIDE_HIDDEN(_rodata_start = _rodata_start);
     PROVIDE_HIDDEN(_rodata_end = _rodata_end);

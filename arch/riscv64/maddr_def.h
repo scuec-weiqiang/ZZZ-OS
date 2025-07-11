@@ -19,6 +19,7 @@
 #define __MADDR_DEF_H__
 
 extern char _text_start[], _text_end[], _text_size[];
+extern char _trap_start[], _trap_end[], _trap_size[];
 extern char _rodata_start[], _rodata_end[], _rodata_size[];
 extern char _data_start[], _data_end[], _data_size[];
 extern char _bss_start[], _bss_end[], _bss_size[];
