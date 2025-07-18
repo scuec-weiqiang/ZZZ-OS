@@ -36,7 +36,7 @@ typedef struct virt_disk
 
 virt_disk_t virt_disk;
 
-void virt_disk_init(void)
+void virt_disk_init()
 {
     virtio_blk_init();
 

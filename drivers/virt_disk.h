@@ -24,8 +24,8 @@ typedef enum {
     VIRT_DISK_WRITE,
 }virt_disk_rw_t;
 
-extern void virt_disk_init(void);
-extern uint64_t virt_disk_get_capacity(void);
+extern void virt_disk_init();
+extern uint64_t virt_disk_get_capacity();
 extern int disk_read(void *buffer, uint64_t sector);
 extern int disk_write(void *buffer, uint64_t sector);
 extern int disknwrite(void *data, uint64_t start, uint64_t num);
