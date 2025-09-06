@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-15 00:43:47
- * @LastEditTime: 2025-07-05 18:34:52
+ * @LastEditTime: 2025-08-26 18:40:17
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -12,6 +12,7 @@
 #include "interrupt.h"
 #include "trap_handler.h"
 #include "clint.h" 
+#include "printf.h"
 extern void init_kernel();
 void init()
 {

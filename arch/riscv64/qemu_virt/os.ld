@@ -1,7 +1,7 @@
 OUTPUT_ARCH("riscv")
 ENTRY(_start)
 
-STACK_SIZE = 4096;          /* 单个核心栈大小（字节） */
+STACK_SIZE = 8192;          /* 单个核心栈大小（字节） */
 CORE_NUM = 2;               /* 核心数量 */
 RAM_BASE = 0x80000000;      /* RAM起始地址 */
 RAM_SIZE = 0x8000000;       /* RAM大小（128MB） */
@@ -28,7 +28,7 @@ SECTIONS
     .rodata : ALIGN(8) {
         . = ALIGN(4096);
        _rodata_start = .; 
-       *(.rodata .rodata.*)
+       *(.rodata .rodata.* .srodata .srodata.*)
         . = ALIGN(4096);
        _rodata_end = .;
     } > RAM
@@ -36,7 +36,7 @@ SECTIONS
     .data : ALIGN(8) {
         _data_start = .;
         . = ALIGN(4096);
-        *(.data .data.* .sdata)
+        *(.data .data.* .sdata .sdata.*)
         . = ALIGN(8);
         _systimer_ctx = .;
         . += 5*8*CORE_NUM;  /* 为每个核心预留定时器上下文空间 */

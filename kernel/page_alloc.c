@@ -14,6 +14,8 @@
 #include "spinlock.h"
 #include "maddr_def.h"
 #include "string.h"
+#include "platform.h"
+
 spinlock_t page_lock = SPINLOCK_INIT;
 
 //page management struct
@@ -33,6 +35,8 @@ typedef struct PageM
 static addr_t _alloc_start = 0;
 static addr_t  _alloc_end = 0;
 static uint64_t _num_pages = 0;
+
+uint64_t remain_mem = RAM_SIZE;
 
 void print_maddr()
 {
@@ -69,6 +73,7 @@ void page_alloc_init()
         _CLEAR(pagem_i);
         pagem_i++;
     }
+    remain_mem = _num_pages*PAGE_SIZE;
     printf("page init success\n");
 }
 
@@ -130,6 +135,7 @@ void* page_alloc(uint64_t npages)
             // printf("pgaddr = %x\n",pgaddr);
             // memset((void*)pgaddr,0x00,npages*PAGE_SIZE);
             spin_unlock(&page_lock);
+            remain_mem -= npages*PAGE_SIZE;
             return (void*)(pgaddr);//找到直接返回
         }
         
@@ -169,8 +175,10 @@ void page_free(void* p)
 
     for(;!_IS_LAST(pagem_i);pagem_i++)
     {
+        remain_mem += PAGE_SIZE;
         _CLEAR(pagem_i);
     }
+    remain_mem += PAGE_SIZE;
     _CLEAR(pagem_i);
     spin_unlock(&page_lock);
 }
@@ -214,4 +222,11 @@ void free(void* p)
         return;
     }
     page_free(p);
+}
+
+#include "color.h"
+uint64_t page_get_remain_mem()
+{
+    printf(GREEN("remain mem = %d.%dMb\n"),remain_mem/1024/1024,remain_mem/1024%1024);
+    return remain_mem;
 }

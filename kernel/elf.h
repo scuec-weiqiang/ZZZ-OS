@@ -3,10 +3,12 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-30 13:50:36
- * @LastEditTime: 2025-07-06 01:54:53
+ * @LastEditTime: 2025-09-04 15:59:29
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
+#ifndef ELF_H
+#define ELF_H
 #include "types.h"
 
 #define PT_LOAD 1
@@ -58,3 +60,4 @@ typedef struct
 } __attribute__((packed)) Elf64_Phdr;
 
 extern int64_t elf_prase(const uint8_t *elf, elf_info_t *info);
+#endif

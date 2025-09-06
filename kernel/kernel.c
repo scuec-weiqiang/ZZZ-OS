@@ -3,28 +3,31 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-07-06 01:56:11
+ * @LastEditTime: 2025-08-29 22:47:10
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include "printf.h"
 #include "page_alloc.h"
 #include "uart.h"
-#include "sched.h"
-#include "systimer.h"
+// #include "sched.h"
+// #include "systimer.h"
 #include "vm.h"
 #include "virt_disk.h"
-#include "ext2.h"
+// #include "vfs.h"
+// #include "lru.h"
+#include "time.h"
+
 
 #include "riscv.h"
 #include "plic.h"
 #include "clint.h"
 #include "maddr_def.h"
 #include "interrupt.h"
-#include "systimer.h"
-#include "string.h"
-#include "elf.h"
-#include "user_program.h"
+// #include "systimer.h"
+// #include "string.h"
+// #include "elf.h"
+// #include "user_program.h"
 
 extern void os_main();
 uint8_t is_init = 0;
@@ -52,11 +55,14 @@ void init_kernel()
         zero_bss();
         uart_init();
         page_alloc_init();
+        page_get_remain_mem();
         kernel_page_table_init();
         extern_interrupt_setting(hart_id,UART0_IRQN,1);
         virt_disk_init(); 
-        file_system_test();
 
+        vfs_init();
+        printf("now time:%x\n",get_current_unix_timestamp(UTC8));
+        page_get_remain_mem();
         // elf_info_t *info = malloc(sizeof(elf_info_t));
         // elf_prase(user_user_program_elf, info);
         // pgtbl_t *user_program_page  = page_alloc(1);

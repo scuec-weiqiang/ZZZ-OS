@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-15 17:26:52
- * @LastEditTime: 2025-06-29 14:32:30
+ * @LastEditTime: 2025-08-08 21:48:14
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -22,4 +22,6 @@ extern void page_free(void* p);
 extern void* malloc(size_t size);
 extern void free(void* p);
 extern void print_page(uint64_t start,uint64_t end);
+extern uint64_t page_get_remain_mem();
+
 #endif

@@ -3,12 +3,13 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-09 02:40:09
- * @LastEditTime: 2025-06-29 14:38:19
+ * @LastEditTime: 2025-08-26 18:24:51
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 
 #include "string.h"
+#include "page_alloc.h"
 
 /**
  * @brief 将内存区域填充为指定值
@@ -88,5 +89,18 @@ int strcmp(const char *s1, const char *s2) {
         s2++;
     }
     return *(unsigned char *)s1 - *(unsigned char *)s2; // 返回差值
+}
+
+char *strdup(const char *s) {
+    if (s == NULL) return NULL;
+    
+    size_t len = strlen(s) + 1;  // 计算长度（含结束符）
+    char *dup = malloc(len);     // 分配内存
+    
+    if (dup != NULL) {
+        strcpy(dup, s);          // 复制字符串
+    }
+    
+    return dup;
 }
 // 其他函数：memmove、memcmp、strlen 等

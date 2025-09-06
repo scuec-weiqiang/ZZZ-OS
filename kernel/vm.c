@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-07-06 02:07:02
+ * @LastEditTime: 2025-08-29 13:41:39
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -74,13 +74,13 @@ pgtbl_t* get_child_pgtbl(pgtbl_t *parent_pgd, uint64_t vpn_level, uint64_t va, b
  *
  * @return 对应的页表项指针（pte_t*），如果未找到对应的页表项，则返回NULL。
  */
-pte_t* page_walk(pgtbl_t *pgd, uint64_t va, bool create)
+pte_t* page_walk(pgtbl_t *pgd, uintptr_t va, bool create)
 {
     if(pgd == NULL) return NULL;
     if(va % PAGE_SIZE != 0) return NULL;
 
-    uint64_t *pmd = NULL;
-    uint64_t *pte = NULL;
+    uintptr_t *pmd = NULL;
+    uintptr_t *pte = NULL;
 
     uint64_t vpn2 = (va >> 30) & 0x1ff;
     uint64_t vpn1 = (va >> 21) & 0x1ff;
@@ -108,7 +108,7 @@ pte_t* page_walk(pgtbl_t *pgd, uint64_t va, bool create)
  *
  * @return 成功时返回0，失败时返回-1
  */
-int map_pages(pgtbl_t *pgd, uint64_t vaddr, uint64_t paddr, size_t size, uint64_t flags)
+int64_t map_pages(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, size_t size, uint64_t flags)
 {
     // 检查 pgd 是否为空
     if(pgd == NULL) return -1;
@@ -132,6 +132,7 @@ int map_pages(pgtbl_t *pgd, uint64_t vaddr, uint64_t paddr, size_t size, uint64_
         *pte = PA2PTE(paddr) | flags | PTE_V;
         // printf("va = %x,pa = %x,pte = %x,pte_value = %x\n",va,paddr,*pte,((paddr>>12)<<10));
     }
+    return 0;
 }
 
 
@@ -142,18 +143,19 @@ void kernel_page_table_init()
     memset(kernel_pgd,0,PAGE_SIZE);
 
     // 映射内核代码段，数据段，栈以及堆的保留页到虚拟地址空间 
-    map_pages(kernel_pgd,_text_start,_text_start,_text_size,PTE_R | PTE_X);
-    map_pages(kernel_pgd,_rodata_start,_rodata_start,_rodata_size,PTE_R);
-    map_pages(kernel_pgd,_data_start,_data_start,_data_size,PTE_R | PTE_W);
-    map_pages(kernel_pgd,_bss_start,_bss_start,_bss_size,PTE_R | PTE_W);
-    map_pages(kernel_pgd,_heap_start,_heap_start,_heap_size,PTE_R | PTE_W);
-    map_pages(kernel_pgd,_stack_start,_stack_start,_stack_size,PTE_R | PTE_W);
+    map_pages(kernel_pgd,(uintptr_t)_text_start,(uintptr_t)_text_start,(size_t)_text_size,PTE_R | PTE_X);
+    map_pages(kernel_pgd,(uintptr_t)_rodata_start,(uintptr_t)_rodata_start,(size_t)_rodata_size,PTE_R);
+    map_pages(kernel_pgd,(uintptr_t)_data_start,(uintptr_t)_data_start,(size_t)_data_size,PTE_R | PTE_W);
+    map_pages(kernel_pgd,(uintptr_t)_bss_start,(uintptr_t)_bss_start,(size_t)_bss_size,PTE_R | PTE_W);
+    map_pages(kernel_pgd,(uintptr_t)_heap_start,(uintptr_t)_heap_start,(size_t)_heap_size,PTE_R | PTE_W);
+    map_pages(kernel_pgd,(uintptr_t)_stack_start,(uintptr_t)_stack_start,(size_t)_stack_size*2,PTE_R | PTE_W);
 
     //映射外设寄存器地址空间到内核虚拟地址空间
-    map_pages(kernel_pgd,CLINT_BASE,CLINT_BASE,11*PAGE_SIZE,PTE_R | PTE_W);
-    map_pages(kernel_pgd,PLIC_BASE,PLIC_BASE,0x200*PAGE_SIZE,PTE_R | PTE_W);
-    map_pages(kernel_pgd,UART_BASE,UART_BASE,PAGE_SIZE,PTE_R | PTE_W);
-    map_pages(kernel_pgd,VIRTIO_MMIO_BASE,VIRTIO_MMIO_BASE,PAGE_SIZE,PTE_R | PTE_W);
+    map_pages(kernel_pgd,(uintptr_t)CLINT_BASE,(uintptr_t)CLINT_BASE,11*PAGE_SIZE,PTE_R | PTE_W);
+    map_pages(kernel_pgd,(uintptr_t)PLIC_BASE,(uintptr_t)PLIC_BASE,0x200*PAGE_SIZE,PTE_R | PTE_W);
+    map_pages(kernel_pgd,(uintptr_t)UART_BASE,(uintptr_t)UART_BASE,PAGE_SIZE,PTE_R | PTE_W);
+    map_pages(kernel_pgd,(uintptr_t)VIRTIO_MMIO_BASE,(uintptr_t)VIRTIO_MMIO_BASE,PAGE_SIZE,PTE_R | PTE_W);
+    map_pages(kernel_pgd,(uintptr_t)0x50000000,(uintptr_t)0x50000000,PAGE_SIZE,PTE_R);
     //设置satp寄存器
     satp_w(MAKE_SATP(kernel_pgd));
     printf("kernel page table init success!\n");

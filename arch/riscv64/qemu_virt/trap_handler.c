@@ -106,8 +106,8 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
                 break;    
             case 8:
                 // printf("Environment call from U-mode\n");
-                extern do_syscall(reg_context_t *ctx);
-                do_syscall(ctx);
+                // extern do_syscall(reg_context_t *ctx);
+                // do_syscall(ctx);
                 return_epc += 4;
                 break;
             case 9:
@@ -123,11 +123,11 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
                 break;
             case 13:
                 panic("Load page fault\n");
-                page_fault_handler(stval_r());
+                // page_fault_handler(stval_r());
                 break;
             case 15:
                 panic("Store/AMO page fault\n");
-                page_fault_handler(stval_r());
+                // page_fault_handler(stval_r());
                 break;
             default:
                 panic("unknown sync exception!\ntrap!\n");
@@ -204,23 +204,23 @@ reg_t soft_interrupt_handler(reg_t epc)
 
 void page_fault_handler(addr_t addr)
 {
-    satp_w(satp_r() & ~(SATP_MODE)); // 切换到bare模式
-    // 检查是否为合法地址
-    if (addr < RAM_BASE || addr >= (RAM_BASE + RAM_SIZE)) 
-    {
-        printf("Invalid page fault at %x\n", addr);
-        panic("Page fault");
-    }
+    // satp_w(satp_r() & ~(SATP_MODE)); // 切换到bare模式
+    // // 检查是否为合法地址
+    // if (addr < RAM_BASE || addr >= (RAM_BASE + RAM_SIZE)) 
+    // {
+    //     printf("Invalid page fault at %x\n", addr);
+    //     panic("Page fault");
+    // }
     
-    // 分配物理页并建立映射
-    // addr_t pa = (addr_t)page_alloc(1);
-    // if (!pa) panic("Out of memory");
+    // // 分配物理页并建立映射
+    // // addr_t pa = (addr_t)page_alloc(1);
+    // // if (!pa) panic("Out of memory");
     
-    // 设置映射 (RW权限)
-    map_pages(kernel_pgd, addr, addr, PAGE_SIZE, PTE_R | PTE_W);
+    // // 设置映射 (RW权限)
+    // map_pages(kernel_pgd, addr, addr, PAGE_SIZE, PTE_R | PTE_W);
     
-    printf("Handled page fault: VA=%x -> PA=%x\n", addr, addr);
-    satp_w(satp_r() | SATP_MODE); 
-    // 刷新TLB
-    asm volatile("sfence.vma");
+    // printf("Handled page fault: VA=%x -> PA=%x\n", addr, addr);
+    // satp_w(satp_r() | SATP_MODE); 
+    // // 刷新TLB
+    // asm volatile("sfence.vma");
 }

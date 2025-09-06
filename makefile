@@ -7,6 +7,9 @@ ARCH ?= riscv64
 BOARD?= qemu_virt
 
 DIR = 	kernel \
+		kernel/fs \
+		kernel/fs/ext2/ \
+		kernel/fs/vfs/ \
         arch/$(ARCH)\
         arch/$(ARCH)/$(BOARD)\
 		drivers \
@@ -25,7 +28,7 @@ CC = riscv64-unknown-elf-gcc
 CFLAGS = -nostdlib -fno-builtin -g -Wall \
         $(DIR_INCLUDE) -march=rv64gc -mabi=lp64d -mcmodel=medany \
 		-MMD -MP -MT $@ -MF $(DIR_OUT)/$*.d  # 添加依赖追踪选项
-
+# CFLAGS += -O1
 LD = riscv64-unknown-elf-ld
 LFLAGS = -T$(LINK_SCRIPT) -Map=$(DIR_OUT)/$(PROJ_NAME).map
 # 默认情况下，编译工程里的全部文件；
@@ -101,10 +104,12 @@ clean:
 
 #********************************************************************************
 #qemu模拟器
-QEMU = qemu-system-riscv64
+# QEMU = qemu-system-riscv64
+QEMU = /usr/local/qemu-riscv/bin/qemu-system-riscv64
 QFLAGS = -nographic -smp 1 -machine virt -bios none -cpu rv64
 QFLAGS += -drive file=disk.img,if=none,format=raw,id=disk0,cache=writeback
 QFLAGS += -device virtio-blk-device,drive=disk0,bus=virtio-mmio-bus.0
+QFLAGS += -d guest_errors,unimp,trace:time_memory*
 QFLAGS += -global virtio-mmio.force-legacy=false
 #gdb
 GDB = gdb-multiarch
@@ -132,7 +137,7 @@ gdb:os
 
 .PHONY:disk
 disk:
-	dd if=/dev/urandom of=disk.img bs=1M count=64
+	dd if=/dev/urandom of=disk.img bs=1M count=16
 
 .PHONY:disk_clean
 disk_clean:
@@ -151,3 +156,19 @@ user:
 .PHONY:user_clean
 user_clean:
 	rm -f user/user.o user/user_program.elf user/user_program.elf lib/user_program.h
+
+.PHONY:umount
+umount:
+	sudo umount /mnt/disk
+
+.PHONY:mount
+mount:
+	sudo mount -o loop /home/wei/ZZZ/disk.img /mnt/disk && echo "挂载成功!" || dmesg | tail -n 20
+
+.PHONY:format
+format: 
+	mkfs.ext2 -I 128 -F ./disk.img
+
+.PHONY:show
+show:
+	ls -la /mnt/disk/

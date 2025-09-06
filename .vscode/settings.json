@@ -54,7 +54,25 @@
         "stddef.h": "c",
         "string.h": "c",
         "ext2.h": "c",
-        "color.h": "c"
+        "color.h": "c",
+        "block_device.h": "c",
+        "vfs.h": "c",
+        "ext2_fs.h": "c",
+        "vfs_types.h": "c",
+        "block_adapter.h": "c",
+        "time.h": "c",
+        "check.h": "c",
+        "hlist.h": "c",
+        "hashtable.h": "c",
+        "user_program.h": "c",
+        "vfs_inode.h": "c",
+        "vfs_fs_type.h": "c",
+        "lru.h": "c",
+        "vfs_icache.h": "c",
+        "ext2_cache.h": "c",
+        "ext2_super.h": "c",
+        "ext2_block.h": "c",
+        "vfs_pcache.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }
