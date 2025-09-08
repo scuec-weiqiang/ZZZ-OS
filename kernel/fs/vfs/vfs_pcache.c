@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-01 16:25:09
- * @LastEditTime: 2025-09-03 23:44:26
+ * @LastEditTime: 2025-09-07 22:41:23
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -39,14 +39,12 @@ static vfs_page_t *vfs_create_page(vfs_inode_t *inode, pgoff_t index)
     p->lock.lock = 0;
 
     lock(p);
-    p->refcount = 1;
     p->inode = inode;
     p->index = index;
     p->uptodate = false;
     p->dirty = false;
     p->under_io = true; //占位态, 表示正在加载
-    hlist_node_init(&p->p_lru_cache_node.hnode);
-    INIT_LIST_HEAD(&p->p_lru_cache_node.lnode);
+    lru_node_init(&p->p_lru_cache_node);
     hlist_node_init(&p->self_cache_node);
     unlock(p);
 
@@ -101,14 +99,14 @@ static int64_t vfs_global_page_lru_free(lru_node_t *node)
 
 int64_t vfs_pcache_init()
 {
-    global_page_cache = lru_cache_init(128, vfs_global_page_lru_free,vfs_global_page_lru_hash, vfs_global_page_lru_compare);
+    global_page_cache = lru_init(128, vfs_global_page_lru_free,vfs_global_page_lru_hash, vfs_global_page_lru_compare);
     CHECK(global_page_cache != NULL, "Failed to create page LRU cache", return -1;);
     return 0;
 }
 
 void vfs_pcache_destory()
 {
-    lru_cache_destroy(global_page_cache);
+    lru_destroy(global_page_cache);
 }
 
 
@@ -137,6 +135,8 @@ vfs_page_t *vfs_pget(vfs_inode_t *inode, uint32_t index)
 
     // 4. 插入缓存
     hashtable_insert(inode->i_mapping->page_cache,&found_page->self_cache_node);
+    lru_hash_insert(global_page_cache,&found_page->p_lru_cache_node);
+    lru_ref(global_page_cache,&found_page->p_lru_cache_node); // 引用计数+1，表示正在使用
 
     return found_page;
 }
@@ -145,34 +145,32 @@ int64_t vfs_pput(vfs_page_t *page)
 {
     CHECK(page != NULL, "vfs_pput: page is NULL", return -1;);
     lock(page);
-    if(page->refcount > 0)
+    lru_unref(global_page_cache,&page->p_lru_cache_node); // 引用计数-1
+    if(page->p_lru_cache_node.ref_count == 0)
     {
-        page->refcount--;
-    }
-
-    if (page->refcount == 0)
-    {
-        lru_cache_insert(global_page_cache,&page->p_lru_cache_node);
         hashtable_remove(page->inode->i_mapping->page_cache,&page->self_cache_node);
     } 
     unlock(page);
     return 0;
 }
 
+int64_t vfs_pcache_sync_func(lru_cache_t *cache,lru_node_t *node)
+{
+    vfs_page_t *page = container_of(node, vfs_page_t, p_lru_cache_node);
+    lock(page);
+    if (page->dirty && page->inode->i_mapping->a_ops->writepage) 
+    {
+        int64_t ret = page->inode->i_mapping->a_ops->writepage(page);
+        CHECK(ret >= 0, "vfs_pcache_sync: writepage failed", );
+        page->dirty = false;
+    }
+    unlock(page);
+    return 0;
+}
+
 int64_t vfs_pcache_sync()
 {
-    list_t *pos, *n;
-    list_for_each_safe(pos, n, &global_page_cache->lhead) 
-    {
-        vfs_page_t *page = container_of(pos, vfs_page_t, p_lru_cache_node.lnode);
-        lock(page);
-        if (page->dirty && page->inode->i_mapping->a_ops->writepage) 
-        {
-            int64_t ret = page->inode->i_mapping->a_ops->writepage(page);
-            CHECK(ret >= 0, "vfs_pcache_sync: writepage failed", unlock(page); return -1;);
-            page->dirty = false;
-        }
-        unlock(page);
-    }
+    CHECK(global_page_cache != NULL, "vfs_pcache_sync: global_page_cache is NULL", return -1;);
+    lru_walk(global_page_cache, vfs_pcache_sync_func);
     return 0;
 }

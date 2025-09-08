@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-13 16:16:30
- * @LastEditTime: 2025-09-06 15:46:08
+ * @LastEditTime: 2025-09-07 21:50:10
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -96,7 +96,6 @@ typedef struct page
     bool under_io;           // 正在读/写磁盘
     bool uptodate;                  // 内容有效
     bool dirty;                     // 脏页标志
-    int64_t refcount;                  // 引用计数
     vfs_inode_t *inode;            // 所属 inode
     pgoff_t index;                 // page index in file
     uint8_t *data;                 // 指向 PAGE_SIZE 内存
@@ -118,15 +117,56 @@ typedef struct vfs_address_space
 
 struct vfs_inode_ops
 {
-    int64_t (*lookup)(vfs_inode_t *dir,const char *name);
-    int64_t (*mkdir)(vfs_inode_t *dir, const char *name, uint32_t i_mode); 
+    vfs_inode_t * (*lookup)(vfs_inode_t *dir,const char *name);
+    int64_t (*mkdir)(vfs_inode_t *dir, vfs_dentry_t *dentry ,uint32_t i_mode); 
 };
 struct vfs_inode
 {
-/* inode 标志位 */
-#define I_DIRTY       0x0001  // inode 脏，需要写回
-#define I_NEW         0x0002  // 新分配的 inode，尚未初始化
-#define I_FREEING     0x0004  // inode 正在被释放
+// 文件类型位掩码 注意这是8进制，不是16进制
+#define S_IFMT   00170000  // 文件类型位掩码（八进制）
+#define S_IFSOCK 0140000   // 套接字
+#define S_IFLNK  0120000   // 符号链接
+#define S_IFREG  0100000   // 普通文件
+#define S_IFBLK  0060000   // 块设备
+#define S_IFDIR  0040000   // 目录
+#define S_IFCHR  0020000   // 字符设备
+#define S_IFIFO  0010000   // FIFO（命名管道）
+
+// 文件类型判断宏
+#define S_ISLNK(m)  (((m) & S_IFMT) == S_IFLNK)
+#define S_ISREG(m)  (((m) & S_IFMT) == S_IFREG)
+#define S_ISDIR(m)  (((m) & S_IFMT) == S_IFDIR)
+#define S_ISCHR(m)  (((m) & S_IFMT) == S_IFCHR)
+#define S_ISBLK(m)  (((m) & S_IFMT) == S_IFBLK)
+#define S_ISFIFO(m) (((m) & S_IFMT) == S_IFIFO)
+#define S_ISSOCK(m) (((m) & S_IFMT) == S_IFSOCK)
+
+// 设置用户ID、组ID和粘滞位
+#define S_ISUID  0004000  // 设置用户ID
+#define S_ISGID  0002000  // 设置组ID
+#define S_ISVTX  0001000  // 粘滞位
+
+// 用户权限
+#define S_IRUSR  0000400  // 用户读权限
+#define S_IWUSR  0000200  // 用户写权限
+#define S_IXUSR  0000100  // 用户执行权限
+
+// 组权限
+#define S_IRGRP  0000040  // 组读权限
+#define S_IWGRP  0000020  // 组写权限
+#define S_IXGRP  0000010  // 组执行权限
+
+// 其他用户权限
+#define S_IROTH  0000004  // 其他用户读权限
+#define S_IWOTH  0000002  // 其他用户写权限
+#define S_IXOTH  0000001  // 其他用户执行权限
+
+// 常用权限组合
+#define S_IRWXU  0000700  // 用户读、写、执行权限
+#define S_IRWXG  0000070  // 组读、写、执行权限
+#define S_IRWXO  0000007  // 其他用户读、写、执行权限
+
+#define S_IDEFAULT 0x01ed
     // 公共字段
     uint32_t i_ino;
     uint16_t i_mode;
@@ -139,10 +179,9 @@ struct vfs_inode
     timespec_t i_ctime; // 最后状态改变时间
 
     // vfs字段
-    uint32_t i_count; // 引用计数
     vfs_superblock_t *i_sb;
-    const vfs_inode_ops_t *s_op;
-    const vfs_file_ops_t *i_fop; // 文件操作函数表
+    const vfs_inode_ops_t *i_ops;
+    const vfs_file_ops_t *f_ops; // 文件操作函数表
     vfs_address_space_t *i_mapping; // 地址空间
     spinlock_t i_lock;          // 保护inode的锁
     lru_node_t i_lru_cache_node;            // 缓存节点，用于LRU算法管理
@@ -157,22 +196,38 @@ struct vfs_inode
 
 struct qstr
 {
-    const char *name; // 文件名
+    char *name; // 文件名
     uint32_t len;     // 文件名长度
 };
 
+// dentry 状态标志
+typedef enum d_entry_state 
+{
+    DCACHE_REFERENCED = 1<<0,   // 最近被访问过
+    DCACHE_LRU_LIST = 1<<1 ,     // 在 LRU 列表中
+    DCACHE_DISCONNECTED = 1<<2, // 与父目录断开连接
+    DCACHE_ENTRY_TYPE = 1<<3,   // 条目类型已知
+    DCACHE_MANAGED_DENTRY =  1<<4, // 受管理的 dentry
+    DCACHE_MOUNTED =  1<<5,      // 挂载点
+    DCACHE_NEED_AUTOMOUNT =  1<<6, // 需要自动挂载
+    DCACHE_DONTCACHE = 1<<7,    // 不缓存
+    DCACHE_DENTRY_KILLED =  1<<8, // 已被杀死
+    DCACHE_NEGATIVE = 1<<9,    // 负目录项
+}dentry_state_t;
 struct vfs_dentry
 {
+#define VFS_NAME_MAX 255
     qstr_t name;
     vfs_inode_t *d_inode;   // 关联的inode
     vfs_dentry_t *d_parent; // 父目录项
-    list_t d_childs;   // 子目录项链表
-    lru_cache_t *d_lru_cache_node; // 目录项缓存节点
-    int64_t d_refcount;    // 引用计数
+    list_t d_childs;   // 父目录的子目录链表节点
+    list_t d_subdirs;  // 本目录的子目录项链表头
+    lru_node_t d_lru_cache_node; // 目录项缓存
+    spinlock_t d_lock;
+    dentry_state_t d_flags; // dentry状态标志
     vfs_dentry_ops_t *d_op;
     // void *d_private;
 };
-
 
 
 struct vfs_file_ops
@@ -200,6 +255,11 @@ struct vfs_mount
     vfs_dentry_t *mnt_root;   // 挂载点根目录
     list_t mnt_list;          // 链表节点
 };
+
+typedef struct path {
+    struct vfsmount *mnt;           // 挂载点信息
+    struct dentry *dentry;          // 目录项
+}path_t;
 
 
 

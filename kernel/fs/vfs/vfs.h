@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-12 21:02:22
- * @LastEditTime: 2025-09-01 22:51:58
+ * @LastEditTime: 2025-09-07 20:19:22
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -19,11 +19,16 @@
 #ifndef VFS_H
 #define VFS_H
 
-#include "vfs_types.h"
+// #include "vfs_types.h"
+#include "vfs_init.h"
 
-int64_t vfs_register_fs(vfs_fs_type_t *type);
 
-vfs_superblock_t* vfs_mount(const char *type_name, const char *bdev_name, int64_t flags);
+// extern vfs_dentry_t* vfs_lookup(const char* path);
+extern void vfs_test();
+
+// int64_t vfs_register_fs(vfs_fs_type_t *type);
+
+// vfs_superblock_t* vfs_mount(const char *type_name, const char *bdev_name, int64_t flags);
 
 // vfs_inode_t* vfs_get_root(vfs_superblock_t *sb);
 

@@ -72,7 +72,8 @@
         "ext2_cache.h": "c",
         "ext2_super.h": "c",
         "ext2_block.h": "c",
-        "vfs_pcache.h": "c"
+        "vfs_pcache.h": "c",
+        "vfs_path.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

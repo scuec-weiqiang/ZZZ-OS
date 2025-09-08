@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-21 14:53:56
- * @LastEditTime: 2025-09-03 22:23:53
+ * @LastEditTime: 2025-09-07 22:24:18
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -28,7 +28,7 @@
 *
 * @return 返回初始化的LRU缓存对象指针，如果初始化失败则返回NULL
 */
-lru_cache_t* lru_cache_init(size_t capacity, lru_free_func_t free_func,hash_func_t hash_func, hash_compare_t hash_compare)
+lru_cache_t* lru_init(size_t capacity, lru_free_func_t free_func,hash_func_t hash_func, hash_compare_t hash_compare)
 {
     CHECK(capacity > 0, "Capacity must be greater than 0", return NULL;);
     // CHECK(free_func != NULL, "Free function must not be NULL", return NULL;);
@@ -53,6 +53,13 @@ lru_cache_t* lru_cache_init(size_t capacity, lru_free_func_t free_func,hash_func
 
 }
 
+void lru_node_init(lru_node_t *node)
+{
+    CHECK(node != NULL, "Node is NULL", return;);
+    hlist_node_init(&node->hnode);
+    INIT_LIST_HEAD(&node->lnode);
+    node->ref_count = 0;
+}
 /**
 * @brief 销毁LRU缓存
 *
@@ -60,7 +67,7 @@ lru_cache_t* lru_cache_init(size_t capacity, lru_free_func_t free_func,hash_func
 *
 * @param cache 指向LRU缓存对象的指针
 */
-void lru_cache_destroy(lru_cache_t *cache)
+void lru_destroy(lru_cache_t *cache)
 {
     CHECK(cache != NULL, "Cache is NULL", return;);
 
@@ -85,16 +92,53 @@ void lru_cache_destroy(lru_cache_t *cache)
 * @return 如果找到了节点，则返回该节点的指针；否则返回NULL
 *
 */
-lru_node_t* lru_cache_get(lru_cache_t *cache, lru_node_t *node)
+lru_node_t* lru_hash_lookup(lru_cache_t *cache, lru_node_t *node)
 {
     CHECK(cache != NULL, "ptr <lru_cache_t *cache> is NULL", return NULL;);
     CHECK(node != NULL, "ptr <lru_node_t *node> is NULL", return NULL;);
 
     hlist_node_t *hlist_node = (hlist_node_t *)hashtable_lookup(cache->ht, &node->hnode);
     CHECK(hlist_node != NULL, "", return NULL;);
-    list_mov(&cache->lhead,&container_of(hlist_node,lru_node_t,hnode)->lnode); // 将节点移动到双向链表头部，表示最近访问
+    list_t *hlist_node_lru = &container_of(hlist_node,lru_node_t,hnode)->lnode;
+    if(hlist_node_lru->prev != NULL && hlist_node_lru->next != NULL) // 如果节点在双向链表中，那么将其移动到链表头部
+    {
+        list_mov(&cache->lhead,hlist_node_lru); // 将节点添加到双向链表头部，表示最近访问
+    }
+
     return (lru_node_t *)container_of(hlist_node, lru_node_t, hnode);
 }
+
+
+int64_t lru_hash_insert(lru_cache_t *cache, lru_node_t *node)
+{
+    CHECK(cache != NULL, "ptr <lru_cache_t *cache> is NULL", return -1;);
+    CHECK(node != NULL, "ptr <lru_node_t *node> is NULL", return -1;);
+
+    int64_t ret = hashtable_insert(cache->ht, &node->hnode);
+    CHECK(ret >= 0, "", return -1;);
+    return 0;
+}
+
+int64_t lru_hash_remove(lru_cache_t *cache, lru_node_t *node)
+{
+    CHECK(cache != NULL, "ptr <lru_cache_t *cache> is NULL", return -1;);
+    CHECK(node != NULL, "ptr <lru_node_t *node> is NULL", return -1;);
+
+    hlist_node_t *hlist_node = (hlist_node_t *)hashtable_lookup(cache->ht, &node->hnode);
+    CHECK(hlist_node != NULL, "Node not found in cache", return -1;);
+
+    hashtable_remove(cache->ht,hlist_node); // 从哈希表中移除该节点
+    list_t *hlist_node_lru = &container_of(hlist_node,lru_node_t,hnode)->lnode;
+    if(hlist_node_lru->prev != NULL && hlist_node_lru->next != NULL) // 如果节点在双向链表中，那么也将其从链表中删除
+    {
+        list_del(hlist_node_lru); // 从双向链表中删除该节点
+    }
+    cache->free(container_of(hlist_node,lru_node_t,hnode)); // 释放节点
+    cache->node_count--;
+
+    return 0;
+}
+
 
 /**
 * @brief 将节点插入到LRU缓存中
@@ -113,19 +157,10 @@ int64_t lru_cache_insert(lru_cache_t *cache, lru_node_t *node)
 
     if(cache->node_count >= cache->capacity) 
     {
-        hashtable_remove(cache->ht, &container_of(cache->lhead.prev,lru_node_t,lnode)->hnode); // 从哈希表中移除该节点
+        hashtable_remove(cache->ht, &container_of(cache->lhead.prev,lru_node_t,lnode)->hnode); // 从哈希表中移除最久未访问的节点
+        list_del(cache->lhead.prev); // 删除最久未访问的节点
         cache->free(container_of(cache->lhead.prev,lru_node_t,lnode));
-        list_del(cache->lhead.prev); // 删除双向链表尾部的节点，即最久未访问的节点
         cache->node_count--;
-    }
-
-    hlist_node_t *hlist_node = (hlist_node_t *)hashtable_lookup(cache->ht, &node->hnode);
-    if(hlist_node != NULL) // 如果该缓存已经存在
-    {
-        lru_node_t *old_node = container_of(hlist_node, lru_node_t, hnode);
-        hashtable_remove(cache->ht,hlist_node); // 从哈希表中移除旧缓存节点
-        list_del(&old_node->lnode); // 删除旧缓存
-        cache->free(old_node);
     }
 
     int64_t ret = hashtable_insert(cache->ht, &node->hnode);
@@ -146,7 +181,7 @@ int64_t lru_cache_insert(lru_cache_t *cache, lru_node_t *node)
 *
 * @return 删除成功返回0，失败返回-1
 */
-int64_t lru_cache_delete(lru_cache_t *cache, lru_node_t *node)
+int64_t lru_cache_remove(lru_cache_t *cache, lru_node_t *node)
 {
     CHECK(cache != NULL, "ptr <lru_cache_t *cache> is NULL", return -1;);
     CHECK(node != NULL, "ptr <lru_node_t *node> is NULL", return -1;);
@@ -162,118 +197,53 @@ int64_t lru_cache_delete(lru_cache_t *cache, lru_node_t *node)
     return 0;
 }
 
+/**
+ * lru_cache_ref - 增加缓存项的引用计数
+ * @cache: 缓存对象
+ * @key: 要引用的键
+ * 
+ * 返回: 成功返回0，失败返回错误码
+ */
+int64_t lru_ref(lru_cache_t *cache,lru_node_t *node)
+{
+    CHECK(node != NULL, "lru_cache_ref: node is NULL", return -1;);
+    return node->ref_count++;
+}
 
-// /**************************************   test   *********************************** */
-// // 测试用的自定义数据结构
-// // 测试用的自定义数据结构
-// typedef struct test_node {
-//     uint32_t key;
-//     uint32_t value;
-//     lru_node_t lru_node;  // 嵌入LRU节点
-// } test_node_t;
-// // 哈希函数：基于age计算哈希值
-// static hval_t test_hash_func(const hlist_node_t *node) 
-// {
-//     const test_node_t *t_node = container_of(node, test_node_t, lru_node.hnode);
-//     return (hval_t)t_node->key;  // 简单使用key作为哈希值
-// }
+/**
+ * lru_cache_unref - 减少缓存项的引用计数
+ * @cache: 缓存对象
+ * @key: 要释放引用的键
+ * 
+ * 当引用计数降为0时，项可能被放入LRU链表等待淘汰
+ * 返回: 成功返回0，失败返回错误码
+ */
+int64_t lru_unref(lru_cache_t *cache,lru_node_t *node)
+{
+    CHECK(node != NULL, "lru_cache_ref: node is NULL", return -1;);
+    if(node->ref_count > 0)
+    {
+        node->ref_count--;
+        if(node->ref_count == 0)
+        {
+            lru_cache_insert(cache, node);
+        }
+    }
+    return 0;
+}
 
-// // 比较函数：比较两个节点的key是否相等
-// static int64_t test_hash_compare(const hlist_node_t *a, const hlist_node_t *b) 
-// {
-//     const test_node_t *node_a = container_of(a, test_node_t, lru_node.hnode);
-//     const test_node_t *node_b = container_of(b, test_node_t, lru_node.hnode);
-//     return (node_a->key == node_b->key) ? 0 : 1;
-// }
+int64_t lru_walk(lru_cache_t *cache, lru_walk_func_t func)
+{
+    CHECK(cache != NULL, "ptr <lru_cache_t *cache> is NULL", return -1;);
+    CHECK(func != NULL, "ptr <lru_walk_func_t func> is NULL", return -1;);
 
-// // 节点释放函数
-// static int64_t test_free_func(lru_node_t *node) {
-//     test_node_t *t_node = container_of(node, test_node_t, lru_node);
-//     free(t_node);
-//     return 0;
-// }
+    // 遍历全局inode缓存，写回所有脏inode
+    lru_node_t *pos, *n;
+    list_for_each_entry_safe(pos, n, &cache->lhead, lru_node_t, lnode) 
+    {
+        func(cache,pos);
+        // list_mov_tail(&cache->lhead, &pos->lnode);
+    }
 
-// static test_node_t *create_test_node(int key, int value)
-// {
-//     test_node_t *node = (test_node_t *)malloc(sizeof(test_node_t));
-//     if (!node) return NULL;
-//     node->key = key;
-//     node->value = value;
-//     // hlist_node_init(&node->lru_node.hnode);  // 初始化哈希节点
-//     // list_node_init(&node->lru_node.lnode);   // 初始化链表节点
-//     return node;
-// }
-
-// void lru_test()
-// {
-
-//     // 1. 初始化容量为3的LRU缓存
-//     lru_cache_t *cache = lru_cache_init(3, test_free_func, test_hash_func, test_hash_compare);
-//     CHECK(cache != NULL,"",);
-//     CHECK(lru_cache_capacity(cache) == 3,"",);
-//     CHECK(lru_cache_node_count(cache) == 0,"",);
-//     printf("初始化测试通过\n");
-
-//     // 2. 插入3个节点（未达容量）
-//     test_node_t *n1 = create_test_node(1, 100);
-//     test_node_t *n2 = create_test_node(2, 200);
-//     test_node_t *n3 = create_test_node(3, 300);
-
-//     CHECK(lru_cache_put(cache, &n1->lru_node) == 0,"",);
-//     CHECK(lru_cache_put(cache, &n2->lru_node) == 0,"",);
-//     CHECK(lru_cache_put(cache, &n3->lru_node) == 0,"",);
-//     CHECK(lru_cache_node_count(cache) == 3,"",);
-//     printf("插入3个节点测试通过\n");
-
-//     // 3. 查找节点并验证LRU顺序更新
-//     test_node_t *find_n2 = (test_node_t *)container_of(lru_cache_get(cache, &n2->lru_node),test_node_t,lru_node);
-//     CHECK(find_n2 != NULL,"",);
-//     CHECK(find_n2->key == 2,"",); // 验证找到正确节点
-//     printf("查找节点测试通过\n");
-
-//     // 4. 插入第4个节点（超过容量，触发淘汰）
-//     test_node_t *n4 = create_test_node(4, 400);
-//     CHECK(lru_cache_put(cache, &n4->lru_node) == 0,"",);
-//     CHECK(lru_cache_node_count(cache) == 3,"",); // 容量保持不变
-
-//     // 验证最久未使用的n1被淘汰
-//     test_node_t *temp = create_test_node(1, 0);            // 用于查找的临时节点
-//     CHECK(lru_cache_get(cache, &temp->lru_node) == NULL,"",); // n1应已被淘汰
-//     free(temp);
-//     temp = NULL;
-//     printf("淘汰策略测试通过\n");
-
-//     // 5. 验证剩余节点存在性
-//     temp = create_test_node(2, 0);
-//     CHECK(lru_cache_get(cache, &temp->lru_node) != NULL,"",); // n2被访问过，应存在
-//     free(temp);
-//     temp = NULL;
-
-//     temp = create_test_node(3, 0);
-//     CHECK(lru_cache_get(cache, &temp->lru_node) != NULL,"",); // n3存在
-//     free(temp);
-//     temp = NULL;
-
-//     temp = create_test_node(4, 0);
-//     CHECK(lru_cache_get(cache, &temp->lru_node) != NULL,"",); // n4存在
-//     free(temp);
-//     temp = NULL;
-//     printf("剩余节点验证测试通过\n");
-
-//     // 6. 测试重复插入相同key（更新操作）
-//     test_node_t *n2_new = create_test_node(2, 201); // 相同key，不同value
-//     CHECK(lru_cache_put(cache, &n2_new->lru_node) == 0,"",);
-//     CHECK(lru_cache_node_count(cache) == 3,"",); // 数量不变
-
-//     // 验证更新后的值
-//     temp = create_test_node(2, 0);
-//     test_node_t *updated_node = (test_node_t *)container_of(lru_cache_get(cache, &temp->lru_node),test_node_t,lru_node);
-//     CHECK(updated_node->value == 201,"",); // 验证值已更新
-//     free(temp);
-//     temp = NULL;
-//     printf("重复插入更新测试通过\n");
-
-//     // 7. 销毁缓存
-//     lru_cache_destroy(cache);
-//     printf("所有LRU测试通过!\n");
-// }
+    return 0;
+}

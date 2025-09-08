@@ -1,15 +1,16 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/vfs/vfs_namei.c
+ * @FilePath: /ZZZ/kernel/fs/vfs/vfs_path.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-01 00:21:01
- * @LastEditTime: 2025-09-01 00:26:38
+ * @LastEditTime: 2025-09-07 17:18:51
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include "types.h"
 #include "check.h"
 #include "string.h"
+
 
 /**
  * @brief 将路径字符串分割成多个token
@@ -83,7 +84,7 @@ char *path_split(char *str, const char *delim)
 *
 * @return 返回0表示成功，返回-1表示失败
 */
-static int64_t base_dir_split(const char *path,char *dirname, char *basename)
+int64_t base_dir_split(const char *path,char *dirname, char *basename)
 {
     CHECK(path != NULL, "", return -1;);
     CHECK(dirname != NULL, "", return -1;);
@@ -138,3 +139,4 @@ static int64_t base_dir_split(const char *path,char *dirname, char *basename)
 
     return 0;
 }
+

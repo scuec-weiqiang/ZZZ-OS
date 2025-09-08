@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-28 00:53:13
- * @LastEditTime: 2025-09-04 01:23:36
+ * @LastEditTime: 2025-09-07 21:25:33
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -20,7 +20,7 @@ extern void         vfs_icache_destory();
 
 extern vfs_inode_t* vfs_create_inode(vfs_superblock_t *sb);
 
-extern vfs_inode_t* vfs_new_inode(vfs_superblock_t *sb);
+extern vfs_inode_t* vfs_inew(vfs_superblock_t *sb);
 extern vfs_inode_t* vfs_iget(vfs_superblock_t *sb, vfs_ino_t ino);
 extern int64_t      vfs_iput(vfs_inode_t *inode);
 

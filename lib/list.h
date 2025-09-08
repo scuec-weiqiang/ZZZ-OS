@@ -218,6 +218,11 @@ STATIC_INLINE void list_splice_init(list_t *head,list_t *node)
         &(pos->member)!=(head); \
         (pos)=list_entry((pos->member.next),stype,member))
 
+#define list_for_each_entry_safe(pos,n,head,stype,member) \
+    for( (pos)=list_entry((head)->next,stype,member), \
+        (n)=list_entry((pos->member.next),stype,member); \
+        &(pos->member)!=(head); \
+        (pos)=(n),(n)=list_entry((n->member.next),stype,member))
 
 #define list_for_each_entry_prev(pos,head,stype,member) \
     for( (pos)=list_entry((head)->prev,stype,member); \

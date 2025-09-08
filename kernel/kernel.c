@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-08-29 22:47:10
+ * @LastEditTime: 2025-09-07 20:19:29
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -24,6 +24,7 @@
 #include "clint.h"
 #include "maddr_def.h"
 #include "interrupt.h"
+#include "vfs.h"
 // #include "systimer.h"
 // #include "string.h"
 // #include "elf.h"
@@ -61,6 +62,7 @@ void init_kernel()
         virt_disk_init(); 
 
         vfs_init();
+        vfs_test();
         printf("now time:%x\n",get_current_unix_timestamp(UTC8));
         page_get_remain_mem();
         // elf_info_t *info = malloc(sizeof(elf_info_t));

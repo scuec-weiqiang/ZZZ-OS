@@ -14,7 +14,7 @@ DIR = 	kernel \
         arch/$(ARCH)/$(BOARD)\
 		drivers \
 		lib \
-		user \
+		# user \
 
 PROJ_NAME = $(notdir $(shell pwd))
 DIR_SOURCES = $(DIR)     
@@ -171,4 +171,6 @@ format:
 
 .PHONY:show
 show:
+	sudo mount -o loop /home/wei/ZZZ/disk.img /mnt/disk && echo "挂载成功!" || dmesg | tail -n 20
 	ls -la /mnt/disk/
+	sudo umount /mnt/disk
