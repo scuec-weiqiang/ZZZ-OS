@@ -1102,7 +1102,7 @@ int64_t ext2_fs_destroy(ext2_fs_t *fs)
  *
  * @return 格式化成功返回 0，失败返回 -1
  */
-int64_t ext2_fs_format(ext2_fs_t *fs,uint32_t block)
+int64_t ext2_fs_format(ext2_fs_t *fs)
 {
     uint64_t now_block_pos = 0;
 
