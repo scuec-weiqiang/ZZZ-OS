@@ -159,11 +159,11 @@ user_clean:
 
 .PHONY:umount
 umount:
-	sudo umount /mnt/disk
+	sudo umount ./mount
 
 .PHONY:mount
 mount:
-	sudo mount -o loop /home/wei/ZZZ/disk.img /mnt/disk && echo "挂载成功!" || dmesg | tail -n 20
+	sudo mount -o loop ./disk.img ./mount && echo "挂载成功!" || dmesg | tail -n 20
 
 .PHONY:format
 format: 
@@ -171,6 +171,6 @@ format:
 
 .PHONY:show
 show:
-	sudo mount -o loop /home/wei/ZZZ/disk.img /mnt/disk && echo "挂载成功!" || dmesg | tail -n 20
-	ls -la /mnt/disk/
-	sudo umount /mnt/disk
+	sudo mount -o loop ./disk.img ./mount && echo "挂载成功!" || dmesg | tail -n 20
+	ls -la ./mount/
+	sudo umount ./mount

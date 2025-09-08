@@ -119,6 +119,7 @@ struct vfs_inode_ops
 {
     vfs_inode_t * (*lookup)(vfs_inode_t *dir,const char *name);
     int64_t (*mkdir)(vfs_inode_t *dir, vfs_dentry_t *dentry ,uint32_t i_mode); 
+    int64_t (*rmdir)(vfs_inode_t *dir, vfs_dentry_t *dentry); 
 };
 struct vfs_inode
 {

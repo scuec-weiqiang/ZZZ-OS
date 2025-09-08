@@ -88,12 +88,45 @@ exit:
 
 }
 
+vfs_dentry_t* vfs_rmdir(const char* path)
+{
+    CHECK(path != NULL, "", return NULL;);
+
+    vfs_dentry_t *d_parent = NULL;
+    vfs_dentry_t *d_child = NULL;
+
+    char* path_copy = strdup(path); // 复制路径字符串，因为path_split会修改原字符串
+
+    char* basename = malloc(strlen(path_copy) + 1);
+    char* dirname = malloc(VFS_NAME_MAX + 1);
+
+    base_dir_split(path_copy, dirname, basename);
+
+    d_parent = vfs_lookup(dirname);
+    if (d_parent == NULL) {
+
+        d_child = NULL;
+        goto exit;
+    }
+
+    d_child = vfs_dget(d_parent, basename);
+
+    d_parent->d_inode->i_ops->rmdir(d_parent->d_inode, d_child);
+
+exit:
+    free(basename);
+    free(dirname);
+    free(path_copy);
+    return d_child; 
+
+}
+
 void vfs_test()
 {
-    vfs_inode_t *inode1 = vfs_inew(vfs_get_root()->d_inode->i_sb);
-    vfs_inode_t *inode2 = vfs_inew(vfs_get_root()->d_inode->i_sb);
+    // vfs_inode_t *inode1 = vfs_inew(vfs_get_root()->d_inode->i_sb);
+    // vfs_inode_t *inode2 = vfs_inew(vfs_get_root()->d_inode->i_sb);
     
-    vfs_dentry_t* d = vfs_lookup("/a/b");
+    vfs_dentry_t* d = vfs_lookup("/hello.txt");
 
     // if (d == NULL) {
     //     printf("Directory not found.\n");
@@ -105,6 +138,7 @@ void vfs_test()
     //     printf("Directory parent parent: %s\n", d->d_parent->d_parent->name.name);
     // }
 
+    // vfs_dentry_t* d;
     // d = vfs_mkdir("/c/d",S_IFDIR | S_IDEFAULT);
     // if (d == NULL) {
     //     printf("Directory not create.\n");

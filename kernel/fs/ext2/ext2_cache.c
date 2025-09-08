@@ -12,9 +12,9 @@ int64_t ext2_sync_inode_bitmap_cache(vfs_superblock_t *vfs_sb)
     CHECK(vfs_sb->s_private!=NULL,"",return -1;);
 
     ext2_fs_info_t *fs_info = (ext2_fs_info_t*)vfs_sb->s_private; 
-    uint32_t logic_block = fs_info->group_desc[fs_info->ibm_cache.cached_group].bg_block_bitmap; 
+    uint32_t logic_block = fs_info->group_desc[fs_info->ibm_cache.cached_group].bg_inode_bitmap; 
     int64_t ret = block_adapter_write(vfs_sb->adap,BITMAP_ARR(fs_info->ibm_cache.ibm),logic_block,fs_info->s_ibmb_per_group);
-    CHECK(ret>0,"",return -1;);
+    CHECK(ret>=0,"",return -1;);
     return 0;
 }
 
@@ -203,7 +203,7 @@ int64_t ext2_sync_cache(vfs_superblock_t *sb)
     ext2_fs_info_t *fs_info = (ext2_fs_info_t*)sb->s_private;
     if(fs_info->ibm_cache.dirty)
     {
-        int64_t ret = ext2_sync_block_bitmap_cache(sb);
+        int64_t ret = ext2_sync_inode_bitmap_cache(sb);
         CHECK(ret>=0,"ext2_sync_super error: sync inode bitmap failed!",return -1;);
         fs_info->ibm_cache.dirty = false;
     }

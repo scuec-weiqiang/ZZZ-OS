@@ -82,7 +82,8 @@ vfs_inode_t *ext2_lookup(vfs_inode_t *i_parent, const char *name)
 
     uint64_t page_num = (i_parent->i_size + VFS_PAGE_SIZE - 1) / VFS_PAGE_SIZE;
     vfs_inode_t *inode_ret = NULL; 
-    
+    size_t name_len = (size_t)strlen(name);
+
     for (uint64_t i = 0; i < page_num; i++)
     {
         vfs_page_t *page = vfs_pget(i_parent, i);
@@ -92,7 +93,7 @@ vfs_inode_t *ext2_lookup(vfs_inode_t *i_parent, const char *name)
         while (offset < VFS_PAGE_SIZE)
         {
             entry = (ext2_dir_entry_2_t *)(page->data + offset);
-            if (entry->inode != 0 && strcmp(entry->name, name) == 0)
+            if (entry->inode != 0 && entry->name_len == name_len&& strncmp(entry->name, name, name_len) == 0)
             {
                 inode_ret = vfs_iget(vfs_sb, entry->inode);
                 return inode_ret;
@@ -287,6 +288,7 @@ int64_t ext2_add_entry(vfs_inode_t *i_parent, vfs_dentry_t *dentry, dir_slot_t *
 
     ((ext2_inode_t*)i_parent->i_private)->i_links_count++; // 增加父目录链接计数 
     i_parent->dirty = true; // 标记父目录inode为脏
+    i_parent->i_mtime.tv_sec = get_current_unix_timestamp(UTC8); // 更新修改时间
     ((ext2_fs_info_t*)(vfs_sb->s_private))->group_desc[ext2_ino_group(vfs_sb,dentry->d_inode->i_ino)].bg_used_dirs_count++; 
 
 
@@ -315,6 +317,19 @@ int64_t ext2_mkdir(vfs_inode_t *i_parent, vfs_dentry_t *dentry, uint32_t i_mode)
 
     return 0; 
 } 
+
+int64_t ext2_remove_entry(vfs_inode_t *i_parent, vfs_dentry_t *dentry)
+{
+
+    return 0;
+}
+
+int64_t ext2_rmdir(vfs_inode_t *i_parent, vfs_dentry_t *dentry)
+{
+    
+}
+
+
 
 vfs_inode_ops_t ext2_inode_ops = 
 { 
