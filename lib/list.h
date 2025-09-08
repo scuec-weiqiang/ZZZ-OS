@@ -1,26 +1,7 @@
 #ifndef _LIST_H
 #define _LIST_H
 
-#include "types.h"
-
-/***************************************************************
- * @description: 返回结构体成员的偏移地址
- * @stype: 结构体的类型
- * @member:结构体的一个成员名
-***************************************************************/
-#define offsetof(stype,member)  \
-    ((size_t)(&(((stype*)0)->member))) \
-            
-/***************************************************************
- * @description: 返回某个成员所在结构体的首地址
- * @mptr: 成员的地址
- * @stype: 结构体的类型
- * @member:结构体的成员名
-***************************************************************/   
-// 现在我有一个b的地址，我想知道这个b所在的A结构体的首地址，就可以用这个宏
-#define container_of(mptr,stype,member) \
-    ((stype*)((size_t)mptr-offsetof(stype,member))) \
-
+#include "container_of.h"
 
 typedef struct list
 {
@@ -50,7 +31,7 @@ typedef struct list
  * @param {list_t} *next [in]:  插入位置的后一个节点的指针
  * @return {*}
 ***************************************************************/
-__SELF __INLINE void __list_add(list_t *node,list_t *prev,list_t *next)
+STATIC_INLINE void __list_add(list_t *node,list_t *prev,list_t *next)
 {   
     prev->next = node;
     node->prev = prev;
@@ -64,7 +45,7 @@ __SELF __INLINE void __list_add(list_t *node,list_t *prev,list_t *next)
  * @param {list_t} *next [in]:  卸载位置的后一个节点的指针
  * @return {*}
 ***************************************************************/
-__SELF __INLINE void __list_del(list_t *prev,list_t *next)
+STATIC_INLINE void __list_del(list_t *prev,list_t *next)
 {
     prev->next = next;
     next->prev = prev;
@@ -77,7 +58,7 @@ __SELF __INLINE void __list_del(list_t *prev,list_t *next)
  * @param {list_t} *node [in]:  需要合并位置的节点的指针
  * @return {*}
 ***************************************************************/
-__SELF __INLINE void __list_splice(list_t *head,list_t *node)
+STATIC_INLINE void __list_splice(list_t *head,list_t *node)
 {
     list_t *first = head->next;
     list_t *last =  head->prev;
@@ -211,6 +192,11 @@ STATIC_INLINE void list_splice_init(list_t *head,list_t *node)
 #define list_for_each(pos,head) \
     for( (pos)=(head)->next;(pos)!=(head);(pos)=(pos)->next)
 
+#define list_for_each_safe(pos,n,head) \
+    for( (pos)=(head)->next,(n)=(pos)->next; \
+        (pos)!=(head); \
+        (pos)=(n),(n)=(pos)->next)
+
 /***************************************************************
  * @description: 从后向前遍历链表
  * @pos: 一个链表指针
@@ -232,6 +218,11 @@ STATIC_INLINE void list_splice_init(list_t *head,list_t *node)
         &(pos->member)!=(head); \
         (pos)=list_entry((pos->member.next),stype,member))
 
+#define list_for_each_entry_safe(pos,n,head,stype,member) \
+    for( (pos)=list_entry((head)->next,stype,member), \
+        (n)=list_entry((pos->member.next),stype,member); \
+        &(pos->member)!=(head); \
+        (pos)=(n),(n)=list_entry((n->member.next),stype,member))
 
 #define list_for_each_entry_prev(pos,head,stype,member) \
     for( (pos)=list_entry((head)->prev,stype,member); \

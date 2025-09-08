@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-05-10 17:37:11
+ * @LastEditTime: 2025-08-26 18:36:36
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -66,7 +66,7 @@ __SELF __INLINE void __clint_mtimecmp_set(uint32_t hartid,uint64_t value)
  * @param hart_id 指定发送中断的 hart 的 ID
  */
 __SELF __INLINE void __clint_send_ipi(hart_id_t hart_id) {
-    volatile uint32_t *msip = (volatile uint32_t*)(CLINT_MSIP(hart_id));
+    volatile uint32_t* msip = (volatile uint32_t*)(uint64_t)(CLINT_MSIP(hart_id));
     *msip = 1;  // 写1触发MSIP中断
 }
 
@@ -79,7 +79,7 @@ __SELF __INLINE void __clint_send_ipi(hart_id_t hart_id) {
  * @param hart_id 要清除MSIP中断的HART ID
  */
 __SELF __INLINE void __clint_clear_ipi(hart_id_t hart_id) {
-    volatile uint32_t *msip = (volatile uint32_t*)(CLINT_MSIP(hart_id));
+    volatile uint32_t *msip = (volatile uint32_t*)(uint64_t)(CLINT_MSIP(hart_id));
     *msip = 0;  // 写0清除MSIP中断
 }
 

@@ -4,7 +4,7 @@
         {
             "label": "wsl-qemu-start",
             "type": "shell",
-            "command": "qemu-system-riscv64",
+            "command": "/usr/local/qemu-riscv/bin/qemu-system-riscv64",
             "args": [
                 "-nographic",
                 "-smp", "1",

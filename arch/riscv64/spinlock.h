@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-01 23:29:09
- * @LastEditTime: 2025-05-28 01:27:15
+ * @LastEditTime: 2025-09-04 00:17:07
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -19,6 +19,10 @@ typedef struct spinlock {
 
 #define SPINLOCK_INIT {0}
 
+__SELF __INLINE void spinlock_init(spinlock_t *lock) 
+{
+    lock->lock = 0;
+}
 /**
  * @brief 自旋锁函数
  *
