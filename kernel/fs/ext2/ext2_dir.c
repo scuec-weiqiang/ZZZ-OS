@@ -14,6 +14,7 @@
 #include "ext2_block.h" 
 #include "ext2_super.h" 
 #include "ext2_inode.h"
+#include "ext2_dir.h"
 
 #include "check.h"
 #include "list.h"
@@ -35,7 +36,7 @@ static uint32_t ext2_mode_to_entry_type(uint32_t i_mode)
     }
 }
 
-static int64_t ext2_init_dot_entries(vfs_inode_t *i_parent, uint32_t parent_inode)
+int64_t ext2_init_dot_entries(vfs_inode_t *i_parent, uint32_t parent_inode)
 {
     CHECK(i_parent != NULL, "", return -1;);
 
@@ -63,7 +64,7 @@ static int64_t ext2_init_dot_entries(vfs_inode_t *i_parent, uint32_t parent_inod
 } 
 
 /** 
-* @brief 从虚拟文件系统（VFS）中获取指定文件或目录的dentry信息 
+* @brief 从虚拟文件系统（VFS）中获取指定文件或目录的entry信息 
 * 该函数在指定的父目录（parent_dentry）下查找名为name的文件或目录，并将找到的dentry信息复制到dentry_ret中。 
 * 如果在父目录的子目录链表中找到了同名文件或目录，则直接返回对应的inode索引。 
 * 如果在子目录链表中未找到，则从磁盘上读取目录项，并在遍历所有相关的block后返回找到的inode索引。 
@@ -73,7 +74,7 @@ static int64_t ext2_init_dot_entries(vfs_inode_t *i_parent, uint32_t parent_inod
 * @param dentry_ret 用于存储找到的dentry信息的指针 
 * @return 如果成功找到文件或目录，则返回对应的inode索引；如果未找到，则返回-1。 
 */
-vfs_inode_t *ext2_lookup(vfs_inode_t *i_parent, const char *name)
+vfs_inode_t *ext2_find(vfs_inode_t *i_parent, const char *name)
 {
     CHECK(i_parent != NULL, "", return -1;);
     CHECK(name != NULL, "", return -1;);
@@ -93,8 +94,9 @@ vfs_inode_t *ext2_lookup(vfs_inode_t *i_parent, const char *name)
         while (offset < VFS_PAGE_SIZE)
         {
             entry = (ext2_dir_entry_2_t *)(page->data + offset);
-            if (entry->inode != 0 && entry->name_len == name_len&& strncmp(entry->name, name, name_len) == 0)
+            if (entry->name_len == name_len&& strncmp(entry->name, name, name_len) == 0)
             {
+                if(entry->inode == 0)
                 inode_ret = vfs_iget(vfs_sb, entry->inode);
                 return inode_ret;
             }
@@ -119,7 +121,7 @@ int64_t ext2_init_new_inode(vfs_inode_t *inode, uint32_t i_mode)
     switch(EXT2_GET_TYPE(i_mode))
     {
         case EXT2_S_IFDIR:
-            int64_t new_block_idx_ret = ext2_alloc_bno(vfs_sb,ext2_select_block_group(vfs_sb)); // 分配新的块
+            int64_t new_block_idx_ret = ext2_alloc_bno(vfs_sb); // 分配新的块
             CHECK(new_block_idx_ret >= 0, "", return -1;);       // 检查分配块是否成功
             new_inode->i_block[0] = (uint64_t)new_block_idx_ret; // 更新块索引
             new_inode->i_blocks += vfs_sb->s_block_size / 512;
@@ -130,6 +132,7 @@ int64_t ext2_init_new_inode(vfs_inode_t *inode, uint32_t i_mode)
             new_inode->i_size = 0;
             new_inode->i_block[0] = 0;
             new_inode->i_blocks = 0;
+            new_inode->i_links_count = 1;
         default:
             new_inode->i_block[0] = 0;
             new_inode->i_blocks = 0;
@@ -197,16 +200,7 @@ void print_ext2_inode_member(vfs_superblock_t *vfs_sb, ext2_inode_t *inode)
     bitmap_test_bit(fs_info->ibm_cache.ibm, 0xb) ? printf("i_block[0] is set\n") : printf("i_block[0] is not set\n");
 }
 
-// 辅助结构：查到的空槽信息
-typedef struct {
-    uint64_t page_index;      // 页号
-    uint32_t offset;           // 在块内的偏移
-    uint32_t prev_offset;      // 如果需要修改 prev_entry->rec_len
-    uint32_t prev_real_len;   // prev_entry 的真实大小
-    uint32_t free_len;        // 可用于新项的空间
-    bool     found;            // 找到
-    // bool     prev_is_empty_inode; // prev entry 的 inode==0
-} dir_slot_t;
+
 static int64_t ext2_find_free_slot_in_page(vfs_page_t *page, uint32_t need_len, dir_slot_t *out)
 {
     uint8_t *page_buf = page->data;
@@ -243,7 +237,7 @@ static int64_t ext2_find_free_slot_in_page(vfs_page_t *page, uint32_t need_len, 
     }
     return -1;
 }
-int64_t ext2_get_slot(vfs_inode_t *i_parent, size_t name_len, dir_slot_t *slot_out)
+int64_t ext2_find_slot(vfs_inode_t *i_parent, size_t name_len, dir_slot_t *slot_out)
 {
     CHECK(i_parent != NULL, "", return -1;);
     CHECK(name_len > 0, "", return -1;);
@@ -286,36 +280,10 @@ int64_t ext2_add_entry(vfs_inode_t *i_parent, vfs_dentry_t *dentry, dir_slot_t *
     page->dirty = true; // 标记页为脏
     vfs_pput(page); // 写回缓存
 
-    ((ext2_inode_t*)i_parent->i_private)->i_links_count++; // 增加父目录链接计数 
-    i_parent->dirty = true; // 标记父目录inode为脏
-    i_parent->i_mtime.tv_sec = get_current_unix_timestamp(UTC8); // 更新修改时间
-    ((ext2_fs_info_t*)(vfs_sb->s_private))->group_desc[ext2_ino_group(vfs_sb,dentry->d_inode->i_ino)].bg_used_dirs_count++; 
+    
 
 
     return dentry->d_inode->i_ino; 
-} 
-
-int64_t ext2_mkdir(vfs_inode_t *i_parent, vfs_dentry_t *dentry, uint32_t i_mode) 
-{ 
-    CHECK(i_parent != NULL, "", return -1;);
-
-    vfs_inode_t *new_inode = vfs_inew(i_parent->i_sb); // 创建新的inode 
-    ext2_init_new_inode(new_inode, i_mode);// 初始化新的inode 
-    ext2_init_dot_entries(new_inode, i_parent->i_ino); // 初始化 . 和 .. 目录项
-    dentry->d_inode = new_inode; // 关联dentry和新inode
-    vfs_iput(new_inode); // 写回缓存
-
-    dir_slot_t slot = {0};
-    ext2_get_slot(i_parent, dentry->name.len, &slot);
-    ext2_add_entry(i_parent, dentry, &slot, i_mode);
-
-    vfs_icache_sync(); // 同步inode缓存
-    vfs_pcache_sync(); // 同步page缓存
-    
-    ext2_sync_cache(i_parent->i_sb); // 同步缓存 
-    ext2_sync_super(i_parent->i_sb); // 同步superblock到磁盘 
-
-    return 0; 
 } 
 
 int64_t ext2_remove_entry(vfs_inode_t *i_parent, vfs_dentry_t *dentry)
@@ -324,16 +292,6 @@ int64_t ext2_remove_entry(vfs_inode_t *i_parent, vfs_dentry_t *dentry)
     return 0;
 }
 
-int64_t ext2_rmdir(vfs_inode_t *i_parent, vfs_dentry_t *dentry)
-{
-    
-}
 
 
-
-vfs_inode_ops_t ext2_inode_ops = 
-{ 
-    .lookup = ext2_lookup, 
-    .mkdir = ext2_mkdir, 
-};
 

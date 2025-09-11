@@ -1,13 +1,4 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/vfs/vfs.h
- * @Description:  
- * @Author: scuec_weiqiang scuec_weiqiang@qq.com
- * @Date: 2025-08-12 21:02:22
- * @LastEditTime: 2025-09-07 20:19:22
- * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
- * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
-*/
-/**
  * @FilePath: /ZZZ/kernel/fs/vfs.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com

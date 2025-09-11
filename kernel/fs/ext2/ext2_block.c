@@ -13,9 +13,11 @@
 #include "check.h"
 #include "spinlock.h"
 
-
-#define EXT2_BNO_GROUP(fs_info, bno) \
-    ((bno) / ((fs_info)->s_blocks_per_group))
+uint64_t ext2_bno_group(vfs_superblock_t *vfs_sb,uint64_t bno)
+{
+    ext2_fs_info_t *fs_info = (ext2_fs_info_t*)vfs_sb->s_private;
+    return (bno) / fs_info->s_blocks_per_group;
+}
 
 spinlock_t ext2_balloc_lock = SPINLOCK_INIT;
 spinlock_t ext2_bfree_lock = SPINLOCK_INIT;
@@ -36,14 +38,14 @@ spinlock_t ext2_bfree_lock = SPINLOCK_INIT;
 *
 * @return 分配的块号，如果分配失败则返回-1
 */
-int64_t ext2_alloc_bno(vfs_superblock_t *vfs_sb,uint64_t group)
+int64_t ext2_alloc_bno(vfs_superblock_t *vfs_sb)
 {
     // BALLOC_LOCK;
 
     CHECK(vfs_sb!=NULL,"",return -1;);
-
     ext2_fs_info_t *fs_info = (ext2_fs_info_t*)vfs_sb->s_private;
     // 加载缓存
+    uint64_t group = ext2_select_block_group(vfs_sb);
     ext2_load_block_bitmap_cache(vfs_sb,group);
     int64_t free_idx = bitmap_scan_0(fs_info->bbm_cache.bbm);
     CHECK(free_idx >= 0, "", return -1;);
@@ -78,7 +80,7 @@ int64_t ext2_release_bno(vfs_superblock_t *vfs_sb,uint64_t bno)
 
     ext2_fs_info_t *fs_info = (ext2_fs_info_t*)vfs_sb->s_private;
     bitmap_t *bm = NULL;
-    uint32_t group = EXT2_BNO_GROUP(fs_info,bno);
+    uint32_t group = ext2_bno_group(vfs_sb,bno);
     ext2_load_block_bitmap_cache(vfs_sb,group);
     bm = fs_info->bbm_cache.bbm;
     int64_t ret = bitmap_clear_bit(bm,bno);
@@ -92,8 +94,9 @@ int64_t ext2_release_bno(vfs_superblock_t *vfs_sb,uint64_t bno)
     BFREE_UNLOCK;
 
     return bno;
-
 }
+
+
 static int64_t find_sub(block_adapter_t *adap, uint32_t block_index, uint32_t index)
 {
     CHECK(adap != NULL, "", return -1;);
@@ -117,7 +120,7 @@ static int64_t find_sub(block_adapter_t *adap, uint32_t block_index, uint32_t in
 *
 * @return 映射得到的块地址，如果映射失败则返回 -1
 */
-int64_t ext2_block_mapping(vfs_inode_t *vfs_inode, uint32_t index)
+int64_t ext2_block_mapping(vfs_inode_t *vfs_inode, uint64_t index)
 {
     CHECK(vfs_inode != NULL, "", return -1;);
     CHECK(vfs_inode->i_sb->s_private != NULL, "", return -1;);
@@ -158,7 +161,7 @@ int64_t ext2_block_mapping(vfs_inode_t *vfs_inode, uint32_t index)
     // 三级间接索引 
     index -= per_block*per_block; 
     if (index < per_block * per_block * per_block) 
-    { 
+    {  
         first_index = index / (per_block * per_block); 
         sub_block_index = find_sub(adap,inode->i_block[14],first_index); 
         second_index = index % (per_block * per_block) / per_block; 

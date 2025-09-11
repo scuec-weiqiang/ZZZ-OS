@@ -8,6 +8,7 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include "vfs_types.h"
+#include "ext2_fs.h"
 #include "ext2_block.h"
 #include "block_adapter.h"
 
@@ -27,14 +28,17 @@ int64_t ext2_readpage(vfs_page_t *page)
 
         if (phys_block == 0) 
         {
-            // 稀疏文件的空洞 -> 填零
+            phys_block = ext2_alloc_bno(inode->i_sb);
+            if (!phys_block) return -1;
+            ((ext2_inode_t*)inode->i_private)->i_block[file_block] = phys_block;
+            inode->dirty = true;
+            // 新块缓存直接填零,没必要去读了
             memset(kaddr + i * block_size, 0, block_size);
+            continue;
         } 
-        else 
-        {
-            // 读一个块到内存
-            block_adapter_read(inode->i_sb->adap, kaddr + i * block_size, phys_block, 1);
-        }
+        
+        // 读一个块到内存
+        block_adapter_read(inode->i_sb->adap, kaddr + i * block_size, phys_block, 1);
     }
 
     page->uptodate = 1;  // 标记已加载
@@ -59,13 +63,14 @@ int64_t ext2_writepage(vfs_page_t *page)
         if (phys_block == 0) 
         {
             // 说明文件还没分配这个块，需要分配
-            phys_block = ext2_alloc_bno(inode->i_sb,ext2_select_block_group(inode->i_sb));
+            phys_block = ext2_alloc_bno(inode->i_sb);
             if (!phys_block)
                 return -1;
+            ((ext2_inode_t*)inode->i_private)->i_block[file_block] = phys_block;
+            inode->dirty = true;
         }
 
         // 2. 写磁盘
-        void *buf = kaddr  + i * block_size ;
         block_adapter_write(inode->i_sb->adap, kaddr + i * block_size, phys_block, 1);
     }
     page->dirty = false;  
