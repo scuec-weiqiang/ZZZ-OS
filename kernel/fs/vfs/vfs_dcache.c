@@ -162,8 +162,9 @@ vfs_dentry_t* vfs_dget(vfs_dentry_t *parent, const char *name)
     }
     
     // 没找到，创建一个新的dentry并插入缓存
-    vfs_inode_t* new_dentry_inode =  parent->d_inode->i_ops->lookup(parent->d_inode, name);
-    return vfs_dnew(parent, name, new_dentry_inode);
+    vfs_dentry_t* new_dentry_inode = vfs_dnew(parent, name, NULL); 
+    parent->d_inode->i_ops->lookup(parent->d_inode, new_dentry_inode);
+    return new_dentry_inode;
 }
 
 int64_t vfs_dput(vfs_dentry_t *dentry)

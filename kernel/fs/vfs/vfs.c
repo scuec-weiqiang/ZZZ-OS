@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-21 12:52:53
- * @LastEditTime: 2025-09-07 23:46:16
+ * @LastEditTime: 2025-09-14 14:20:58
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -90,82 +90,86 @@ exit:
 
 vfs_dentry_t* vfs_rmdir(const char* path)
 {
-    CHECK(path != NULL, "", return NULL;);
+//     CHECK(path != NULL, "", return NULL;);
 
-    vfs_dentry_t *d_parent = NULL;
-    vfs_dentry_t *d_child = NULL;
+//     vfs_dentry_t *d_parent = NULL;
+//     vfs_dentry_t *d_child = NULL;
 
-    char* path_copy = strdup(path); // 复制路径字符串，因为path_split会修改原字符串
+//     char* path_copy = strdup(path); // 复制路径字符串，因为path_split会修改原字符串
 
-    char* basename = malloc(strlen(path_copy) + 1);
-    char* dirname = malloc(VFS_NAME_MAX + 1);
+//     char* basename = malloc(strlen(path_copy) + 1);
+//     char* dirname = malloc(VFS_NAME_MAX + 1);
 
-    base_dir_split(path_copy, dirname, basename);
+//     base_dir_split(path_copy, dirname, basename);
 
-    d_parent = vfs_lookup(dirname);
-    if (d_parent == NULL) {
+//     d_parent = vfs_lookup(dirname);
+//     if (d_parent == NULL) {
 
-        d_child = NULL;
-        goto exit;
+//         d_child = NULL;
+//         goto exit;
+//     }
+
+//     d_child = vfs_dget(d_parent, basename);
+
+//     d_parent->d_inode->i_ops->rmdir(d_parent->d_inode, d_child);
+
+// exit:
+//     free(basename);
+//     free(dirname);
+//     free(path_copy);
+//     return d_child; 
+
+}
+
+vfs_file_t* vfs_open(const char *path, uint32_t flags)
+{
+    vfs_dentry_t *dentry = vfs_lookup(path);
+    vfs_file_t *file = malloc(sizeof(vfs_file_t));
+    file->f_dentry = dentry;
+    file->f_inode = dentry->d_inode;
+    file->f_flags = flags;
+    file->f_mode = dentry->d_inode->i_mode;
+    file->f_pos = 0;
+    file->f_refcount ++;
+    return file;
+}
+
+
+ssize_t vfs_read(vfs_file_t *file, char *buf, size_t read_size) 
+{
+    CHECK(file != NULL && buf != NULL, "", return -1;);
+    CHECK(file->f_inode != NULL, "", return -1;);
+    CHECK(file->f_inode->f_ops != NULL && file->f_inode->f_ops->read != NULL, "", return -1;);
+
+    loff_t pos = file->f_pos;
+    ssize_t ret = file->f_inode->f_ops->read(file->f_inode, buf, read_size, &pos);
+    if(ret >= 0)
+    {
+        file->f_pos = pos;
+        return ret;
     }
+    else
+    {
+        return -1;
+    }
+}
 
-    d_child = vfs_dget(d_parent, basename);
-
-    d_parent->d_inode->i_ops->rmdir(d_parent->d_inode, d_child);
-
-exit:
-    free(basename);
-    free(dirname);
-    free(path_copy);
-    return d_child; 
-
+ssize_t vfs_write(vfs_file_t *file, const char *buf, size_t count) 
+{    
+    CHECK(file != NULL && buf != NULL, "", return -1;);
+    CHECK(file->f_inode != NULL, "", return -1;);
+    CHECK(file->f_inode->f_ops != NULL && file->f_inode->f_ops->write != NULL, "", return -1;);
+    
+    return file->f_inode->f_ops->write(file->f_inode, buf, count, &file->f_pos);
 }
 
 void vfs_test()
 {
-    // vfs_inode_t *inode1 = vfs_inew(vfs_get_root()->d_inode->i_sb);
-    // vfs_inode_t *inode2 = vfs_inew(vfs_get_root()->d_inode->i_sb);
-    
-    vfs_dentry_t* d = vfs_lookup("/hello.txt");
 
-    // if (d == NULL) {
-    //     printf("Directory not found.\n");
-    // }
-    // else
-    // {
-    //     printf("Directory found: %s\n", d->name.name);
-    //     printf("Directory parent: %s\n", d->d_parent->name.name);
-    //     printf("Directory parent parent: %s\n", d->d_parent->d_parent->name.name);
-    // }
-
+    // vfs_dentry_t* d = vfs_lookup("/hello.txt");
     // vfs_dentry_t* d;
-    // d = vfs_mkdir("/c/d",S_IFDIR | S_IDEFAULT);
-    // if (d == NULL) {
-    //     printf("Directory not create.\n");
-    // }
-    // else
-    // {
-    //     printf("Directory created: %s\n", d->name.name);
-    //     printf("Directory parent: %s\n", d->d_parent->name.name);
-    //     printf("Directory parent parent: %s\n", d->d_parent->d_parent->name.name);
-    // }
+    // d = vfs_mkdir("/c",S_IFDIR | S_IDEFAULT);
+    // d = vfs_mkdir("/d.txt",S_IFREG | S_IDEFAULT);
+
 }
 
-vfs_file_t* vfs_open(const char *path)
-{
-
-    return 0;
-}
-
-// 读写文件
-int64_t vfs_read(int64_t fd, void *buf, size_t size)
-{
-
-    return 0;
-}
-
-int64_t vfs_write(int64_t fd, const void *buf, size_t size)
-{
-    
-    return 0;
-}

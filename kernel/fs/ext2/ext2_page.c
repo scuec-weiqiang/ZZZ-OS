@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-01 19:39:53
- * @LastEditTime: 2025-09-02 18:26:25
+ * @LastEditTime: 2025-09-14 14:23:15
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -28,10 +28,10 @@ int64_t ext2_readpage(vfs_page_t *page)
 
         if (phys_block == 0) 
         {
-            phys_block = ext2_alloc_bno(inode->i_sb);
-            if (!phys_block) return -1;
-            ((ext2_inode_t*)inode->i_private)->i_block[file_block] = phys_block;
-            inode->dirty = true;
+            // phys_block = ext2_alloc_bno(inode->i_sb);
+            // if (!phys_block) return -1;
+            // ((ext2_inode_t*)inode->i_private)->i_block[file_block] = phys_block;
+            // inode->dirty = true;
             // 新块缓存直接填零,没必要去读了
             memset(kaddr + i * block_size, 0, block_size);
             continue;

@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-09-07 20:19:29
+ * @LastEditTime: 2025-09-14 14:28:54
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -62,7 +62,10 @@ void init_kernel()
         virt_disk_init(); 
 
         vfs_init();
-        vfs_test();
+        // vfs_test();
+        vfs_file_t* f = vfs_open("/user_program.elf",0);
+        char* buf = malloc(f->f_inode->i_size);
+        ssize_t ret =  vfs_read(f,buf,f->f_inode->i_size);
         printf("now time:%x\n",get_current_unix_timestamp(UTC8));
         page_get_remain_mem();
         // elf_info_t *info = malloc(sizeof(elf_info_t));

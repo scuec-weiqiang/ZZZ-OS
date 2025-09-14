@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-15 15:04:59
- * @LastEditTime: 2025-09-07 21:21:04
+ * @LastEditTime: 2025-09-13 16:13:06
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -18,7 +18,8 @@
 #include "time.h"
 #include "ext2_block.h"
 #include "ext2_page.h"
-#include "ext2_dir.h"
+#include "ext2_namei.h"
+#include "ext2_file.h"
 
 uint64_t ext2_ino_group(vfs_superblock_t *vfs_sb,uint64_t ino)
 {
@@ -99,6 +100,7 @@ void* ext2_create_inode(vfs_inode_t *inode)
 
     inode->i_mapping->a_ops = &ext2_aops;
     inode->i_ops = &ext2_inode_ops;
+    inode->f_ops = &ext2_file_ops;
 
     return new_private_inode;
 }
@@ -114,7 +116,7 @@ int64_t ext2_new_inode(vfs_inode_t *inode)
     CHECK(ino > 0,"",free(inode->i_private);return -1;);
     inode->i_ino = ino;
 
-    ext2_fs_info_t *fs_info = (ext2_fs_info_t*)vfs_sb->s_private;
+    // ext2_fs_info_t *fs_info = (ext2_fs_info_t*)vfs_sb->s_private;
 
     // fs_info->it_cache.dirty = true;
     return ino;

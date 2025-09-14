@@ -1,7 +1,7 @@
 /** 
  * @FilePath: /ZZZ/kernel/fs/ext2/ext2_dir.c
  * * @Description: * @Author: scuec_weiqiang scuec_weiqiang@qq.com 
- * @LastEditTime: 2025-09-07 23:12:31
+ * @LastEditTime: 2025-09-14 00:11:09
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * * @Copyright : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025. */
 
@@ -94,9 +94,13 @@ vfs_inode_t *ext2_find(vfs_inode_t *i_parent, const char *name)
         while (offset < VFS_PAGE_SIZE)
         {
             entry = (ext2_dir_entry_2_t *)(page->data + offset);
-            if (entry->name_len == name_len&& strncmp(entry->name, name, name_len) == 0)
+            if (entry->name_len == name_len && (strncmp(entry->name, name, name_len) == 0))
             {
                 if(entry->inode == 0)
+                {
+                    vfs_pput(page);
+                    return NULL;
+                }
                 inode_ret = vfs_iget(vfs_sb, entry->inode);
                 return inode_ret;
             }
@@ -279,9 +283,6 @@ int64_t ext2_add_entry(vfs_inode_t *i_parent, vfs_dentry_t *dentry, dir_slot_t *
     
     page->dirty = true; // 标记页为脏
     vfs_pput(page); // 写回缓存
-
-    
-
 
     return dentry->d_inode->i_ino; 
 } 

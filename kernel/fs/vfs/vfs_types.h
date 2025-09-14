@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-13 16:16:30
- * @LastEditTime: 2025-09-07 21:50:10
+ * @LastEditTime: 2025-09-13 01:08:20
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -241,11 +241,13 @@ struct vfs_file_ops
 
 struct vfs_file
 {
-    vfs_dentry_t *f_entry; // 关联的entry
-    vfs_file_ops_t *f_fops; // 文件操作函数
-    loff_t f_pos;          // 当前文件位置
-    uint32_t f_flags;      // 文件打开标志
-    void *f_private;       // 文件系统私有数据
+    vfs_inode_t   *f_inode;   // 指向文件对应的 inode
+    vfs_dentry_t  *f_dentry;  // 打开的 dentry (路径)
+    loff_t         f_pos;     // 文件读写偏移
+    uint32_t       f_flags;   // 打开模式 (O_RDONLY, O_WRONLY, O_RDWR, O_CREAT...)
+    uint32_t       f_mode;    // 权限（一般拷贝自inode->i_mode，但可在open时限制）
+    int64_t f_refcount;  // 引用计数 (多少进程共享这个 file)
+    void    *private_data; // 私有数据，具体fs可以存东西
 };
 
 

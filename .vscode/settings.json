@@ -73,7 +73,11 @@
         "ext2_super.h": "c",
         "ext2_block.h": "c",
         "vfs_pcache.h": "c",
-        "vfs_path.h": "c"
+        "vfs_path.h": "c",
+        "ext2_inode.h": "c",
+        "ext2_namei.h": "c",
+        "ext2_page.h": "c",
+        "ext2_file.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }
