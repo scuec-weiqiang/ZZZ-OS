@@ -41,32 +41,32 @@ typedef struct
 typedef struct 
 {
   uint8_t  e_ident[16];
-  uint16_t e_type;
-  uint16_t e_machine;
+  uint16_t e_type; // 0x01 可重定位文件 0x02 可执行文件
+  uint16_t e_machine;// 0xf3 RISC-V
   uint32_t e_version;
-  uint64_t e_entry;
-  uint64_t e_phoff;
-  uint64_t e_shoff;
-  uint32_t e_flags;
-  uint16_t e_ehsize;
-  uint16_t e_phentsize;
-  uint16_t e_phnum;
-  uint16_t e_shentsize;
-  uint16_t e_shnum;
+  uint64_t e_entry;// 程序入口地址
+  uint64_t e_phoff; // 程序头表在文件中的偏移
+  uint64_t e_shoff; // 节头表在文件中的偏移
+  uint32_t e_flags; // ELF文件标志
+  uint16_t e_ehsize; // ELF头大小
+  uint16_t e_phentsize; // 程序头表项大小
+  uint16_t e_phnum; // 程序头表项数量
+  uint16_t e_shentsize; // 节头表项大小
+  uint16_t e_shnum; // 节头表项数量
   uint16_t e_shstrndx;
 } __attribute__((packed)) Elf64_Ehdr;
 
 typedef struct 
 {
-  uint32_t p_type;
+  uint32_t p_type; // 1: 可加载程序段 2: 动态链接信息 3: 只读动态链接信息 4: 栈可读写 5: 栈可读写执行
   uint32_t p_flags;
-  uint64_t p_offset;
-  uint64_t p_vaddr;
-  uint64_t p_paddr;
-  uint64_t p_filesz;
-  uint64_t p_memsz;
-  uint64_t p_align;
+  uint64_t p_offset;// 段在文件中的偏移
+  uint64_t p_vaddr;// 段在内存中的虚拟地址
+  uint64_t p_paddr;// 段在物理内存中的地址（一般不用，除非裸机）
+  uint64_t p_filesz;// 段在文件中的大小
+  uint64_t p_memsz;// 段在内存中的大小
+  uint64_t p_align;// 段的对齐方式
 } __attribute__((packed)) Elf64_Phdr;
 
-extern int64_t elf_prase(const uint8_t *elf, elf_info_t *info);
+extern int64_t elf_parse(const uint8_t *elf, elf_info_t *info);
 #endif

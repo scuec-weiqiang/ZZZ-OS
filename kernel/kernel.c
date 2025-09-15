@@ -27,7 +27,7 @@
 #include "vfs.h"
 // #include "systimer.h"
 // #include "string.h"
-// #include "elf.h"
+#include "elf.h"
 // #include "user_program.h"
 
 extern void os_main();
@@ -66,6 +66,19 @@ void init_kernel()
         vfs_file_t* f = vfs_open("/user_program.elf",0);
         char* buf = malloc(f->f_inode->i_size);
         ssize_t ret =  vfs_read(f,buf,f->f_inode->i_size);
+        Elf64_Ehdr *prog = (Elf64_Ehdr*)buf;
+        printf("elf entry:%x\n",prog->e_entry);
+        printf("elf phnum:%d\n",prog->e_phnum);
+        printf("elf phoff:%x\n",prog->e_phoff);
+        for(int i=0;i<prog->e_phnum;i++)
+        {
+            Elf64_Phdr *phdr = (Elf64_Phdr *)(buf + prog->e_phoff + i*prog->e_phentsize);
+            if(phdr->p_type == PT_LOAD)
+            {
+                printf("phdr %d: vaddr:%x, memsz:%x, filesz:%x, offset:%x, flags:%x\n",i,phdr->p_vaddr,phdr->p_memsz,phdr->p_filesz,phdr->p_offset,phdr->p_flags);
+            }
+        }
+        
         printf("now time:%x\n",get_current_unix_timestamp(UTC8));
         page_get_remain_mem();
         // elf_info_t *info = malloc(sizeof(elf_info_t));
