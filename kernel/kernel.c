@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-09-15 19:58:47
+ * @LastEditTime: 2025-09-16 22:07:55
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -50,6 +50,7 @@ void init_kernel()
     hart_id_t hart_id = 0;
     if(hart_id == HART_0) // hart0 初始化全局资源
     {
+        // int a = *(volatile uint32_t *)0xffffffffc0000000;
         zero_bss();
         uart_init();
         page_alloc_init();
@@ -60,34 +61,16 @@ void init_kernel()
 
         vfs_init();
 
+        proc_init();
         proc_t* init_proc = proc_create("/user.elf");
         proc_run(init_proc);
 
-        
         printf("now time:%x\n",get_current_unix_timestamp(UTC8));
         page_get_remain_mem();
-        // elf_info_t *info = malloc(sizeof(elf_info_t));
-        // elf_prase(user_user_program_elf, info);
-        // pgtbl_t *user_program_page  = page_alloc(1);
-        // memset(user_program_page,0,PAGE_SIZE);
-        // uint8_t *user_space = malloc(info->segs[1].filesz);
-        // uint8_t *user_stack = malloc(PAGE_SIZE);
-        // map_pages(user_program_page,user_stack,user_stack, PAGE_SIZE, PTE_R | PTE_W | PTE_U);
-        // memcpy(user_space,user_user_program_elf+info->segs[1].offset,info->segs[1].filesz);
-        // map_pages(user_program_page, info->segs[1].vaddr, (uint64_t)user_space, info->segs[1].filesz, PTE_R |PTE_W | PTE_X|PTE_U);
-        // map_pages(user_program_page,_trap_start,_trap_start, _trap_size, PTE_R | PTE_X | PTE_U);
-        // sstatus_w(sstatus_r()&~(1<<8)|(1<<5));
-        // sepc_w(info->entry);
-        // asm volatile("mv sp,%0"::"r"(user_stack+PAGE_SIZE-1));
-        // asm volatile("sfence.vma zero, zero");
-        // asm volatile("csrw satp,%0"::"r"(MAKE_SATP(user_program_page)));
-        // asm volatile("sret"::);
-        // task_init();
         is_init = 1;
 
     }
-   
-    // ext2_create_dir_by_path(fs, "/a/b/");
+
     printf("hart_id:%d\n", hart_id);
     while (is_init == 0){}
     // wakeup_other_harts();

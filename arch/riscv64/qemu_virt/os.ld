@@ -3,8 +3,9 @@ ENTRY(_start)
 
 STACK_SIZE = 8192;          /* 单个核心栈大小（字节） */
 CORE_NUM = 2;               /* 核心数量 */
+
 RAM_BASE = 0x80000000;      /* RAM起始地址 */
-RAM_SIZE = 0x8000000;       /* RAM大小（128MB） */
+RAM_SIZE = 128M;       /* RAM大小（128MB） */
 
 MEMORY {
     RAM (rwx) : ORIGIN = RAM_BASE, LENGTH = RAM_SIZE
@@ -12,7 +13,7 @@ MEMORY {
 
 SECTIONS
 {
-    . = ORIGIN(RAM);
+    . = RAM_BASE;
     .text : ALIGN(4) {
         . = ALIGN(4096);
         _text_start = .;
@@ -33,7 +34,7 @@ SECTIONS
        _rodata_end = .;
     } > RAM
 
-    .data : ALIGN(8) {
+    .data : ALIGN(8)  {
         _data_start = .;
         . = ALIGN(4096);
         *(.data .data.* .sdata .sdata.*)

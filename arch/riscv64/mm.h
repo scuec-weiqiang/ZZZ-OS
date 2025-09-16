@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-09 00:45:04
- * @LastEditTime: 2025-05-10 01:45:21
+ * @LastEditTime: 2025-09-16 21:25:59
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -30,6 +30,9 @@
 #define SATP_SV39 (8L << 60)
 #define SATP_MODE SATP_SV39 
 #define MAKE_SATP(pagetable) (SATP_MODE | (((uint64_t)pagetable) >> 12))
+
+#define KERNEL_HIGH_VA 0x0llu
+#define MAKE_KERNEL_VA(pa) (KERNEL_HIGH_VA + ((uint64_t)(pa)))
 
 typedef uint64_t pte_t;
 typedef pte_t pgtbl_t;

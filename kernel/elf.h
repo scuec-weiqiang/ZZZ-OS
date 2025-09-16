@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-30 13:50:36
- * @LastEditTime: 2025-09-15 16:34:38
+ * @LastEditTime: 2025-09-16 18:40:39
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -34,7 +34,7 @@ typedef struct
   
 typedef struct 
 {
-    char name[64];
+    // char name[64];
     char* data;
     uint64_t entry;
     uint16_t phnum;

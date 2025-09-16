@@ -45,7 +45,7 @@ void print_maddr()
     printf("_data_start = %x---->",&_data_start);printf("_data_end = %x\n",&_data_end);
     printf("_bss_start = %x---->",&_bss_start);printf("_bss_end = %x\n",&_bss_end);
     printf("_heap_start = %x---->",&_heap_start);printf("_heap_end = %x\n",&_heap_end);
-    printf("_heap_size = %x\n",&_heap_size);
+    printf("_heap_size = %x\n",_heap_size);
     printf("_stack_start = %x---->",&_stack_start);printf("_stack_end = %x\n",&_stack_end);
 
 }

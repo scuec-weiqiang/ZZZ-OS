@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-19 21:58:52
- * @LastEditTime: 2025-08-26 18:39:33
+ * @LastEditTime: 2025-09-16 19:54:11
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -34,7 +34,7 @@ void systimer_init(hart_id_t hart_id, enum SYS_CONFIG_HZ hz)
 
     mtvec_w((uintptr_t)machine_timer_trap_entry);
     mscratch_w((uintptr_t)&systimer_ctx[hart_id]);
-    // m_timer_interrupt_enable();
+    m_timer_interrupt_enable();
 }
 
 void systimer_load(hart_id_t hartid,uint64_t value)

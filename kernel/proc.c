@@ -1,13 +1,37 @@
+/**
+ * @FilePath: /ZZZ/kernel/proc.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-09-16 18:23:57
+ * @LastEditTime: 2025-09-16 19:28:31
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 #include "proc.h"
 #include "vfs.h"
 #include "elf.h"
 #include "vm.h"
 #include "check.h"
+#include "string.h"
+#include "platform.h"
 
-pid_t alloc_pid()
+list_t proc_list_head[MAX_HARTS_NUM];
+uint64_t proc_count[MAX_HARTS_NUM];
+
+static pid_t alloc_pid()
 {
     static pid_t next_pid = 1;
     return next_pid++;
+}
+
+void proc_init()
+{
+    for(hart_id_t hart_id = HART_0;hart_id < MAX_HARTS_NUM; hart_id++)
+    {
+        INIT_LIST_HEAD(&proc_list_head[hart_id])
+        proc_count[hart_id] = 0;
+    }
+
 }
 
 proc_t* proc_create(char* path)
@@ -34,8 +58,6 @@ proc_t* proc_create(char* path)
     uint8_t *kernel_stack = malloc(PROC_STACK_SIZE);
     memset(kernel_stack,0,PROC_STACK_SIZE);
 
-    
-
     for(int i=0;i<elf_info->phnum;i++)
     {
         if(elf_info->segs[i].type== PT_LOAD)
@@ -58,6 +80,9 @@ proc_t* proc_create(char* path)
     new_proc->context.sp = new_proc->user_sp;
     new_proc->pid = alloc_pid();
     new_proc->status = 0;
+    hart_id_t hart_id = tp_r(); // 现在只支持hart0
+    list_add(&proc_list_head[hart_id], &new_proc->proc_lnode);
+    proc_count[hart_id]++;
 
     return new_proc;
 }

@@ -1,6 +1,6 @@
 /* 链接器脚本：linker.ld */
 OUTPUT_ARCH(riscv)
-ENTRY(_start)  /* 指定入口点符号 */
+ENTRY(main)  /* 指定入口点符号 */
 
 SECTIONS
 {
@@ -12,17 +12,17 @@ SECTIONS
     
     /* 只读数据段 */
     .rodata : {
-        *(.rodata .rodata.*)
+        *(.rodata .rodata.* .srodata .srodata.*) /* 所有只读数据段 */
     }
     
     /* 数据段 */
     .data : {
-        *(.data .data.*)
+        *(.data .data.* .sdata .sdata.*) /* 所有数据段 */
     }
     
     /* BSS 段（未初始化数据）*/
     .bss : {
-        *(.bss .bss.*)
+        *(.bss .bss.* .sbss)
         *(COMMON)
     }
     

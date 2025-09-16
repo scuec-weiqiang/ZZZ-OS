@@ -23,7 +23,8 @@ CFLAGS = -nostdlib -fno-builtin -g -Wall \
 		-MMD -MP -MT $@ -MF $(DIR_OUT)/$*.d  # 添加依赖追踪选项
 # CFLAGS += -O1
 LD = riscv64-unknown-elf-ld
-LFLAGS = -T$(LINK_SCRIPT) -Map=$(DIR_OUT)/$(PROJ_NAME).map
+LFLAGS = -Map=$(DIR_OUT)/$(PROJ_NAME).map
+LFLAGS += -T$(LINK_SCRIPT) 
 # 默认情况下，编译工程里的全部文件；
 # 在某些情况下（比如有的模块只写了一半编译无法通过但是又需要半路去测试其他模块了，或者我完全不需要编译一些模块）
 # 可以只编译在part.cfg文件中指明的文件，便于测试，在shell中输入make <你的其他指令> PART=1,就可以开启部分编译

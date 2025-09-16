@@ -192,7 +192,7 @@ reg_t soft_interrupt_handler(reg_t epc)
     // printf("hart %d timer interrupt!\n",hart_id);
     // uint64_t now_time = systimer_get_time();
     // printf("now time is %d\n",now_time);
-    // systimer_tick++;
+    systimer_tick++;
 
     // r = sched(epc,now_time,hart_id);
     

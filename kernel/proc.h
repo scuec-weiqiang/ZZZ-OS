@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-30 13:50:23
- * @LastEditTime: 2025-09-07 17:35:18
+ * @LastEditTime: 2025-09-16 19:35:53
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -31,9 +31,11 @@ typedef struct proc
     elf_info_t* elf_info; //程序信息
     int pid;            //进程ID
     int status;         //进程状态
-    list_t node;
+    list_t proc_lnode;
 } proc_t;
 
+
+extern void proc_init();
 extern proc_t* proc_create(char* path);
 extern void proc_run(proc_t *p);
 
