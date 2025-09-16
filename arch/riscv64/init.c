@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-15 00:43:47
- * @LastEditTime: 2025-08-26 18:40:17
+ * @LastEditTime: 2025-09-15 16:21:19
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -26,14 +26,14 @@ void init()
     pmpcfg0_w(0xf);
     
     trap_init();
-    systimer_init(mhartid_r(),SYS_HZ_1000);
+    // systimer_init(mhartid_r(),SYS_HZ_1000);
 
     // 使能S模式外部中断，定时器中断和软件中断
     s_extern_interrupt_enable();
     s_soft_interrupt_enable();
 
 
-    systimer_init(mhartid_r(),SYS_HZ_1000);
+    // systimer_init(mhartid_r(),SYS_HZ_1000);
 
     M_TO_S(init_kernel);
 }

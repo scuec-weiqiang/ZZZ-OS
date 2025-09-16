@@ -29,6 +29,7 @@ machine_timer_trap_entry:
 .global kernel_trap_entry
 kernel_trap_entry:
     # SAVE_CTX  
+    csrrw sp, sscratch, sp
     addi sp, sp, -288
     STORE ra,  1*REG_SIZE(sp)  
     STORE sp,  2*REG_SIZE(sp)  
@@ -117,6 +118,7 @@ kernel_trap_entry:
     LOAD sp, 2*REG_SIZE(sp)   
     LOAD ra, 1*REG_SIZE(sp) 
     addi sp, sp, 288  
+    csrrw sp, sscratch, sp
 
     sret
 .end

@@ -422,6 +422,11 @@ __SELF __INLINE uintptr_t get_hart_id_s()
     asm volatile("mret"); \
 )
 
+#define S_TO_U(x)    __PROTECT( \
+    sstatus_w(sstatus_r() & ~(1<<8));  \
+    sepc_w((uintptr_t)(x)); \
+    asm volatile("sret"); \
+)
 // #define M_TO_M(x)    __PROTECT( 
 //     mstatus_w(mscratch_r() | (3<<11));  
 //     mepc_w((uintptr_t)(x)); 

@@ -149,9 +149,7 @@ dump:
 
 .PHONY:user
 user:
-	riscv64-unknown-elf-as user/user_program.s -o user/user_program.o
-	riscv64-unknown-elf-ld user/user_program.o -o user/user_program.elf -Ttext=0x10000
-	xxd -i user/user_program.elf > lib/user_program.h
+	riscv64-unknown-elf-gcc user/user.c -T./user/user.ld -o user.elf
 
 .PHONY:user_clean
 user_clean:

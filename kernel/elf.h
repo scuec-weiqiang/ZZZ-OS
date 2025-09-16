@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-30 13:50:36
- * @LastEditTime: 2025-09-14 13:41:18
+ * @LastEditTime: 2025-09-15 16:34:38
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -38,7 +38,7 @@ typedef struct
     elf_segment_t segs[8];
 } elf_info_t;
 
-typedef struct 
+typedef struct __attribute__((packed))
 {
   uint8_t  e_ident[16];
   uint16_t e_type; // 0x01 可重定位文件 0x02 可执行文件
@@ -54,9 +54,9 @@ typedef struct
   uint16_t e_shentsize; // 节头表项大小
   uint16_t e_shnum; // 节头表项数量
   uint16_t e_shstrndx;
-} __attribute__((packed)) Elf64_Ehdr;
+}  Elf64_Ehdr;
 
-typedef struct 
+typedef struct __attribute__((packed))
 {
   uint32_t p_type; // 1: 可加载程序段 2: 动态链接信息 3: 只读动态链接信息 4: 栈可读写 5: 栈可读写执行
   uint32_t p_flags;
@@ -66,7 +66,7 @@ typedef struct
   uint64_t p_filesz;// 段在文件中的大小
   uint64_t p_memsz;// 段在内存中的大小
   uint64_t p_align;// 段的对齐方式
-} __attribute__((packed)) Elf64_Phdr;
+}  Elf64_Phdr;
 
 extern int64_t elf_parse(const uint8_t *elf, elf_info_t *info);
 #endif

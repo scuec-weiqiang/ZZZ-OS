@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-09-14 14:28:54
+ * @LastEditTime: 2025-09-15 19:58:47
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -14,8 +14,6 @@
 // #include "systimer.h"
 #include "vm.h"
 #include "virt_disk.h"
-// #include "vfs.h"
-// #include "lru.h"
 #include "time.h"
 
 
@@ -25,12 +23,9 @@
 #include "maddr_def.h"
 #include "interrupt.h"
 #include "vfs.h"
-// #include "systimer.h"
-// #include "string.h"
+#include "string.h"
 #include "elf.h"
-// #include "user_program.h"
 
-extern void os_main();
 uint8_t is_init = 0;
 
 /**
@@ -47,7 +42,7 @@ void zero_bss() {
     }
 }
 
-
+pgtbl_t* user_pgd;
 void init_kernel()
 {  
     hart_id_t hart_id = 0;
@@ -62,12 +57,14 @@ void init_kernel()
         virt_disk_init(); 
 
         vfs_init();
+        user_pgd = page_alloc(1);
+        uint8_t *user_stack = malloc(PAGE_SIZE);
+    
         // vfs_test();
-        vfs_file_t* f = vfs_open("/user_program.elf",0);
+        vfs_file_t* f = vfs_open("/user.elf",0);
         char* buf = malloc(f->f_inode->i_size);
         ssize_t ret =  vfs_read(f,buf,f->f_inode->i_size);
         Elf64_Ehdr *prog = (Elf64_Ehdr*)buf;
-        printf("elf entry:%x\n",prog->e_entry);
         printf("elf phnum:%d\n",prog->e_phnum);
         printf("elf phoff:%x\n",prog->e_phoff);
         for(int i=0;i<prog->e_phnum;i++)
@@ -76,6 +73,20 @@ void init_kernel()
             if(phdr->p_type == PT_LOAD)
             {
                 printf("phdr %d: vaddr:%x, memsz:%x, filesz:%x, offset:%x, flags:%x\n",i,phdr->p_vaddr,phdr->p_memsz,phdr->p_filesz,phdr->p_offset,phdr->p_flags);
+                uint8_t *user_space = malloc(phdr->p_memsz); //程序加载到内存里需要的空间
+                memset(user_space,0,phdr->p_memsz);
+                memcpy(user_space,buf+phdr->p_offset,phdr->p_filesz);
+                map_pages(user_pgd, phdr->p_vaddr, (uintptr_t)user_space, (phdr->p_memsz+PAGE_SIZE-1)/PAGE_SIZE * PAGE_SIZE, PTE_R|PTE_X|PTE_U);
+                map_pages(user_pgd, 0x20000, (uintptr_t)user_stack, PAGE_SIZE,  PTE_W|PTE_R|PTE_U);
+                page_table_init(user_pgd);
+                sstatus_w(sstatus_r() & ~(1<<8));  
+                sepc_w((uintptr_t)(prog->e_entry)); 
+                sscratch_w(sp_r());
+                satp_w(MAKE_SATP(user_pgd));
+                asm volatile("mv sp,%0"::"r"(0x20000+PAGE_SIZE-1));
+                
+                asm volatile("sret"); 
+                // map_pages(user_pgd,user_stack,user_stack, PAGE_SIZE, PTE_R | PTE_W | PTE_U);
             }
         }
         
