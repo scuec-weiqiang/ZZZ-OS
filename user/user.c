@@ -10,7 +10,8 @@
 
 int main()
 {
-    *(volatile int*)0x20000 = 0xDEADBEEF;
+    int a = 0;
+    a++;
     while (1)
     {
         /* code */

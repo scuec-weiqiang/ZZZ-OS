@@ -1,6 +1,6 @@
 .section .text
 .global _start
 _start:
-  ebreak
+  # ebreak
   j main
   

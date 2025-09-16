@@ -18,7 +18,7 @@
 #define PTE_X (1 << 3)      // 可执行
 #define PTE_U (1 << 4)      // 用户模式可访问
 
-#define PAGE_SIZE 4096    // 页大小
+#define PAGE_SIZE 0x1000    // 页大小4096字节
 #define PAGE_SHIFT 12     // 页偏移量
 #define PAGE_MASK (~(PAGE_SIZE - 1))   // 页掩码
 

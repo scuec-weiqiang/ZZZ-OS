@@ -33,28 +33,29 @@ static int64_t elf_check(const uint8_t *elf)
     return 0; // Valid ELF file
 }
 
-int64_t elf_parse(const uint8_t *elf, elf_info_t *info)
+elf_info_t* elf_parse(const uint8_t *elf)
 {
-    CHECK(elf != NULL, "elf is NULL", return -1;);
-    CHECK(info != NULL, "info is NULL", return -1;);
+    CHECK(elf != NULL, "elf is NULL", return NULL;);
     
     Elf64_Ehdr *ehdr = (Elf64_Ehdr *)elf;
+    
+    CHECK(elf_check(elf) == 0, "Invalid ELF file", return NULL;);
+
+    elf_info_t *info = malloc(sizeof(elf_info_t));
+    CHECK(info != NULL, "Failed to allocate memory for ELF info", return NULL;);
+    memset(info, 0, sizeof(elf_info_t));
+    info->data = (char *)elf;
+
     Elf64_Phdr *phdr = (Elf64_Phdr *)(elf + ehdr->e_phoff);
-    
-    if (elf_check(elf) != 0) 
-    {
-        printf("Invalid ELF file\n");
-        return -1; // Invalid ELF file
-    }
-    
     info->entry = ehdr->e_entry;
     info->phnum = ehdr->e_phnum;
     printf("ELF entry point: %xu, program header count: %du\n", info->entry, info->phnum);
 
     for (int i = 0; i < ehdr->e_phnum; i++) 
     {
-        if (phdr[i].p_type == PT_LOAD) 
-        {
+        // if (phdr[i].p_type == PT_LOAD) 
+        // {
+            info->segs[i].type = phdr[i].p_type;
             info->segs[i].vaddr = phdr[i].p_vaddr;
             info->segs[i].filesz = phdr[i].p_filesz;
             info->segs[i].memsz = phdr[i].p_memsz;
@@ -63,12 +64,11 @@ int64_t elf_parse(const uint8_t *elf, elf_info_t *info)
             printf("Segment %d: vaddr=%xu, filesz=%xu, memsz=%xu, offset=%xu, flags=%x\n", 
                    i, info->segs[i].vaddr, info->segs[i].filesz, info->segs[i].memsz, 
                    info->segs[i].offset, info->segs[i].flags);
-        }
+        // }
     }
 
-    return 0; // Success
+    return info; // Success
 }
-
 
 
 

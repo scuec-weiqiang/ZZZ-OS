@@ -24,6 +24,7 @@
 
 typedef struct 
 {
+    uint32_t type;
     uint64_t vaddr;
     uint64_t filesz;
     uint64_t memsz;
@@ -33,6 +34,8 @@ typedef struct
   
 typedef struct 
 {
+    char name[64];
+    char* data;
     uint64_t entry;
     uint16_t phnum;
     elf_segment_t segs[8];
@@ -68,5 +71,5 @@ typedef struct __attribute__((packed))
   uint64_t p_align;// 段的对齐方式
 }  Elf64_Phdr;
 
-extern int64_t elf_parse(const uint8_t *elf, elf_info_t *info);
+extern elf_info_t* elf_parse(const uint8_t *elf);
 #endif

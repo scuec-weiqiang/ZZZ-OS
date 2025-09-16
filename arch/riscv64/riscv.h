@@ -18,7 +18,7 @@ typedef struct reg_context
     uintptr_t a0, a1, a2, a3, a4, a5, a6, a7;
     uintptr_t s2, s3, s4, s5, s6, s7, s8, s9, s10, s11;
     uintptr_t t3, t4, t5, t6;
-    uintptr_t mepc ;
+    uintptr_t sepc ;
 }reg_context_t;
 
 #define MCAUSE_MASK_INTERRUPT 0x8000000000000000
