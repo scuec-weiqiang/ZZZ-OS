@@ -18,15 +18,30 @@
 #ifndef __MADDR_DEF_H__
 #define __MADDR_DEF_H__
 
-extern char _text_start[], _text_end[], _text_size[];
-extern char _trap_start[], _trap_end[], _trap_size[];
-extern char _rodata_start[], _rodata_end[], _rodata_size[];
-extern char _data_start[], _data_end[], _data_size[];
-extern char _bss_start[], _bss_end[], _bss_size[];
-extern char _stack_start[], _stack_end[], _stack_size[];
-extern char _heap_start[], _heap_end[];
-#define _heap_size (_heap_end - _heap_start)
+extern uintptr_t _text_start;
+extern uintptr_t _text_end;
+extern uintptr_t _text_size;
+extern uintptr_t _trap_start;
+extern uintptr_t _trap_end;
+extern uintptr_t _trap_size;
+extern uintptr_t _rodata_start;
+extern uintptr_t _rodata_end;
+extern uintptr_t _rodata_size;
+extern uintptr_t _data_start;
+extern uintptr_t _data_end;
+extern uintptr_t _data_size;
+extern uintptr_t _bss_start;
+extern uintptr_t _bss_end;
+extern uintptr_t _bss_size;
+extern uintptr_t _stack_start;
+extern uintptr_t _stack_end;
+extern uintptr_t _stack_size;
+extern uintptr_t _heap_start;
+extern uintptr_t _heap_end;
+extern uintptr_t _heap_size;
+extern uintptr_t _systimer_ctx[5];
 
-extern char _systimer_ctx[];
+extern void maddr_def_init();
+extern void zero_bss();
 
 #endif

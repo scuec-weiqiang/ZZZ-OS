@@ -6,9 +6,11 @@ _start:
     bnez tp, wait_hart
 
     # 栈设置
-    la t0 , _stack_size 
+    la t0 , __stack_start
+    la t1 , __stack_end
+    sub t0 , t1 , t0 # t0 = STACK_SIZE
     mul t1 , tp , t0 # t1 = hartid * STACK_SIZE 
-    la t2, _stack_end
+    la t2, __stack_end
     sub sp,t2,t1 # 栈底 = _stack_end - hartid * STACK_SIZE
 
 
@@ -28,7 +30,7 @@ _start:
 
     # 跳转到C函数
     call init
-    j .
+    # j .
 
 wait_hart:
     wfi

@@ -77,7 +77,8 @@
         "ext2_inode.h": "c",
         "ext2_namei.h": "c",
         "ext2_page.h": "c",
-        "ext2_file.h": "c"
+        "ext2_file.h": "c",
+        "printf.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

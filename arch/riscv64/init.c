@@ -12,17 +12,25 @@
 #include "interrupt.h"
 #include "trap_handler.h"
 #include "clint.h" 
-#include "printf.h"
+#include "maddr_def.h"
+#include "mm.h"
+#include "uart.h"
+#include "page_alloc.h"
+#include "vm.h"
+
 extern void init_kernel();
+
 void init()
 {
+    maddr_def_init();
+    zero_bss();
+
     satp_w(0);
     medeleg_w(medeleg_r()|0xffffffff);// 将所有异常委托给S模式处理
     mideleg_w(mideleg_r()|(1<<1)|(1<<9)); // 将s模式软件中断，外部中断委托给s模式
     
-    printf("mideleg is %x\n",mideleg_r());
     // 将整个用户空间（39位）设置保护
-    pmpaddr0_w(0xffffffffffffffffull);
+    pmpaddr0_w(0x3fffffffffffff);
     pmpcfg0_w(0xf);
     
     trap_init();
@@ -32,8 +40,14 @@ void init()
     s_extern_interrupt_enable();
     s_soft_interrupt_enable();
 
+    uart_init();
+    page_alloc_init();
+    kernel_page_table_init();
 
-    systimer_init(mhartid_r(),SYS_HZ_1000);
+    mstatus_w(mstatus_r() & ~(3<<11));
+    mstatus_w(mstatus_r() | (1<<11));  
+    mepc_w(MAKE_KERNEL_VA((uintptr_t)(init_kernel))); 
+    asm volatile("mret"); 
 
-    M_TO_S(init_kernel);
+    // M_TO_S(MAKE_KERNEL_VA(init_kernel));
 }

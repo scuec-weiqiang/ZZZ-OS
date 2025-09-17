@@ -31,8 +31,11 @@
 #define SATP_MODE SATP_SV39 
 #define MAKE_SATP(pagetable) (SATP_MODE | (((uint64_t)pagetable) >> 12))
 
-#define KERNEL_HIGH_VA 0x0llu
+#define KERNEL_HIGH_VA 0xffffffffc0000000
 #define MAKE_KERNEL_VA(pa) (KERNEL_HIGH_VA + ((uint64_t)(pa)))
+
+#define MMIO_BASE 0xffffffdf00000000
+#define MAKE_MMIO_VA(pa) (MMIO_BASE + ((uint64_t)(pa)))
 
 typedef uint64_t pte_t;
 typedef pte_t pgtbl_t;

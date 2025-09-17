@@ -21,16 +21,8 @@
                     "text": "set architecture riscv:rv64"
                 },
                 {
-                    "description": "Load symbols",
-                    "text": "file ${workspaceFolder}/out/${workspaceFolderBasename}.elf"
-                },
-                {
                     "description": "Break at entry",
                     "text": "break *0x80000000"
-                },
-                {
-                    "description": "Load kernel symbols",
-                    "text": "file ${workspaceFolder}/out/${workspaceFolderBasename}.elf"
                 },
                 {
                     "description": "Load user symbols",

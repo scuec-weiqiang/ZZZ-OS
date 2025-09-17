@@ -16,6 +16,7 @@
 #include "string.h"
 #include "platform.h"
 
+
 spinlock_t page_lock = SPINLOCK_INIT;
 
 //page management struct
@@ -40,13 +41,13 @@ uint64_t remain_mem = RAM_SIZE;
 
 void print_maddr()
 {
-    printf("_text_start = %x---->",&_text_start);printf("_text_end = %x\n",&_text_end);
-    printf("_rodata_start = %x---->",&_rodata_start);printf("_rodata_end = %x\n",&_rodata_end);
-    printf("_data_start = %x---->",&_data_start);printf("_data_end = %x\n",&_data_end);
-    printf("_bss_start = %x---->",&_bss_start);printf("_bss_end = %x\n",&_bss_end);
-    printf("_heap_start = %x---->",&_heap_start);printf("_heap_end = %x\n",&_heap_end);
+    printf("_text_start = %x---->",_text_start);printf("_text_end = %x\n",_text_end);
+    printf("_rodata_start = %x---->",_rodata_start);printf("_rodata_end = %x\n",_rodata_end);
+    printf("_data_start = %x---->",_data_start);printf("_data_end = %x\n",_data_end);
+    printf("_bss_start = %x---->",_bss_start);printf("_bss_end = %x\n",_bss_end);
+    printf("_heap_start = %x---->",_heap_start);printf("_heap_end = %x\n",_heap_end);
     printf("_heap_size = %x\n",_heap_size);
-    printf("_stack_start = %x---->",&_stack_start);printf("_stack_end = %x\n",&_stack_end);
+    printf("_stack_start = %x---->",_stack_start);printf("_stack_end = %x\n",_stack_end);
 
 }
 /***************************************************************
@@ -59,8 +60,8 @@ void page_alloc_init()
     保留 8*PAGE_SIZE 大小的内存用来管理page
     */
     // print_maddr();
-    _num_pages = ((addr_t)_heap_size-RESERVED_PAGE_SIZE)/PAGE_SIZE;
-    _alloc_start = (addr_t)_heap_start + RESERVED_PAGE_SIZE; 
+    _num_pages = (_heap_size-RESERVED_PAGE_SIZE)/PAGE_SIZE;
+    _alloc_start = _heap_start + RESERVED_PAGE_SIZE; 
     _alloc_end = _alloc_start + _num_pages*PAGE_SIZE;
     printf("page init ... \n");
     printf("_heap_start = %x -----------------_heap_end = %x \n",_heap_start,_heap_end);

@@ -1,98 +1,99 @@
 OUTPUT_ARCH("riscv")
 ENTRY(_start)
 
-STACK_SIZE = 8192;          /* 单个核心栈大小（字节） */
+STACK_SIZE = 4096;          /* 单个核心栈大小（字节） */
 CORE_NUM = 2;               /* 核心数量 */
 
-RAM_BASE = 0x80000000;      /* RAM起始地址 */
-RAM_SIZE = 128M;       /* RAM大小（128MB） */
+/* 物理内存基地址 */
+RAM_BASE = 0x80000000;
+RAM_SIZE = 128M;
+
+/* 内核虚拟地址基址（高半区） */
+KERNEL_BASE = 0xffffffffc0200000;
 
 MEMORY {
-    RAM (rwx) : ORIGIN = RAM_BASE, LENGTH = RAM_SIZE
+    RAM (rwx) : ORIGIN = 0x80000000, LENGTH =  128M
 }
 
 SECTIONS
 {
-    . = RAM_BASE;
-    .text : ALIGN(4) {
+    . = KERNEL_BASE;
+
+    .text : AT(RAM_BASE) {
         . = ALIGN(4096);
         _text_start = .;
         *(.text.init)
-        _trap_start = .;  /* trap处理函数起始地址 */
+        _trap_start = .;
         *(.text.trap)
-        _trap_end = .;    /* trap处理函数结束地址 */
+        _trap_end = .;
         *(.text .text.*)
         . = ALIGN(4096);
         _text_end = .;
     } > RAM
 
-    .rodata : ALIGN(8) {
+    .rodata : AT(RAM_BASE + (_rodata_start - KERNEL_BASE)) {
         . = ALIGN(4096);
-       _rodata_start = .; 
-       *(.rodata .rodata.* .srodata .srodata.*)
+        _rodata_start = .;
+        *(.rodata .rodata.* .srodata .srodata.*)
         . = ALIGN(4096);
-       _rodata_end = .;
+        _rodata_end = .;
     } > RAM
 
-    .data : ALIGN(8)  {
+    .data : AT(RAM_BASE + (_data_start - KERNEL_BASE)) {
         _data_start = .;
         . = ALIGN(4096);
         *(.data .data.* .sdata .sdata.*)
         . = ALIGN(8);
         _systimer_ctx = .;
-        . += 5*8*CORE_NUM;  /* 为每个核心预留定时器上下文空间 */
+        . += 5*8*CORE_NUM;
         . = ALIGN(4096);
-        _data_end = .; 
-    } > RAM 
+        _data_end = .;
+    } > RAM
 
-    .bss : ALIGN(8) {
+    .bss : AT(RAM_BASE + (_bss_start - KERNEL_BASE)) {
         _bss_start = .;
         *(.bss .bss.* .sbss)
         *(COMMON)
         . = ALIGN(4096);
         _bss_end = .;
-    } > RAM 
+    } > RAM
 
     . = ALIGN(4096);
     _heap_start = .;
 
-    _stack_end = ORIGIN(RAM) + LENGTH(RAM);  /* 栈底（高地址） */
+    _stack_end = KERNEL_BASE + RAM_SIZE;       /* 栈底（高地址） */
     _stack_start = _stack_end - STACK_SIZE * CORE_NUM;
 
     _heap_end = _stack_start;
-    _heap_size = _heap_end - _heap_start;
 
-    /* ========== 导出符号 ========== */
-    
+    /* 符号导出（保持不变） */
     PROVIDE_HIDDEN(_core_num = CORE_NUM);
 
-    PROVIDE_HIDDEN(_text_start = _text_start);
-    PROVIDE_HIDDEN(_text_end = _text_end);
-    PROVIDE_HIDDEN(_text_size = _text_end - _text_start);
+    PROVIDE_HIDDEN(__text_start = _text_start);
+    PROVIDE_HIDDEN(__text_end = _text_end);
 
-    PROVIDE_HIDDEN(_trap_start = _trap_start);
-    PROVIDE_HIDDEN(_trap_end = _trap_end);
-    PROVIDE_HIDDEN(_trap_size = _trap_end - _trap_start);
 
-    PROVIDE_HIDDEN(_rodata_start = _rodata_start);
-    PROVIDE_HIDDEN(_rodata_end = _rodata_end);
-    PROVIDE_HIDDEN(_rodata_size = _rodata_end - _rodata_start);
+    PROVIDE_HIDDEN(__trap_start = _trap_start);
+    PROVIDE_HIDDEN(__trap_end = _trap_end);
 
-    PROVIDE_HIDDEN(_data_start = _data_start);
-    PROVIDE_HIDDEN(_data_end = _data_end);
-    PROVIDE_HIDDEN(_data_size = _data_end - _data_start);
 
-    PROVIDE_HIDDEN(_bss_start = _bss_start);
-    PROVIDE_HIDDEN(_bss_end = _bss_end);
-    PROVIDE_HIDDEN(_bss_size = _bss_end - _bss_start);
+    PROVIDE_HIDDEN(__rodata_start = _rodata_start);
+    PROVIDE_HIDDEN(__rodata_end = _rodata_end);
 
-    PROVIDE_HIDDEN(_stack_start = _stack_start);
-    PROVIDE_HIDDEN(_stack_end = _stack_end);
-    PROVIDE_HIDDEN(_stack_size = STACK_SIZE);
 
-    PROVIDE_HIDDEN(_heap_start = _heap_start);
-    PROVIDE_HIDDEN(_heap_end = _heap_end);
-    PROVIDE_HIDDEN(_heap_size = _heap_size);
+    PROVIDE_HIDDEN(__data_start = _data_start);
+    PROVIDE_HIDDEN(__data_end = _data_end);
 
-    PROVIDE_HIDDEN(_systimer_ctx = _systimer_ctx);
+    PROVIDE_HIDDEN(__bss_start = _bss_start);
+    PROVIDE_HIDDEN(__bss_end = _bss_end);
+    PROVIDE_HIDDEN(__bss_size = _bss_end - _bss_start);
+
+    PROVIDE_HIDDEN(__stack_start = _stack_start);
+    PROVIDE_HIDDEN(__stack_end = _stack_end);
+
+
+    PROVIDE_HIDDEN(__heap_start = _heap_start);
+    PROVIDE_HIDDEN(__heap_end = _heap_end);
+
+    PROVIDE_HIDDEN(__systimer_ctx = _systimer_ctx);
 }

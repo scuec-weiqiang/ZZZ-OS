@@ -106,7 +106,7 @@ clean:
 #qemu模拟器
 # QEMU = qemu-system-riscv64
 QEMU = /usr/local/qemu-riscv/bin/qemu-system-riscv64
-QFLAGS = -nographic -smp 1 -machine virt -bios none -cpu rv64
+QFLAGS = -nographic -smp 1 -machine virt -kernel $(TARGET) -cpu rv64
 QFLAGS += -drive file=disk.img,if=none,format=raw,id=disk0,cache=writeback
 QFLAGS += -device virtio-blk-device,drive=disk0,bus=virtio-mmio-bus.0
 QFLAGS += -d guest_errors,unimp,trace:time_memory*
@@ -129,7 +129,7 @@ debug:os
 
 .PHONY:qemu
 qemu:os
-	@${QEMU} ${QFLAGS} -kernel $(TARGET)  -s -S 
+	@${QEMU} ${QFLAGS}   -s -S 
 	
 .PHONY:gdb
 gdb:os
