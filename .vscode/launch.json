@@ -25,6 +25,10 @@
                     "text": "break *0x80000000"
                 },
                 {
+                    "description": "Load high kernel symbols",
+                    "text": "add-symbol-file ${workspaceFolder}/out/vmZZZ.elf 0xffffffffc0000000"
+                },
+                {
                     "description": "Load user symbols",
                     "text": "add-symbol-file ${workspaceFolder}/user/out/user.elf 0x00010000"
                 },

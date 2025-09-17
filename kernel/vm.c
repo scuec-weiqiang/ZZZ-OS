@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-09-16 20:36:42
+ * @LastEditTime: 2025-09-17 17:32:51
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -138,12 +138,12 @@ int64_t map_pages(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, size_t size, u
 void page_table_init(pgtbl_t *pgd)
 {
         // 映射内核代码段，数据段，栈以及堆的保留页到虚拟地址空间 
-        map_pages(pgd,(uintptr_t)MAKE_KERNEL_VA(_text_start),(uintptr_t)_text_start,(size_t)_text_size,PTE_R | PTE_X);
-        map_pages(pgd,(uintptr_t)MAKE_KERNEL_VA(_rodata_start) ,(uintptr_t)_rodata_start,(size_t)_rodata_size,PTE_R);
-        map_pages(pgd,(uintptr_t)MAKE_KERNEL_VA(_data_start) ,(uintptr_t)_data_start,(size_t)_data_size,PTE_R | PTE_W);
-        map_pages(pgd,(uintptr_t)MAKE_KERNEL_VA(_bss_start) ,(uintptr_t)_bss_start,(size_t)_bss_size,PTE_R | PTE_W);
-        map_pages(pgd,(uintptr_t)MAKE_KERNEL_VA(_heap_start),(uintptr_t)_heap_start,(size_t)_heap_size,PTE_R | PTE_W);
-        map_pages(pgd,(uintptr_t)MAKE_KERNEL_VA(_stack_start),(uintptr_t)_stack_start,(size_t)_stack_size*2,PTE_R | PTE_W);
+        map_pages(pgd,(uintptr_t)MAKE_KERNEL_VA(text_start),(uintptr_t)text_start,(size_t)text_size,PTE_R | PTE_X);
+        map_pages(pgd,(uintptr_t)MAKE_KERNEL_VA(rodata_start) ,(uintptr_t)rodata_start,(size_t)rodata_size,PTE_R);
+        map_pages(pgd,(uintptr_t)MAKE_KERNEL_VA(data_start) ,(uintptr_t)data_start,(size_t)data_size,PTE_R | PTE_W);
+        map_pages(pgd,(uintptr_t)MAKE_KERNEL_VA(bss_start) ,(uintptr_t)bss_start,(size_t)bss_size,PTE_R | PTE_W);
+        map_pages(pgd,(uintptr_t)MAKE_KERNEL_VA(heap_start),(uintptr_t)heap_start,(size_t)heap_size,PTE_R | PTE_W);
+        map_pages(pgd,(uintptr_t)MAKE_KERNEL_VA(stack_start),(uintptr_t)stack_start,(size_t)stack_size*2,PTE_R | PTE_W);
     
         //映射外设寄存器地址空间到内核虚拟地址空间
         map_pages(pgd,(uintptr_t)MAKE_MMIO_VA(CLINT_BASE) ,(uintptr_t)CLINT_BASE,11*PAGE_SIZE,PTE_R | PTE_W);
@@ -160,12 +160,12 @@ void kernel_page_table_init()
     memset(pgd,0,PAGE_SIZE);
 
      // 映射内核代码段，数据段，栈以及堆的保留页到虚拟地址空间 
-    map_pages(pgd,(uintptr_t)_text_start,(uintptr_t)_text_start,(size_t)_text_size,PTE_R | PTE_X);
-    map_pages(pgd,(uintptr_t)_rodata_start ,(uintptr_t)_rodata_start,(size_t)_rodata_size,PTE_R);
-    map_pages(pgd,(uintptr_t)_data_start ,(uintptr_t)_data_start,(size_t)_data_size,PTE_R | PTE_W);
-    map_pages(pgd,(uintptr_t)_bss_start ,(uintptr_t)_bss_start,(size_t)_bss_size,PTE_R | PTE_W);
-    map_pages(pgd,(uintptr_t)_heap_start,(uintptr_t)_heap_start,(size_t)_heap_size,PTE_R | PTE_W);
-    map_pages(pgd,(uintptr_t)_stack_start,(uintptr_t)_stack_start,(size_t)_stack_size*2,PTE_R | PTE_W);
+    map_pages(pgd,(uintptr_t)text_start,(uintptr_t)text_start,(size_t)text_size,PTE_R | PTE_X);
+    map_pages(pgd,(uintptr_t)rodata_start ,(uintptr_t)rodata_start,(size_t)rodata_size,PTE_R);
+    map_pages(pgd,(uintptr_t)data_start ,(uintptr_t)data_start,(size_t)data_size,PTE_R | PTE_W);
+    map_pages(pgd,(uintptr_t)bss_start ,(uintptr_t)bss_start,(size_t)bss_size,PTE_R | PTE_W);
+    map_pages(pgd,(uintptr_t)heap_start,(uintptr_t)heap_start,(size_t)heap_size,PTE_R | PTE_W);
+    map_pages(pgd,(uintptr_t)stack_start,(uintptr_t)stack_start,(size_t)stack_size*2,PTE_R | PTE_W);
 
     //映射外设寄存器地址空间到内核虚拟地址空间
     map_pages(pgd,(uintptr_t)CLINT_BASE,(uintptr_t)CLINT_BASE,11*PAGE_SIZE,PTE_R | PTE_W);

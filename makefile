@@ -22,7 +22,7 @@ DIR_INCLUDE = $(addprefix -I, $(DIR))
 DIR_OUT     = out
 TARGET      = $(DIR_OUT)/$(PROJ_NAME).elf
 LINK_SCRIPT = arch/$(ARCH)/$(BOARD)/os.ld
-
+DEBUG_LINK_SCRIPT = arch/$(ARCH)/$(BOARD)/osdebug.ld
 # 编译工具链配置
 CC = riscv64-unknown-elf-gcc
 CFLAGS = -nostdlib -fno-builtin -g -Wall \
@@ -31,6 +31,8 @@ CFLAGS = -nostdlib -fno-builtin -g -Wall \
 # CFLAGS += -O1
 LD = riscv64-unknown-elf-ld
 LFLAGS = -T$(LINK_SCRIPT) -Map=$(DIR_OUT)/$(PROJ_NAME).map
+DEBUG_LFLAGS = -T$(DEBUG_LINK_SCRIPT) -Map=$(DIR_OUT)/$(PROJ_NAME).map
+
 # 默认情况下，编译工程里的全部文件；
 # 在某些情况下（比如有的模块只写了一半编译无法通过但是又需要半路去测试其他模块了，或者我完全不需要编译一些模块）
 # 可以只编译在part.cfg文件中指明的文件，便于测试，在shell中输入make <你的其他指令> PART=1,就可以开启部分编译
@@ -73,13 +75,16 @@ vpath %.S $(sort $(dir $(SRC_ASM)))
 # 构建目标
 os: $(TARGET)
 
+
 $(TARGET): $(OBJ)
 	@echo "\033[32m正在链接......\033[0m"
 	$(LD) $(LFLAGS)  $^ -o $@
+	$(LD) $(DEBUG_LFLAGS)  $^ -o $(DIR_OUT)/vm$(PROJ_NAME).elf
 	@echo "\033[32m生成目标文件: $@\033[0m"
 
 
-# $(DIR_OUT)/trap.o: trap.c
+# 
+# $(DIR_OUT)/trap.o: trap.c  
 # 	@mkdir -p $(dir $@)
 # 	@echo "\033[32m编译C文件: $<\033[0m"
 # 	$(CC) $(CFLAGS)  -ffixed-x8 -ffixed-x9 -ffixed-x18 -ffixed-x19 -ffixed-x20 -ffixed-x21 -ffixed-x22 -ffixed-x23 -ffixed-x24 -ffixed-x25 -ffixed-x26 -ffixed-x27 -c $< -o $@
@@ -106,7 +111,7 @@ clean:
 #qemu模拟器
 # QEMU = qemu-system-riscv64
 QEMU = /usr/local/qemu-riscv/bin/qemu-system-riscv64
-QFLAGS = -nographic -smp 1 -machine virt -kernel $(TARGET) -cpu rv64
+QFLAGS = -nographic -smp 1 -machine virt -bios none -kernel $(TARGET) -cpu rv64
 QFLAGS += -drive file=disk.img,if=none,format=raw,id=disk0,cache=writeback
 QFLAGS += -device virtio-blk-device,drive=disk0,bus=virtio-mmio-bus.0
 QFLAGS += -d guest_errors,unimp,trace:time_memory*
@@ -120,16 +125,16 @@ run: os
 	@${QEMU} -M ? | grep virt >/dev/null || exit
 	@echo "\033[32m先按 Ctrl+A 再按 X 退出 QEMU"
 	@echo "------------------------------------\033[0m"
-	${QEMU} ${QFLAGS} -kernel $(TARGET) 
+	${QEMU} ${QFLAGS}  
 
 .PHONY:debug
 debug:os
-	@${QEMU} ${QFLAGS} -kernel $(TARGET)  -s -S &
+	@${QEMU} ${QFLAGS}  -s -S &
 	@${GDB}  ${GFLAGS} ${TARGET}  
 
 .PHONY:qemu
 qemu:os
-	@${QEMU} ${QFLAGS}   -s -S 
+	@${QEMU} ${QFLAGS}  -s -S 
 	
 .PHONY:gdb
 gdb:os

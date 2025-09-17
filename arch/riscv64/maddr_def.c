@@ -1,3 +1,12 @@
+/**
+ * @FilePath: /ZZZ/arch/riscv64/maddr_def.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-09-17 13:05:59
+ * @LastEditTime: 2025-09-17 19:24:00
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 #include "types.h"
 
 extern char __text_start[], __text_end[];
@@ -8,58 +17,55 @@ extern char __bss_start[], __bss_end[];
 extern char __stack_start[], __stack_end[];
 extern char __heap_start[], __heap_end[];
 extern char __systimer_ctx[];
+extern char __core_num[];
 
-uintptr_t _text_start;
-uintptr_t _text_end;
-uintptr_t _text_size;
-uintptr_t _trap_start;
-uintptr_t _trap_end;
-uintptr_t _trap_size;
-uintptr_t _rodata_start;
-uintptr_t _rodata_end;
-uintptr_t _rodata_size;
-uintptr_t _data_start;
-uintptr_t _data_end;
-uintptr_t _data_size;
-uintptr_t _bss_start;
-uintptr_t _bss_end;
-uintptr_t _bss_size;
-uintptr_t _stack_start;
-uintptr_t _stack_end;
-uintptr_t _stack_size;
-uintptr_t _heap_start;
-uintptr_t _heap_end;
-uintptr_t _heap_size;
-uintptr_t _systimer_ctx[5];
+uintptr_t text_start;
+uintptr_t text_end;
+uintptr_t text_size;
+uintptr_t trap_start;
+uintptr_t trap_end;
+uintptr_t trap_size;
+uintptr_t rodata_start;
+uintptr_t rodata_end;
+uintptr_t rodata_size;
+uintptr_t data_start;
+uintptr_t data_end;
+uintptr_t data_size;
+uintptr_t bss_start;
+uintptr_t bss_end;
+uintptr_t bss_size;
+uintptr_t stack_start;
+uintptr_t stack_end;
+uintptr_t stack_size;
+uintptr_t heap_start;
+uintptr_t heap_end;
+uintptr_t heap_size;
+uintptr_t core_num;
 
 void maddr_def_init()
 {
-    _text_start = (uintptr_t)&__text_start;
-    _text_end = (uintptr_t)&__text_end;
-    _text_size = (_text_end - _text_start);
-    _trap_start = (uintptr_t)&__trap_start;
-    _trap_end = (uintptr_t)&__trap_end;
-    _trap_size = (_trap_end - _trap_start);
-    _rodata_start = (uintptr_t)&__rodata_start;
-    _rodata_end = (uintptr_t)&__rodata_end;
-    _rodata_size = (_rodata_end - _rodata_start);
-    _data_start = (uintptr_t)&__data_start;
-    _data_end = (uintptr_t)&__data_end;
-    _data_size = (_data_end - _data_start);
-    _bss_start = (uintptr_t)&__bss_start;
-    _bss_end = (uintptr_t)&__bss_end;
-    _bss_size = (_bss_end - _bss_start);
-    _stack_start = (uintptr_t)&__stack_start;
-    _stack_end = (uintptr_t)&__stack_end;
-    _stack_size = (_stack_end - _stack_start);
-    _heap_start = (uintptr_t)&__heap_start;
-    _heap_end = (uintptr_t)&__heap_end;
-    _heap_size = (_heap_end - _heap_start);
-    _systimer_ctx[0] = (uintptr_t)&__systimer_ctx;
-    _systimer_ctx[1] = (uintptr_t)&__systimer_ctx + 1;
-    _systimer_ctx[2] = (uintptr_t)&__systimer_ctx + 2;
-    _systimer_ctx[3] = (uintptr_t)&__systimer_ctx + 3;
-    _systimer_ctx[4] = (uintptr_t)&__systimer_ctx + 4;
+    text_start = (uintptr_t)&__text_start;
+    text_end = (uintptr_t)&__text_end;
+    text_size = (text_end - text_start);
+    trap_start = (uintptr_t)&__trap_start;
+    trap_end = (uintptr_t)&__trap_end;
+    trap_size = (trap_end - trap_start);
+    rodata_start = (uintptr_t)&__rodata_start;
+    rodata_end = (uintptr_t)&__rodata_end;
+    rodata_size = (rodata_end - rodata_start);
+    data_start = (uintptr_t)&__data_start;
+    data_end = (uintptr_t)&__data_end;
+    data_size = (data_end - data_start);
+    bss_start = (uintptr_t)&__bss_start;
+    bss_end = (uintptr_t)&__bss_end;
+    bss_size = (bss_end - bss_start);
+    stack_start = (uintptr_t)&__stack_start;
+    stack_end = (uintptr_t)&__stack_end;
+    stack_size = (stack_end - stack_start);
+    heap_start = (uintptr_t)&__heap_start;
+    heap_end = (uintptr_t)&__heap_end;
+    heap_size = (heap_end - heap_start);
+    core_num = (uintptr_t)&__core_num;
 }
 
 /**
@@ -72,7 +78,7 @@ void maddr_def_init()
  */
 void zero_bss() 
 {
-    for (char *p = _bss_start; p < _bss_end; p++) {
+    for (char *p = bss_start; p < bss_end; p++) {
         *p = 0;
     }
 }

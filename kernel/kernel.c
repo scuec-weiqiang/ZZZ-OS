@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-09-16 22:07:55
+ * @LastEditTime: 2025-09-17 17:48:27
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -33,13 +33,16 @@ void init_kernel()
     hart_id_t hart_id = 0;
     if(hart_id == HART_0) // hart0 初始化全局资源
     {
+        
+      
         page_get_remain_mem();
         
         extern_interrupt_setting(hart_id,UART0_IRQN,1);
         
         virt_disk_init(); 
         vfs_init();
-
+        
+        
         // proc_init();
         // proc_t* init_proc = proc_create("/user.elf");
         // proc_run(init_proc);

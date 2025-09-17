@@ -41,13 +41,13 @@ uint64_t remain_mem = RAM_SIZE;
 
 void print_maddr()
 {
-    printf("_text_start = %x---->",_text_start);printf("_text_end = %x\n",_text_end);
-    printf("_rodata_start = %x---->",_rodata_start);printf("_rodata_end = %x\n",_rodata_end);
-    printf("_data_start = %x---->",_data_start);printf("_data_end = %x\n",_data_end);
-    printf("_bss_start = %x---->",_bss_start);printf("_bss_end = %x\n",_bss_end);
-    printf("_heap_start = %x---->",_heap_start);printf("_heap_end = %x\n",_heap_end);
-    printf("_heap_size = %x\n",_heap_size);
-    printf("_stack_start = %x---->",_stack_start);printf("_stack_end = %x\n",_stack_end);
+    printf("_text_start = %x---->",text_start);printf("_text_end = %x\n",text_end);
+    printf("_rodata_start = %x---->",rodata_start);printf("_rodata_end = %x\n",rodata_end);
+    printf("_data_start = %x---->",data_start);printf("_data_end = %x\n",data_end);
+    printf("_bss_start = %x---->",bss_start);printf("_bss_end = %x\n",bss_end);
+    printf("_heap_start = %x---->",heap_start);printf("_heap_end = %x\n",heap_end);
+    printf("_heap_size = %x\n",heap_size);
+    printf("_stack_start = %x---->",stack_start);printf("_stack_end = %x\n",stack_end);
 
 }
 /***************************************************************
@@ -60,15 +60,15 @@ void page_alloc_init()
     保留 8*PAGE_SIZE 大小的内存用来管理page
     */
     // print_maddr();
-    _num_pages = (_heap_size-RESERVED_PAGE_SIZE)/PAGE_SIZE;
-    _alloc_start = _heap_start + RESERVED_PAGE_SIZE; 
+    _num_pages = (heap_size-RESERVED_PAGE_SIZE)/PAGE_SIZE;
+    _alloc_start = heap_start + RESERVED_PAGE_SIZE; 
     _alloc_end = _alloc_start + _num_pages*PAGE_SIZE;
     printf("page init ... \n");
-    printf("_heap_start = %x -----------------_heap_end = %x \n",_heap_start,_heap_end);
-    printf("_alloc_start = %x\n",_alloc_start);
-    printf("_alloc_end = %x\n",_alloc_end);
-    printf("_num_pages = %x\n",_num_pages);
-    PageM_t *pagem_i = (PageM_t*)_heap_start;
+    printf("heap_start = %x -----------------_heap_end = %x \n",heap_start,heap_end);
+    printf("alloc_start = %x\n",_alloc_start);
+    printf("alloc_end = %x\n",_alloc_end);
+    printf("num_pages = %x\n",_num_pages);
+    PageM_t *pagem_i = (PageM_t*)heap_start;
     for(int i=0;i<_num_pages;i++)
     {
         _CLEAR(pagem_i);
@@ -86,9 +86,9 @@ void page_alloc_init()
 void* page_alloc(uint64_t npages)
 {   
     spin_lock(&page_lock);
-    addr_t reserved_end = (addr_t)_heap_start + _num_pages*sizeof(PageM_t);
+    addr_t reserved_end = (addr_t)heap_start + _num_pages*sizeof(PageM_t);
     uint64_t num_blank = 0;
-    PageM_t *pagem_i = (PageM_t*)_heap_start;
+    PageM_t *pagem_i = (PageM_t*)heap_start;
     PageM_t *pagem_j = pagem_i;
     for(;(uint64_t)pagem_i < reserved_end; pagem_i++)
     {
@@ -132,7 +132,7 @@ void* page_alloc(uint64_t npages)
             }
             _SET_FLAG(pagem_j,PAGE_TOKEN);
             _SET_FLAG(pagem_j,PAGE_LAST);//表明它是末尾的内存page
-            addr_t pgaddr =  _alloc_start + ((((addr_t)pagem_i - (addr_t)_heap_start)/sizeof(PageM_t))*PAGE_SIZE);
+            addr_t pgaddr =  _alloc_start + ((((addr_t)pagem_i - (addr_t)heap_start)/sizeof(PageM_t))*PAGE_SIZE);
             // printf("pgaddr = %x\n",pgaddr);
             // memset((void*)pgaddr,0x00,npages*PAGE_SIZE);
             spin_unlock(&page_lock);
@@ -146,10 +146,10 @@ void* page_alloc(uint64_t npages)
 }
 void print_page(uint64_t start,uint64_t end)
 {
-    PageM_t *pagem_i = (PageM_t*)_heap_start+start;
+    PageM_t *pagem_i = (PageM_t*)heap_start+start;
     for(int i=start;i<end;i++)
     {
-        printf("pagem %x ->>%x = %x\n",pagem_i, _alloc_start + ((((addr_t)pagem_i - (addr_t)_heap_start)/sizeof(PageM_t))*PAGE_SIZE),_IS_FREE(pagem_i));
+        printf("pagem %x ->>%x = %x\n",pagem_i, _alloc_start + ((((addr_t)pagem_i - (addr_t)heap_start)/sizeof(PageM_t))*PAGE_SIZE),_IS_FREE(pagem_i));
         pagem_i++;
     }
 }
@@ -172,7 +172,7 @@ void page_free(void* p)
         return;
     }
 
-    PageM_t *pagem_i = (PageM_t *)(_heap_start + ((((addr_t)p-_alloc_start)/PAGE_SIZE)*sizeof(PageM_t)));
+    PageM_t *pagem_i = (PageM_t *)(heap_start + ((((addr_t)p-_alloc_start)/PAGE_SIZE)*sizeof(PageM_t)));
 
     for(;!_IS_LAST(pagem_i);pagem_i++)
     {

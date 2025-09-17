@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-19 21:58:52
- * @LastEditTime: 2025-09-16 19:54:11
+ * @LastEditTime: 2025-09-17 17:39:05
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -20,8 +20,8 @@ uint64_t systimer_tick = 0;
 SYS_CONFIG_HZ_t systimer_hz[MAX_HARTS_NUM] = {SYS_HZ_100,SYS_HZ_100};
 
 extern void machine_timer_trap_entry(void); //定义在trap.S文件中
-extern uint8_t _systimer_ctx[5*8*MAX_HARTS_NUM]; //定义在链接文件中，用来保存定时器的一些信息
-uintptr_t (*systimer_ctx)[5] = (uintptr_t (*)[5])_systimer_ctx;
+extern uint8_t __systimer_ctx[5*8*MAX_HARTS_NUM]; //定义在链接文件中，用来保存定时器的一些信息
+uintptr_t (*systimer_ctx)[5] = (uintptr_t (*)[5])__systimer_ctx;
 
 void systimer_init(hart_id_t hart_id, enum SYS_CONFIG_HZ hz)
 {
@@ -34,7 +34,7 @@ void systimer_init(hart_id_t hart_id, enum SYS_CONFIG_HZ hz)
 
     mtvec_w((uintptr_t)machine_timer_trap_entry);
     mscratch_w((uintptr_t)&systimer_ctx[hart_id]);
-    m_timer_interrupt_enable();
+    // m_timer_interrupt_enable();
 }
 
 void systimer_load(hart_id_t hartid,uint64_t value)
