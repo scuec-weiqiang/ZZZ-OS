@@ -9,10 +9,10 @@
  * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
 ***************************************************************/
 #include "types.h"
-#include "page_alloc.h"
+#include "malloc.h"
 #include "list.h"
 #include "systimer.h"
-#include "printf.h"
+#include "printk.h"
 #include "sched.h"
 
 #define SWTIMER_ON (1)
@@ -20,36 +20,36 @@
 #define SWTIMER_DISTORY (-1)
 #define SWTIMER_TIMEOUT (2)
 
-typedef struct swtimer
+struct swtimer
 {
-    uint64_t timer_id;
-    uint64_t period; 
-    int8_t status;//-1:销毁，0:暂停，1:开启
-    uint64_t tick;
-    uint64_t mode;
+    u64 timer_id;
+    u64 period; 
+    char status;//-1:销毁，0:暂停，1:开启
+    u64 tick;
+    u64 mode;
     void (*timer_task)();
-    list_t swtimer_node;    
-}swtimer_t;
+    struct list swtimer_node;    
+};
 
-swtimer_t *swtimer_head = NULL;
+struct swtimer *swtimer_head = NULL;
 
 /***************************************************************
  * @description: 
- * @param {swtimer_t} *swtimer_d [in/out]:  
+ * @param {struct swtimer} *swtimer_d [in/out]:  
  * @return {*}
 ***************************************************************/
-void swtimer_distory(swtimer_t *swtimer_d)
+void swtimer_distory(struct swtimer *swtimer_d)
 {
     list_del(&swtimer_d->swtimer_node);
-    page_free(swtimer_d);
+    free(swtimer_d);
 }
 
 /***************************************************************
  * @description: 检查当前定时器是否超时
- * @param {swtimer_t} *swtimer_currrent [in/out]:  
+ * @param {struct swtimer} *swtimer_currrent [in/out]:  
  * @return {*}
 ***************************************************************/
-static void _check_timeout(swtimer_t **swtimer_currrent)
+static void _check_timeout(struct swtimer **swtimer_currrent)
 {
     if(systimer_tick >= (*swtimer_currrent)->tick
     &&(*swtimer_currrent)->status == SWTIMER_ON)
@@ -80,11 +80,11 @@ static void _check_timeout(swtimer_t **swtimer_currrent)
 ***************************************************************/
 void swtimer_check()
 {
-    swtimer_t *swtimer_currrent = NULL;
-    // swtimer_t *next = NULL;
+    struct swtimer *swtimer_currrent = NULL;
+    // struct swtimer *next = NULL;
     if(NULL != swtimer_head)
     {   
-        list_for_each_entry(swtimer_currrent,&swtimer_head->swtimer_node,swtimer_t,swtimer_node) 
+        list_for_each_entry(swtimer_currrent,&swtimer_head->swtimer_node,struct swtimer,swtimer_node) 
         {   
             _check_timeout(&swtimer_currrent);
         }
@@ -94,20 +94,20 @@ void swtimer_check()
 /***************************************************************
  * @description: 创建一个软件定时器
  * @param void (*timer_task)() [in]: 定时器任务
- * @param {uint64_t} period [in]:  执行的周期长短，以硬件定时器的tick为单位
- * @param {uint8_t} mode [in]:  执行次数，达到次数后会被销毁
+ * @param {u64} period [in]:  执行的周期长短，以硬件定时器的tick为单位
+ * @param {u8} mode [in]:  执行次数，达到次数后会被销毁
  *                  mode == 0 --> 无限次
- * @return {swtimer_t*} 返回创建的定时器指针
+ * @return {struct swtimer*} 返回创建的定时器指针
 ***************************************************************/
-swtimer_t* swtimer_create(void (*timer_task)(),uint64_t period,uint8_t mode)
+struct swtimer* swtimer_create(void (*timer_task)(),u64 period,u8 mode)
 {
-    swtimer_t *new_timer = page_alloc(1);        
-    if((swtimer_t*)NULL == new_timer) return NULL;
+    struct swtimer *new_timer = page_alloc(1);        
+    if((struct swtimer*)NULL == new_timer) return NULL;
  
-    switch ((uint64_t)swtimer_head)
+    switch ((u64)swtimer_head)
     {
-        case (uint64_t)NULL:
-            static uint64_t id = 0;
+        case (u64)NULL:
+            static u64 id = 0;
             swtimer_head = page_alloc(1); 
             INIT_LIST_HEAD(&swtimer_head->swtimer_node);
         default:

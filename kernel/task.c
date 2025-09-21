@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-16 21:02:39
- * @LastEditTime: 2025-05-09 21:57:53
+ * @LastEditTime: 2025-09-20 16:52:46
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -17,30 +17,30 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 *******************************************************************************************/
 #include "task.h"
-#include "page_alloc.h"
+#include "malloc.h"
 #include "riscv.h"
 #include "systimer.h"
 #include "list.h"
 #include "spinlock.h"
 
-spinlock_t task_create_lock = SPINLOCK_INIT;
+struct spinlock task_create_lock = SPINLOCK_INIT;
 
 //这是个中介，作为链表头，需要加入调度的任务会挂载到这个链表上，调度器会从这个链表拆取任务合并到调度器自己的链表中
-list_t need_add_task[MAX_HARTS_NUM] ;
+struct list need_add_task[MAX_HARTS_NUM] ;
 
-__SELF uint64_t task_id = 1;
+static u64 task_id = 1;
 
-// __SELF void idle_task(void* param) {
+// static void idle_task(void* param) {
 //     while (1) {
 //         // 低功耗指令（如WFI）
 //         // asm volatile ("wfi");
-//         printf("task idle running  \r\n");
+//         printk("task idle running  \r\n");
 //     }
 // }
 
 void task_init()
 {
-   for(hart_id_t hart_id = HART_0;hart_id < MAX_HARTS_NUM; hart_id++)
+   for(enum hart_id hart_id = HART_0;hart_id < MAX_HARTS_NUM; hart_id++)
    {
        INIT_LIST_HEAD(&need_add_task[hart_id])
    }
@@ -50,11 +50,11 @@ void task_init()
  * @description: 
  * @return {*}
 ***************************************************************/
-task_handle_t task_create(hart_id_t hart_id, void (*task)(void* param),uint64_t time_slice,uint8_t priority)
+task_handle_t task_create(enum hart_id hart_id, void (*task)(void* param),u64 time_slice,u8 priority)
 {   
-    if(IS_NULL_PTR(task)) return NULL;
+    if(NULL == (task)) return NULL;
     tcb_t* task_ctrl_block = page_alloc(1);
-    if(IS_NULL_PTR(task_ctrl_block)) return NULL;
+    if(NULL == (task_ctrl_block)) return NULL;
 
     spin_lock(&task_create_lock);
     task_ctrl_block->id = task_id++;
@@ -64,9 +64,9 @@ task_handle_t task_create(hart_id_t hart_id, void (*task)(void* param),uint64_t 
     task_ctrl_block->expire_time = 0;
     task_ctrl_block->priority = priority;
     task_ctrl_block->time_slice = time_slice;
-    // task_ctrl_block->reg_context.ra = (uint64_t)task;
-    // task_ctrl_block->reg_context.mepc = (uint64_t)task;
-    // task_ctrl_block->reg_context.sp = (uint64_t)&task_ctrl_block->task_stack[TASK_STACK_SIZE-1];
+    // task_ctrl_block->reg_context.ra = (u64)task;
+    // task_ctrl_block->reg_context.mepc = (u64)task;
+    // task_ctrl_block->reg_context.sp = (u64)&task_ctrl_block->task_stack[TASK_STACK_SIZE-1];
     list_add_tail(&need_add_task[hart_id],&task_ctrl_block->node);
 
     return (task_handle_t)task_ctrl_block;
@@ -78,7 +78,7 @@ task_handle_t task_create(hart_id_t hart_id, void (*task)(void* param),uint64_t 
 ***************************************************************/
 void task_delete(task_handle_t del_task)
 {
-    if(IS_NULL_PTR(del_task)) return;
+    if(NULL == (del_task)) return;
     tcb_t* task_block = (tcb_t*)del_task;
     task_block->status = TASK_ZOMBIE;
 }
@@ -101,8 +101,8 @@ void task_delete(task_handle_t del_task)
 //     if(NULL_PTR != task_head)
 //     {
 //         task_current = task_head;
-//         // printf("task will run\n");
-//         printf("taskRUn:%x\n",mstatus_r());
+//         // printk("task will run\n");
+//         printk("taskRUn:%x\n",mstatus_r());
 //         __task_entry(&task_current->reg_context);
 //     }
 //     panic("\n  no task to exec!");

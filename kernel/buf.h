@@ -23,16 +23,16 @@
 // #include "spinlock.h"
 
 // struct buf {
-//   int64_t valid;   // has data been read from disk?
-//   int64_t disk;    // does disk "own" buf?
-//   uint64_t dev;
-//   uint64_t blockno;
+//   int valid;   // has data been read from disk?
+//   int disk;    // does disk "own" buf?
+//   u64 dev;
+//   u64 blockno;
 //   // struct sleeplock lock;
-//   spinlock_t lock;
-//   uint64_t refcnt;
+//   struct spinlock lock;
+//   u64 refcnt;
 //   struct buf *prev; // LRU cache list
 //   struct buf *next;
-//   uint8_t data[4096];
+//   u8 data[4096];
 // };
 
 // #endif

@@ -12,8 +12,8 @@
 #include "types.h"
 #include "vfs_types.h"
 
-extern uint64_t ext2_bno_group(vfs_superblock_t *vfs_sb,uint64_t bno);
-extern int64_t ext2_alloc_bno(vfs_superblock_t *vfs_sb);
-extern int64_t ext2_release_bno(vfs_superblock_t *vfs_sb,uint64_t bno);
-extern int64_t ext2_block_mapping(vfs_inode_t *vfs_inode, uint64_t index);
+extern int ext2_bno_group(struct superblock *vfs_sb,u64 bno);
+extern int ext2_alloc_bno(struct superblock *vfs_sb);
+extern int ext2_release_bno(struct superblock *vfs_sb,u64 bno);
+extern int ext2_block_mapping(struct inode *inode, u64 index);
 #endif

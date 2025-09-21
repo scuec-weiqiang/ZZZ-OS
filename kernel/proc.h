@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-30 13:50:23
- * @LastEditTime: 2025-09-16 19:35:53
+ * @LastEditTime: 2025-09-20 17:03:25
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -22,21 +22,21 @@
 
 typedef int pid_t;
 
-typedef struct proc
+struct proc
 {
     uintptr_t kernel_sp; //内核态栈顶
     uintptr_t user_sp;   //用户态栈顶
     pgtbl_t* pgd;       //页表
-    reg_context_t context; //寄存器上下文
-    elf_info_t* elf_info; //程序信息
+    struct reg_context context; //寄存器上下文
+    struct elf_info* elf_info; //程序信息
     int pid;            //进程ID
     int status;         //进程状态
-    list_t proc_lnode;
-} proc_t;
+    struct list proc_lnode;
+};
 
 
 extern void proc_init();
-extern proc_t* proc_create(char* path);
-extern void proc_run(proc_t *p);
+extern struct proc* proc_create(char* path);
+extern void proc_run(struct proc *p);
 
 #endif // KERNEL_PROC_H

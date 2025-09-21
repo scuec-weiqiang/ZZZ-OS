@@ -8,27 +8,27 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 *******************************************************************************************/
 
-#include "printf.h"
-#include "page_alloc.h"
+#include "printk.h"
+#include "malloc.h"
 #include "sched.h"
 #include "task.h"
-#include "maddr_def.h"
+#include "symbols.h"
 #include "platform.h"
 
 scheduler_t scheduler[MAX_HARTS_NUM];
 
 
-__SELF uint64_t         _check_expire(uint64_t now_time,uint64_t expire_time);
-__SELF tcb_t*           _get_current_task(hart_id_t hart_id);
-__SELF tcb_t*           _get_next_task(hart_id_t hart_id);
-__SELF reg_t            _setup_task(uint64_t now_time,hart_id_t hart_id,tcb_t* task);
-__SELF sched_state_t    _get_sched_state(uint64_t now_time,tcb_t* current_task);
+static u64         _check_expire(u64 now_time,u64 expire_time);
+static tcb_t*           _get_current_task(enum hart_id hart_id);
+static tcb_t*           _get_next_task(enum hart_id hart_id);
+static reg_t            _setup_task(u64 now_time,enum hart_id hart_id,tcb_t* task);
+static sched_state_t    _get_sched_state(u64 now_time,tcb_t* current_task);
 
 /*******************************************************************************************
  * @brief: 
  * @return {*}
 *******************************************************************************************/
-void sched_init(hart_id_t hart_id)
+void sched_init(enum hart_id hart_id)
 {
     INIT_LIST_HEAD(&scheduler[hart_id].ready_queue);
     INIT_LIST_HEAD(&scheduler[hart_id].wait_queue);
@@ -52,7 +52,7 @@ void sched_init(hart_id_t hart_id)
  * - SCHED_CONTINUE：继续执行当前任务，返回当前任务的入口地址
  * - SCHED_SWITCHING：切换任务，将到期任务移动到链表尾部，设置下一个任务的上下文并返回任务入口地址
  */
-reg_t sched(reg_t epc,uint64_t now_time,hart_id_t hart_id)
+reg_t sched(reg_t epc,u64 now_time,enum hart_id hart_id)
 {
     reg_t ret = epc;
 
@@ -65,12 +65,12 @@ reg_t sched(reg_t epc,uint64_t now_time,hart_id_t hart_id)
     tcb_t* current_task = _get_current_task(hart_id); //获取当前任务
     scheduler[hart_id].current_task = current_task; 
     
-    tcb_t* del_task;
+    // tcb_t* del_task;
 
     if(current_task->status == TASK_ZOMBIE) //如果当前任务是僵尸状态，则将其从链表中删除
     {
         list_del(&current_task->node);
-        page_free(current_task);
+        free(current_task);
         current_task = NULL;
     }
     
@@ -79,7 +79,7 @@ reg_t sched(reg_t epc,uint64_t now_time,hart_id_t hart_id)
     switch (sched_state)
     {
         case SCHED_IDLE:    
-            printf("core %d sched_idle\n",hart_id);
+            printk("core %d sched_idle\n",hart_id);
             ret = _setup_task(now_time,hart_id,NULL);
             break;
 
@@ -87,7 +87,7 @@ reg_t sched(reg_t epc,uint64_t now_time,hart_id_t hart_id)
             break;
 
         case SCHED_SWITCHING:
-            // printf("sched_switching\n");
+            // printk("sched_switching\n");
             ret = _setup_task(now_time,hart_id,_get_next_task(hart_id));//设置下一个任务的上下文并返回任务入口地址
             list_mov_tail(&scheduler[hart_id].ready_queue,&current_task->node);//将到期任务移动到链表尾部,但还没有更新current_task
             break;
@@ -98,7 +98,7 @@ reg_t sched(reg_t epc,uint64_t now_time,hart_id_t hart_id)
     return ret;
 }
 
-__SELF  tcb_t* _get_current_task(hart_id_t hart_id)
+static  tcb_t* _get_current_task(enum hart_id hart_id)
 {
     if(list_empty(&scheduler[hart_id].ready_queue))
     {
@@ -110,7 +110,7 @@ __SELF  tcb_t* _get_current_task(hart_id_t hart_id)
     }
 }
 
-__SELF tcb_t* _get_next_task(hart_id_t hart_id)
+static tcb_t* _get_next_task(enum hart_id hart_id)
 {
     if(list_empty(&scheduler[hart_id].ready_queue))
     {
@@ -139,13 +139,13 @@ __SELF tcb_t* _get_next_task(hart_id_t hart_id)
  * 如果 task 不为 NULL，则更新任务的到期时间，并将任务的上下文地址写入 mscratch 寄存器，
  * 最后返回该任务的 mepc 值。
  */
-__SELF reg_t _setup_task(uint64_t now_time,hart_id_t hart_id,tcb_t* task)
+static reg_t _setup_task(u64 now_time,enum hart_id hart_id,tcb_t* task)
 {
     // if(task == NULL)//
     // {
-    //     reg_t* kernel_context = (_kernel_reg_ctx_start+hart_id*sizeof(reg_context_t));
+    //     reg_t* kernel_context = (_kernel_reg_ctx_start+hart_id*sizeof(struct reg_context));
     //     mscratch_w((reg_t*)kernel_context);
-    //     return ((reg_context_t*)kernel_context)->mepc;
+    //     return ((struct reg_context*)kernel_context)->mepc;
     // }
     // else
     // {
@@ -153,24 +153,25 @@ __SELF reg_t _setup_task(uint64_t now_time,hart_id_t hart_id,tcb_t* task)
     //     mscratch_w((reg_t)&task->reg_context);
     //     return task->reg_context.mepc;
     // }
+    return 0;
 }
 
 /*******************************************************************************************
  * @brief: 
- * @param {uint64_t} now_time
+ * @param {u64} now_time
  * @return {*}
 *******************************************************************************************/
-__SELF __INLINE uint64_t _check_expire(uint64_t now_time,uint64_t expire_time)
+static inline u64 _check_expire(u64 now_time,u64 expire_time)
 {
     return now_time >= expire_time?1:0;
 }
 
 /*******************************************************************************************
  * @brief: 
- * @param {uint64_t} now_time
+ * @param {u64} now_time
  * @return {*}
 *******************************************************************************************/
-__SELF enum sched_state _get_sched_state(uint64_t now_time,tcb_t* current_task)
+static enum sched_state _get_sched_state(u64 now_time,tcb_t* current_task)
 {
     if(current_task == NULL)
     {

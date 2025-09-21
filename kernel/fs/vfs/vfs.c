@@ -9,30 +9,31 @@
 */
 
 #include "vfs.h"
-#include "vfs_mount.h"
+#include "mount.h"
 #include "vfs_types.h"
-#include "vfs_dcache.h"
-#include "vfs_path.h"
+#include "dcache.h"
+#include "path.h"
 
 #include "check.h"
 #include "string.h"
 
-#include "vfs_icache.h"
+#include "icache.h"
+#include "malloc.h"
 
-vfs_dentry_t* current = NULL;
+struct dentry* current = NULL;
 
-vfs_dentry_t* vfs_lookup(const char* path)
+struct dentry* lookup(const char* path)
 {
     CHECK(path != NULL, "", return NULL;);
 
-    vfs_dentry_t *d_parent = NULL;
-    vfs_dentry_t *d_child = NULL;
+    struct dentry *d_parent = NULL;
+    struct dentry *d_child = NULL;
 
     char* path_copy = strdup(path); // 复制路径字符串，因为path_split会修改原字符串
 
     if(path[0] == '/') // 根目录
     {
-        d_parent = vfs_get_root();
+        d_parent = get_root();
     }
     else
     {
@@ -42,7 +43,7 @@ vfs_dentry_t* vfs_lookup(const char* path)
     char *token = path_split(path_copy, "/");
     while (token)
     {
-        d_child = vfs_dget(d_parent, token);
+        d_child = dget(d_parent, token);
         if(d_child->d_inode == NULL) // 目录项不存在
         {
             free(path_copy);
@@ -55,28 +56,28 @@ vfs_dentry_t* vfs_lookup(const char* path)
     return d_parent;
 }
 
-vfs_dentry_t* vfs_mkdir(const char* path,uint16_t mode)
+struct dentry* mkdir(const char* path,u16 mode)
 {
     CHECK(path != NULL, "", return NULL;);
 
-    vfs_dentry_t *d_parent = NULL;
-    vfs_dentry_t *d_child = NULL;
+    struct dentry *d_parent = NULL;
+    struct dentry *d_child = NULL;
 
     char* path_copy = strdup(path); // 复制路径字符串，因为path_split会修改原字符串
 
-    char* basename = malloc(strlen(path_copy) + 1);
-    char* dirname = malloc(VFS_NAME_MAX + 1);
+    char* basename = (char*)malloc(strlen(path_copy) + 1);
+    char* dirname = (char*)malloc(VFS_NAME_MAX + 1);
 
     base_dir_split(path_copy, dirname, basename);
 
-    d_parent = vfs_lookup(dirname);
+    d_parent = lookup(dirname);
     if (d_parent == NULL) {
 
         d_child = NULL;
         goto exit;
     }
 
-    d_child = vfs_dnew(d_parent, basename,NULL);
+    d_child = dnew(d_parent, basename,NULL);
 
     d_parent->d_inode->i_ops->mkdir(d_parent->d_inode, d_child, mode);
 
@@ -88,12 +89,12 @@ exit:
 
 }
 
-vfs_dentry_t* vfs_rmdir(const char* path)
+struct dentry* rmdir(const char* path)
 {
 //     CHECK(path != NULL, "", return NULL;);
 
-//     vfs_dentry_t *d_parent = NULL;
-//     vfs_dentry_t *d_child = NULL;
+//     struct dentry *d_parent = NULL;
+//     struct dentry *d_child = NULL;
 
 //     char* path_copy = strdup(path); // 复制路径字符串，因为path_split会修改原字符串
 
@@ -102,14 +103,14 @@ vfs_dentry_t* vfs_rmdir(const char* path)
 
 //     base_dir_split(path_copy, dirname, basename);
 
-//     d_parent = vfs_lookup(dirname);
+//     d_parent = lookup(dirname);
 //     if (d_parent == NULL) {
 
 //         d_child = NULL;
 //         goto exit;
 //     }
 
-//     d_child = vfs_dget(d_parent, basename);
+//     d_child = dget(d_parent, basename);
 
 //     d_parent->d_inode->i_ops->rmdir(d_parent->d_inode, d_child);
 
@@ -118,13 +119,13 @@ vfs_dentry_t* vfs_rmdir(const char* path)
 //     free(dirname);
 //     free(path_copy);
 //     return d_child; 
-
+return NULL;
 }
 
-vfs_file_t* vfs_open(const char *path, uint32_t flags)
+struct file* open(const char *path, u32 flags)
 {
-    vfs_dentry_t *dentry = vfs_lookup(path);
-    vfs_file_t *file = malloc(sizeof(vfs_file_t));
+    struct dentry *dentry = lookup(path);
+    struct file *file = (struct file*)malloc(sizeof(struct file));
     file->f_dentry = dentry;
     file->f_inode = dentry->d_inode;
     file->f_flags = flags;
@@ -135,7 +136,7 @@ vfs_file_t* vfs_open(const char *path, uint32_t flags)
 }
 
 
-ssize_t vfs_read(vfs_file_t *file, char *buf, size_t read_size) 
+ssize_t read(struct file *file, char *buf, size_t read_size) 
 {
     CHECK(file != NULL && buf != NULL, "", return -1;);
     CHECK(file->f_inode != NULL, "", return -1;);
@@ -154,7 +155,7 @@ ssize_t vfs_read(vfs_file_t *file, char *buf, size_t read_size)
     }
 }
 
-ssize_t vfs_write(vfs_file_t *file, const char *buf, size_t count) 
+ssize_t write(struct file *file, const char *buf, size_t count) 
 {    
     CHECK(file != NULL && buf != NULL, "", return -1;);
     CHECK(file->f_inode != NULL, "", return -1;);
@@ -166,8 +167,8 @@ ssize_t vfs_write(vfs_file_t *file, const char *buf, size_t count)
 void vfs_test()
 {
 
-    // vfs_dentry_t* d = vfs_lookup("/hello.txt");
-    // vfs_dentry_t* d;
+    // struct dentry* d = look_up("/hello.txt");
+    // struct dentry* d;
     // d = vfs_mkdir("/c",S_IFDIR | S_IDEFAULT);
     // d = vfs_mkdir("/d.txt",S_IFREG | S_IDEFAULT);
 

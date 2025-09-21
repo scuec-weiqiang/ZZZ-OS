@@ -1,12 +1,12 @@
 /**
- * @FilePath: /ZZZ/lib/hashtable.h
- * @Description:  
+ * @FilePath: /vboot/lib/hashtable.h
+ * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-21 17:00:57
- * @LastEditTime: 2025-08-28 01:41:30
+ * @LastEditTime: 2025-09-17 23:32:41
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
-*/
+ */
 
 /*
     1.  用户需要实现计算哈希值的函数，以及比较两个节点是否相等的函数。在函数内部的操作需要借助container_of宏
@@ -24,18 +24,17 @@
 #include "hlist.h"
 #include "types.h"
 
-typedef struct hashtable hashtable_t;
-typedef uint64_t hval_t;
+typedef u64 hval_t;
 
-typedef hval_t (*hash_func_t)(const hlist_node_t*);
-typedef int64_t (*hash_compare_t)(const hlist_node_t*, const hlist_node_t*);
+typedef hval_t (*hash_func_t)(const struct hlist_node *);
+typedef int (*hash_compare_t)(const struct hlist_node *, const struct hlist_node *);
 
-hashtable_t*    hashtable_init(size_t num_buckets, hash_func_t hash_func,hash_compare_t hash_compare);
-void            hashtable_destroy(hashtable_t *ht);
-hlist_node_t*   hashtable_lookup(hashtable_t *ht, hlist_node_t *node);
-int64_t         hashtable_insert(hashtable_t *ht, hlist_node_t *node);
-int64_t         hashtable_remove(hashtable_t *ht, hlist_node_t *node);  
-size_t          hashtable_size(hashtable_t *ht);
-size_t          hashtable_node_count(hashtable_t *ht);
+struct hashtable *hashtable_init(size_t num_buckets, hash_func_t hash_func, hash_compare_t hash_compare);
+void hashtable_destroy(struct hashtable *ht);
+struct hlist_node *hashtable_lookup(struct hashtable *ht, struct hlist_node *node);
+int hashtable_insert(struct hashtable *ht, struct hlist_node *node);
+int hashtable_remove(struct hashtable *ht, struct hlist_node *node);
+size_t hashtable_size(struct hashtable *ht);
+size_t hashtable_node_count(struct hashtable *ht);
 
 #endif // HASHTABLE_H

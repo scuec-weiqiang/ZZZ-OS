@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/lib/bitmap.h
+ * @FilePath: /vboot/lib/bitmap.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-30 17:54:44
- * @LastEditTime: 2025-08-18 18:43:38
+ * @LastEditTime: 2025-09-17 23:49:33
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -12,20 +12,18 @@
 
 #include "types.h"
 
-typedef struct bitmap bitmap_t;
+#define BITMAP_ARR(x) ((char*)(x)+sizeof(size_t))
 
-#define BITMAP_ARR(x) ((uint8_t*)(x)+sizeof(size_t))
+struct bitmap* bitmap_create(size_t size);
+void bitmap_destory(struct bitmap *bm);
 
-bitmap_t* bitmap_create(size_t size);
-int64_t bitmap_destory(bitmap_t *bm);
-
-int64_t bitmap_set_bit(bitmap_t *bm, uint64_t index);
-int64_t bitmap_clear_bit(bitmap_t *bm, uint64_t index);
-int64_t bitmap_test_bit(bitmap_t *bm, uint64_t index);
-size_t  bitmap_get_size(bitmap_t *bm);
-size_t  bitmap_update_size(bitmap_t *bm,uint64_t size);
-size_t  bitmap_get_bytes_num(bitmap_t *bm);
-size_t  bitmap_get_size_in_bytes(bitmap_t *bm);
-int64_t bitmap_scan_0(bitmap_t *bm);
+int bitmap_set_bit(struct bitmap *bm, u64 index);
+int bitmap_clear_bit(struct bitmap *bm, u64 index);
+int bitmap_test_bit(struct bitmap *bm, u64 index);
+size_t  bitmap_get_size(struct bitmap *bm);
+size_t  bitmap_update_size(struct bitmap *bm,u64 size);
+size_t  bitmap_get_bytes_num(struct bitmap *bm);
+size_t  bitmap_get_size_in_bytes(struct bitmap *bm);
+int bitmap_scan_0(struct bitmap *bm);
 
 #endif

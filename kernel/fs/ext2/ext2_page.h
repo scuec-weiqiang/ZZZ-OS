@@ -12,6 +12,6 @@
 
 #include "vfs_types.h"
 
-extern vfs_aops_t ext2_aops ;
+extern struct aops ext2_aops ;
 
 #endif

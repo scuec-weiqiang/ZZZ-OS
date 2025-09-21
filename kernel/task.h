@@ -32,24 +32,24 @@ typedef enum task_priority{
 
 typedef struct task_ctrl_block
 {   
-    uint64_t id;
-    uint64_t expire_time;
-    uint64_t time_slice;
+    u64 id;
+    u64 expire_time;
+    u64 time_slice;
     task_priority_t priority;
     task_status_t status;
-    uint8_t  __attribute__((aligned(16))) task_stack[TASK_STACK_SIZE];
+    u8  __attribute__((aligned(16))) task_stack[TASK_STACK_SIZE];
     void (*task)(void *param);
-    list_t node;
+    struct list node;
 
 }tcb_t;
 
 typedef tcb_t* task_handle_t;
 
 //这是个中介，作为链表头，需要加入调度的任务会挂载到这个链表上，调度器会从这个链表拆取任务合并到调度器自己的链表中
-extern list_t need_add_task[MAX_HARTS_NUM];
+extern struct list need_add_task[MAX_HARTS_NUM];
 
 extern void task_init();
-extern task_handle_t  task_create(hart_id_t hart_id,void (*task)(void *param),uint64_t time_slice,uint8_t priority);
+extern task_handle_t  task_create(enum hart_id hart_id,void (*task)(void *param),u64 time_slice,u8 priority);
 extern void task_delete(task_handle_t del_task);
 
 extern void task_delay(volatile int count);
@@ -74,7 +74,7 @@ extern void task_delay(volatile int count);
 // */
 // typedef struct sched_entity{
 //     sched_policy_t policy;
-//     list_t sched_entity_node;
+//     struct list sched_entity_node;
 // }sched_entity_t;
 
 // /**
@@ -89,9 +89,9 @@ extern void task_delay(volatile int count);
 // */
 // typedef struct rr_sched_entity{
 //     sched_entity_t base;
-//     uint8_t priority;
-//     uint64_t remaining;
-//     uint64_t time_slice;
+//     u8 priority;
+//     u64 remaining;
+//     u64 time_slice;
 // } rr_sched_entity_t;
 
 // /**
@@ -108,10 +108,10 @@ extern void task_delay(volatile int count);
 
 // typedef struct task_ctrl_block
 // {   
-//     uint64_t id;
+//     u64 id;
 //     task_status_t status;
-//     reg_context_t reg_context;
-//     uint8_t  __attribute__((aligned(16))) task_stack[TASK_STACK_SIZE];
+//     struct reg_context reg_context;
+//     u8  __attribute__((aligned(16))) task_stack[TASK_STACK_SIZE];
 //     void (*entry)(void *param);
 //     union {
 //         rr_sched_entity_t rr_entity;
@@ -121,9 +121,9 @@ extern void task_delay(volatile int count);
 
 // typedef tcb_t* task_handle_t;
 
-// extern task_handle_t task_create(sched_policy_t policy, void (*entry)(void*), uint64_t time_slice, uint8_t priority);
+// extern task_handle_t task_create(sched_policy_t policy, void (*entry)(void*), u64 time_slice, u8 priority);
 // extern void task_distory(task_handle_t task_handle);
 // extern void task_delay(volatile int count);
-// // extern void task_set_priority(task_handle_t task, uint8_t priority); // 新增优先级设置接口
+// // extern void task_set_priority(task_handle_t task, u8 priority); // 新增优先级设置接口
 // // extern task_status_t task_get_status(task_handle_t task);
 // #endif

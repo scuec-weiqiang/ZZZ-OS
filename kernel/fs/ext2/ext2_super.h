@@ -13,7 +13,7 @@
 #include "types.h"
 #include "vfs_types.h"
 
-extern vfs_fs_type_t ext2_fs_type;
-extern int64_t ext2_sync_super(vfs_superblock_t *sb);
+extern struct fs_type ext2_fs_type;
+extern int ext2_sync_super(struct superblock *sb);
 
 #endif

@@ -12,17 +12,17 @@
 
 #include "types.h"
 #include "vfs_types.h"
-#include "ext2_fs.h"
+#include "ext2_types.h"
 
-extern int64_t ext2_sync_inode_bitmap_cache(vfs_superblock_t *vfs_sb);
-extern int64_t ext2_load_inode_bitmap_cache(vfs_superblock_t *vfs_sb,uint64_t group);
-extern int64_t ext2_sync_inode_table_cache(vfs_superblock_t *vfs_sb);
-extern int64_t ext2_load_inode_table_cache(vfs_superblock_t *vfs_sb,uint64_t group);
-extern int64_t ext2_select_inode_group(vfs_superblock_t *vfs_sb);
+extern int ext2_sync_inode_bitmap_cache(struct superblock *vfs_sb);
+extern int ext2_load_inode_bitmap_cache(struct superblock *vfs_sb,u64 group);
+extern int ext2_sync_inode_table_cache(struct superblock *vfs_sb);
+extern int ext2_load_inode_table_cache(struct superblock *vfs_sb,u64 group);
+extern int ext2_select_inode_group(struct superblock *vfs_sb);
 
-extern int64_t ext2_sync_block_bitmap_cache(vfs_superblock_t *vfs_sb);
-extern int64_t ext2_load_block_bitmap_cache(vfs_superblock_t *vfs_sb,uint64_t group);
-extern int64_t ext2_select_block_group(vfs_superblock_t *vfs_sb);
+extern int ext2_sync_block_bitmap_cache(struct superblock *vfs_sb);
+extern int ext2_load_block_bitmap_cache(struct superblock *vfs_sb,u64 group);
+extern int ext2_select_block_group(struct superblock *vfs_sb);
 
-extern int64_t ext2_sync_cache(vfs_superblock_t *sb);
+extern int ext2_sync_cache(struct superblock *sb);
 #endif

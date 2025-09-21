@@ -7,9 +7,14 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "ext2_fs.h"
+#include "ext2_types.h"
+#include "ext2_super.h"
 #include "ext2_dir.h"
+#include "ext2_inode.h"
+#include "ext2_cache.h"
 #include "vfs_types.h"
+#include "pcache.h"
+#include "icache.h"
 #include "check.h"
 
 /**
@@ -22,11 +27,11 @@
 *
 * @return 成功时返回0，失败时返回-1
 */
-int64_t ext2_lookup(vfs_inode_t *dir,vfs_dentry_t *dentry)
+int ext2_lookup(struct inode *dir,struct dentry *dentry)
 {
     CHECK(dir != NULL,"",return -1;);
     CHECK(dentry != NULL,"",return -1;);
-    vfs_inode_t *d_inode = ext2_find(dir,dentry->name.name);
+    struct inode *d_inode = ext2_find(dir,dentry->name.name);
     if(d_inode==NULL)
     {
         return -1;
@@ -37,11 +42,11 @@ int64_t ext2_lookup(vfs_inode_t *dir,vfs_dentry_t *dentry)
 }
 
 
-static int64_t ext2_add(vfs_inode_t *i_parent, vfs_dentry_t *dentry, uint32_t i_mode) 
+static int ext2_add(struct inode *i_parent, struct dentry *dentry, u32 i_mode) 
 { 
     CHECK(i_parent != NULL, "", return -1;);
 
-    vfs_inode_t *new_inode = vfs_inew(i_parent->i_sb); // 创建新的inode 
+    struct inode *new_inode = inew(i_parent->i_sb); // 创建新的inode 
     ext2_init_new_inode(new_inode, i_mode);// 初始化新的inode 
     
     if(EXT2_GET_TYPE(i_mode) == EXT2_S_IFDIR)
@@ -49,7 +54,7 @@ static int64_t ext2_add(vfs_inode_t *i_parent, vfs_dentry_t *dentry, uint32_t i_
         ext2_init_dot_entries(new_inode, i_parent->i_ino); // 初始化 . 和 .. 目录项
     }
     dentry->d_inode = new_inode; // 关联dentry和新inode
-    vfs_iput(new_inode); // 写回缓存
+    iput(new_inode); // 写回缓存
 
     dir_slot_t slot = {0};
     ext2_find_slot(i_parent, dentry->name.len, &slot);
@@ -62,12 +67,12 @@ static int64_t ext2_add(vfs_inode_t *i_parent, vfs_dentry_t *dentry, uint32_t i_
     
     if(EXT2_GET_TYPE(i_mode) == EXT2_S_IFDIR)
     {
-        ((ext2_inode_t*)i_parent->i_private)->i_links_count++; // 增加父目录链接计数 
-        ((ext2_fs_info_t*)(i_parent->i_sb->s_private))->group_desc[ext2_ino_group(i_parent->i_sb,dentry->d_inode->i_ino)].bg_used_dirs_count++;
+        ((struct ext2_inode*)i_parent->i_private)->i_links_count++; // 增加父目录链接计数 
+        ((struct ext2_fs_info*)(i_parent->i_sb->s_private))->group_desc[ext2_ino_group(i_parent->i_sb,dentry->d_inode->i_ino)].bg_used_dirs_count++;
     }
 
-    vfs_icache_sync(); // 同步inode缓存
-    vfs_pcache_sync(); // 同步page缓存
+    icache_sync(); // 同步inode缓存
+    pcache_sync(); // 同步page缓存
     
     ext2_sync_cache(i_parent->i_sb); // 同步缓存 
     ext2_sync_super(i_parent->i_sb); // 同步superblock到磁盘 
@@ -76,23 +81,23 @@ static int64_t ext2_add(vfs_inode_t *i_parent, vfs_dentry_t *dentry, uint32_t i_
 } 
 
 
-int64_t ext2_mkdir(vfs_inode_t *i_parent, vfs_dentry_t *dentry, uint32_t i_mode) 
+int ext2_mkdir(struct inode *i_parent, struct dentry *dentry, u32 i_mode) 
 { 
     return ext2_add(i_parent, dentry, i_mode);
 } 
 
 
-int64_t ext2_rmdir(vfs_inode_t *i_parent, vfs_dentry_t *dentry)
+int ext2_rmdir(struct inode *i_parent, struct dentry *dentry)
 {
-    
+   return 0;
 }
 
-int64_t ext2_creat(vfs_inode_t *i_parent, vfs_dentry_t *dentry, uint32_t i_mode) 
+int ext2_creat(struct inode *i_parent, struct dentry *dentry, u32 i_mode) 
 { 
     return ext2_add(i_parent, dentry, i_mode);
 } 
 
-vfs_inode_ops_t ext2_inode_ops = 
+struct inode_ops ext2_inode_ops = 
 { 
     .lookup = ext2_lookup, 
     .mkdir = ext2_mkdir, 

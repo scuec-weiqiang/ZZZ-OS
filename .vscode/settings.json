@@ -78,7 +78,10 @@
         "ext2_namei.h": "c",
         "ext2_page.h": "c",
         "ext2_file.h": "c",
-        "printf.h": "c"
+        "printk.h": "c",
+        "proc.h": "c",
+        "malloc.h": "c",
+        "vm.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

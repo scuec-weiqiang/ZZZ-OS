@@ -23,16 +23,16 @@ typedef enum sched_state {
 }sched_state_t;
 
 typedef struct{ 
-    // uint64_t task_num;
-    list_t ready_queue;
-    list_t wait_queue; 
+    // u64 task_num;
+    struct list ready_queue;
+    struct list wait_queue; 
     tcb_t *current_task;
 }scheduler_t;
 
 extern scheduler_t scheduler[MAX_HARTS_NUM];
 
-extern void sched_init(hart_id_t hart_id);
-extern reg_t sched(reg_t epc,uint64_t now_time,hart_id_t hart_id);
+extern void sched_init(enum hart_id hart_id);
+extern reg_t sched(reg_t epc,u64 now_time,enum hart_id hart_id);
 #endif
 
 
@@ -46,7 +46,7 @@ extern reg_t sched(reg_t epc,uint64_t now_time,hart_id_t hart_id);
 //     // 初始化调度器
 //     void (*init)(struct sched_class* self);
 //     // 调度任务
-//     reg_t (*pick_next)(struct sched_class* self, reg_t epc, uint64_t now_time);
+//     reg_t (*pick_next)(struct sched_class* self, reg_t epc, u64 now_time);
 //     // 添加任务
 //     void (*add_queue)(struct sched_class* self, tcb_t* task);
 //     // 删除任务

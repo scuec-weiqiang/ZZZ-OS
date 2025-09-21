@@ -3,47 +3,43 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-23 15:56:44
- * @LastEditTime: 2025-08-26 18:28:35
+ * @LastEditTime: 2025-09-21 17:54:20
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include "types.h"
 #include "virtio.h"
 #include "virt_disk.h"
-#include "spinlock.h"
 #include "string.h"
-#include "buf.h"
-#include "color.h"
-#include "mm.h"
-#include "vm.h"
-#include "page_alloc.h"
-#include "check.h"
-#include "vfs.h"
 #include "block_device.h"
+#include "printk.h"
+#include "malloc.h"
+#include "mm.h"
 
-typedef struct virt_disk
+struct virt_disk
 {
-    virtq_t disk_queue;
-    spinlock_t disk_lock;  
-    uint8_t free[QUEUE_NUM];  
-    uint16_t last_used_idx; 
+    struct virtq disk_queue;
+    char free[QUEUE_NUM];  
+    int last_used_idx; 
     struct virtio_blk_req req[QUEUE_NUM];
-    uint8_t status[QUEUE_NUM];
+    char status[QUEUE_NUM];
 
     struct disk_info{
-        uint32_t capacity;
-        uint32_t blk_size;
-        uint32_t blk_num;
+        int capacity;
+        int blk_size;
+        int blk_num;
     } disk_info;
-}virt_disk_t;
+};
 
-virt_disk_t virt_disk;
+struct virt_disk virt_disk;
 
+char desc[] = {0};
+char avail[sizeof(struct virtq_avail)] = {0};
+char used[sizeof(struct virtq_used)] = {0};
 
-
-__SELF int alloc_disk_desc(void)
+static int alloc_disk_desc(void)
 {
-    for (uint32_t i = 0; i < QUEUE_NUM; i++)
+    for (int i = 0; i < QUEUE_NUM; i++)
     {
         if (virt_disk.free[i]==1) //找一个没被使用的描述符
         {
@@ -54,7 +50,7 @@ __SELF int alloc_disk_desc(void)
     return -1;
 }
 
-__SELF void free_disk_desc(int64_t index)
+static void free_disk_desc(int index)
 {
     if (index >= 0 && index < QUEUE_NUM)
     {
@@ -67,7 +63,7 @@ __SELF void free_disk_desc(int64_t index)
     }
     else
     {
-        printf(YELLOW("free_disk_desc: index out of range!\n"));
+        printk("free_disk_desc: index out of range!\n");
     }
 }
 
@@ -78,12 +74,12 @@ __SELF void free_disk_desc(int64_t index)
  *
  * @param index 要释放的第一个描述符的索引
  */
-__SELF void free_disk_chain(int64_t index)
+static void free_disk_chain(int index)
 {
     while (1)
     {
         free_disk_desc(index);
-        uint16_t next = virt_disk.disk_queue.desc[index].next;
+        u16 next = virt_disk.disk_queue.desc[index].next;
         if(virt_disk.disk_queue.desc[index].flags & VIRTQ_DESC_F_NEXT)
         {
             index = next;
@@ -92,60 +88,6 @@ __SELF void free_disk_chain(int64_t index)
         {
             break;
         }
-    }
-}
-
-/**
- * @brief 对虚拟磁盘执行 flush 操作，保证写入落盘
- */
-int64_t virt_disk_flush(void)
-{
-    spin_lock(&virt_disk.disk_lock);
-
-    int index[2];
-    for (int i = 0; i < 2; i++)
-    {
-        index[i] = alloc_disk_desc();
-        CHECK(index[i] >= 0, "virt_disk_flush: alloc_disk_desc failed", return -1;);
-    }
-
-    // 构造 FLUSH 请求头
-    virt_disk.req[index[0]].type = VIRTIO_BLK_F_FLUSH; // FLUSH 操作
-    virt_disk.req[index[0]].reserved = 0;
-    virt_disk.req[index[0]].sector = 0;
-
-    virt_disk.disk_queue.desc[index[0]].addr = (uint64_t)&virt_disk.req[index[0]];
-    virt_disk.disk_queue.desc[index[0]].len = sizeof(struct virtio_blk_req);
-    virt_disk.disk_queue.desc[index[0]].flags = VIRTQ_DESC_F_NEXT;
-    virt_disk.disk_queue.desc[index[0]].next = index[1];
-
-    // 状态码
-    virt_disk.disk_queue.desc[index[1]].addr = (uint64_t)&virt_disk.status[index[0]];
-    virt_disk.disk_queue.desc[index[1]].len = 1;
-    virt_disk.disk_queue.desc[index[1]].flags = VIRTQ_DESC_F_WRITE;
-
-    virt_disk.disk_queue.avail->ring[virt_disk.disk_queue.avail->idx % QUEUE_NUM] = index[0];
-    __sync_synchronize();
-    virt_disk.disk_queue.avail->idx += 1;
-    __sync_synchronize();
-
-    virtio->queue_notify = 0;
-
-    while (virt_disk.last_used_idx == virt_disk.disk_queue.used->idx) {}
-    virt_disk.last_used_idx = virt_disk.disk_queue.used->idx;
-
-    free_disk_chain(index[0]);
-    spin_unlock(&virt_disk.disk_lock);
-
-    if (virt_disk.status[index[0]] != 0)
-    {
-        printf(RED("virt_disk_flush: failed\n"));
-        return -1;
-    }
-    else
-    {
-        printf(GREEN("virt_disk_flush: OK\n"));
-        return 0;
     }
 }
 
@@ -162,9 +104,8 @@ int64_t virt_disk_flush(void)
  * @param rwflag 读写标志（VIRT_DISK_READ为读取，VIRT_DISK_WRITE为写入）
  * @return 操作成功返回0，失败返回-1
  */
-int64_t virt_disk_rw(void *buffer, uint64_t sector, virt_disk_rw_t rwflag)
+int virt_disk_rw(void *buffer, int sector, enum virt_disk_rw rwflag)
 {
-    spin_lock(&virt_disk.disk_lock);
     // 一次读写需要3个描述符，分别是：
     // 1. 请求头
     // 2. 数据缓冲区
@@ -173,8 +114,7 @@ int64_t virt_disk_rw(void *buffer, uint64_t sector, virt_disk_rw_t rwflag)
     for(int i = 0;i < 3;i++)
     {
         index[i] = alloc_disk_desc();
-        CHECK(index[i] >= 0, "alloc_disk_desc failed", return -1;);
-
+        if(index[i] < 0) return -1;
     }
 
     //配置请求头
@@ -190,13 +130,13 @@ int64_t virt_disk_rw(void *buffer, uint64_t sector, virt_disk_rw_t rwflag)
     virt_disk.req[index[0]].sector = sector; // 指明向哪一个扇区读写
 
     // 讲请求头与数据缓冲区绑定起来 
-    virt_disk.disk_queue.desc[index[0]].addr = (uint64_t) &virt_disk.req[index[0]];
+    virt_disk.disk_queue.desc[index[0]].addr = (u64) &virt_disk.req[index[0]];
     virt_disk.disk_queue.desc[index[0]].len = sizeof(struct virtio_blk_req);
     virt_disk.disk_queue.desc[index[0]].flags = VIRTQ_DESC_F_NEXT;
     virt_disk.disk_queue.desc[index[0]].next = index[1];
 
     // 配置数据缓冲区
-    virt_disk.disk_queue.desc[index[1]].addr = (uint64_t)buffer;
+    virt_disk.disk_queue.desc[index[1]].addr = (u64)buffer;
     virt_disk.disk_queue.desc[index[1]].len = SECTOR_SIZE;
     if (rwflag == VIRT_DISK_READ)// 如果是从磁盘读数据 
     {
@@ -209,7 +149,7 @@ int64_t virt_disk_rw(void *buffer, uint64_t sector, virt_disk_rw_t rwflag)
     virt_disk.disk_queue.desc[index[1]].next = index[2];
 
     // 配置状态码
-    virt_disk.disk_queue.desc[index[2]].addr = (uint64_t)&virt_disk.status[index[0]];
+    virt_disk.disk_queue.desc[index[2]].addr = (u64)&virt_disk.status[index[0]];
     virt_disk.disk_queue.desc[index[2]].len = 1;
     virt_disk.disk_queue.desc[index[2]].flags = VIRTQ_DESC_F_WRITE;
     virt_disk.disk_queue.desc[index[2]].next = 0;
@@ -224,11 +164,10 @@ int64_t virt_disk_rw(void *buffer, uint64_t sector, virt_disk_rw_t rwflag)
     virtio->queue_notify = 0;
 
     while(virt_disk.last_used_idx == virt_disk.disk_queue.used->idx){
-        // printf(YELLOW("virt_disk_rw: waiting for disk operation to complete..."));
+        // printk(YELLOW("virt_disk_rw: waiting for disk operation to complete..."));
     }
     virt_disk.last_used_idx = virt_disk.disk_queue.used->idx;
     free_disk_chain(index[0]);
-    spin_unlock(&virt_disk.disk_lock);
     if (virt_disk.status[index[0]] != 0)
     {
         return -1;
@@ -240,28 +179,28 @@ int64_t virt_disk_rw(void *buffer, uint64_t sector, virt_disk_rw_t rwflag)
 
 }
 
-uint64_t virt_disk_get_capacity(void)
+int virt_disk_get_capacity(void)
 {
     if(virt_disk.disk_info.capacity == 0)
     {
-        printf(RED("virt_disk_get_capacity: disk capacity is 0!\n"));
-        return 0;
+        return -1;
     }
     return virt_disk.disk_info.capacity;
 }
 
 
-int64_t disk_write_sector(void *buffer, uint64_t sector)
+int disk_write_sector(void *buffer, int sector)
 {
     return virt_disk_rw(buffer, sector, VIRT_DISK_WRITE);
 }
 
-int64_t disk_read_sector(void *buffer, uint64_t sector)
+int disk_read_sector(void *buffer, int sector)
 {
     return virt_disk_rw(buffer, sector, VIRT_DISK_READ);
 }
 
-void virt_disk_init(){
+int virt_disk_init()
+{
 
     virtio_blk_init();
 
@@ -269,55 +208,50 @@ void virt_disk_init(){
 
     if(virtio->queue_num_max == 0)
     {
-        panic(RED("virtio disk has no queue!\n"));
+        return -1;
     }
     else if(virtio->queue_num_max < QUEUE_NUM)
     {
-        panic(RED("virtio disk has too few queues!\n"));
+        return -1;
     }
 
-    virt_disk.disk_queue.desc = (virtq_desc_t*)page_alloc(1);
-    virt_disk.disk_queue.avail = (virtq_avail_t*)page_alloc(1);
-    virt_disk.disk_queue.used = (virtq_used_t*)page_alloc(1);
-    
-    memset(virt_disk.disk_queue.desc, 0, 4096);
-    memset(virt_disk.disk_queue.avail, 0, 4096);
-    memset(virt_disk.disk_queue.used, 0, 4096);
+    virt_disk.disk_queue.desc = (struct virtq_desc*)KERNEL_PA(page_alloc(1));
+    virt_disk.disk_queue.avail = (struct virtq_avail*)KERNEL_PA(page_alloc(1));
+    virt_disk.disk_queue.used = (struct virtq_used*)KERNEL_PA(page_alloc(1));
 
     virtio->queue_num = QUEUE_NUM;
 
-    virtio->queue_desc_low = (uint32_t)((uint64_t) virt_disk.disk_queue.desc & 0xFFFFFFFF);
-    virtio->queue_desc_high = (uint32_t)((uint64_t)virt_disk.disk_queue.desc >> 32);
+    virtio->queue_desc_low = (u32)((uintptr_t) virt_disk.disk_queue.desc & 0xFFFFFFFF);
+    virtio->queue_desc_high = (u32)((uintptr_t)virt_disk.disk_queue.desc >> 32);
 
-    virtio->queue_avail_low = (uint32_t)((uint64_t)virt_disk.disk_queue.avail & 0xFFFFFFFF);
-    virtio->queue_avail_high = (uint32_t)((uint64_t)virt_disk.disk_queue.avail >> 32);
+    virtio->queue_avail_low = (u32)((uintptr_t)virt_disk.disk_queue.avail & 0xFFFFFFFF);
+    virtio->queue_avail_high = (u32)((uintptr_t)virt_disk.disk_queue.avail >> 32);
 
-    virtio->queue_used_low= (uint32_t)((uint64_t)virt_disk.disk_queue.used & 0xFFFFFFFF);
-    virtio->queue_used_high = (uint32_t)((uint64_t)virt_disk.disk_queue.used >> 32);
+    virtio->queue_used_low= (u32)((uintptr_t)virt_disk.disk_queue.used & 0xFFFFFFFF);
+    virtio->queue_used_high = (u32)((uintptr_t)virt_disk.disk_queue.used >> 32);
 
     virtio->queue_ready = 1;
 
     if(!virtio->queue_ready)
     {
-        panic(RED("virtio disk is not ready!\n"));
+        return -1;
     }
 
     virtio->status |= VIRTIO_CONFIG_S_DRIVER_OK;
 
     __sync_synchronize();
 
-    for(uint32_t i = 0;i < QUEUE_NUM;i++)
+    for(u32 i = 0;i < QUEUE_NUM;i++)
     {
         virt_disk.free[i] = 1;// 1表示空闲，0表示正在使用
     }
 
-    virtio_blk_config_t* info = (virtio_blk_config_t*)&virtio->config[0];
+    struct virtio_blk_config* info = (struct virtio_blk_config*)&virtio->config[0];
     virt_disk.disk_info.blk_size = info->blk_size;
     virt_disk.disk_info.blk_num = info->capacity;//从硬件中读取的capacity是以块为单位，
     virt_disk.disk_info.capacity = info->capacity*info->blk_size; // 所以要乘以每个块的字节数
-    printf("Block size: %d, Block number: %d, Capacity: %d\n", virt_disk.disk_info.blk_size, virt_disk.disk_info.blk_num, virt_disk.disk_info.capacity);
-
-    block_device_t virt_bdev;
+    
+    static struct block_device virt_bdev;
 
     strcpy(virt_bdev.name,"virt_disk");
     virt_bdev.private_data = (void*)&virt_disk;
@@ -327,5 +261,9 @@ void virt_disk_init(){
     virt_bdev.write = disk_write_sector;
 
     // 注册设备
-    block_device_register(&virt_bdev);
+    if(block_device_register(&virt_bdev) < 0)
+    {
+        return -1;
+    }
+    return 0;
 }

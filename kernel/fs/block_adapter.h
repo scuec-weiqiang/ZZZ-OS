@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/block_adapter.h
+ * @FilePath: /vboot/fs/block_adapter.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-13 12:42:26
- * @LastEditTime: 2025-08-28 19:59:11
+ * @LastEditTime: 2025-09-17 21:12:45
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -13,14 +13,14 @@
 #include "types.h"
 #include "block_device.h"
 
-typedef struct block_adapter block_adapter_t;
+struct block_adapter;
 
-extern int64_t block_adapter_register(const char* adap_name,const char* bdev_name, uint32_t fs_block_size);
-extern void block_adapter_destory(block_adapter_t* adap);
+extern int block_adapter_register(const char* adap_name,const char* bdev_name, u32 fs_block_size);
+extern void block_adapter_destory(struct block_adapter* adap);
 
-extern block_adapter_t* block_adapter_open(const char *name);
-extern int64_t block_adapter_read(block_adapter_t* adap, void* buf, uint64_t logic_block_start, uint64_t n);
-extern int64_t block_adapter_write(block_adapter_t* adap, void* buf, uint64_t logic_block_start, uint64_t n);
-extern int64_t block_adapter_get_block_size(block_adapter_t *adap);
-extern int64_t block_adapter_get_sectors_per_block(block_adapter_t *adap);
+extern struct block_adapter* block_adapter_open(const char *name);
+extern int block_adapter_read(struct block_adapter* adap, void* buf, int logic_block_start, int n);
+extern int block_adapter_write(struct block_adapter* adap, void* buf, int logic_block_start, int n);
+extern int block_adapter_get_block_size(struct block_adapter *adap);
+extern int block_adapter_get_sectors_per_block(struct block_adapter *adap);
 #endif

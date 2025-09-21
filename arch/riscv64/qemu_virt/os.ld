@@ -1,10 +1,10 @@
 OUTPUT_ARCH("riscv")
-ENTRY(_start)
+ENTRY(init_kernel)
 
 STACK_SIZE = 8192;          /* 单个核心栈大小（字节） */
 CORE_NUM = 2;               /* 核心数量 */
-RAM_BASE = 0xffffffffc0000000;      /* RAM起始地址 */
-RAM_SIZE = 128M;       /* RAM大小（128MB） */
+RAM_BASE = 0xffffffffc0200000;      /* RAM起始地址 */
+RAM_SIZE = 126M;       /* RAM大小（128MB） */
 
 MEMORY {
     RAM (rwx) : ORIGIN = RAM_BASE, LENGTH = RAM_SIZE
@@ -16,7 +16,7 @@ SECTIONS
     .text : ALIGN(4) {
         . = ALIGN(4096);
         _text_start = .;
-        *(.text.init)
+        *(.text.entry)
         _trap_start = .;  /* trap处理函数起始地址 */
         *(.text.trap)
         _trap_end = .;    /* trap处理函数结束地址 */

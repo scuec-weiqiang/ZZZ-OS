@@ -11,6 +11,6 @@
 #define EXT2_NAMEI_H
 
 #include "vfs_types.h"
-extern vfs_inode_ops_t ext2_inode_ops;
+extern struct inode_ops ext2_inode_ops;
 
 #endif

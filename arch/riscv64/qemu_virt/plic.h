@@ -12,107 +12,96 @@
 #include "types.h"
 #include "platform.h"
 
-
-#define PLIC_BASE                    0x0c000000
-#define PLIC_PRIORITY_BASE            (PLIC_BASE + (0x0000))
-#define PLIC_PENDING_BASE             (PLIC_BASE + (0x1000))
-#define PLIC_INT_EN_BASE              (PLIC_BASE + (0x2000))
-#define PLIC_INT_THRSHOLD_BASE        (PLIC_BASE + (0x200000))
-#define PLIC_CLAIM_BASE               (PLIC_BASE + (0x200004))
-#define PLIC_COMPLETE_BASE            (PLIC_BASE + (0x200004))
-
-#define UART0_IRQN 10
-
 /***************************************************************
  * @description: 
- * @param {uint32_t} irqn [in/out]:  
- * @param {uint32_t} priority [in/out]:  
+ * @param {u32} irqn [in/out]:  
+ * @param {u32} priority [in/out]:  
  * @return {*}
 ***************************************************************/
-__SELF __INLINE void __plic_priority_set(uint32_t irqn,uint32_t priority)
+static  inline void __plic_priority_set(u32 irqn,u32 priority)
 {
-    volatile uint32_t *plic_priority = (volatile uint32_t *)PLIC_PRIORITY_BASE;
+    volatile u32 *plic_priority = (volatile u32 *)PLIC_PRIORITY_BASE;
     plic_priority[irqn] = priority;  // 直接数组访问，编译器自动计算偏移
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} irqn [in/out]:  
+ * @param {u32} irqn [in/out]:  
  * @return {*}
 ***************************************************************/
-__SELF __INLINE uint32_t __plic_priority_get(uint32_t irqn)
+static  inline u32 __plic_priority_get(u32 irqn)
 {
-    volatile uint32_t *plic_priority = (volatile uint32_t *)PLIC_PRIORITY_BASE;
+    volatile u32 *plic_priority = (volatile u32 *)PLIC_PRIORITY_BASE;
     return plic_priority[irqn];
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} irqn [in/out]:  
+ * @param {u32} irqn [in/out]:  
  * @return {*}
 ***************************************************************/
-__SELF __INLINE uint32_t __plic_pending_get(uint32_t irqn)
+static  inline u32 __plic_pending_get(u32 irqn)
 {
-    volatile uint32_t *plic_pending = (volatile uint32_t *)PLIC_PENDING_BASE;
+    volatile u32 *plic_pending = (volatile u32 *)PLIC_PENDING_BASE;
     return plic_pending[irqn/32] & (1<<(irqn%32)) ?1:0;
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} hart [in/out]:  
- * @param {uint32_t} irqn [in/out]:  
+ * @param {u32} hart [in/out]:  
+ * @param {u32} irqn [in/out]:  
  * @return {*}
 ***************************************************************/
-__SELF __INLINE void __plic_interrupt_enable(uint32_t hart,uint32_t irqn)
+static inline void __plic_interrupt_enable(u32 hart,u32 irqn)
 {
-    volatile uint32_t *plic_int_en = (volatile uint32_t *)PLIC_INT_EN_BASE;
+    volatile u32 *plic_int_en = (volatile u32 *)PLIC_INT_EN_BASE;
     plic_int_en[hart*0x80 + 4*(irqn/32)] |= (1<<(irqn%32));
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} hart [in/out]:  
- * @param {uint32_t} irqn [in/out]:  
+ * @param {u32} hart [in/out]:  
+ * @param {u32} irqn [in/out]:  
  * @return {*}
 ***************************************************************/
-__SELF __INLINE void __plic_interrupt_disable(uint32_t hart,uint32_t irqn)
+static  inline void __plic_interrupt_disable(u32 hart,u32 irqn)
 {
-    volatile uint32_t *plic_int_en = (volatile uint32_t *)PLIC_INT_EN_BASE;
+    volatile u32 *plic_int_en = (volatile u32 *)PLIC_INT_EN_BASE;
     plic_int_en[hart*0x80 + 4*(irqn/32)]  &= ~(1<<(irqn%32));
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} hart [in/out]:  
- * @param {uint32_t} threshold [in/out]:  
+ * @param {u32} hart [in/out]:  
+ * @param {u32} threshold [in/out]:  
  * @return {*}
 ***************************************************************/
-__SELF __INLINE void __plic_threshold_set(uint32_t hart,uint32_t threshold)
+static  inline void __plic_threshold_set(u32 hart,u32 threshold)
 {
-    volatile uint32_t *plic_int_thrshold = (volatile uint32_t *)PLIC_INT_THRSHOLD_BASE;
+    volatile u32 *plic_int_thrshold = (volatile u32 *)PLIC_INT_THRSHOLD_BASE;
     plic_int_thrshold[hart*0x1000] = threshold;
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} hart [in/out]:  
+ * @param {u32} hart [in/out]:  
  * @return {*}
 ***************************************************************/
-__SELF __INLINE uint32_t __plic_claim(uint32_t hart)
+static  inline u32 __plic_claim(u32 hart)
 {
-    volatile uint32_t *plic_claim = (volatile uint32_t *)PLIC_CLAIM_BASE ;
+    volatile u32 *plic_claim = (volatile u32 *)PLIC_CLAIM_BASE ;
     return  plic_claim[hart*0x1000];
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} hart [in/out]:  
- * @param {uint32_t} irqn [in/out]:  
+ * @param {u32} hart [in/out]:  
+ * @param {u32} irqn [in/out]:  
  * @return {*}
 ***************************************************************/
-__SELF __INLINE void __plic_complete(uint32_t hart,uint32_t irqn)
+static  inline void __plic_complete(u32 hart,u32 irqn)
 {
-    volatile uint32_t *plic_claim = (volatile uint32_t *)PLIC_CLAIM_BASE ;
+    volatile u32 *plic_claim = (volatile u32 *)PLIC_CLAIM_BASE ;
     plic_claim[hart*0x1000]= irqn;
 }
 

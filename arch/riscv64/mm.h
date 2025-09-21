@@ -2,11 +2,12 @@
  * @FilePath: /ZZZ/arch/riscv64/mm.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
- * @Date: 2025-05-09 00:45:04
- * @LastEditTime: 2025-09-16 21:25:59
+ * @Date: 2025-09-17 13:05:59
+ * @LastEditTime: 2025-09-21 16:57:10
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
+
 #ifndef _MM_H
 #define _MM_H
 
@@ -24,20 +25,40 @@
 
 #define PTE_FLAGS (PTE_V | PTE_R | PTE_W | PTE_X)   // 页表项标志位
 
-#define PA2PTE(pa) (((uint64_t)(pa) >> 12) << 10)
-#define PTE2PA(pte) (((pte&0x3fffffffffffff) >> 10) << 12)
+#define PA2PTE(pa) (((u64)(pa) >> 12) << 10)
+#define PTE2PA(pte) (((pte&0xffffffffffffffff) >> 10) << 12)
 
 #define SATP_SV39 (8L << 60)
 #define SATP_MODE SATP_SV39 
-#define MAKE_SATP(pagetable) (SATP_MODE | (((uint64_t)pagetable) >> 12))
 
-#define KERNEL_HIGH_VA 0xffffffffc0000000
-#define MAKE_KERNEL_VA(pa) (KERNEL_HIGH_VA + ((uint64_t)(pa)))
+#define KERNEL_PA_BASE 0x80000000
+#define KERNEL_VA_BASE 0xffffffffc0000000
+#define KERNEL_VA_START 0xffffffffc0200000
+#define KERNEL_VA(pa) (KERNEL_VA_BASE + ((u64)(pa)) - KERNEL_PA_BASE)
+#define KERNEL_PA(va) ((u64)(va) - KERNEL_VA_BASE + KERNEL_PA_BASE)
 
-#define MMIO_BASE 0xffffffdf00000000
-#define MAKE_MMIO_VA(pa) (MMIO_BASE + ((uint64_t)(pa)))
+#define KERNEL_MMIO_BASE 0xFFFFFFBFC00000
+#define KERNEL_MMIO_VA(pa) (KERNEL_MMIO_BASE + ((u64)(pa)))
 
-typedef uint64_t pte_t;
+static inline u64 make_satp(u64 va_or_pa) 
+{
+    u64 pa;
+
+    // 如果地址在内核高地址空间，就转成物理地址
+    if (va_or_pa >= KERNEL_VA_BASE) 
+    {
+        pa = KERNEL_PA(va_or_pa);
+    } 
+    else 
+    {
+        // 否则默认就是物理地址
+        pa = va_or_pa;
+    }
+
+    return SATP_MODE | (pa >> 12);
+}
+
+typedef u64 pte_t;
 typedef pte_t pgtbl_t;
 
 #endif

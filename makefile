@@ -20,9 +20,8 @@ PROJ_NAME = $(notdir $(shell pwd))
 DIR_SOURCES = $(DIR)     
 DIR_INCLUDE = $(addprefix -I, $(DIR))     
 DIR_OUT     = out
-TARGET      = $(DIR_OUT)/$(PROJ_NAME).elf
+TARGET      = $(DIR_OUT)/$(PROJ_NAME).img
 LINK_SCRIPT = arch/$(ARCH)/$(BOARD)/os.ld
-DEBUG_LINK_SCRIPT = arch/$(ARCH)/$(BOARD)/osdebug.ld
 # 编译工具链配置
 CC = riscv64-unknown-elf-gcc
 CFLAGS = -nostdlib -fno-builtin -g -Wall \
@@ -31,7 +30,6 @@ CFLAGS = -nostdlib -fno-builtin -g -Wall \
 # CFLAGS += -O1
 LD = riscv64-unknown-elf-ld
 LFLAGS = -T$(LINK_SCRIPT) -Map=$(DIR_OUT)/$(PROJ_NAME).map
-DEBUG_LFLAGS = -T$(DEBUG_LINK_SCRIPT) -Map=$(DIR_OUT)/$(PROJ_NAME).map
 
 # 默认情况下，编译工程里的全部文件；
 # 在某些情况下（比如有的模块只写了一半编译无法通过但是又需要半路去测试其他模块了，或者我完全不需要编译一些模块）
@@ -73,13 +71,12 @@ vpath %.S $(sort $(dir $(SRC_ASM)))
 #*****************************************************************************************************
 
 # 构建目标
-os: $(TARGET)
+build: $(TARGET)
 
 
 $(TARGET): $(OBJ)
 	@echo "\033[32m正在链接......\033[0m"
 	$(LD) $(LFLAGS)  $^ -o $@
-	$(LD) $(DEBUG_LFLAGS)  $^ -o $(DIR_OUT)/vm$(PROJ_NAME).elf
 	@echo "\033[32m生成目标文件: $@\033[0m"
 
 
@@ -176,4 +173,10 @@ format:
 show:
 	sudo mount -o loop ./disk.img ./mount && echo "挂载成功!" || dmesg | tail -n 20
 	ls -la ./mount/
+	sudo umount ./mount
+
+.PHONY: move
+move:
+	sudo mount -o loop ./disk.img ./mount && echo "挂载成功!" || dmesg | tail -n 20
+	sudo cp $(TARGET) ./mount/
 	sudo umount ./mount

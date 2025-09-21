@@ -12,11 +12,11 @@
 #define _CHECK_H
 
  // 使用你的打印函数
-#include "printf.h" 
+#include "printk.h" 
 
 static inline void __check_fail(const char *expr, const char *file, int line, const char *func)
 {
-    printf("Check failed: %s, function %s, file %s, line %d\n", expr, func, file, line);
+    printk("Check failed: %s, function %s, file %s, line %d\n", expr, func, file, line);
 }
 
 // #define NDEBUG
@@ -26,7 +26,7 @@ static inline void __check_fail(const char *expr, const char *file, int line, co
         do{\
             if(!(expr))\
             {\
-                if(msg) { printf("%s\n", msg); }\
+                if(msg) { printk("%s\n", msg); }\
                 ret\
             }\
         }while(0)
@@ -36,7 +36,7 @@ static inline void __check_fail(const char *expr, const char *file, int line, co
             if(!(expr))\
             {\
                 __check_fail(#expr, __FILE__, __LINE__, __func__);\
-                if(msg) { printf("%s\n", msg); }\
+                if(msg) { printk("%s\n", msg); }\
                 ret\
             }\
         }while(0)

@@ -1,16 +1,16 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/block_adapter.c
+ * @FilePath: /vboot/fs/block_adapter.c
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-13 12:42:19
- * @LastEditTime: 2025-08-28 19:59:02
+ * @LastEditTime: 2025-09-17 21:18:09
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
 #include "block_adapter.h"
 #include "string.h"
 #include "types.h"
-#include "page_alloc.h"
+#include "malloc.h"
 
 #define ADAP_INVALID_ARG    -1
 #define ADAP_BDEV_NULL      -2
@@ -19,24 +19,18 @@
 #define ADAP_FULL           -5
 #define ADAP_NOT_FOUND      -6
 
-typedef struct block_adapter block_adapter_t;
-
 struct block_adapter
 {
-    char* name[16];
+    char name[16];
     struct block_device *bdev;
-    uint32_t fs_block_size;
-    uint32_t sectors_per_block;
-
-    // 简单缓存
-    uint32_t cached_block;
-    uint8_t *cached_data;
+    int fs_block_size;
+    int sectors_per_block;
 };
 
 #define MAX_BLOCK_ADAPTER_NUM 8
-block_adapter_t block_adapter_registry[MAX_BLOCK_ADAPTER_NUM];
+struct block_adapter block_adapter_registry[MAX_BLOCK_ADAPTER_NUM];
 
-int64_t block_adapter_register(const char* adap_name,const char* bdev_name, uint32_t fs_block_size)
+int block_adapter_register(const char* adap_name,const char* bdev_name, u32 fs_block_size)
 {
     // 检查文件系统块大小是否为磁盘扇区大小的整数倍
     if (adap_name == NULL || bdev_name == NULL || fs_block_size%512!=0)
@@ -44,7 +38,7 @@ int64_t block_adapter_register(const char* adap_name,const char* bdev_name, uint
         return ADAP_INVALID_ARG;
     }
 
-    block_device_t *bdev = block_device_open(bdev_name);
+    struct block_device *bdev = block_device_open(bdev_name);
     if(bdev == NULL)
     {
         return ADAP_BDEV_NULL;
@@ -55,35 +49,31 @@ int64_t block_adapter_register(const char* adap_name,const char* bdev_name, uint
         return ADAP_NOT_ALIGN;
     }
 
-    block_adapter_t adap;
+    struct block_adapter adap;
     strcpy(adap.name,adap_name);
     adap.bdev = bdev;
     adap.fs_block_size = fs_block_size;
     adap.sectors_per_block = fs_block_size / bdev->sector_size;
 
-    // 暂时不启用缓存机制
-    adap.cached_block = 0;
-    adap.cached_data = NULL;
-
-    for(uint64_t i=0;i<MAX_BLOCK_ADAPTER_NUM;i++)
+    for(int i=0;i<MAX_BLOCK_ADAPTER_NUM;i++)
     {
         if(block_adapter_registry[i].name[0] == 0)
         {
-            memcpy(&block_adapter_registry[i],&adap,sizeof(block_adapter_t));
+            memcpy(&block_adapter_registry[i],&adap,sizeof(struct block_adapter));
             return i;
         }
     }
     return ADAP_FULL;
 }
 
-void block_adapter_destory(block_adapter_t *adap)
+void block_adapter_destory(struct block_adapter *adap)
 {
     free(adap);
 }
 
-block_adapter_t* block_adapter_open(const char* name)
+struct block_adapter* block_adapter_open(const char* name)
 {
-    for(uint64_t i=0;i<MAX_BLOCK_ADAPTER_NUM;i++)
+    for(int i=0;i<MAX_BLOCK_ADAPTER_NUM;i++)
     {
         if(strcmp(block_adapter_registry[i].name,name) == 0)
         {
@@ -93,7 +83,7 @@ block_adapter_t* block_adapter_open(const char* name)
     return NULL;
 }
 
-int64_t block_adapter_read(block_adapter_t *adap, void *buf, uint64_t logic_block_start, uint64_t n)
+int block_adapter_read(struct block_adapter *adap, void *buf, int logic_block_start, int n)
 {
     if (adap == NULL || buf == NULL)
     {
@@ -101,14 +91,14 @@ int64_t block_adapter_read(block_adapter_t *adap, void *buf, uint64_t logic_bloc
     }
 
     // 计算出从磁盘上的哪个扇区开始读，以及读多少个扇区
-    uint64_t phy_sector_start = logic_block_start * adap->sectors_per_block;
-    uint64_t phy_sector_size = adap->fs_block_size / adap->sectors_per_block;
-    uint64_t phy_sector_n = n * adap->sectors_per_block;
+    int phy_sector_start = logic_block_start * adap->sectors_per_block;
+    int phy_sector_size = adap->fs_block_size / adap->sectors_per_block;
+    int phy_sector_n = n * adap->sectors_per_block;
 
-    uint8_t *pos = (uint8_t *)buf;
-    for (uint64_t i = phy_sector_start; i < phy_sector_start + phy_sector_n; i++)
+    char *pos = (char *)buf;
+    for (int i = phy_sector_start; i < phy_sector_start + phy_sector_n; i++)
     {
-        int64_t retval = adap->bdev->read(pos, i);
+        int retval = adap->bdev->read(pos, i);
         if (retval < 0)
         {
             return (-1) * (i / adap->sectors_per_block); // 出现错误则返回具体是在文件系统哪一个逻辑block出现的错误
@@ -119,7 +109,7 @@ int64_t block_adapter_read(block_adapter_t *adap, void *buf, uint64_t logic_bloc
     return 0;
 }
 
-int64_t block_adapter_write(block_adapter_t *adap, void *buf, uint64_t logic_block_start, uint64_t n)
+int block_adapter_write(struct block_adapter *adap, void *buf, int logic_block_start, int n)
 {
     if (adap == NULL || buf == NULL)
     {
@@ -127,14 +117,14 @@ int64_t block_adapter_write(block_adapter_t *adap, void *buf, uint64_t logic_blo
     }
 
     // 计算出从磁盘上的哪个扇区开始写，以及写多少个扇区
-    uint64_t phy_sector_start = logic_block_start * adap->sectors_per_block;
-    uint64_t phy_sector_size = adap->fs_block_size / adap->sectors_per_block;
-    uint64_t phy_sector_n = n * adap->sectors_per_block;
+    int phy_sector_start = logic_block_start * adap->sectors_per_block;
+    int phy_sector_size = adap->fs_block_size / adap->sectors_per_block;
+    int phy_sector_n = n * adap->sectors_per_block;
 
-    uint8_t *pos = (uint8_t *)buf;
-    for (uint64_t i = phy_sector_start; i < phy_sector_start + phy_sector_n; i++)
+    char *pos = (char *)buf;
+    for (int i = phy_sector_start; i < phy_sector_start + phy_sector_n; i++)
     {
-        int64_t retval = adap->bdev->write(pos, i);
+        int retval = adap->bdev->write(pos, i);
         if (retval < 0)
         {
             return (-1) * (i / adap->sectors_per_block); // 出现错误则返回具体是在文件系统哪一个逻辑block出现的错误
@@ -145,14 +135,14 @@ int64_t block_adapter_write(block_adapter_t *adap, void *buf, uint64_t logic_blo
     return 0;
 }
 
-int64_t block_adapter_get_block_size(block_adapter_t *adap)
+int block_adapter_get_block_size(struct block_adapter *adap)
 {
     if(adap==NULL) return -1;
-    return (uint64_t)adap->fs_block_size;
+    return (int)adap->fs_block_size;
 }
 
-int64_t block_adapter_get_sectors_per_block(block_adapter_t *adap)
+int block_adapter_get_sectors_per_block(struct block_adapter *adap)
 {
     if(adap==NULL) return -1;
-    return (uint64_t)adap->sectors_per_block;
+    return (int)adap->sectors_per_block;
 }

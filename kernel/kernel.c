@@ -1,17 +1,15 @@
 /**
- * @FilePath: /ZZZ/kernel/kernel.c
+ * @FilePath: /vboot/home/wei/ZZZ/kernel/kernel.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-09-17 17:48:27
+ * @LastEditTime: 2025-09-21 17:49:40
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "printf.h"
-#include "page_alloc.h"
+#include "printk.h"
+#include "malloc.h"
 
-// #include "sched.h"
-// #include "systimer.h"
 #include "vm.h"
 #include "virt_disk.h"
 #include "time.h"
@@ -25,35 +23,49 @@
 #include "vfs.h"
 #include "elf.h"
 #include "proc.h"
+#include "platform.h"
+#include "systimer.h"
+#include "symbols.h"
 
-uint8_t is_init = 0;
+u8 is_init = 0;
 
-void init_kernel()
+
+
+void __attribute__((section(".text.entry"))) init_kernel()
 {  
-    hart_id_t hart_id = 0;
-    if(hart_id == HART_0) // hart0 初始化全局资源
+    enum hart_id hart = HART_0;
+    *(volatile u8*)0xffffffffc0220000 = 0;
+    if(hart == HART_0) // hart0 初始化全局资源
     {
-        
-      
-        page_get_remain_mem();
-        
-        extern_interrupt_setting(hart_id,UART0_IRQN,1);
-        
+        s_global_interrupt_disable();
+        zero_bss();
+        symbols_init();
+        trap_init();
+        // 重新设置sp
+        asm volatile("mv sp,%0" ::"r"(stack_end));
+
+        // systimer_init(hart,SYS_HZ_1000);
+
+        // // extern_interrupt_setting(hart,UART0_IRQN,1);
+
+        malloc_init();
         virt_disk_init(); 
-        vfs_init();
+        fs_init();
+        kernel_page_table_init();
+
+        struct file *f = open("/user.elf", 0);
         
         
         // proc_init();
-        // proc_t* init_proc = proc_create("/user.elf");
+        // struct proc* init_proc = proc_create("/user.elf");
         // proc_run(init_proc);
 
-        printf("now time:%x\n",get_current_unix_timestamp(UTC8));
-        page_get_remain_mem();
+        printk("now time:%x\n",get_current_unix_timestamp(UTC8));
         is_init = 1;
 
     }
 
-    printf("hart_id:%d\n", hart_id);
+    printk("hart_id:%d\n", hart);
     while (is_init == 0){}
     // wakeup_other_harts();
  
@@ -66,7 +78,7 @@ void init_kernel()
    
     while(1)
     {
-        // printf("hart_id:%d\n", hart_id++);
+        // printk("hart_id:%d\n", hart_id++);
     }
     // global_interrupt_enable();
     // M_TO_U(os_main);

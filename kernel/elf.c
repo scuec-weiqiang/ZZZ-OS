@@ -1,22 +1,22 @@
 /**
- * @FilePath: /ZZZ/kernel/elf.c
+ * @FilePath: /vboot/elf.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-07-21 23:53:30
- * @LastEditTime: 2025-09-07 20:08:14
+ * @LastEditTime: 2025-09-17 23:40:53
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include "types.h"
-#include "printf.h"
+#include "printk.h"
 #include "elf.h"
-// #include "ext2.h"
-#include "page_alloc.h"
+#include "malloc.h"
 #include "check.h"
+#include "string.h"
 
-static int64_t elf_check(const uint8_t *elf)
+static int elf_check(const char *elf)
 {
-    Elf64_Ehdr *ehdr = (Elf64_Ehdr *)elf;
+    struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)elf;
     CHECK(elf != NULL, "elf is NULL", return -1;);
     CHECK(ehdr != NULL, "ehdr is NULL", return -1;);
     CHECK(ehdr->e_phoff != 0, "e_phoff is 0", return -1;);
@@ -33,23 +33,23 @@ static int64_t elf_check(const uint8_t *elf)
     return 0; // Valid ELF file
 }
 
-elf_info_t* elf_parse(const uint8_t *elf)
+struct elf_info* elf_parse(const char *elf)
 {
     CHECK(elf != NULL, "elf is NULL", return NULL;);
     
-    Elf64_Ehdr *ehdr = (Elf64_Ehdr *)elf;
+    struct Elf64_Ehdr *ehdr = (struct Elf64_Ehdr *)elf;
     
     CHECK(elf_check(elf) == 0, "Invalid ELF file", return NULL;);
 
-    elf_info_t *info = malloc(sizeof(elf_info_t));
+    struct elf_info *info = malloc(sizeof(struct elf_info));
     CHECK(info != NULL, "Failed to allocate memory for ELF info", return NULL;);
-    memset(info, 0, sizeof(elf_info_t));
+    memset(info, 0, sizeof(struct elf_info));
     info->data = (char *)elf;
 
-    Elf64_Phdr *phdr = (Elf64_Phdr *)(elf + ehdr->e_phoff);
+    struct Elf64_Phdr *phdr = (struct Elf64_Phdr *)(elf + ehdr->e_phoff);
     info->entry = ehdr->e_entry;
     info->phnum = ehdr->e_phnum;
-    printf("ELF entry point: %xu, program header count: %du\n", info->entry, info->phnum);
+    printk("ELF entry point: %xu, program header count: %du\n", info->entry, info->phnum);
 
     for (int i = 0; i < ehdr->e_phnum; i++) 
     {
@@ -61,9 +61,6 @@ elf_info_t* elf_parse(const uint8_t *elf)
             info->segs[i].memsz = phdr[i].p_memsz;
             info->segs[i].offset = phdr[i].p_offset;
             info->segs[i].flags = phdr[i].p_flags;
-            printf("Segment %d: vaddr=%xu, filesz=%xu, memsz=%xu, offset=%xu, flags=%x\n", 
-                   i, info->segs[i].vaddr, info->segs[i].filesz, info->segs[i].memsz, 
-                   info->segs[i].offset, info->segs[i].flags);
         // }
     }
 

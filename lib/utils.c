@@ -1,12 +1,13 @@
 /**
- * @FilePath: /ZZZ/lib/utils.c
+ * @FilePath: /vboot/lib/utils.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
- * @Date: 2025-08-22 17:43:39
- * @LastEditTime: 2025-08-22 17:43:54
+ * @Date: 2025-09-17 23:13:36
+ * @LastEditTime: 2025-09-17 23:17:32
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
+
 unsigned int next_power_of_two(unsigned int n) {
     if (n == 0) return 1;
 

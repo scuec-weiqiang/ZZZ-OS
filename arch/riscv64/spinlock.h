@@ -1,28 +1,18 @@
-/**
- * @FilePath: /ZZZ/arch/riscv64/spinlock.h
- * @Description:  
- * @Author: scuec_weiqiang scuec_weiqiang@qq.com
- * @Date: 2025-05-01 23:29:09
- * @LastEditTime: 2025-09-04 00:17:07
- * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
- * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
-*/
-// spinlock.h
-#ifndef __SPINLOCK_H__
-#define __SPINLOCK_H__
+#ifndef RISCV_SPINLOCK_H
+#define RISCV_SPINLOCK_H
 
-#include "types.h"
-
-typedef struct spinlock {
-    volatile uint32_t lock;
-} spinlock_t;
+struct spinlock
+{
+    volatile int lock;
+};
 
 #define SPINLOCK_INIT {0}
 
-__SELF __INLINE void spinlock_init(spinlock_t *lock) 
+static inline void spinlock_init(struct spinlock *lock)
 {
     lock->lock = 0;
 }
+
 /**
  * @brief 自旋锁函数
  *
@@ -30,16 +20,18 @@ __SELF __INLINE void spinlock_init(spinlock_t *lock)
  *
  * @param lock 自旋锁指针
  */
-__SELF __INLINE void spin_lock(spinlock_t *lock) {
-    uint32_t value = 1;
-    do{
-        asm volatile (
+static inline void spin_lock(struct spinlock *lock)
+{
+    int value = 1;
+    do
+    {
+        asm volatile(
             "amoswap.w.aq %0, %1, (%2)"
             : "=r"(value)
             : "r"(value), "r"(&lock->lock)
             : "memory"
         );
-    }while(value != 0);
+    } while (value != 0);
 }
 
 /**
@@ -49,8 +41,9 @@ __SELF __INLINE void spin_lock(spinlock_t *lock) {
  *
  * @param lock 指向自旋锁对象的指针
  */
-__SELF __INLINE void spin_unlock(spinlock_t *lock) {
-    asm volatile (
+static inline void spin_unlock(struct spinlock *lock)
+{
+    asm volatile(
         "amoswap.w.rl zero,zero,(%0)"
         :
         : "r"(&lock->lock)

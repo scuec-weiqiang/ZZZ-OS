@@ -1,36 +1,14 @@
-#include "trap_macros.S"  // 包含宏定义
+#define LOAD        ld
+#define STORE       sd
+#define REG_SIZE    8
+#define CONTEXT_SIZE  REG_SIZE*36
 
 .section .text.trap
 .balign 4
-.global machine_timer_trap_entry
-machine_timer_trap_entry:
-    csrrw a3, mscratch, a3
-    sd a0, 0(a3)
-    sd a1, 8(a3)
-    sd a2, 16(a3)
-
-    ld a0, 24(a3)# timecmp(hartid)的地址
-    ld a1, 0(a0)# timecmp(hartid)的值
-    ld a2, 32(a3)# systimer_hz的值
-    add a2, a2, a1# 装载定时器
-    sd a2, 0(a0)
-
-    li a0,2
-    csrs sip, a0  # 清除机器模式的软中断标志
-
-    ld a2, 16(a3)
-    ld a1, 8(a3)
-    ld a0, 0(a3)
-    csrrw a3, mscratch, a3
-
-    mret
-
-.balign 4
 .global kernel_trap_entry
 kernel_trap_entry:
-    # SAVE_CTX  
     # csrrw sp, sscratch, sp
-    addi sp, sp, -288
+    addi sp, sp, -CONTEXT_SIZE
     STORE ra,  1*REG_SIZE(sp)  
     STORE sp,  2*REG_SIZE(sp)  
     STORE gp,  3*REG_SIZE(sp)  
@@ -77,7 +55,6 @@ kernel_trap_entry:
     call trap_handler
     csrw sepc, a0
 
-    # RESTORE_CTX
     LOAD t0, 36*REG_SIZE(sp)  
     csrw stval, t0            
     LOAD t0, 35*REG_SIZE(sp)  
@@ -117,7 +94,7 @@ kernel_trap_entry:
     LOAD gp, 3*REG_SIZE(sp)   
     LOAD sp, 2*REG_SIZE(sp)   
     LOAD ra, 1*REG_SIZE(sp) 
-    addi sp, sp, 288  
+    addi sp, sp, CONTEXT_SIZE  
     # csrrw sp, sscratch, sp
 
     sret

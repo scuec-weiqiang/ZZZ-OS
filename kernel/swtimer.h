@@ -22,12 +22,12 @@
 
 #include "types.h"
 
-typedef struct swtimer swtimer_t;
+struct swtimer;
 
-extern swtimer_t *swtimer_head;
+extern struct swtimer *swtimer_head;
 
-extern swtimer_t* swtimer_create(void (*timer_task)(),uint64_t set_time,uint8_t mode);
-extern void swtimer_distory(swtimer_t *swtimer_d);
+extern struct swtimer* swtimer_create(void (*timer_task)(),u64 set_time,u8 mode);
+extern void swtimer_distory(struct swtimer *swtimer_d);
 extern void swtimer_check();
 
 
