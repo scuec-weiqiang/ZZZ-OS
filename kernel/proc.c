@@ -67,10 +67,10 @@ struct proc* proc_create(char* path)
             char *user_space = (char*)malloc(elf_info->segs[i].memsz); //程序加载到内存里需要的空间
             memset(user_space,0,elf_info->segs[i].memsz);
             memcpy(user_space,elf+elf_info->segs[i].offset,elf_info->segs[i].filesz);
-            map_pages(user_pgd, elf_info->segs[i].vaddr, (uintptr_t)user_space, (elf_info->segs[i].memsz+PAGE_SIZE-1)/PAGE_SIZE * PAGE_SIZE, PTE_R|PTE_X|PTE_U);
+            map_range(user_pgd, elf_info->segs[i].vaddr, (uintptr_t)user_space, (elf_info->segs[i].memsz+PAGE_SIZE-1)/PAGE_SIZE * PAGE_SIZE, PTE_R|PTE_X|PTE_U);
         }
     }
-    map_pages(user_pgd, PROC_USER_STACK_BOTTOM, (uintptr_t)user_stack, PROC_STACK_SIZE,  PTE_W|PTE_R|PTE_U);
+    map_range(user_pgd, PROC_USER_STACK_BOTTOM, (uintptr_t)user_stack, PROC_STACK_SIZE,  PTE_W|PTE_R|PTE_U);
     page_table_init(user_pgd);
 
     new_proc->elf_info = elf_info;

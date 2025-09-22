@@ -1,5 +1,5 @@
 OUTPUT_ARCH("riscv")
-ENTRY(init_kernel)
+ENTRY(_start)
 
 STACK_SIZE = 8192;          /* 单个核心栈大小（字节） */
 CORE_NUM = 2;               /* 核心数量 */
@@ -14,7 +14,6 @@ SECTIONS
 {
     . = ORIGIN(RAM);
     .text : ALIGN(4) {
-        . = ALIGN(4096);
         _text_start = .;
         *(.text.entry)
         _trap_start = .;  /* trap处理函数起始地址 */
@@ -37,9 +36,6 @@ SECTIONS
         _data_start = .;
         . = ALIGN(4096);
         *(.data .data.* .sdata .sdata.*)
-        . = ALIGN(8);
-        _systimer_ctx = .;
-        . += 5*8*CORE_NUM;  /* 为每个核心预留定时器上下文空间 */
         . = ALIGN(4096);
         _data_end = .; 
     } > RAM 
@@ -86,6 +82,4 @@ SECTIONS
 
     PROVIDE_HIDDEN(__heap_start = _heap_start);
     PROVIDE_HIDDEN(__heap_end = _heap_end);
-
-    PROVIDE_HIDDEN(__systimer_ctx = _systimer_ctx);
 }

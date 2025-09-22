@@ -213,7 +213,7 @@ void page_fault_handler(uintptr_t addr)
     // // if (!pa) panic("Out of memory");
     
     // // 设置映射 (RW权限)
-    // map_pages(kernel_pgd, addr, addr, PAGE_SIZE, PTE_R | PTE_W);
+    // map_range(kernel_pgd, addr, addr, PAGE_SIZE, PTE_R | PTE_W);
     
     // printk("Handled page fault: VA=%x -> PA=%x\n", addr, addr);
     // satp_w(satp_r() | SATP_MODE); 

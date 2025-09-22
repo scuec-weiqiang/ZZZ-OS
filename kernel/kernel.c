@@ -26,36 +26,32 @@
 #include "platform.h"
 #include "systimer.h"
 #include "symbols.h"
+#include "trap_handler.h"
 
 u8 is_init = 0;
 
 
 
-void __attribute__((section(".text.entry"))) init_kernel()
-{  
+void  init_kernel()
+{   
     enum hart_id hart = HART_0;
-    *(volatile u8*)0xffffffffc0220000 = 0;
     if(hart == HART_0) // hart0 初始化全局资源
     {
         s_global_interrupt_disable();
         zero_bss();
         symbols_init();
         trap_init();
-        // 重新设置sp
-        asm volatile("mv sp,%0" ::"r"(stack_end));
 
         // systimer_init(hart,SYS_HZ_1000);
 
         // // extern_interrupt_setting(hart,UART0_IRQN,1);
 
         malloc_init();
-        virt_disk_init(); 
-        fs_init();
         kernel_page_table_init();
 
-        struct file *f = open("/user.elf", 0);
-        
-        
+        virt_disk_init(); 
+        fs_init();
+
         // proc_init();
         // struct proc* init_proc = proc_create("/user.elf");
         // proc_run(init_proc);
@@ -69,7 +65,7 @@ void __attribute__((section(".text.entry"))) init_kernel()
     while (is_init == 0){}
     // wakeup_other_harts();
  
-    s_global_interrupt_enable(); 
+    // s_global_interrupt_enable(); 
     //每个核心初始化自己的资源
     // systimer_init(hart_id,SYS_HZ_100);
     // sched_init(hart_id);
