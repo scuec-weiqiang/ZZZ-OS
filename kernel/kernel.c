@@ -42,7 +42,6 @@ void  init_kernel()
         symbols_init();
         trap_init();
 
-        // systimer_init(hart,SYS_HZ_1000);
 
         // // extern_interrupt_setting(hart,UART0_IRQN,1);
 
@@ -58,14 +57,14 @@ void  init_kernel()
 
         printk("now time:%x\n",get_current_unix_timestamp(UTC8));
         is_init = 1;
-
     }
 
     printk("hart_id:%d\n", hart);
+    systimer_init(hart,SYS_HZ_1);
+    s_global_interrupt_enable(); 
     while (is_init == 0){}
     // wakeup_other_harts();
  
-    // s_global_interrupt_enable(); 
     //每个核心初始化自己的资源
     // systimer_init(hart_id,SYS_HZ_100);
     // sched_init(hart_id);

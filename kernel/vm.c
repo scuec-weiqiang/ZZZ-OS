@@ -195,7 +195,7 @@ void page_table_init(pgtbl_t *pgd)
         map_range(pgd,(uintptr_t)stack_start,(uintptr_t)KERNEL_PA(stack_start),(size_t)stack_size*2,PTE_R|PTE_W);
 
         //恒等映射外设寄存器地址空间到内核虚拟地址空间
-        map_range(pgd,(uintptr_t)CLINT_BASE, (uintptr_t)CLINT_BASE, 11*PAGE_SIZE, PTE_R|PTE_W);
+        map_range(pgd,(uintptr_t)CLINT_BASE, (uintptr_t)CLINT_BASE, 12*PAGE_SIZE, PTE_R|PTE_W);
         map_range(pgd,(uintptr_t)PLIC_BASE, (uintptr_t)PLIC_BASE, 0x200*PAGE_SIZE, PTE_R|PTE_W);
         map_range(pgd,(uintptr_t)UART_BASE, (uintptr_t)UART_BASE, PAGE_SIZE, PTE_R|PTE_W);
         map_range(pgd,(uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, PTE_R|PTE_W);

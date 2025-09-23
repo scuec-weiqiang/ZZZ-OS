@@ -2,70 +2,139 @@
 #include "printk.h"
 #include "riscv.h"
 #include "systimer.h"
-#include "swtimer.h"
 #include "plic.h"
 #include "uart.h"
-#include "sched.h"
 #include "clint.h"
 #include "vm.h"
+#include "types.h"
 
-extern void kernel_trap_entry(void); //定义在trap.S文件中
-
-reg_t timer_interrupt_handler(reg_t epc);
-void extern_interrupt_handler();
-void page_fault_handler(uintptr_t addr);
-reg_t soft_interrupt_handler(reg_t epc);
+extern void kernel_trap_entry();
 
 void trap_init()
 {
+    // 设置中断向量
     stvec_w((reg_t)kernel_trap_entry);
 }
 
+//1
+reg_t s_soft_interrupt_handler(reg_t epc)
+{
+    sip_w(sip_r() & ~SIP_SSIP);
+    
+    // reg_t r;
+    // enum hart_id hart_id = tp_r();
+    // printk("hart %d timer interrupt!\n",hart_id);
+    // u64 now_time = systimer_get_time();
+    // printk("now time is %d\n",now_time);
 
-/***************************************************************
- * @description: 
- * @param {u32} mcause [in/out]:  
- * @param {u32} mtval [in/out]:  
- * @param {u32} mepc [in/out]:  
- * @return {*}
-***************************************************************/
+    // r = sched(epc,now_time,hart_id);
+    
+    // swtimer_check();
+    
+    return epc;
+    
+}
+
+//3
+reg_t m_soft_interrupt_handler(reg_t epc)
+{
+    
+    sip_w(sip_r() | SIP_SSIP);
+    return epc;
+}
+
+//5
+reg_t s_timer_interrupt_handler(reg_t epc)
+{
+    enum hart_id hart_id = tp_r();
+    systimer_load(hart_id);
+    systick_up(hart_id);
+    printk("tick:%du\n",systick(hart_id));
+    return epc;
+}
+
+//7
+reg_t m_timer_interrupt_handler(reg_t epc)
+{
+    return epc;
+}
+
+//9
+reg_t s_extern_interrupt_handler(reg_t epc)
+{
+    enum hart_id hart_id = tp_r();
+    u32 irqn = __plic_claim(hart_id);
+    switch (irqn)
+    {
+        case 10:
+            uart0_iqr();
+        break;
+
+        default:
+            printk("unexpected extern interrupt!");
+        break;
+    }
+    if(irqn)
+    {
+        __plic_complete(0,irqn);
+    }
+    return epc;
+}
+
+//11
+reg_t m_extern_interrupt_handler(reg_t epc)
+{
+    enum hart_id hart_id = tp_r();
+    u32 irqn = __plic_claim(hart_id);
+    switch (irqn)
+    {
+        case 10:
+            uart0_iqr();
+        break;
+
+        default:
+            printk("unexpected extern interrupt!");
+        break;
+    }
+    if(irqn)
+    {
+        __plic_complete(0,irqn);
+    }
+    return epc;
+}
+
+typedef reg_t (*trap_func_t)(reg_t epc);
+
+trap_func_t interrupt_handlers[] = {
+    NULL,
+    s_soft_interrupt_handler,
+    NULL,
+    m_soft_interrupt_handler,
+    NULL,
+    s_timer_interrupt_handler,
+    NULL,
+    m_timer_interrupt_handler,
+    NULL,
+    s_extern_interrupt_handler,
+    NULL,
+    m_extern_interrupt_handler
+};
+
 reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
 {
     reg_t return_epc = epc;
     u64 cause_code = cause & MCAUSE_MASK_CAUSECODE;
-    // printk("in trap_handler, epc is %x\n",epc);
-    if((cause & MCAUSE_MASK_INTERRUPT))
-    {
-        switch (cause_code)
+    u64 is_interrupt = (cause & MCAUSE_MASK_INTERRUPT);;
+    if(is_interrupt) // 中断
+    {   
+        if(interrupt_handlers[cause_code] != NULL && cause_code < 12) //前12个是标准中断
         {
-            case 1:
-                // printk("Supervisor software interruption!\n");
-                return_epc = soft_interrupt_handler(epc);
-                // return_epc += 4;
-                // printk("out trap_handler, return_epc is %x\n",return_epc);
-                break;
-            case 5:
-                // printk("timer interruption!\n");
-                return_epc =  timer_interrupt_handler(epc);
-            case 7:
-                // printk("timer interruption!\n");
-                return_epc =  timer_interrupt_handler(epc);
-                break;
-            case 8:
-                panic("sys_exit!\n");
-                break;
-            // printk("timer interruption!\n");
-            return_epc =  timer_interrupt_handler(epc);
-                break;
-            case 11:
-                // printk("external interruption!\n");
-                // extern_interrupt_handler();
-                break;
-            default:
-                printk("unknown async exception!\n cause code is %l\n",cause_code);
-                printk("mstatus:%x,mie:%x\n",mstatus_r(),mie_r());
-                break;
-        }
+            return_epc = interrupt_handlers[cause_code](epc);
+        }    
+        else
+        {
+            printk("unknown interruption!\n cause code is %l\n",cause_code);
+        }    
     }
     else
     {
@@ -128,74 +197,8 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
                 break;
         }
     }
+    
     return return_epc;
-}
-
-/***************************************************************
- * @description: 
- * @param {u32} mepc [in/out]:  
- * @return {*}
-***************************************************************/
-void extern_interrupt_handler()
-{
-    enum hart_id hart_id = mhartid_r();
-    u32 irqn = __plic_claim(hart_id);
-    switch (irqn)
-    {
-        case 10:
-            uart0_iqr();
-        break;
-
-        default:
-            printk("unexpected extern interrupt!");
-        break;
-    }
-    if(irqn)
-    {
-        __plic_complete(0,irqn);
-    }
-}
-
-/***************************************************************
- * @description: 
- * @param {u32} mepc [in/out]:  
- * @return {*}
-***************************************************************/
-reg_t timer_interrupt_handler(reg_t epc )
-{
-    reg_t r;
-    enum hart_id hart_id = tp_r();
-    // printk("hart %d timer interrupt!\n",hart_id);
-    // sip_w(sip_r() | SIP_SSIP);
-    // u64 now_time = systimer_get_time();
-    systimer_tick++;
-
-    systimer_load(hart_id,systimer_hz[hart_id]);
-
-    // r = sched(epc,now_time,hart_id);
-    
-    // swtimer_check();
-    return epc;
-    // return r;
-}
-
-reg_t soft_interrupt_handler(reg_t epc)
-{
-    sip_w(sip_r() & ~SIP_SSIP);
-    
-    // reg_t r;
-    // enum hart_id hart_id = tp_r();
-    // printk("hart %d timer interrupt!\n",hart_id);
-    // u64 now_time = systimer_get_time();
-    // printk("now time is %d\n",now_time);
-    systimer_tick++;
-
-    // r = sched(epc,now_time,hart_id);
-    
-    // swtimer_check();
-    
-    return epc;
-    
 }
 
 void page_fault_handler(uintptr_t addr)

@@ -51,10 +51,10 @@ void swtimer_distory(struct swtimer *swtimer_d)
 ***************************************************************/
 static void _check_timeout(struct swtimer **swtimer_currrent)
 {
-    if(systimer_tick >= (*swtimer_currrent)->tick
+    if(systick(0) >= (*swtimer_currrent)->tick
     &&(*swtimer_currrent)->status == SWTIMER_ON)
     {
-        (*swtimer_currrent)->tick =  (*swtimer_currrent)->period + systimer_tick;
+        (*swtimer_currrent)->tick =  (*swtimer_currrent)->period + systick(0);
         (*swtimer_currrent)->timer_task();
         switch ( (*swtimer_currrent)->mode)
         {
@@ -115,7 +115,7 @@ struct swtimer* swtimer_create(void (*timer_task)(),u64 period,u8 mode)
             new_timer->period = period;
             new_timer->mode = mode; 
             new_timer->timer_id = id;
-            new_timer->tick =  period + systimer_tick;
+            new_timer->tick =  period + systick(0);
             new_timer->status = SWTIMER_ON;
             list_add_tail(&swtimer_head->swtimer_node,&new_timer->swtimer_node);
             id++;

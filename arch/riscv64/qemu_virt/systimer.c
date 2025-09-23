@@ -16,25 +16,34 @@
 #include "riscv.h"
 
 //系统时钟以0核为基准
-u64 systimer_tick = 0;
-enum systimer_hz systimer_hz[MAX_HARTS_NUM] = {SYS_HZ_100,SYS_HZ_100};
+static u64 systimer_tick[MAX_HARTS_NUM] = {0};
+static enum systimer_hz systimer_hz[MAX_HARTS_NUM] = {SYS_HZ_100,SYS_HZ_100};
 
 
-void systimer_init(enum hart_id hart_id, enum systimer_hz hz)
+void systimer_period(enum hart_id id, enum systimer_hz hz)
 {
-    systimer_hz[hart_id] = hz;
-    systimer_load(hart_id,(u64)hz);
-    s_timer_interrupt_enable();
+    systimer_hz[id] = hz;
 }
 
-void systimer_load(enum hart_id hartid,u64 value)
+__attribute__((always_inline)) inline void systimer_load(enum hart_id id)
 {   
-    u64 temp = __clint_mtime_get();
-    temp += value;
-    __clint_mtimecmp_set(hartid,temp);
+    u64 temp = time_r();
+    temp +=  systimer_hz[id];
+    stimecmp_w(temp);
 }
 
-u64 systimer_get_time()
+u64 systick(enum hart_id id)
 {
-    return __clint_mtime_get();
+    return systimer_tick[id];
+}
+
+__attribute__((always_inline)) inline void systick_up(enum hart_id id)
+{
+    systimer_tick[id]++;
+}
+
+void systimer_init(enum hart_id id, enum systimer_hz hz)
+{
+    systimer_period(id,hz);
+    s_timer_interrupt_enable();
 }
