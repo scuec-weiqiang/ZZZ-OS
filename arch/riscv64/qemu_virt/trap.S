@@ -7,7 +7,7 @@
 .balign 4
 .global kernel_trap_entry
 kernel_trap_entry:
-    # csrrw sp, sscratch, sp
+    csrrw sp, sscratch, sp
     addi sp, sp, -CONTEXT_SIZE
     STORE ra,  1*REG_SIZE(sp)  
     STORE sp,  2*REG_SIZE(sp)  
@@ -95,7 +95,7 @@ kernel_trap_entry:
     LOAD sp, 2*REG_SIZE(sp)   
     LOAD ra, 1*REG_SIZE(sp) 
     addi sp, sp, CONTEXT_SIZE  
-    # csrrw sp, sscratch, sp
+    csrrw sp, sscratch, sp
 
     sret
 .end

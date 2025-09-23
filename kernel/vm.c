@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/kernel/vm.c
+ * @FilePath: /ZZZ-OS/kernel/vm.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-09-21 17:37:04
+ * @LastEditTime: 2025-09-23 20:16:12
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -23,7 +23,7 @@
 pgtbl_t* kernel_pgd = NULL;//kernel_page_global_directory 内核页全局目录
 
 /**
- * @brief 从父页表中获取子页表
+ * @brief 从父页表中获取子页表的物理地址
  *
  * 根据虚拟页号(vpn_level)和虚拟地址(va)从父页表(parent_pgd)中获取对应的子页表。
  * 如果子页表不存在且参数create为true，则创建子页表。
@@ -33,7 +33,7 @@ pgtbl_t* kernel_pgd = NULL;//kernel_page_global_directory 内核页全局目录
  * @param va 虚拟地址
  * @param create 是否创建子页表，true表示创建，false表示不创建
  *
- * @return 指向子页表的指针，如果不存在且不创建则返回NULL
+ * @return 子页表的物理地址，如果不存在且不创建则返回NULL
  */
 pgtbl_t* get_child_pgtbl(pgtbl_t *parent_pgd, u64 vpn_level, u64 va, bool create)
 {
@@ -51,13 +51,12 @@ pgtbl_t* get_child_pgtbl(pgtbl_t *parent_pgd, u64 vpn_level, u64 va, bool create
             child_pgd = (pgtbl_t*)page_alloc(1);
             if(child_pgd == NULL) return NULL;
             memset(child_pgd,0,PAGE_SIZE);
-            child_pgd = KERNEL_PA(child_pgd);
-            //设置对应子页表的物理地址，并标记为有效（PTE_V
-            parent_pgd[vpn_level] = PA2PTE(child_pgd) | PTE_V;
+            //设置对应子页表的地址，并标记为有效（PTE_V
+            parent_pgd[vpn_level] = PA2PTE(KERNEL_PA(child_pgd)) | PTE_V;
             return child_pgd;
         }
     }
-    else //如果存在，直接返回对应pmd的物理地址
+    else //如果存在，直接返回对应pmd的地址
     {
        //返回对应pmd的物理地址
         return (pgtbl_t*)KERNEL_VA(PTE2PA(parent_pgd[vpn_level]));
@@ -87,10 +86,10 @@ pte_t* page_walk(pgtbl_t *pgd, uintptr_t va, bool create)
     u64 vpn1 = (va >> 21) & 0x1ff;
     u64 vpn0 = (va >> 12) & 0x1ff;
 
-    pmd = get_child_pgtbl(pgd,vpn2,va,true);//获取对应pmd的物理地址
+    pmd = KERNEL_VA(get_child_pgtbl(pgd,vpn2,va,true));//获取对应pmd的物理地址
     if(pmd == NULL) return NULL;
     
-    pte = get_child_pgtbl(pmd,vpn1,va,true);
+    pte = KERNEL_VA(get_child_pgtbl(pmd,vpn1,va,true));
     if (pte == NULL) return NULL;
     
     return (pte_t*)&pte[vpn0];
@@ -147,7 +146,8 @@ int map_range(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, size_t size, u64 f
     CHECK(pgd != NULL, "pgd is NULL", return -1;);
     CHECK(vaddr % PAGE_SIZE_4K == 0, "vaddr is not page aligned", return -1;);
     CHECK(paddr % PAGE_SIZE_4K == 0, "paddr is not page aligned", return -1;);
-    CHECK(size % PAGE_SIZE_4K == 0, "size is not page aligned", return -1;);
+
+    size = ALIGN_UP(size, PAGE_SIZE);
     
     uintptr_t va = vaddr;
     uintptr_t pa = paddr;

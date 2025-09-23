@@ -1,9 +1,9 @@
 /**
- * @FilePath: /vboot/home/wei/ZZZ/kernel/kernel.c
+ * @FilePath: /ZZZ-OS/kernel/kernel.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-09-21 17:49:40
+ * @LastEditTime: 2025-09-23 21:23:23
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -13,7 +13,6 @@
 #include "vm.h"
 #include "virt_disk.h"
 #include "time.h"
-
 
 #include "riscv.h"
 #include "plic.h"
@@ -30,7 +29,12 @@
 
 u8 is_init = 0;
 
-
+void set_hart_stack()
+{
+    char *hart_stack = (char*)page_alloc(1);
+    memset(hart_stack,0,PAGE_SIZE);
+    asm volatile("csrw sscratch,%0"::"r"(hart_stack + PAGE_SIZE));
+}
 
 void  init_kernel()
 {   
@@ -42,39 +46,28 @@ void  init_kernel()
         symbols_init();
         trap_init();
 
-
-        // // extern_interrupt_setting(hart,UART0_IRQN,1);
-
         malloc_init();
         kernel_page_table_init();
 
         virt_disk_init(); 
         fs_init();
 
-        // proc_init();
-        // struct proc* init_proc = proc_create("/user.elf");
-        // proc_run(init_proc);
-
         printk("now time:%x\n",get_current_unix_timestamp(UTC8));
         is_init = 1;
     }
 
-    printk("hart_id:%d\n", hart);
+    set_hart_stack();
     systimer_init(hart,SYS_HZ_1);
     s_global_interrupt_enable(); 
-    while (is_init == 0){}
-    // wakeup_other_harts();
- 
-    //每个核心初始化自己的资源
-    // systimer_init(hart_id,SYS_HZ_100);
-    // sched_init(hart_id);
-    // __clint_send_ipi(0);
-    // sip_w(sip_r() | 2);
-   
+    
+    proc_init();
+    struct proc* init_proc = proc_create("/user.elf");
+    proc_run(init_proc);
+
     while(1)
     {
-        // printk("hart_id:%d\n", hart_id++);
+        // printk("tick:%d\n", systick(0));
+        // printk("tick:%d\n", time_r());
+        
     }
-    // global_interrupt_enable();
-    // M_TO_U(os_main);
  }

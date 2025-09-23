@@ -10,6 +10,8 @@ _start:
     la t2, __stack_end
     sub sp,t2,t1 # 栈底 = _stack_end - hartid * STACK_SIZE
 
+    csrw sscratch, sp  # sscratch存放内核栈指针
+
     /* jump to init_kernel */
     j init_kernel
 

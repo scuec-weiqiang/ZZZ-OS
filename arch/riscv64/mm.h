@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/arch/riscv64/mm.h
+ * @FilePath: /ZZZ-OS/arch/riscv64/mm.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 13:05:59
- * @LastEditTime: 2025-09-21 16:57:10
+ * @LastEditTime: 2025-09-23 20:15:49
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -23,6 +23,9 @@
 #define PAGE_SHIFT 12     // 页偏移量
 #define PAGE_MASK (~(PAGE_SIZE - 1))   // 页掩码
 
+#define ALIGN_UP(x, align) (((x) + (align) - 1) & ~((align) - 1))
+#define ALIGN_DOWN(x, align) ((x) & ~((align) - 1))
+
 #define PTE_FLAGS (PTE_V | PTE_R | PTE_W | PTE_X)   // 页表项标志位
 
 #define PA2PTE(pa) (((u64)(pa) >> 12) << 10)
@@ -39,6 +42,7 @@
 
 #define KERNEL_MMIO_BASE 0xFFFFFFBFC00000
 #define KERNEL_MMIO_VA(pa) (KERNEL_MMIO_BASE + ((u64)(pa)))
+
 
 static inline u64 make_satp(u64 va_or_pa) 
 {

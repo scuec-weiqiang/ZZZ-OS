@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/kernel/proc.c
+ * @FilePath: /ZZZ-OS/kernel/proc.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-16 18:23:57
- * @LastEditTime: 2025-09-21 17:10:12
+ * @LastEditTime: 2025-09-23 20:40:15
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -67,18 +67,18 @@ struct proc* proc_create(char* path)
             char *user_space = (char*)malloc(elf_info->segs[i].memsz); //程序加载到内存里需要的空间
             memset(user_space,0,elf_info->segs[i].memsz);
             memcpy(user_space,elf+elf_info->segs[i].offset,elf_info->segs[i].filesz);
-            map_range(user_pgd, elf_info->segs[i].vaddr, (uintptr_t)user_space, (elf_info->segs[i].memsz+PAGE_SIZE-1)/PAGE_SIZE * PAGE_SIZE, PTE_R|PTE_X|PTE_U);
+            map_range(user_pgd, elf_info->segs[i].vaddr, (uintptr_t)KERNEL_PA(user_space), elf_info->segs[i].memsz, PTE_R|PTE_X|PTE_U);
         }
     }
-    map_range(user_pgd, PROC_USER_STACK_BOTTOM, (uintptr_t)user_stack, PROC_STACK_SIZE,  PTE_W|PTE_R|PTE_U);
+    map_range(user_pgd, PROC_USER_STACK_TOP, (uintptr_t)KERNEL_PA(user_stack), PROC_STACK_SIZE,  PTE_W|PTE_R|PTE_U);
     page_table_init(user_pgd);
 
     new_proc->elf_info = elf_info;
-    new_proc->user_sp = PROC_USER_STACK_TOP;
+    new_proc->user_sp = PROC_USER_STACK_BOTTOM;
     new_proc->kernel_sp = (uintptr_t)kernel_stack + PROC_STACK_SIZE - sizeof(struct reg_context);
     new_proc->pgd = user_pgd;
-    new_proc->context.sepc = elf_info->entry;
-    new_proc->context.sp = new_proc->user_sp;
+    new_proc->trapframe.sepc = elf_info->entry;
+    new_proc->trapframe.sp = new_proc->user_sp;
     new_proc->pid = alloc_pid();
     new_proc->status = 0;
     enum hart_id hart_id = tp_r(); // 现在只支持hart0
@@ -93,8 +93,9 @@ void proc_run(struct proc *p)
     if(p == NULL) return ;
     sscratch_w(sp_r());
     satp_w(make_satp(p->pgd));
+    asm volatile ("sfence.vma zero, zero"::);
     sstatus_w(sstatus_r() & ~(1<<8));  
-    sepc_w((uintptr_t)(p->context.sepc)); 
+    sepc_w((uintptr_t)(p->trapframe.sepc)); 
     asm volatile("mv sp,%0"::"r"(p->user_sp));
     asm volatile("sret");
 }
