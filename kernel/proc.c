@@ -15,6 +15,7 @@
 #include "string.h"
 #include "platform.h"
 #include "malloc.h"
+#include "systimer.h"
 
 struct list proc_list_head[MAX_HARTS_NUM];
 u64 proc_count[MAX_HARTS_NUM];
@@ -75,12 +76,13 @@ struct proc* proc_create(char* path)
 
     new_proc->elf_info = elf_info;
     new_proc->user_sp = PROC_USER_STACK_BOTTOM;
-    new_proc->kernel_sp = (uintptr_t)kernel_stack + PROC_STACK_SIZE - sizeof(struct reg_context);
+    new_proc->kernel_sp = (uintptr_t)kernel_stack + PROC_STACK_SIZE;
     new_proc->pgd = user_pgd;
     new_proc->trapframe.sepc = elf_info->entry;
     new_proc->trapframe.sp = new_proc->user_sp;
     new_proc->pid = alloc_pid();
-    new_proc->status = 0;
+    new_proc->status = PROC_RUNABLE;
+    new_proc->time_slice = PROC_DEFAULT_SLICE;
     enum hart_id hart_id = tp_r(); // 现在只支持hart0
     list_add(&proc_list_head[hart_id], &new_proc->proc_lnode);
     proc_count[hart_id]++;
@@ -91,7 +93,9 @@ struct proc* proc_create(char* path)
 void proc_run(struct proc *p)
 {
     if(p == NULL) return ;
-    sscratch_w(sp_r());
+    sscratch_w(p->kernel_sp);
+    p->expire_time = systick(tp_r()) + p->time_slice;
+    p->status = PROC_RUNNING;
     satp_w(make_satp(p->pgd));
     asm volatile ("sfence.vma zero, zero"::);
     sstatus_w(sstatus_r() & ~(1<<8));  

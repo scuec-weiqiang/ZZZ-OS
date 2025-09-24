@@ -1,14 +1,14 @@
 #define LOAD        ld
 #define STORE       sd
 #define REG_SIZE    8
-#define CONTEXT_SIZE  REG_SIZE*36
+#define TRAP_FRAME_SIZE  REG_SIZE*36
 
 .section .text.trap
 .balign 4
 .global kernel_trap_entry
 kernel_trap_entry:
     csrrw sp, sscratch, sp
-    addi sp, sp, -CONTEXT_SIZE
+    addi sp, sp, -TRAP_FRAME_SIZE
     STORE ra,  1*REG_SIZE(sp)  
     STORE sp,  2*REG_SIZE(sp)  
     STORE gp,  3*REG_SIZE(sp)  
@@ -94,7 +94,7 @@ kernel_trap_entry:
     LOAD gp, 3*REG_SIZE(sp)   
     LOAD sp, 2*REG_SIZE(sp)   
     LOAD ra, 1*REG_SIZE(sp) 
-    addi sp, sp, CONTEXT_SIZE  
+    addi sp, sp, TRAP_FRAME_SIZE  
     csrrw sp, sscratch, sp
 
     sret

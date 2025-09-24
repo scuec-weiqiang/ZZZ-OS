@@ -55,7 +55,7 @@ void sched_init(enum hart_id hart_id)
 reg_t sched(reg_t epc,u64 now_time,enum hart_id hart_id)
 {
     reg_t ret = epc;
-
+ 
     if(!list_empty(&need_add_task[hart_id])) // 如果有任务需要添加到运行队列
     {
         list_splice(&need_add_task[hart_id],&scheduler[hart_id].ready_queue) ;//把任务添加到运行队列
@@ -87,7 +87,6 @@ reg_t sched(reg_t epc,u64 now_time,enum hart_id hart_id)
             break;
 
         case SCHED_SWITCHING:
-            // printk("sched_switching\n");
             ret = _setup_task(now_time,hart_id,_get_next_task(hart_id));//设置下一个任务的上下文并返回任务入口地址
             list_mov_tail(&scheduler[hart_id].ready_queue,&current_task->node);//将到期任务移动到链表尾部,但还没有更新current_task
             break;

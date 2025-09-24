@@ -3,16 +3,6 @@
 
 #include "types.h"
 
-struct reg_context
-{
-    reg_t zero, ra, sp, gp, tp;
-    reg_t t0, t1, t2, s0, s1;
-    reg_t a0, a1, a2, a3, a4, a5, a6, a7;
-    reg_t s2, s3, s4, s5, s6, s7, s8, s9, s10, s11;
-    reg_t t3, t4, t5, t6;
-    reg_t sepc;
-};
-
 #define MCAUSE_MASK_INTERRUPT 0x8000000000000000
 #define MCAUSE_MASK_CAUSECODE 0x7fffffffffffffff
 
