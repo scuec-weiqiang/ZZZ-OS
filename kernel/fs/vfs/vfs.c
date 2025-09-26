@@ -135,6 +135,21 @@ struct file* open(const char *path, u32 flags)
     return file;
 }
 
+void close(struct file *file) 
+{
+    CHECK(file != NULL, "", return;);
+    CHECK(file->f_inode != NULL, "", return;);
+    CHECK(file->f_inode->f_ops != NULL, "", return;);
+
+    file->f_refcount --;
+    if(file->f_refcount > 0)
+    {
+        return;
+    }
+
+    free(file);
+    file = NULL;
+}
 
 ssize_t read(struct file *file, char *buf, size_t read_size) 
 {
@@ -164,13 +179,4 @@ ssize_t write(struct file *file, const char *buf, size_t count)
     return file->f_inode->f_ops->write(file->f_inode, buf, count, &file->f_pos);
 }
 
-void vfs_test()
-{
-
-    // struct dentry* d = look_up("/hello.txt");
-    // struct dentry* d;
-    // d = vfs_mkdir("/c",S_IFDIR | S_IDEFAULT);
-    // d = vfs_mkdir("/d.txt",S_IFREG | S_IDEFAULT);
-
-}
 

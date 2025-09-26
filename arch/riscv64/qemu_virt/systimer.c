@@ -17,34 +17,49 @@
 
 //系统时钟以0核为基准
 static u64 systimer_tick[MAX_HARTS_NUM] = {0};
-static enum systimer_hz systimer_hz[MAX_HARTS_NUM] = {SYS_HZ_100,SYS_HZ_100};
+static enum systimer_hz systimer_hz[MAX_HARTS_NUM] = {SYS_HZ_1,SYS_HZ_1};
 
-
-void systimer_period(enum hart_id id, enum systimer_hz hz)
+inline void systimer_period(enum systimer_hz hz)
 {
+    enum hart_id id = tp_r();
     systimer_hz[id] = hz;
 }
 
-void systimer_load(enum hart_id id)
+inline void systimer_reload()
 {   
+    enum hart_id id = tp_r();
     u64 temp = time_r();
     temp +=  systimer_hz[id];
     stimecmp_w(temp);
 }
 
-u64 systick(enum hart_id id)
+inline u64 systick()
 {
+    enum hart_id id = tp_r();
     return systimer_tick[id];
 }
 
-void systick_up(enum hart_id id)
+inline void systick_up()
 {
+    enum hart_id id = tp_r();
     systimer_tick[id]++;
 }
 
-void systimer_init(enum hart_id id, enum systimer_hz hz)
+void systimer_init( enum systimer_hz hz)
 {
-    systimer_period(id,hz);
-    systimer_load(id);
+    s_timer_interrupt_disable();
+    systimer_period(hz);
+    enum hart_id id = tp_r();
+    systimer_tick[id] = 0;
+}
+
+void systimer_start()
+{
+    systimer_reload();
     s_timer_interrupt_enable();
+}
+
+void systimer_pause()
+{
+    s_timer_interrupt_disable();
 }

@@ -20,27 +20,27 @@
 #include "vm.h"
 #include "check.h"
 
+
 pgtbl_t* kernel_pgd = NULL;//kernel_page_global_directory 内核页全局目录
 
-/**
- * @brief 从父页表中获取子页表的物理地址
- *
- * 根据虚拟页号(vpn_level)和虚拟地址(va)从父页表(parent_pgd)中获取对应的子页表。
- * 如果子页表不存在且参数create为true，则创建子页表。
- *
- * @param parent_pgd 父页表的地址
- * @param vpn_level 虚拟页号
- * @param va 虚拟地址
- * @param create 是否创建子页表，true表示创建，false表示不创建
- *
- * @return 子页表的物理地址，如果不存在且不创建则返回NULL
- */
-pgtbl_t* get_child_pgtbl(pgtbl_t *parent_pgd, u64 vpn_level, u64 va, bool create)
+pgtbl_t* create_pgtbl()
+{
+    pgtbl_t *pgd = (pgtbl_t*)page_alloc(1);
+    memset(pgd,0,PAGE_SIZE);
+    return pgd;
+}
+
+void create_pte(pte_t *pte, uintptr_t pa, u64 flags)
+{
+    *pte = PA2PTE(pa) | flags | PTE_V;
+}
+
+pgtbl_t* get_child_pgtbl(pgtbl_t *parent_pgd, u64 vpn, bool create)
 {
     if(parent_pgd == NULL) return NULL;
-    
+
     pgtbl_t* child_pgd = NULL;
-    if( (parent_pgd[vpn_level] & PTE_V) == 0)//验证对应子页表是否存在，
+    if( (parent_pgd[vpn] & PTE_V) == 0)//如果不存在,返回
     {
         if(!create) 
         {
@@ -48,53 +48,51 @@ pgtbl_t* get_child_pgtbl(pgtbl_t *parent_pgd, u64 vpn_level, u64 va, bool create
         }
         else //否则创建对应子页表
         {
-            child_pgd = (pgtbl_t*)page_alloc(1);
+            child_pgd = create_pgtbl();
             if(child_pgd == NULL) return NULL;
-            memset(child_pgd,0,PAGE_SIZE);
-            //设置对应子页表的地址，并标记为有效（PTE_V
-            parent_pgd[vpn_level] = PA2PTE(KERNEL_PA(child_pgd)) | PTE_V;
+            create_pte(&parent_pgd[vpn], KERNEL_PA(child_pgd), 0);
             return child_pgd;
         }
+        return NULL;
     }
-    else //如果存在，直接返回对应pmd的地址
+    else //如果存在
     {
-       //返回对应pmd的物理地址
-        return (pgtbl_t*)KERNEL_VA(PTE2PA(parent_pgd[vpn_level]));
+        return (pgtbl_t*)KERNEL_VA(PTE2PA(parent_pgd[vpn]));
     }
 }
 
-/**
- * @brief 页表遍历函数
- *
- * 该函数根据给定的页全局目录指针（pgd）、虚拟地址（va）和是否创建页表项的布尔值（create），遍历页表并返回对应的页表项指针（pte_t*）。
- *
- * @param pgd 页全局目录指针
- * @param va 虚拟地址
- * @param create 是否创建页表项
- *
- * @return 对应的页表项指针（pte_t*），如果未找到对应的页表项，则返回NULL。
- */
-pte_t* page_walk(pgtbl_t *pgd, uintptr_t va, bool create)
+int is_pte_leaf(pte_t pte)
 {
-    CHECK(pgd != NULL, "pgd is NULL", return NULL;);
-    CHECK(va % PAGE_SIZE == 0, "va is not page aligned", return NULL;);
-   
-    uintptr_t *pmd = NULL;
-    uintptr_t *pte = NULL;
+    return (pte & (PTE_R | PTE_W | PTE_X)) != 0;
+}
+
+uintptr_t map_walk(pgtbl_t *pgd, uintptr_t va)
+{
+    CHECK(pgd != NULL, "pgd is NULL", return 0;);
 
     u64 vpn2 = (va >> 30) & 0x1ff;
     u64 vpn1 = (va >> 21) & 0x1ff;
     u64 vpn0 = (va >> 12) & 0x1ff;
 
-    pmd = KERNEL_VA(get_child_pgtbl(pgd,vpn2,va,true));//获取对应pmd的物理地址
-    if(pmd == NULL) return NULL;
-    
-    pte = KERNEL_VA(get_child_pgtbl(pmd,vpn1,va,true));
-    if (pte == NULL) return NULL;
-    
-    return (pte_t*)&pte[vpn0];
-}
+    va = ALIGN_DOWN(va, PAGE_SIZE);
 
+    enum pgt_size page_size;
+
+    uintptr_t l2 = (uintptr_t)get_child_pgtbl(pgd, vpn2, false);
+    if(is_pte_leaf(l2)) // 1GB 大页
+    {
+        return PTE2PA(l2);
+    }
+
+    uintptr_t l1 = (uintptr_t)get_child_pgtbl(l2, vpn1, false);
+    if(is_pte_leaf(l1)) // 2MB 大页
+    {
+        return PTE2PA(l1);
+    }
+
+    uintptr_t l0 = (uintptr_t)get_child_pgtbl(l1, vpn0, false);
+    return l0;
+}
 
 int mmap(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, enum pgt_size page_size, u64 flags)
 {
@@ -110,25 +108,25 @@ int mmap(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, enum pgt_size page_size
     {
         case PAGE_SIZE_4K:
         {
-            pgtbl_t *l1 = get_child_pgtbl(pgd, vpn2, vaddr, true);
-            pgtbl_t *l0 = get_child_pgtbl(l1, vpn1, vaddr, true);
+            pgtbl_t *l1 = get_child_pgtbl(pgd, vpn2, true);
+            pgtbl_t *l0 = get_child_pgtbl(l1, vpn1, true);
             pte_t *pte = &l0[vpn0];
-            *pte = PA2PTE(paddr) | flags | PTE_V;
+            create_pte(pte, paddr, flags);
             break;
         }
             
         case PAGE_SIZE_2M:
         {
-            pgtbl_t *l1 = get_child_pgtbl(pgd, vpn2, vaddr, true);
+            pgtbl_t *l1 = get_child_pgtbl(pgd, vpn2, true);
             pte_t *pte = &l1[vpn1];
-            *pte = PA2PTE(paddr) | flags | PTE_V;
+            create_pte(pte, paddr, flags);
             break;
         }
 
         case PAGE_SIZE_1G:
         {
             pte_t *pte = &pgd[vpn2];
-            *pte = PA2PTE(paddr) | flags | PTE_V;
+            create_pte(pte, paddr, flags);
             break;
         }
 
@@ -138,6 +136,7 @@ int mmap(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, enum pgt_size page_size
             return -1;
         }
     }
+
     return 0;
 }
 
@@ -202,7 +201,7 @@ void page_table_init(pgtbl_t *pgd)
         map_range(pgd,(uintptr_t)REAL_TIME_BASE, (uintptr_t)REAL_TIME_BASE, PAGE_SIZE, PTE_R);
 }
 
-void kernel_page_table_init()
+void kernel_page_table_init()  
 {
     kernel_pgd = (pgtbl_t*)page_alloc(1);
     if(kernel_pgd == NULL) return;
@@ -218,3 +217,27 @@ void kernel_page_table_init()
     printk("kernel page table init success!\n");
 }
 
+int copyin(pgtbl_t *pagetable, char *dst, uintptr_t src_va, size_t len)
+{
+    size_t n = 0;
+    while (n < len) 
+    {
+        uintptr_t pa = map_walk(pagetable, src_va);
+        if (pa == 0) 
+        {
+            return -1;
+        }
+        size_t offset = src_va % PAGE_SIZE;
+        size_t to_copy = PAGE_SIZE - offset;
+        if (to_copy > len - n) 
+        {
+            to_copy = len - n;
+        }
+
+        memcpy(dst + n, (char *)(pa + offset), to_copy);
+
+        n += to_copy;
+        src_va += to_copy;
+    }
+    return n;
+}

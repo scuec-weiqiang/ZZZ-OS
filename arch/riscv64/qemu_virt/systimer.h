@@ -30,10 +30,12 @@ enum systimer_hz{
     SYS_HZ_1 = 1000*tick_ms,
 };
 
-extern void systimer_init(enum hart_id id,enum systimer_hz hz);
-extern void systimer_period(enum hart_id id, enum systimer_hz hz);
-extern void systimer_load(enum hart_id id);
-extern u64 systick(enum hart_id id);
-extern void systick_up(enum hart_id id);
+extern void systimer_init(enum systimer_hz hz);
+extern void systimer_start();
+extern void systimer_pause();
+extern void systimer_period(enum systimer_hz hz);
+extern void systimer_reload();
+extern u64 systick();
+extern void systick_up();
 
 #endif 

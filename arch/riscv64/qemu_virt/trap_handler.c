@@ -7,6 +7,7 @@
 #include "clint.h"
 #include "vm.h"
 #include "types.h"
+#include "syscall.h"
 
 extern void kernel_trap_entry();
 
@@ -47,7 +48,7 @@ reg_t m_soft_interrupt_handler(reg_t epc)
 reg_t s_timer_interrupt_handler(reg_t epc)
 {
     enum hart_id hart_id = tp_r();
-    systimer_load(hart_id);
+    systimer_reload(hart_id);
     systick_up(hart_id);
     printk("tick:%du\n",systick(hart_id));
     return epc;
@@ -124,7 +125,7 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
 {
     reg_t return_epc = epc;
     u64 cause_code = cause & MCAUSE_MASK_CAUSECODE;
-    u64 is_interrupt = (cause & MCAUSE_MASK_INTERRUPT);;
+    u64 is_interrupt = (cause & MCAUSE_MASK_INTERRUPT);
     if(is_interrupt) // 中断
     {   
         if(interrupt_handlers[cause_code] != NULL && cause_code < 12) //前12个是标准中断
@@ -138,8 +139,8 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
     }
     else
     {
-        printk("\nstval is %xu\n",stval_r());
-        printk("occour in %xu\n",epc);
+        // printk("\nstval is %xu\n",stval_r());
+        // printk("occour in %xu\n",epc);
         switch (cause_code)
         {
             case 0:
@@ -169,8 +170,7 @@ reg_t trap_handler(reg_t epc,reg_t cause,reg_t ctx)
                 break;    
             case 8:
                 // printk("Environment call from U-mode\n");
-                // extern do_syscall(struct reg_context *ctx);
-                // do_syscall(ctx);
+                do_syscall((struct trap_frame *)ctx);
                 return_epc += 4;
                 break;
             case 9:

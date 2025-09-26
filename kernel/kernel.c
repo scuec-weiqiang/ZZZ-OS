@@ -26,6 +26,7 @@
 #include "systimer.h"
 #include "symbols.h"
 #include "trap_handler.h"
+#include "sched.h"
 
 u8 is_init = 0;
 
@@ -38,10 +39,10 @@ void set_hart_stack()
 
 void  init_kernel()
 {   
+    s_global_interrupt_disable();
     enum hart_id hart = HART_0;
     if(hart == HART_0) // hart0 初始化全局资源
     {
-        s_global_interrupt_disable();
         zero_bss();
         symbols_init();
         trap_init();
@@ -57,17 +58,18 @@ void  init_kernel()
     }
 
     set_hart_stack();
-    systimer_init(hart,SYS_HZ_1);
+    systimer_init(SYS_HZ_1);
     s_global_interrupt_enable(); 
     
     proc_init();
-    struct proc* init_proc = proc_create("/user.elf");
-    proc_run(init_proc);
-
+    proc_create("/user.elf");
+    proc_create("/2_user.elf");
+    // proc_run(scheduler[0].current);
+    sched_init(hart);
+    sched();
     while(1)
     {
         // printk("tick:%d\n", systick(0));
         // printk("tick:%d\n", time_r());
-        
     }
- }
+}

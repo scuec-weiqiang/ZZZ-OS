@@ -81,7 +81,8 @@
         "printk.h": "c",
         "proc.h": "c",
         "malloc.h": "c",
-        "vm.h": "c"
+        "vm.h": "c",
+        "usys.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

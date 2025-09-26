@@ -232,6 +232,7 @@ struct file_ops
 
 struct file
 {
+    enum { FD_NONE=0, FD_FILE, FD_DIR, FD_DEVICE } type;
     struct inode *f_inode;        // 指向文件对应的 inode
     struct dentry *f_dentry; // 打开的 dentry (路径)
     loff_t f_pos;            // 文件读写偏移

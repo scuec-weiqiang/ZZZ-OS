@@ -26,8 +26,6 @@
 #define ALIGN_UP(x, align) (((x) + (align) - 1) & ~((align) - 1))
 #define ALIGN_DOWN(x, align) ((x) & ~((align) - 1))
 
-#define PTE_FLAGS (PTE_V | PTE_R | PTE_W | PTE_X)   // 页表项标志位
-
 #define PA2PTE(pa) (((u64)(pa) >> 12) << 10)
 #define PTE2PA(pte) (((pte&0xffffffffffffffff) >> 10) << 12)
 
