@@ -8,6 +8,7 @@
 #include "vm.h"
 #include "types.h"
 #include "syscall.h"
+#include "sched.h"
 
 extern void kernel_trap_entry();
 
@@ -50,7 +51,12 @@ reg_t s_timer_interrupt_handler(reg_t epc)
     enum hart_id hart_id = tp_r();
     systimer_reload(hart_id);
     systick_up(hart_id);
-    printk("tick:%du\n",systick(hart_id));
+    if(scheduler[tp_r()].current->expire_time >= systick())
+    {
+        printk("\n");
+        yield();
+    }
+    // printk("tick:%du\n",systick(hart_id));
     return epc;
 }
 

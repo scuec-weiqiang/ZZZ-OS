@@ -104,7 +104,6 @@ int _vprint(const char *fmt, va_list vl)
     }
 
     _vsprint(print_buff, fmt, vl);
-    va_end(vl_copy);
 
     print(print_buff,n);
     return n;

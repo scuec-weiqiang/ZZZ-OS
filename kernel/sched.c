@@ -1,3 +1,12 @@
+/**
+ * @FilePath: /ZZZ-OS/kernel/sched.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-10-01 15:16:19
+ * @LastEditTime: 2025-10-01 16:30:51
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 #include "printk.h"
 #include "malloc.h"
 #include "sched.h"
@@ -5,6 +14,7 @@
 #include "symbols.h"
 #include "platform.h"
 #include "list.h"
+#include "systimer.h"
 
 struct scheduler scheduler[MAX_HARTS_NUM];
 
@@ -42,10 +52,12 @@ void sched()
 {
     enum hart_id hart_id = tp_r();
     scheduler[hart_id].current = NULL;
+    systimer_start();
     while(1)
     {
         struct proc* next = _get_next_task(hart_id);
         if(!next) continue;
+        next->expire_time = next->time_slice + systick();
         scheduler[hart_id].current = next;
         satp_w(make_satp(next->pgd));
         asm volatile ("sfence.vma zero, zero"::);

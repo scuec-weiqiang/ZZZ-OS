@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/kernel/syscall.c
+ * @FilePath: /ZZZ-OS/kernel/syscall.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-02 18:11:27
- * @LastEditTime: 2025-05-02 18:59:49
+ * @LastEditTime: 2025-10-01 15:47:09
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -44,7 +44,7 @@ int sys_printf(struct trap_frame *ctx)
 typedef int (*sysfuncPtr)(struct trap_frame *ctx); // 定义函数指针类型 FuncPtr
 
 static sysfuncPtr syscalls[] = {
-    [SYSCALL_PRINTF] = sys_printf,
+    [SYSCALL_PRINT] = sys_printf,
     [SYSCALL_YIELD] = sys_yield,
 };
 

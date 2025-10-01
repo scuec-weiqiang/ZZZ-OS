@@ -56,6 +56,7 @@ $(TARGET): $(OBJ)
 	$(LD) $(LFLAGS)  $^ -o $@
 	@echo "\033[32m生成目标文件:\033[0m"
 	@echo "\033[32m$@\033[0m"
+	make move
 
 # 通用编译规则
 $(DIR_OUT)/%.o: %.c

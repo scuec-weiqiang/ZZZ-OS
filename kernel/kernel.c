@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-09-23 21:23:23
+ * @LastEditTime: 2025-10-01 16:28:38
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -62,14 +62,8 @@ void  init_kernel()
     s_global_interrupt_enable(); 
     
     proc_init();
-    proc_create("/user.elf");
-    proc_create("/2_user.elf");
-    // proc_run(scheduler[0].current);
+    proc_create("/proc1.elf");
+    proc_create("/proc2.elf");
     sched_init(hart);
     sched();
-    while(1)
-    {
-        // printk("tick:%d\n", systick(0));
-        // printk("tick:%d\n", time_r());
-    }
 }
