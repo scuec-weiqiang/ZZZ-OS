@@ -23,16 +23,6 @@ reg_t s_soft_interrupt_handler(reg_t epc)
 {
     sip_w(sip_r() & ~SIP_SSIP);
     
-    // reg_t r;
-    // enum hart_id hart_id = tp_r();
-    // printk("hart %d timer interrupt!\n",hart_id);
-    // u64 now_time = systimer_get_time();
-    // printk("now time is %d\n",now_time);
-
-    // r = sched(epc,now_time,hart_id);
-    
-    // swtimer_check();
-    
     return epc;
     
 }

@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-09-23 20:16:12
+ * @LastEditTime: 2025-10-06 19:07:08
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -76,7 +76,7 @@ uintptr_t map_walk(pgtbl_t *pgd, uintptr_t va)
 
     va = ALIGN_DOWN(va, PAGE_SIZE);
 
-    enum pgt_size page_size;
+    // enum pgt_size page_size;
 
     uintptr_t l2 = (uintptr_t)get_child_pgtbl(pgd, vpn2, false);
     if(is_pte_leaf(l2)) // 1GB 大页
@@ -84,13 +84,13 @@ uintptr_t map_walk(pgtbl_t *pgd, uintptr_t va)
         return PTE2PA(l2);
     }
 
-    uintptr_t l1 = (uintptr_t)get_child_pgtbl(l2, vpn1, false);
+    uintptr_t l1 = (uintptr_t)get_child_pgtbl((pgtbl_t*)l2, vpn1, false);
     if(is_pte_leaf(l1)) // 2MB 大页
     {
         return PTE2PA(l1);
     }
 
-    uintptr_t l0 = (uintptr_t)get_child_pgtbl(l1, vpn0, false);
+    uintptr_t l0 = (uintptr_t)get_child_pgtbl((pgtbl_t*)l1, vpn0, false);
     return l0;
 }
 
@@ -209,7 +209,7 @@ void kernel_page_table_init()
 
     page_table_init(kernel_pgd);
 
-    uintptr_t satp_val = make_satp(kernel_pgd);
+    uintptr_t satp_val = make_satp((uintptr_t)kernel_pgd);
 
     //设置satp寄存器
     asm volatile("csrw satp,%0"::"r"(satp_val));
@@ -222,8 +222,8 @@ int copyin(pgtbl_t *pagetable, char *dst, uintptr_t src_va, size_t len)
     size_t n = 0;
     while (n < len) 
     {
-        uintptr_t pa = map_walk(pagetable, src_va);
-        if (pa == 0) 
+        uintptr_t src = map_walk(pagetable, src_va);
+        if (src == 0) 
         {
             return -1;
         }
@@ -234,10 +234,35 @@ int copyin(pgtbl_t *pagetable, char *dst, uintptr_t src_va, size_t len)
             to_copy = len - n;
         }
 
-        memcpy(dst + n, (char *)(pa + offset), to_copy);
+        memcpy(dst + n, (char *)(src + offset), to_copy);
 
         n += to_copy;
         src_va += to_copy;
+    }
+    return n;
+}
+
+int copyout(pgtbl_t *pagetable, uintptr_t dst_va, char *src, size_t len)
+{
+    size_t n = 0;
+    while (n < len) 
+    {
+        uintptr_t dst = map_walk(pagetable, dst_va);
+        if (dst == 0) 
+        {
+            return -1;
+        }
+        size_t offset = dst_va % PAGE_SIZE;
+        size_t to_copy = PAGE_SIZE - offset;
+        if (to_copy > len - n) 
+        {
+            to_copy = len - n;
+        }
+
+        memcpy((char *)(dst + offset), src + n, to_copy);
+
+        n += to_copy;
+        dst_va += to_copy;
     }
     return n;
 }

@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-01 15:16:19
- * @LastEditTime: 2025-10-01 16:30:51
+ * @LastEditTime: 2025-10-06 18:51:35
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -59,7 +59,7 @@ void sched()
         if(!next) continue;
         next->expire_time = next->time_slice + systick();
         scheduler[hart_id].current = next;
-        satp_w(make_satp(next->pgd));
+        satp_w((reg_t)make_satp((uintptr_t)next->pgd));
         asm volatile ("sfence.vma zero, zero"::);
         swtch(&scheduler[hart_id].ctx,&next->context);
     }

@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/ext2/ext2_namei.c
+ * @FilePath: /ZZZ-OS/fs/ext2/ext2_namei.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-12 22:55:01
- * @LastEditTime: 2025-09-13 00:27:19
+ * @LastEditTime: 2025-10-06 19:06:34
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -38,6 +38,7 @@ int ext2_lookup(struct inode *dir,struct dentry *dentry)
     }
 
     dentry->d_inode = d_inode;
+    
     return 0;
 }
 
@@ -71,8 +72,8 @@ static int ext2_add(struct inode *i_parent, struct dentry *dentry, u32 i_mode)
         ((struct ext2_fs_info*)(i_parent->i_sb->s_private))->group_desc[ext2_ino_group(i_parent->i_sb,dentry->d_inode->i_ino)].bg_used_dirs_count++;
     }
 
-    icache_sync(); // 同步inode缓存
-    pcache_sync(); // 同步page缓存
+    icache_sync_all(); // 同步inode缓存
+    pcache_sync_all(); // 同步page缓存
     
     ext2_sync_cache(i_parent->i_sb); // 同步缓存 
     ext2_sync_super(i_parent->i_sb); // 同步superblock到磁盘 
@@ -101,4 +102,5 @@ struct inode_ops ext2_inode_ops =
 { 
     .lookup = ext2_lookup, 
     .mkdir = ext2_mkdir, 
+    .creat = ext2_creat,
 };

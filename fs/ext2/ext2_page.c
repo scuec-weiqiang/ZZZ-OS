@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/ext2/ext2_page.c
+ * @FilePath: /ZZZ-OS/fs/ext2/ext2_page.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-01 19:39:53
- * @LastEditTime: 2025-09-14 14:23:15
+ * @LastEditTime: 2025-10-06 21:26:26
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -16,6 +16,7 @@
 int ext2_readpage(struct page *page) 
 {
     struct inode *inode = page->inode;
+    page->under_io = true;  // 表示正在进行IO操作
     u32 page_index = page->index;  // 页号
     u32 block_size = inode->i_sb->s_block_size;
     u32 blocks_per_page = VFS_PAGE_SIZE / block_size;
@@ -41,7 +42,7 @@ int ext2_readpage(struct page *page)
         // 读一个块到内存
         block_adapter_read(inode->i_sb->adap, kaddr + i * block_size, phys_block, 1);
     }
-
+    page->under_io = false;  // 标记IO完成
     page->uptodate = 1;  // 标记已加载
     return 0;
 }
@@ -50,6 +51,7 @@ int ext2_readpage(struct page *page)
 int ext2_writepage(struct page *page) 
 {
     struct inode *inode = page->inode;
+    page->under_io = true;  // 表示正在进行IO操作
     u32 page_index = page->index;  // 页号
     u32 block_size = inode->i_sb->s_block_size;
     u32 blocks_per_page = VFS_PAGE_SIZE / block_size;
@@ -74,6 +76,7 @@ int ext2_writepage(struct page *page)
         // 2. 写磁盘
         block_adapter_write(inode->i_sb->adap, kaddr + i * block_size, phys_block, 1);
     }
+    page->under_io = false;  // 标记IO完成
     page->dirty = false;  
     return 0;
 }

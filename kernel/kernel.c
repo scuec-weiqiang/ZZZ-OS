@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ-OS/kernel/kernel.c
+ * @FilePath: /vboot/home/wei/os/ZZZ-OS/kernel/kernel.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-10-01 16:28:38
+ * @LastEditTime: 2025-10-06 22:56:56
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -27,6 +27,7 @@
 #include "symbols.h"
 #include "trap_handler.h"
 #include "sched.h"
+#include "string.h"
 
 u8 is_init = 0;
 
@@ -59,11 +60,12 @@ void  init_kernel()
 
     set_hart_stack();
     systimer_init(SYS_HZ_1);
-    s_global_interrupt_enable(); 
+    // s_global_interrupt_enable(); 
     
     proc_init();
-    proc_create("/proc1.elf");
+ 
     proc_create("/proc2.elf");
+    proc_create("/proc1.elf");
     sched_init(hart);
     sched();
 }

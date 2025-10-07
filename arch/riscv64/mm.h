@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 13:05:59
- * @LastEditTime: 2025-09-23 20:15:49
+ * @LastEditTime: 2025-10-06 18:52:21
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -42,9 +42,9 @@
 #define KERNEL_MMIO_VA(pa) (KERNEL_MMIO_BASE + ((u64)(pa)))
 
 
-static inline u64 make_satp(u64 va_or_pa) 
+static inline uintptr_t make_satp(uintptr_t va_or_pa) 
 {
-    u64 pa;
+    uintptr_t pa;
 
     // 如果地址在内核高地址空间，就转成物理地址
     if (va_or_pa >= KERNEL_VA_BASE) 

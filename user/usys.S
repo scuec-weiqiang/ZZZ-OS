@@ -9,14 +9,52 @@
 */
 #include "syscall_num.h"
 
+.global print
+print:
+    li a7, SYSCALL_PRINT
+    ecall
+    ret
+    
 .global yield
 yield:
     li a7, SYSCALL_YIELD
     ecall
     ret
 
-.global print
-print:
-    li a7, SYSCALL_PRINT
+
+.global open
+open:
+    li a7, SYSCALL_OPEN
     ecall
     ret
+
+.global close
+close:
+    li a7, SYSCALL_CLOSE
+    ecall   
+    ret
+
+.global read
+read:
+    li a7, SYSCALL_READ
+    ecall
+    ret
+
+.global write
+write:
+    li a7, SYSCALL_WRITE
+    ecall   
+    ret
+
+.global creat
+creat:
+    li a7, SYSCALL_CREAT
+    ecall
+    ret
+
+.global mkdir
+mkdir:
+    li a7, SYSCALL_MKDIR
+    ecall
+    ret
+

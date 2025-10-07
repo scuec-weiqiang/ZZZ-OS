@@ -100,7 +100,7 @@ struct superblock* ext2_fill_super(struct fs_type *fs_type, struct block_device 
 
     ret = vfs_sb->s_ops->read_inode(root_inode);
     CHECK(ret>=0,"ext2_fill_super error!",goto clean;);
-    lru_cache_insert(global_inode_cache,&root_inode->i_lru_cache_node);
+    lru_insert(global_inode_cache,&root_inode->i_lru_cache_node);
     vfs_sb->s_root = root_inode;
     
 

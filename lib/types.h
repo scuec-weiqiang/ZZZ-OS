@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/lib/types.h
+ * @FilePath: /ZZZ-OS/lib/types.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 19:42:44
- * @LastEditTime: 2025-09-20 16:54:06
+ * @LastEditTime: 2025-10-04 17:08:40
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -46,5 +46,9 @@
     #define likely(x)   __builtin_expect(!!(x), 1)
     #define unlikely(x) __builtin_expect(!!(x), 0)
 #endif 
+
+#define __in
+#define __out
+#define __user
 
 #endif

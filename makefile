@@ -7,9 +7,8 @@ ARCH ?= riscv64
 BOARD?= qemu_virt
 
 DIR = 	kernel \
-		kernel/fs \
-		kernel/fs/ext2/ \
-		kernel/fs/vfs/ \
+		fs \
+		fs/ext2 \
         arch/$(ARCH)\
         arch/$(ARCH)/$(BOARD)\
 		drivers \

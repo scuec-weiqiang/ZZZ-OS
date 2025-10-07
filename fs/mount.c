@@ -48,7 +48,7 @@ int mount_rootfs()
 {
     CHECK(list_empty(&vfs_mount_points), "Root filesystem has already exists", return -1;);
     mount("ext2", "virt_disk", 0);
-    g_root_dentry = vfs_create_dentry("/");
+    g_root_dentry = create_dentry("/");
     g_root_dentry->d_inode = container_of(vfs_mount_points.prev, struct mount_point, mnt_list)->mnt_root;
     g_root_dentry->d_parent = g_root_dentry; // 根目录的父目录是它自己
     return 0;

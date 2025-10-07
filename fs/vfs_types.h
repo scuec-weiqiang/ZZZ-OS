@@ -1,9 +1,9 @@
 /**
- * @FilePath: /vboot/fs/vfs/vfs_types.h
+ * @FilePath: /ZZZ-OS/fs/vfs_types.h
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-13 16:16:30
- * @LastEditTime: 2025-09-17 23:25:04
+ * @LastEditTime: 2025-10-06 18:45:11
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -86,7 +86,8 @@ struct page
 {
     struct lru_node p_lru_cache_node;  // 全局page lru缓存链表节点
     struct hlist_node self_cache_node; // 哈希表节点，用于快速查找inode私有的page缓存
-    struct spinlock lock;              // page 锁（简化用 pthread_mutex）
+    struct spinlock lock;              // page 锁
+    int p_refcount;   // 引用计数
     // pthread_cond_t  wait;          // 等待/唤醒
     bool under_io;  // 正在读/写磁盘
     bool uptodate;  // 内容有效
@@ -114,9 +115,8 @@ struct inode_ops
     int (*lookup)(struct inode *dir, struct dentry *dentry);
     int (*mkdir)(struct inode *dir, struct dentry *dentry, u32 i_mode);
     int (*rmdir)(struct inode *dir, struct dentry *dentry);
+    int (*creat)(struct inode *dir, struct dentry *dentry, u32 i_mode);
 };
-struct inode
-{
 // 文件类型位掩码 注意这是8进制，不是16进制
 #define S_IFMT 00170000  // 文件类型位掩码（八进制）
 #define S_IFSOCK 0140000 // 套接字
@@ -162,6 +162,9 @@ struct inode
 #define S_IRWXO 0000007 // 其他用户读、写、执行权限
 
 #define S_IDEFAULT 0x01ed
+
+struct inode
+{
     // 公共字段
     u32 i_ino;
     u16 i_mode;
@@ -182,6 +185,7 @@ struct inode
     struct lru_node i_lru_cache_node; // 缓存节点，用于LRU算法管理
     u16 i_flags;                      // inode 标志位
     bool dirty;                       // 是否被修改，需要写回磁盘
+    int i_refcount;                 // 引用计数
 
     // FS 私有字段
     void *i_private; // FS 私有 inode 数据
@@ -219,15 +223,15 @@ struct dentry
     struct spinlock d_lock;
     enum dentry_state d_flags; // dentry状态标志
     struct dentry_ops *d_op;
+    int d_refcount; // 引用计数
     // void *d_private;
 };
 
 struct file_ops
 {
+    int (*open) (struct inode *, struct file *);
     ssize_t (*read)(struct inode*, void*, size_t, loff_t*);
     ssize_t (*write)(struct inode*, const void*, size_t, loff_t*);
-    // int (*truncate)(struct  inode *inode, u64 size);
-    // int (*sync)(struct  file *f); // 可选
 };
 
 struct file

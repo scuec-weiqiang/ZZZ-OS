@@ -1,9 +1,9 @@
 /**
- * @FilePath: /vboot/lib/hashtable.c
+ * @FilePath: /ZZZ-OS/lib/hashtable.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-21 14:56:47
- * @LastEditTime: 2025-09-17 23:34:47
+ * @LastEditTime: 2025-10-06 16:36:02
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -94,6 +94,7 @@ int hashtable_insert(struct hashtable *ht,struct hlist_node *node)
     struct hlist_head *bucket = &ht->buckets[hval & (ht->size-1)];
 
     hlist_add_head(bucket,node);
+    ht->node_count++;
     return 0;
 }
 
@@ -104,7 +105,8 @@ int hashtable_remove(struct hashtable *ht, struct hlist_node *node)
     CHECK(node != NULL, "Key must not be NULL", return -1;);
 
     hlist_del(node); 
-
+    ht->node_count--;
+    
     return 0; 
 }
 

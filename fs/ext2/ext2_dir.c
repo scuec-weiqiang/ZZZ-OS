@@ -1,7 +1,7 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/ext2/ext2_dir.c
+ * @FilePath: /vboot/home/wei/os/ZZZ-OS/fs/ext2/ext2_dir.c
  * * @Description: * @Author: scuec_weiqiang scuec_weiqiang@qq.com
- * @LastEditTime: 2025-09-14 00:11:09
+ * @LastEditTime: 2025-10-06 20:48:30
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * * @Copyright : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025. */
 
@@ -102,6 +102,7 @@ struct inode *ext2_find(struct inode *i_parent, const char *name)
                     return NULL;
                 }
                 inode_ret = iget(vfs_sb, entry->inode);
+                pput(page);
                 return inode_ret;
             }
             else
@@ -109,6 +110,7 @@ struct inode *ext2_find(struct inode *i_parent, const char *name)
                 offset += entry->rec_len;
             }
         }
+        pput(page);
     }
     return NULL;
 }

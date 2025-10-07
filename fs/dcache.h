@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/vfs/vfs_dcache.h
+ * @FilePath: /ZZZ-OS/fs/dcache.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-07 14:26:49
- * @LastEditTime: 2025-09-07 22:12:49
+ * @LastEditTime: 2025-10-06 18:49:35
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -14,9 +14,9 @@
 #include "vfs_types.h"
 
 extern int dcache_init();
-extern void dcache_destory();
+extern void dcache_destroy();
 
-extern struct dentry* vfs_create_dentry(const char *name);
+extern struct dentry* create_dentry(const char *name);
 
 extern struct dentry* dnew(struct dentry *parent, const char *name, struct inode *inode);
 extern struct dentry *dget(struct dentry *parent, const char *name);

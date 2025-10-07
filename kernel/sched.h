@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/kernel/sched.h
+ * @FilePath: /ZZZ-OS/kernel/sched.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-01 02:29:14
- * @LastEditTime: 2025-05-09 02:44:29
+ * @LastEditTime: 2025-10-06 18:53:21
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -36,5 +36,6 @@ extern struct scheduler scheduler[MAX_HARTS_NUM];
 
 extern void sched_init(enum hart_id hart_id);
 extern void sched();
+extern void yield();
 
 #endif

@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-30 13:50:23
- * @LastEditTime: 2025-09-23 20:40:10
+ * @LastEditTime: 2025-10-04 21:12:07
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -73,5 +73,8 @@ struct proc
 extern struct list proc_list_head[MAX_HARTS_NUM];
 extern void proc_init();
 extern struct proc* proc_create(char* path);
+extern struct proc* current_proc();
+extern int alloc_fd(struct proc* p, struct file* f);
+extern void free_fd(struct proc* p, int fd);
 
 #endif // KERNEL_PROC_H

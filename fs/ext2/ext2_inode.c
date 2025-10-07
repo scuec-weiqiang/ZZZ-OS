@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/ext2/ext2_inode.c
+ * @FilePath: /ZZZ-OS/fs/ext2/ext2_inode.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-15 15:04:59
- * @LastEditTime: 2025-09-13 16:13:06
+ * @LastEditTime: 2025-10-06 22:17:29
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -115,25 +115,9 @@ int ext2_new_inode(struct inode *inode)
     int ino = ext2_alloc_ino(vfs_sb);
     CHECK(ino > 0,"",free(inode->i_private);return -1;);
     inode->i_ino = ino;
-
-    // struct ext2_fs_info *fs_info = (struct ext2_fs_info*)vfs_sb->s_private;
-
-    // fs_info->it_cache.dirty = true;
     return ino;
 }
 
-// static hval_t inode_page_cache_hash(const struct hlist_node* node)
-// {
-//     struct page *page = container_of(node, struct page, p_lru_cache_node);
-//     return page->index % 64;
-// }
-
-// static int inode_page_cache_compare(const struct hlist_node* node_a, const struct hlist_node* node_b)
-// {
-//     struct page *a = container_of(node_a, struct page, p_lru_cache_node);
-//     struct page *b = container_of(node_b, struct page, p_lru_cache_node);
-//     return a->index - b->index;
-// }
 
 /**
 * @brief 从ext2文件系统中读取inode信息
@@ -187,6 +171,18 @@ int ext2_write_inode(struct inode *inode)
     CHECK(inode->i_private != NULL,"",return -1;);
 
     struct superblock *vfs_sb = inode->i_sb;
+    struct ext2_inode *ext2_inode = (struct ext2_inode *)inode->i_private;
+
+    // 同步公共字段
+    ext2_inode->i_size = inode->i_size;  
+    ext2_inode->i_mode = inode->i_mode;
+    ext2_inode->i_uid = inode->i_uid;
+    ext2_inode->i_gid = inode->i_gid;
+    ext2_inode->i_links_count = inode->i_nlink;
+    ext2_inode->i_atime = inode->i_atime.tv_sec;
+    ext2_inode->i_ctime = inode->i_ctime.tv_sec;
+    ext2_inode->i_mtime = inode->i_mtime.tv_sec;
+
     struct ext2_fs_info *fs_info = (struct ext2_fs_info *)vfs_sb->s_private;
     u32 group = ext2_ino_group(vfs_sb,inode->i_ino);
     u32 index = inode->i_ino % fs_info->s_inodes_per_group - 1;
@@ -198,9 +194,17 @@ int ext2_write_inode(struct inode *inode)
     // 更新缓存中的 inode
     struct ext2_inode *raw_inode = &fs_info->it_cache.it[index];
 
-    memcpy(raw_inode, inode->i_private, sizeof(struct ext2_inode));
+    memcpy(raw_inode, ext2_inode , sizeof(struct ext2_inode));
     
     fs_info->it_cache.dirty = true; // 标记为
+    return 0;
+}
+
+int ext2_sync_fs(struct superblock *sb)
+{
+    CHECK(sb != NULL && sb->s_private != NULL, "", return -1;);
+    ext2_sync_cache(sb); // 同步缓存 
+    ext2_sync_super(sb); // 同步superblock到磁盘 
     return 0;
 }
 
@@ -210,4 +214,5 @@ struct super_ops ext2_s_ops = {
     .new_private_inode = ext2_new_inode,
     .read_inode = ext2_read_inode,
     .write_inode = ext2_write_inode,
+    .sync_fs = ext2_sync_fs,
 };

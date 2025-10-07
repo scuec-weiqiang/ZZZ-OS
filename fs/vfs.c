@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/vfs/vfs.c
+ * @FilePath: /ZZZ-OS/fs/vfs.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-21 12:52:53
- * @LastEditTime: 2025-09-14 14:20:58
+ * @LastEditTime: 2025-10-06 21:31:42
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -122,6 +122,37 @@ struct dentry* rmdir(const char* path)
 return NULL;
 }
 
+struct dentry* creat(const char* path,u16 mode)
+{
+    CHECK(path != NULL, "", return NULL;);
+
+    struct dentry *d_parent = NULL;
+    struct dentry *d_child = NULL;
+
+    char* path_copy = strdup(path); // 复制路径字符串，因为path_split会修改原字符串
+
+    char* basename = (char*)malloc(strlen(path_copy) + 1);
+    char* dirname = (char*)malloc(VFS_NAME_MAX + 1);
+
+    base_dir_split(path_copy, dirname, basename);
+
+    d_parent = lookup(dirname);
+    if (d_parent == NULL) {
+
+        d_child = NULL;
+        goto exit;
+    }
+
+    d_child = dnew(d_parent, basename,NULL);
+    d_parent->d_inode->i_ops->creat(d_parent->d_inode, d_child, mode);
+
+exit:
+    free(basename);
+    free(dirname);
+    free(path_copy);
+    return d_child; 
+}
+
 struct file* open(const char *path, u32 flags)
 {
     struct dentry *dentry = lookup(path);
@@ -147,8 +178,10 @@ void close(struct file *file)
         return;
     }
 
+    dput(file->f_dentry);
+    iput(file->f_inode);
+    // pput(file->f_inode->i_mapping->cached_pages);
     free(file);
-    file = NULL;
 }
 
 ssize_t read(struct file *file, char *buf, size_t read_size) 
@@ -176,7 +209,17 @@ ssize_t write(struct file *file, const char *buf, size_t count)
     CHECK(file->f_inode != NULL, "", return -1;);
     CHECK(file->f_inode->f_ops != NULL && file->f_inode->f_ops->write != NULL, "", return -1;);
     
-    return file->f_inode->f_ops->write(file->f_inode, buf, count, &file->f_pos);
+    
+    ssize_t ret =  file->f_inode->f_ops->write(file->f_inode, buf, count, &file->f_pos);
+    if(ret >= 0)
+    {
+        return ret;
+    }
+    else
+    {
+        return -1;
+    }
+
 }
 
 

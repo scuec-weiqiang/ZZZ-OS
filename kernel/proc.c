@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-16 18:23:57
- * @LastEditTime: 2025-09-23 20:40:15
+ * @LastEditTime: 2025-10-06 20:41:26
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -111,4 +111,31 @@ struct proc* proc_create(char* path)
     return new_proc;
 }
 
+struct proc* current_proc()
+{
+    return scheduler[tp_r()].current;
+}
 
+int alloc_fd(struct proc* p, struct file* f)
+{
+    CHECK(p != NULL && f != NULL, "alloc fd failed", return -1;);
+    for(int i=0;i<256;i++)
+    {
+        if(p->fd_table[i] == NULL)
+        {
+            p->fd_table[i] = f;
+            return i;
+        }
+    }
+    return -1;
+}
+
+void free_fd(struct proc* p, int fd)
+{
+    CHECK(p != NULL && fd >=0 && fd < 256, "free fd failed", return;);
+    if(p->fd_table[fd] != NULL)
+    {
+        // close(p->fd_table[fd]);
+        p->fd_table[fd] = NULL;
+    }
+}

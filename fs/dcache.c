@@ -7,7 +7,7 @@
 #include "malloc.h"
 #include "list.h"
 
-struct dentry *vfs_create_dentry(const char *name)
+struct dentry *create_dentry(const char *name)
 {
     CHECK(name != NULL, "vfs_dentry_create: Invalid name", return NULL;);
 
@@ -97,7 +97,7 @@ static void dentry_unlock(struct dentry *dentry)
 
 int dcache_init()
 {
-    global_dentry_cache = lru_init(128, dentry_cache_free, dentry_cache_hash, dentry_cache_compare);
+    global_dentry_cache = lru_init(128, dentry_cache_free, NULL, dentry_cache_hash, dentry_cache_compare);
     CHECK(global_dentry_cache != NULL, "Failed to create dentry LRU cache", return -1;);
     return 0;
 }
@@ -112,11 +112,12 @@ struct dentry *dnew(struct dentry *parent, const char *name, struct inode *inode
     CHECK(name != NULL, "vfs_new_dentry: name is NULL", return NULL;);
     CHECK(parent == NULL || parent->d_inode != NULL, "vfs_new_dentry: Invalid parent", return NULL;);
 
-    struct dentry *dentry = vfs_create_dentry(name);
+    struct dentry *dentry = create_dentry(name);
     CHECK(dentry != NULL, "vfs_new_dentry: Failed to create dentry", return NULL;);
 
     dentry_lock(dentry);
     dentry->d_parent = parent;
+    dentry->d_refcount = 0;
     list_add(&parent->d_subdirs, &dentry->d_childs);
 
     if (inode)
@@ -128,8 +129,6 @@ struct dentry *dnew(struct dentry *parent, const char *name, struct inode *inode
         dentry->d_inode = NULL;
         // dentry->d_flags |= DCACHE_NEGATIVE;
     }
-    lru_ref(global_dentry_cache, &dentry->d_lru_cache_node);
-    lru_hash_insert(global_dentry_cache, &dentry->d_lru_cache_node);
     dentry_unlock(dentry);
 
     return dentry;
@@ -148,27 +147,42 @@ struct dentry *dget(struct dentry *parent, const char *name)
     lru_node_init(&temp_dentry.d_lru_cache_node);
 
     // 在缓存中查找
-    struct lru_node *found_node = lru_hash_lookup(global_dentry_cache, &temp_dentry.d_lru_cache_node);
+    struct lru_node *found_node = lru_lookup(global_dentry_cache, &temp_dentry.d_lru_cache_node);
     if (found_node)
     {
         struct dentry *found_dentry = container_of(found_node, struct dentry, d_lru_cache_node);
         dentry_lock(found_dentry);
-        lru_ref(global_dentry_cache, &found_dentry->d_lru_cache_node);
+        lru_get(found_node); // 从淘汰链表中移除，防止被回收
+        found_dentry->d_refcount++;
         dentry_unlock(found_dentry);
         return found_dentry;
     }
 
     // 没找到，创建一个新的dentry并插入缓存
     struct dentry *new_dentry_inode = dnew(parent, name, NULL);
+    dentry_lock(new_dentry_inode);
+    new_dentry_inode->d_refcount = 1;
     parent->d_inode->i_ops->lookup(parent->d_inode, new_dentry_inode);
+    lru_insert(global_dentry_cache, &new_dentry_inode->d_lru_cache_node);
+    lru_get(found_node); // 从淘汰链表中移除，防止被回收
+    dentry_unlock(new_dentry_inode);
     return new_dentry_inode;
 }
 
 int dput(struct dentry *dentry)
 {
     CHECK(dentry != NULL, "dput: dentry is NULL", return -1;);
+
     dentry_lock(dentry);
-    lru_unref(global_dentry_cache, &dentry->d_lru_cache_node);
+    if (dentry->d_refcount > 0)
+    {
+        dentry->d_refcount--;
+        lru_update(global_dentry_cache, &dentry->d_lru_cache_node);
+        dentry_unlock(dentry);
+        return 0;
+    }
+    lru_put(global_dentry_cache, &dentry->d_lru_cache_node);
     dentry_unlock(dentry);
+
     return 0;
 }

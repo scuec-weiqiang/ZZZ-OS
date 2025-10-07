@@ -82,7 +82,8 @@
         "proc.h": "c",
         "malloc.h": "c",
         "vm.h": "c",
-        "usys.h": "c"
+        "usys.h": "c",
+        "syscall_num.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

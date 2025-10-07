@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/vfs/vfs_pcache.h
+ * @FilePath: /ZZZ-OS/fs/pcache.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-01 17:20:59
- * @LastEditTime: 2025-09-03 22:26:47
+ * @LastEditTime: 2025-10-06 18:42:47
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -19,6 +19,7 @@ extern struct page *create_page(struct inode *inode, pgoff_t index) ;
 
 extern struct page *pget(struct inode *inode, u32 index);
 extern int pput(struct page *page);
-extern int pcache_sync();
+extern int pcache_sync(struct page *page);
+extern int pcache_sync_all();
 
 #endif

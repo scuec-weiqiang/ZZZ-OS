@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/vfs/vfs_icache.h
+ * @FilePath: /ZZZ-OS/fs/icache.h
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-28 00:53:13
- * @LastEditTime: 2025-09-07 21:25:33
+ * @LastEditTime: 2025-10-06 18:16:42
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -24,5 +24,6 @@ extern struct inode *inew(struct superblock *sb);
 extern struct inode *iget(struct superblock *sb, ino_t ino);
 extern int iput(struct inode *inode);
 
-extern int icache_sync();
+extern int icache_sync(struct inode *inode);
+extern int icache_sync_all();
 #endif

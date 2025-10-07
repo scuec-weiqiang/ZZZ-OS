@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/vfs/vfs_pcache.c
+ * @FilePath: /ZZZ-OS/fs/pcache.c
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-01 16:25:09
- * @LastEditTime: 2025-09-07 22:41:23
+ * @LastEditTime: 2025-10-06 18:59:33
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -18,12 +18,12 @@
 
 struct lru_cache *global_page_cache = NULL;
 
-static void lock(struct page *page)
+static inline void page_lock(struct page *page)
 {
     spin_lock(&(page->lock));
 }
 
-static void unlock(struct page *page)
+static inline void page_unlock(struct page *page)
 {
     spin_unlock(&(page->lock));
 }
@@ -38,15 +38,16 @@ static struct page *create_page(struct inode *inode, pgoff_t index)
 
     p->lock.lock = 0;
 
-    lock(p);
+    page_lock(p);
     p->inode = inode;
     p->index = index;
+    p->p_refcount = 0;
     p->uptodate = false;
     p->dirty = false;
     p->under_io = true; // 占位态, 表示正在加载
     lru_node_init(&p->p_lru_cache_node);
     hlist_node_init(&p->self_cache_node);
-    unlock(p);
+    page_unlock(p);
 
     return p;
 }
@@ -95,9 +96,23 @@ static int vfs_global_page_lru_free(struct lru_node *node)
     return destroy_page(page);
 }
 
+static int vfs_pcache_sync_func(struct lru_node *node)
+{
+    struct page *page = container_of(node, struct page, p_lru_cache_node);
+    page_lock(page);
+    if (page->dirty && page->inode->i_mapping->a_ops->writepage)
+    {
+        int ret = page->inode->i_mapping->a_ops->writepage(page);
+        CHECK(ret >= 0, "pcache_sync: writepage failed", );
+        page->dirty = false;
+    }
+    page_unlock(page);
+    return 0;
+}
+
 int pcache_init()
 {
-    global_page_cache = lru_init(128, vfs_global_page_lru_free, vfs_global_page_lru_hash, vfs_global_page_lru_compare);
+    global_page_cache = lru_init(128, vfs_global_page_lru_free, vfs_pcache_sync_func,vfs_global_page_lru_hash, vfs_global_page_lru_compare);
     CHECK(global_page_cache != NULL, "Failed to create page LRU cache", return -1;);
     return 0;
 }
@@ -120,6 +135,10 @@ struct page *pget(struct inode *inode, u32 index)
     if (node)
     {
         found_page = container_of(node, struct page, self_cache_node);
+        page_lock(found_page);
+        found_page->p_refcount++;
+        lru_get(&found_page->p_lru_cache_node); // 从淘汰链表中移除，防止被回收
+        page_unlock(found_page);
         return found_page;
     }
 
@@ -131,40 +150,43 @@ struct page *pget(struct inode *inode, u32 index)
 
     // 4. 插入缓存
     hashtable_insert(inode->i_mapping->page_cache, &found_page->self_cache_node);
-    lru_hash_insert(global_page_cache, &found_page->p_lru_cache_node);
-    lru_ref(global_page_cache, &found_page->p_lru_cache_node); // 引用计数+1，表示正在使用
 
+    page_lock(found_page);
+    found_page->p_refcount = 1; // 第一次引用
+    lru_insert(global_page_cache, &found_page->p_lru_cache_node);
+    lru_get(&found_page->p_lru_cache_node); 
+    page_unlock(found_page);
+    
     return found_page;
 }
 
 int pput(struct page *page)
 {
     CHECK(page != NULL, "pput: page is NULL", return -1;);
-    lock(page);
-    lru_unref(global_page_cache, &page->p_lru_cache_node); // 引用计数-1
-    if (page->p_lru_cache_node.ref_count == 0)
+    page_lock(page);
+    
+    if (page->p_refcount > 0)
     {
-        hashtable_remove(page->inode->i_mapping->page_cache, &page->self_cache_node);
+        page->p_refcount--;
+        lru_update(global_page_cache, &page->p_lru_cache_node);
+        page_unlock(page);
+        return 0;
     }
-    unlock(page);
+
+    lru_put(global_page_cache, &page->p_lru_cache_node);
+    
+    page_unlock(page);
     return 0;
 }
 
-int vfs_pcache_sync_func(struct lru_cache *cache, struct lru_node *node)
+
+int pcache_sync(struct page *page)
 {
-    struct page *page = container_of(node, struct page, p_lru_cache_node);
-    lock(page);
-    if (page->dirty && page->inode->i_mapping->a_ops->writepage)
-    {
-        int ret = page->inode->i_mapping->a_ops->writepage(page);
-        CHECK(ret >= 0, "pcache_sync: writepage failed", );
-        page->dirty = false;
-    }
-    unlock(page);
-    return 0;
+    CHECK(page != NULL, "pcache_lru_sync: pointer *page is NULL", return -1;);
+    return vfs_pcache_sync_func(&page->p_lru_cache_node);
 }
 
-int pcache_sync()
+int pcache_sync_all()
 {
     CHECK(global_page_cache != NULL, "pcache_sync: global_page_cache is NULL", return -1;);
     lru_walk(global_page_cache, vfs_pcache_sync_func);
