@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ-OS/fs/icache.c
+ * @FilePath: /vboot/home/wei/os/ZZZ-OS/fs/icache.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-28 00:51:46
- * @LastEditTime: 2025-10-06 18:57:36
+ * @LastEditTime: 2025-10-10 01:09:57
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -66,7 +66,7 @@ struct inode* create_inode(struct superblock *sb)
 
     memset(new_inode_ret, 0, sizeof(struct inode));
 
-    u32 current_time = get_current_unix_timestamp(UTC8);
+    u32 current_time = 0;
     // 初始化时间戳，这里用的是当前北京时间的时间戳，但是这里的时间可能会被实际读取的inode时间覆盖，这里先初始化一下。
     new_inode_ret->i_atime.tv_sec = current_time;
     new_inode_ret->i_atime.tv_nsec = 0;

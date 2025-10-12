@@ -3,13 +3,14 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-15 15:04:59
- * @LastEditTime: 2025-10-06 22:17:29
+ * @LastEditTime: 2025-10-09 23:17:40
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include "ext2_inode.h"
 #include "vfs_types.h"
 #include "ext2_types.h"
+#include "icache.h"
 #include "malloc.h"
 #include "check.h"
 #include "string.h"
@@ -118,7 +119,6 @@ int ext2_new_inode(struct inode *inode)
     return ino;
 }
 
-
 /**
 * @brief 从ext2文件系统中读取inode信息
 *
@@ -160,6 +160,11 @@ int ext2_read_inode(struct inode *inode_ret)
     inode_ret->i_atime.tv_sec = raw_inode->i_atime;
     inode_ret->i_ctime.tv_sec = raw_inode->i_ctime;
     inode_ret->i_mtime.tv_sec = raw_inode->i_mtime;
+
+    if(S_ISCHR(inode_ret->i_mode))
+    {
+        inode_ret->i_rdev = raw_inode->i_block[0];
+    }
   
     return inode_ret->i_ino;
 }

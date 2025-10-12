@@ -164,7 +164,7 @@ struct dentry *dget(struct dentry *parent, const char *name)
     new_dentry_inode->d_refcount = 1;
     parent->d_inode->i_ops->lookup(parent->d_inode, new_dentry_inode);
     lru_insert(global_dentry_cache, &new_dentry_inode->d_lru_cache_node);
-    lru_get(found_node); // 从淘汰链表中移除，防止被回收
+    lru_get(&new_dentry_inode->d_lru_cache_node); // 从淘汰链表中移除，防止被回收
     dentry_unlock(new_dentry_inode);
     return new_dentry_inode;
 }

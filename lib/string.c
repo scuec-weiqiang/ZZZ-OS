@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-09 02:40:09
- * @LastEditTime: 2025-10-04 21:32:49
+ * @LastEditTime: 2025-10-10 00:17:08
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -46,6 +46,15 @@ void *memcpy(void *dest, const void *src, size_t size)
     return dest;
 }
 
+void *memcpy32(void *dest, const void *src, size_t size)
+{
+    u32 *d = dest;
+    const u32 *s = src;
+    size_t words = size / 4;
+    for (size_t i = 0; i < words; i++)
+        d[i] = s[i];
+    return dest;
+}
 
 int strcpy(char *dest, const char *src)
 {

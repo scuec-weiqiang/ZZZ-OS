@@ -1,7 +1,7 @@
 /**
- * @FilePath: /vboot/home/wei/os/ZZZ-OS/fs/ext2/ext2_dir.c
+ * @FilePath: /ZZZ-OS/fs/ext2/ext2_dir.c
  * * @Description: * @Author: scuec_weiqiang scuec_weiqiang@qq.com
- * @LastEditTime: 2025-10-06 20:48:30
+ * @LastEditTime: 2025-10-10 00:54:12
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * * @Copyright : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025. */
 
@@ -31,6 +31,18 @@ static u32 ext2_mode_to_entry_type(u32 i_mode)
         return EXT2_FT_DIR;
     case EXT2_S_IFREG:
         return EXT2_FT_REG_FILE;
+    case EXT2_S_IFCHR:
+        return EXT2_FT_CHRDEV;
+    case EXT2_S_IFBLK:
+        return EXT2_FT_BLKDEV;
+    case EXT2_S_IFIFO:
+        return EXT2_FT_FIFO;
+    case EXT2_S_IFSOCK:
+        return EXT2_FT_SOCK;
+        break;
+    case EXT2_S_IFLNK:
+        return EXT2_FT_SYMLINK;
+        break;
     default:
         return EXT2_FT_UNKNOWN;
     }
@@ -139,6 +151,7 @@ int ext2_init_new_inode(struct inode *inode, u32 i_mode)
         new_inode->i_blocks = 0;
         new_inode->i_links_count = 1;
     default:
+        new_inode->i_size = 0;
         new_inode->i_block[0] = 0;
         new_inode->i_blocks = 0;
         break;
@@ -234,11 +247,9 @@ int ext2_find_slot(struct inode *i_parent, size_t name_len, dir_slot_t *slot_out
     return -1;
 }
 
-int ext2_add_entry(struct inode *i_parent, struct dentry *dentry, dir_slot_t *slot, u32 i_mode)
+int ext2_add_entry(struct inode *i_parent, struct dentry *dentry, dir_slot_t *slot, u32 i_mode)  
 {
     CHECK(i_parent != NULL, "", return -1;);
-
-    // struct superblock *vfs_sb = i_parent->i_sb;
 
     struct page *page = pget(i_parent, slot->page_index); // 获取包含空槽的页
     struct ext2_dir_entry_2 *new_entry = (struct ext2_dir_entry_2 *)(page->data + slot->offset);
@@ -252,7 +263,7 @@ int ext2_add_entry(struct inode *i_parent, struct dentry *dentry, dir_slot_t *sl
 
     page->dirty = true; // 标记页为脏
     pput(page);         // 写回缓存
-
+    pcache_sync(page); // 同步page缓存
     return dentry->d_inode->i_ino;
 }
 

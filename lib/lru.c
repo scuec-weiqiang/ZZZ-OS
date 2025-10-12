@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ-OS/lib/lru.c
+ * @FilePath: /vboot/home/wei/os/ZZZ-OS/lib/lru.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-21 14:53:56
- * @LastEditTime: 2025-10-06 22:56:05
+ * @LastEditTime: 2025-10-10 01:14:40
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -205,8 +205,15 @@ int lru_put(struct lru_cache *cache, struct lru_node *node)
 int lru_get(struct lru_node *node)
 {
     CHECK(node != NULL, "ptr <struct lru_node *node> is NULL", return -1;);
-    list_del(&node->lnode); 
-    return 0;
+    if(list_empty(&node->lnode) || node->lnode.prev == NULL || node->lnode.next == NULL)
+    {
+        return 0;
+    }
+    else
+    {
+        list_del(&node->lnode); 
+        return 0;
+    }
 }
 
 int lru_walk(struct lru_cache *cache, lru_walk_func_t func)

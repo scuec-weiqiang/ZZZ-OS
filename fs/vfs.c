@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ-OS/fs/vfs.c
+ * @FilePath: /vboot/home/wei/os/ZZZ-OS/fs/vfs.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-21 12:52:53
- * @LastEditTime: 2025-10-06 21:31:42
+ * @LastEditTime: 2025-10-10 01:30:38
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -19,6 +19,7 @@
 
 #include "icache.h"
 #include "malloc.h"
+#include "chrdev.h"
 
 struct dentry* current = NULL;
 
@@ -77,7 +78,7 @@ struct dentry* mkdir(const char* path,u16 mode)
         goto exit;
     }
 
-    d_child = dnew(d_parent, basename,NULL);
+    d_child = dget(d_parent, basename);
 
     d_parent->d_inode->i_ops->mkdir(d_parent->d_inode, d_child, mode);
 
@@ -122,6 +123,39 @@ struct dentry* rmdir(const char* path)
 return NULL;
 }
 
+struct dentry* mknod(const char* path,u16 mode,dev_t devnr)
+{
+    CHECK(path != NULL, "", return NULL;);
+
+    struct dentry *d_parent = NULL;
+    struct dentry *d_child = NULL;
+
+    char* path_copy = strdup(path); // 复制路径字符串，因为path_split会修改原字符串
+
+    char* basename = (char*)malloc(strlen(path_copy) + 1);
+    char* dirname = (char*)malloc(VFS_NAME_MAX + 1);
+
+    base_dir_split(path_copy, dirname, basename);
+
+    d_parent = lookup(dirname);
+    if (d_parent == NULL) {
+
+        d_child = NULL;
+        goto exit;
+    }
+
+    d_child = dget(d_parent, basename);
+
+    d_parent->d_inode->i_ops->mknod(d_parent->d_inode, d_child, mode, devnr);
+
+exit:
+    free(basename);
+    free(dirname);
+    free(path_copy);
+    return d_child; 
+
+}
+
 struct dentry* creat(const char* path,u16 mode)
 {
     CHECK(path != NULL, "", return NULL;);
@@ -143,7 +177,7 @@ struct dentry* creat(const char* path,u16 mode)
         goto exit;
     }
 
-    d_child = dnew(d_parent, basename,NULL);
+    d_child = dget(d_parent, basename);
     d_parent->d_inode->i_ops->creat(d_parent->d_inode, d_child, mode);
 
 exit:
@@ -159,6 +193,16 @@ struct file* open(const char *path, u32 flags)
     struct file *file = (struct file*)malloc(sizeof(struct file));
     file->f_dentry = dentry;
     file->f_inode = dentry->d_inode;
+    if(S_ISCHR(file->f_inode->i_mode))
+    {
+       file->f_inode->f_ops = get_chr_fops(file->f_inode->i_rdev);
+    }
+    if(file->f_inode->f_ops == NULL || file->f_inode->f_ops->open == NULL)
+    {
+        free(file);
+        return NULL;
+    }
+    file->f_inode->f_ops->open(dentry->d_inode,file);
     file->f_flags = flags;
     file->f_mode = dentry->d_inode->i_mode;
     file->f_pos = 0;

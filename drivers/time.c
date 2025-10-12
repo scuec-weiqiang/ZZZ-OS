@@ -1,18 +1,22 @@
 /**
- * @FilePath: /ZZZ/lib/time.c
+ * @FilePath: /ZZZ-OS/drivers/time.c
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-29 00:50:51
- * @LastEditTime: 2025-09-21 13:32:48
+ * @LastEditTime: 2025-10-10 00:59:26
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
 #include "time.h"
 #include "types.h"
 #include "platform.h"
+#include "vfs.h"
+#include "vfs_types.h"
+#include "chrdev.h"
+#include "string.h"
 
 // 固定地址的时间缓冲区
-volatile struct system_time *const system_time = (struct system_time *)REAL_TIME_BASE;
+struct system_time *system_time = NULL;
 
 // 定义每月的天数（非闰年）
 static const char days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
@@ -134,3 +138,58 @@ u32 get_current_unix_timestamp(enum UTC utc)
     adjust_timezone(&t, utc);
     return system_time_to_unix_timestamp(&t);
 }
+
+
+int timestamp_open(struct inode *inode, struct file *file)
+{
+    return 0;
+}
+
+ssize_t timestamp_read(struct inode *inode, void *buf, size_t size, loff_t *offset)
+{
+    if (inode == NULL || buf == NULL || offset == NULL)
+    {
+        return -1; // 错误处理
+    }
+
+    if (*offset >= sizeof(struct system_time))
+    {
+        *offset = 0; // 重置偏移量
+    }
+
+    size_t bytes_to_read = size;
+    if (*offset + bytes_to_read > sizeof(struct system_time))
+    {
+        bytes_to_read = sizeof(struct system_time) - *offset; // 调整读取大小
+    }
+
+    memcpy32(buf, (u8 *)system_time + *offset, bytes_to_read);
+    *offset += bytes_to_read;
+
+    return bytes_to_read;
+}
+
+
+struct file_ops timestamp_file_ops = {
+    .open = timestamp_open,
+    .read = timestamp_read,
+    .write = NULL
+};
+
+
+void timestamp_init()
+{
+    system_time = (struct system_time *)REAL_TIME_BASE;
+    dev_t devnr = 1; 
+    register_chrdev(devnr,"time", &timestamp_file_ops);
+    if(lookup("/time") == NULL)
+        mknod("/time", S_IFCHR|0644, devnr);
+}
+
+void timestamp_deinit()
+{
+    system_time = NULL;
+}
+
+
+

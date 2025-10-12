@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-13 16:16:30
- * @LastEditTime: 2025-10-06 18:45:11
+ * @LastEditTime: 2025-10-09 21:49:59
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -19,6 +19,7 @@
 
 typedef long long loff_t;
 typedef s64 ino_t;
+typedef u32 dev_t;
 
 struct superblock;
 struct inode;
@@ -45,6 +46,7 @@ struct super_ops
 {
     void *(*create_private_inode)();
     int (*new_private_inode)(struct inode *);
+
     int (*read_inode)(struct inode *);
     int (*write_inode)(struct inode *);
     int (*sync_fs)(struct superblock *);
@@ -116,6 +118,7 @@ struct inode_ops
     int (*mkdir)(struct inode *dir, struct dentry *dentry, u32 i_mode);
     int (*rmdir)(struct inode *dir, struct dentry *dentry);
     int (*creat)(struct inode *dir, struct dentry *dentry, u32 i_mode);
+    int (*mknod)(struct inode *i_parent, struct dentry *dentry, u32 i_mode, dev_t devnr);
 };
 // 文件类型位掩码 注意这是8进制，不是16进制
 #define S_IFMT 00170000  // 文件类型位掩码（八进制）
@@ -172,6 +175,7 @@ struct inode
     u16 i_uid;
     u16 i_gid;
     u32 i_nlink;        // 链接数
+    dev_t i_rdev;      // 设备号（如果是设备文件）
     timespec_t i_atime; // 最后访问时间
     timespec_t i_mtime; // 最后修改时间
     timespec_t i_ctime; // 最后状态改变时间

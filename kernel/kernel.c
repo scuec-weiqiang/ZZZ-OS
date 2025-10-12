@@ -1,9 +1,9 @@
 /**
- * @FilePath: /vboot/home/wei/os/ZZZ-OS/kernel/kernel.c
+ * @FilePath: /ZZZ-OS/kernel/kernel.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-10-06 22:56:56
+ * @LastEditTime: 2025-10-10 00:18:54
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -53,19 +53,32 @@ void  init_kernel()
 
         virt_disk_init(); 
         fs_init();
-
-        printk("now time:%x\n",get_current_unix_timestamp(UTC8));
+        timestamp_init();
+       
+        struct system_time t;
+        
+        read(open("/time",0),&t,sizeof(t));
+        printk("Current time: %d-%d-%d %d:%d:%d.%d\n", t.year, t.month, t.day, t.hour, t.minute, t.second, t.usec);
+        printk("Current time:%x\n",get_current_unix_timestamp(UTC8));
         is_init = 1;
     }
 
     set_hart_stack();
     systimer_init(SYS_HZ_1);
     // s_global_interrupt_enable(); 
+
+    // creat("/a.txt",S_IFREG|0644);
+    // mkdir("/dir1",S_IFDIR|0644);
     
-    proc_init();
+    // proc_init();
  
-    proc_create("/proc2.elf");
-    proc_create("/proc1.elf");
+    // proc_create("/proc2.elf");
+    // proc_create("/proc1.elf");
+
+    while(1)
+    {
+
+    }
     sched_init(hart);
     sched();
 }

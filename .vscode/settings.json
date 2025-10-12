@@ -83,7 +83,8 @@
         "malloc.h": "c",
         "vm.h": "c",
         "usys.h": "c",
-        "syscall_num.h": "c"
+        "syscall_num.h": "c",
+        "chrdev.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

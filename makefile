@@ -127,6 +127,7 @@ mount:
 format: 
 	mkfs.ext2 -I 128 -F ../disk.img
 
+
 .PHONY:show
 show:
 	sudo mount -o loop ../disk.img ../mount && echo "挂载成功!" || dmesg | tail -n 20

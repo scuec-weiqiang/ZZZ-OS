@@ -3,6 +3,8 @@
 
 #include "types.h"
 #include "bitmap.h"
+#include "vfs_types.h"
+
 typedef u32 ext2_ino_t;
 typedef u32 ext2_bno_t;
 
@@ -177,6 +179,10 @@ struct __attribute__((packed)) ext2_dir_entry_2
 #define EXT2_FT_UNKNOWN 0
 #define EXT2_FT_REG_FILE 1
 #define EXT2_FT_DIR 2
+#define EXT2_FT_CHRDEV 3
+#define EXT2_FT_BLKDEV 4
+#define EXT2_FT_FIFO 5
+#define EXT2_FT_SOCK 6
 #define EXT2_FT_SYMLINK 7
 
     u32 inode;    // inode号 (0表示该条目未使用)
@@ -230,5 +236,15 @@ struct ext2_fs_info
     // struct ext2_inode *inode_table;
     u64 disk_size; // 磁盘大小（字节）
 };
+
+static inline struct ext2_inode* EXT2_INODE(struct inode *inode)
+{
+    return (struct ext2_inode *)inode->i_private;
+}
+
+static inline struct ext2_fs_info* EXT2_FS_INFO(struct superblock *sb)
+{
+    return (struct ext2_fs_info *)sb->s_private;
+}
 
 #endif

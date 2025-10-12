@@ -1,9 +1,9 @@
 /**
- * @FilePath: /vboot/lib/time.h
+ * @FilePath: /ZZZ-OS/drivers/time.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-12 23:00:58
- * @LastEditTime: 2025-09-17 23:15:06
+ * @LastEditTime: 2025-10-09 22:46:14
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -61,5 +61,8 @@ enum UTC
 
 extern void get_current_time(struct system_time *t);
 extern u32 get_current_unix_timestamp(enum UTC utc); 
+
+extern void timestamp_init();
+extern u32 system_time_to_unix_timestamp(const struct system_time *t);
 
 #endif
