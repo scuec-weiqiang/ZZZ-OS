@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-10-10 00:18:54
+ * @LastEditTime: 2025-10-22 23:14:28
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -28,6 +28,7 @@
 #include "trap_handler.h"
 #include "sched.h"
 #include "string.h"
+#include "fdt.h"
 
 u8 is_init = 0;
 
@@ -54,7 +55,14 @@ void  init_kernel()
         virt_disk_init(); 
         fs_init();
         timestamp_init();
-       
+
+        struct file *dtb = open("/qemu-virt.dtb",0);
+        read(dtb,(void*)dtb_start,dtb_size);
+        close(dtb);
+
+        fdt_init(dtb_start);
+        fdt_test();
+
         struct system_time t;
         
         read(open("/time",0),&t,sizeof(t));

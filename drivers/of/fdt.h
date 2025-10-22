@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-20 20:19:54
- * @LastEditTime: 2025-10-20 22:25:34
+ * @LastEditTime: 2025-10-22 23:14:16
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -62,9 +62,10 @@ struct fdt_node {
 };
 
 
-int fdt_init(void *dtb);
+extern int fdt_init(void *dtb);
+extern void fdt_test();
 // struct fdt_node *fdt_find_node(const char *path);
-const void *fdt_get_prop(struct fdt_node *node, const char *name, int *len);
-u32 fdt_read_u32(const void *data);
-const char *fdt_read_str(const void *data);
+// const void *fdt_get_prop(struct fdt_node *node, const char *name, int *len);
+// u32 fdt_read_u32(const void *data);
+// const char *fdt_read_str(const void *data);
 #endif

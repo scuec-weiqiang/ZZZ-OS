@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-10-06 19:07:08
+ * @LastEditTime: 2025-10-22 23:07:16
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -190,6 +190,7 @@ void page_table_init(pgtbl_t *pgd)
         map_range(pgd,(uintptr_t)rodata_start,(uintptr_t)KERNEL_PA(rodata_start),(size_t)rodata_size,PTE_R);
         map_range(pgd,(uintptr_t)data_start,(uintptr_t)KERNEL_PA(data_start),(size_t)data_size,PTE_R|PTE_W);
         map_range(pgd,(uintptr_t)bss_start ,(uintptr_t)KERNEL_PA(bss_start),(size_t)bss_size,PTE_R|PTE_W);
+        map_range(pgd,(uintptr_t)dtb_start ,(uintptr_t)KERNEL_PA(dtb_start),(size_t)dtb_size,PTE_R|PTE_W);
         map_range(pgd,(uintptr_t)heap_start,(uintptr_t)KERNEL_PA(heap_start),(size_t)heap_size,PTE_R|PTE_W);
         map_range(pgd,(uintptr_t)stack_start,(uintptr_t)KERNEL_PA(stack_start),(size_t)stack_size*2,PTE_R|PTE_W);
 

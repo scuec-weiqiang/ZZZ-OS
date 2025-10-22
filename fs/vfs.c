@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-21 12:52:53
- * @LastEditTime: 2025-10-10 01:30:38
+ * @LastEditTime: 2025-10-22 22:56:52
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -197,12 +197,13 @@ struct file* open(const char *path, u32 flags)
     {
        file->f_inode->f_ops = get_chr_fops(file->f_inode->i_rdev);
     }
-    if(file->f_inode->f_ops == NULL || file->f_inode->f_ops->open == NULL)
+    if(file->f_inode->f_ops == NULL)
     {
         free(file);
         return NULL;
     }
-    file->f_inode->f_ops->open(dentry->d_inode,file);
+    if (file->f_inode->f_ops->open != NULL)
+        file->f_inode->f_ops->open(dentry->d_inode,file);
     file->f_flags = flags;
     file->f_mode = dentry->d_inode->i_mode;
     file->f_pos = 0;

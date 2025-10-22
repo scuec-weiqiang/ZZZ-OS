@@ -1,17 +1,18 @@
 /**
- * @FilePath: /ZZZ-OS/drivers/of/fdt.c
+ * @FilePath: /vboot/home/wei/os/ZZZ-OS/drivers/of/fdt.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-20 20:25:59
- * @LastEditTime: 2025-10-20 23:01:26
+ * @LastEditTime: 2025-10-22 23:10:19
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include "fdt.h"
 #include "printk.h"
 #include "string.h"
+#include "bswap.h"
 
-#define be32_to_cpu(x) __builtin_bswap32(x)
+#define be32_to_cpu(x) __bswapsi2(x)
 #define ALIGN_UP(x, align) (((x) + (align) - 1) & ~((align) - 1))
 #define ALIGN_DOWN(x, align) ((x) & ~((align) - 1))
 #define GET_NEXT_TOKEN(x,len) __PROTECT((x) = (u32*)((uintptr_t)x + ALIGN_UP(len, 4));)
@@ -31,7 +32,8 @@ int fdt_init(void *dtb)
 
     struct_blk = (char*)dtb + (size_t)be32_to_cpu(fdt->off_dt_struct);
     strings = (char*)dtb + (size_t)be32_to_cpu(fdt->off_dt_strings);
-    printf("[fdt] loaded, struct=%xu, strings=%xu\n", struct_blk, strings);
+    printk("[fdt] loaded, struct=%xu, strings=%xu\n", struct_blk, strings);
+    return 0;
 }
 /* /soc
 BEGIN_NODE "soc"
@@ -57,7 +59,6 @@ void *fdt_find_node(void* parent, const char* child_name)
             {
                 const char* name = (const char*)p;
                 printk("in node: %s\n", name);
-                int len = strlen(name);
                 depth++;
                 if(strcmp(name, child_name) == 0 && depth == 1)
                 {
@@ -86,4 +87,13 @@ void *fdt_find_node(void* parent, const char* child_name)
        
     }
     return NULL;
+}
+
+void fdt_test()
+{
+    void* cpus_node = fdt_find_node(struct_blk, "cpus");
+    if(cpus_node)
+    {
+        printk("found soc node at %xu\n", cpus_node);
+    }
 }

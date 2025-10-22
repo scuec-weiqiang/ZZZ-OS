@@ -49,6 +49,10 @@ SECTIONS
     } > RAM 
 
     . = ALIGN(4096);
+    _dtb_start = .;
+    . += 4096;
+    . = ALIGN(4096);
+    _dtb_end = .;
     _heap_start = .;
 
     _stack_end = RAM_BASE + RAM_SIZE;       /* 栈底（高地址） */
@@ -76,6 +80,10 @@ SECTIONS
 
     PROVIDE_HIDDEN(__bss_start = _bss_start);
     PROVIDE_HIDDEN(__bss_end = _bss_end);
+
+    
+    PROVIDE_HIDDEN(__dtb_start = _dtb_start);
+    PROVIDE_HIDDEN(__dtb_end = _dtb_end);
 
     PROVIDE_HIDDEN(__stack_start = _stack_start);
     PROVIDE_HIDDEN(__stack_end = _stack_end);

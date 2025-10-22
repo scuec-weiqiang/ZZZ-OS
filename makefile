@@ -12,6 +12,7 @@ DIR = 	kernel \
         arch/$(ARCH)\
         arch/$(ARCH)/$(BOARD)\
 		drivers \
+		drivers/of \
 		lib \
 
 PROJ_NAME = $(notdir $(shell pwd))
@@ -39,6 +40,7 @@ OBJ = $(patsubst %.c, $(DIR_OUT)/%.o, $(SRC_C))
 OBJ += $(patsubst %.S, $(DIR_OUT)/%.o, $(SRC_ASM))
 DEP = $(OBJ:.o=.d) 
 
+
 # 设置源文件搜索路径
 vpath %.c $(sort $(dir $(SRC_C)))
 vpath %.S $(sort $(dir $(SRC_ASM)))
@@ -47,7 +49,9 @@ vpath %.S $(sort $(dir $(SRC_ASM)))
 -include $(DEP)
 
 # 构建目标
-build: $(TARGET)
+all: $(TARGET) $(DTB)
+	$(MAKE) -C tools/dtc 
+
 
 # 链接
 $(TARGET): $(OBJ)
@@ -68,6 +72,20 @@ $(DIR_OUT)/%.o: %.s
 	@echo "\033[32m编译汇编文件: $<\033[0m"
 	$(CC) $(CFLAGS) -c $< -o $@
 
+
+DTC := ./tools/dtc/dtc
+DTS :=  arch/$(ARCH)/$(BOARD)/$(BOARD).dts
+DTB := $(DIR_OUT)/$(DTS:.dts=.dtb)
+
+$(DIR_OUT)/%.dtb: %.dts
+	$(DTC) -I dts -O dtb -o $@ $< -i .
+
+dts: $(DTB)
+
+clean-dts:
+	rm -f *.dtb
+
+
 # 清理规则
 .PHONY: clean
 clean:
@@ -75,6 +93,16 @@ clean:
 	rm -rf $(DIR_OUT)
 	@echo "清理完成"
 
+.PHONY: distclean
+distclean:
+	@echo "正在清理所有输出文件："
+	rm -rf $(DIR_OUT)
+	$(MAKE) -C tools/dtc clean
+	@echo "清理完成"
+
+.PHONY: dtc
+dtc:
+	$(MAKE) -C tools/dtc 
 
 
 #********************************************************************************
@@ -139,3 +167,4 @@ move:
 	sudo mount -o loop ../disk.img ../mount && echo "挂载成功!" || dmesg | tail -n 20
 	sudo cp $(TARGET) ../mount/
 	sudo umount ../mount
+
