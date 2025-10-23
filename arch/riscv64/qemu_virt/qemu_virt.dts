@@ -1,5 +1,7 @@
 /dts-v1/;
 / {
-    cpus {
-        };
+    compatible = "wq,qemu-virt";
+    soc {
+        compatible = "riscv";
+    };
 };

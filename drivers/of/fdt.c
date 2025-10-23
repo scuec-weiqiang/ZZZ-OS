@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-20 20:25:59
- * @LastEditTime: 2025-10-22 23:10:19
+ * @LastEditTime: 2025-10-23 14:25:34
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -89,11 +89,59 @@ void *fdt_find_node(void* parent, const char* child_name)
     return NULL;
 }
 
+void *fdt_find_property(void* node, const char* prop_name, u32* out_len)
+{
+    u32 *p = (u32*)node+1; // 跳过FDT_BEGIN_NODE
+    int depth = 0;
+
+    while (1)
+    {
+        u32 token = be32_to_cpu(*p);p++;
+        switch (token)
+        {
+            case FDT_BEGIN_NODE:
+            {
+                depth++;
+                break;
+            }
+            case FDT_PROP:
+            {
+                u32 len = be32_to_cpu(*p); p++;
+                u32 nameoff = be32_to_cpu(*p); p++;
+                if(strcmp((const char*)(strings + nameoff), prop_name) == 0 && depth == 0)
+                {
+                    if(out_len)
+                        *out_len = len;
+                    return (void*)p;
+                }
+                p += (len + 3) / 4; // 跳过属性值
+                break;
+            }
+            case FDT_NOP:
+                break;
+            case FDT_END_NODE:
+                depth--;
+                break;
+            case FDT_END:
+                return NULL;
+            default:
+                break; // 其他
+        }
+       
+    }
+    return NULL;
+}
+
 void fdt_test()
 {
-    void* cpus_node = fdt_find_node(struct_blk, "cpus");
-    if(cpus_node)
+    void* soc_node = fdt_find_node(struct_blk, "soc");
+    if(soc_node)
     {
-        printk("found soc node at %xu\n", cpus_node);
+        printk("found soc node at %xu\n", soc_node);
     }
+    int len;
+    void* compatible_prop = fdt_find_property(struct_blk, "compatible", &len);
+    printk("compatible: %s\n",(char*)compatible_prop);
+    void* soc_compatible_prop = fdt_find_property(soc_node, "compatible", &len);
+    printk("compatible: %s\n",(char*)soc_compatible_prop);
 }

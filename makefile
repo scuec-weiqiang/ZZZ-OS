@@ -49,8 +49,11 @@ vpath %.S $(sort $(dir $(SRC_ASM)))
 -include $(DEP)
 
 # 构建目标
-all: $(TARGET) $(DTB)
+all: $(TARGET)
 	$(MAKE) -C tools/dtc 
+	$(MAKE) dtbs
+
+os: $(TARGET)
 
 
 # 链接
@@ -80,9 +83,11 @@ DTB := $(DIR_OUT)/$(DTS:.dts=.dtb)
 $(DIR_OUT)/%.dtb: %.dts
 	$(DTC) -I dts -O dtb -o $@ $< -i .
 
-dts: $(DTB)
-
-clean-dts:
+dtbs: $(DTB)
+	sudo mount -o loop ../disk.img ../mount && echo "挂载成功!" || dmesg | tail -n 20
+	sudo cp $(DTB) ../mount/
+	sudo umount ../mount
+clean_dtbs:
 	rm -f *.dtb
 
 

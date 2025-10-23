@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-10-22 23:14:28
+ * @LastEditTime: 2025-10-23 14:23:08
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -56,7 +56,7 @@ void  init_kernel()
         fs_init();
         timestamp_init();
 
-        struct file *dtb = open("/qemu-virt.dtb",0);
+        struct file *dtb = open("/qemu_virt.dtb",0);
         read(dtb,(void*)dtb_start,dtb_size);
         close(dtb);
 
