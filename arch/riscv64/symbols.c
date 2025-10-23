@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 13:05:59
- * @LastEditTime: 2025-10-22 22:35:14
+ * @LastEditTime: 2025-10-23 20:05:56
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -13,7 +13,6 @@ extern char __text_start[], __text_end[];
 extern char __rodata_start[], __rodata_end[];
 extern char __data_start[], __data_end[];
 extern char __bss_start[], __bss_end[];
-extern char __dtb_start[], __dtb_end[];
 extern char __stack_start[], __stack_end[];
 extern char __heap_start[], __heap_end[];
 
@@ -30,9 +29,6 @@ uintptr_t data_size;
 uintptr_t bss_start;
 uintptr_t bss_end;
 uintptr_t bss_size;
-uintptr_t dtb_start;
-uintptr_t dtb_end;
-uintptr_t dtb_size;
 uintptr_t stack_start;
 uintptr_t stack_end;
 uintptr_t stack_size;
@@ -55,9 +51,6 @@ void symbols_init()
     bss_start = (uintptr_t)&__bss_start;
     bss_end = (uintptr_t)&__bss_end;
     bss_size = (bss_end - bss_start);
-    dtb_start = (uintptr_t)&__dtb_start;
-    dtb_end = (uintptr_t)&__dtb_end;
-    dtb_size = (dtb_end - dtb_start);
     stack_start = (uintptr_t)&__stack_start;
     stack_end = (uintptr_t)&__stack_end;
     stack_size = (stack_end - stack_start);

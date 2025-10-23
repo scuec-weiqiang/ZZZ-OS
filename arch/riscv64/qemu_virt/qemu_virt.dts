@@ -4,6 +4,11 @@
     #size-cells = <2>;
     compatible = "wq,qemu-virt";
 
+    memory {
+        device_type = "memory";
+        reg = <0x00000000 0x80000000 0x00000000 0x8000000>; /* 512MB RAM */
+    };
+
     cpus {
         compatible = "riscv";
         #address-cells = <1>;
@@ -20,6 +25,8 @@
         compatible = "simple-bus";
        
         rtc: rtc@0x50000000 {
+            #address-cells = <1>;
+            #size-cells = <1>;
             compatible = "wq,rtc";
             reg = <0x50000000 0x1c>;
         };

@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-10-23 14:23:08
+ * @LastEditTime: 2025-10-23 20:05:03
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -58,11 +58,13 @@ void  init_kernel()
         timestamp_init();
 
         struct file *dtb = open("/qemu_virt.dtb",0);
-        read(dtb,(void*)dtb_start,dtb_size);
+        char *buff = malloc(dtb->f_inode->i_size);
+        read(dtb,buff,dtb->f_inode->i_size);
         close(dtb);
 
-        fdt_init((void*)dtb_start);
+        fdt_init(buff);
         fdt_test();
+        free(buff);
 
         struct system_time t;
         
