@@ -43,23 +43,25 @@ enum fdt_token {
     FDT_NOP        = 4,
     FDT_END        = 9
 };
-/*
-BEGIN_NODE "soc"
-  PROP "compatible" = "simple-bus"
-  BEGIN_NODE "uart@2020000"
-    PROP "compatible" = "fsl,imx6ull-uart"
-    PROP "reg" = <0x02020000 0x4000>
-  END_NODE
-END_NODE
-END
-*/
+
+// 属性结构
+struct fdt_prop {
+    char *name;
+    u32 length;
+    void *value;
+    struct fdt_prop *next;
+};
 
 struct fdt_node {
-    const char *name;
-    const void *begin; // 指向FDT_BEGIN_NODE处
-    const void *props; // 指向第一个属性处
-    const void *end; // 指向FDT_END_NODE处
+    char *name;
+    char *full_path; // 全路径（如 /soc/uart@12340000）
+    struct fdt_node *parent;
+    struct fdt_node *children;
+    struct fdt_node *sibling;
+    struct fdt_prop *properties;
 };
+
+
 
 
 extern int fdt_init(void *dtb);

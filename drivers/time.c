@@ -118,7 +118,6 @@ u32 system_time_to_unix_timestamp(const struct system_time *t)
     {
         return 0; // 无效时间返回0
     }
-
     // 计算总秒数 = 天数×86400 + 小时×3600 + 分钟×60 + 秒
     u32 days = days_since_epoch(t->year, t->month, t->day);
     return days * 86400 + t->hour * 3600 + t->minute * 60 + t->second;

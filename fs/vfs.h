@@ -11,7 +11,6 @@
 #define VFS_H
 
 #include "vfs_types.h"
-#include "fs_init.h"
 
 extern struct dentry* lookup(const char* path);
 extern struct dentry* mkdir(const char* path,u16 mode);
@@ -21,7 +20,7 @@ extern struct dentry* creat(const char* path,u16 mode);
 extern void close(struct file *file);
 extern ssize_t read(struct file *file, char *buf, size_t read_size);
 extern ssize_t write(struct file *file, const char *buf, size_t count);
-
+extern struct file* open(const char *path, u32 flags);
 extern void vfs_test();
 
 #endif

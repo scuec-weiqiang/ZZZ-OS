@@ -1,7 +1,27 @@
 /dts-v1/;
 / {
+    #address-cells = <2>;
+    #size-cells = <2>;
     compatible = "wq,qemu-virt";
-    soc {
+
+    cpus {
         compatible = "riscv";
+        #address-cells = <1>;
+        #size-cells = <1>;
+        cpu0: cpu@0 {
+            compatible = "riscv";
+            clock-frequency = <10000000>;
+        };
+    };
+
+    soc {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        compatible = "simple-bus";
+       
+        rtc: rtc@0x50000000 {
+            compatible = "wq,rtc";
+            reg = <0x50000000 0x1c>;
+        };
     };
 };

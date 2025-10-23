@@ -20,6 +20,7 @@
 
 #include "interrupt.h"
 #include "vfs.h"
+#include "fs_init.h"
 #include "elf.h"
 #include "proc.h"
 #include "platform.h"
@@ -60,12 +61,12 @@ void  init_kernel()
         read(dtb,(void*)dtb_start,dtb_size);
         close(dtb);
 
-        fdt_init(dtb_start);
+        fdt_init((void*)dtb_start);
         fdt_test();
 
         struct system_time t;
         
-        read(open("/time",0),&t,sizeof(t));
+        read(open("/time",0),(char*)&t,sizeof(t));
         printk("Current time: %d-%d-%d %d:%d:%d.%d\n", t.year, t.month, t.day, t.hour, t.minute, t.second, t.usec);
         printk("Current time:%x\n",get_current_unix_timestamp(UTC8));
         is_init = 1;
