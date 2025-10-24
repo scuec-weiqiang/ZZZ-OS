@@ -5,8 +5,10 @@
     compatible = "wq,qemu-virt";
 
     memory {
+        #address-cells = <1>;
+        #size-cells = <1>;
         device_type = "memory";
-        reg = <0x00000000 0x80000000 0x00000000 0x8000000>; /* 512MB RAM */
+        reg = <0xffffffff 0xc0200000 0x0 0x8000000>; /* 512MB RAM */
     };
 
     cpus {
@@ -23,12 +25,22 @@
         #address-cells = <1>;
         #size-cells = <1>;
         compatible = "simple-bus";
+
+        plic: plic@c000000 {
+            compatible = "wq,plic";
+            reg = <0xc000000 0x4000000>;
+        };
        
-        rtc: rtc@0x50000000 {
-            #address-cells = <1>;
-            #size-cells = <1>;
+        rtc: rtc@50000000 {
             compatible = "wq,rtc";
             reg = <0x50000000 0x1c>;
         };
+
+        uart0: uart@10000000 {
+            compatible = "wq,uart";
+            reg = <0x10000000 0x8>;
+            interrupt-parent = <&plic>;
+        };
+
     };
 };
