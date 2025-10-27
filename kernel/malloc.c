@@ -74,7 +74,7 @@ void malloc_init()
         pagem_i++;
     }
     remain_mem = pages_num*PAGE_SIZE;
-    printk("malloc init success\n");
+    // printk("malloc init success\n");
 }
 
 /***************************************************************

@@ -18,6 +18,32 @@
       "-mcmodel=medany",
       "-c",
       "-o",
+      "out/kernel/elf.o",
+      "kernel/elf.c"
+    ],
+    "directory": "/home/wei/os/ZZZ-OS",
+    "file": "/home/wei/os/ZZZ-OS/kernel/elf.c",
+    "output": "/home/wei/os/ZZZ-OS/out/kernel/elf.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-fno-builtin",
+      "-g",
+      "-Wall",
+      "-Ikernel",
+      "-Ifs",
+      "-Ifs/ext2",
+      "-Iarch/riscv64",
+      "-Iarch/riscv64/qemu_virt",
+      "-Idrivers",
+      "-Idrivers/of",
+      "-Ilib",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
+      "-c",
+      "-o",
       "out/kernel/kernel.o",
       "kernel/kernel.c"
     ],
@@ -50,6 +76,32 @@
     "directory": "/home/wei/os/ZZZ-OS",
     "file": "/home/wei/os/ZZZ-OS/kernel/malloc.c",
     "output": "/home/wei/os/ZZZ-OS/out/kernel/malloc.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-fno-builtin",
+      "-g",
+      "-Wall",
+      "-Ikernel",
+      "-Ifs",
+      "-Ifs/ext2",
+      "-Iarch/riscv64",
+      "-Iarch/riscv64/qemu_virt",
+      "-Idrivers",
+      "-Idrivers/of",
+      "-Ilib",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
+      "-c",
+      "-o",
+      "out/kernel/printk.o",
+      "kernel/printk.c"
+    ],
+    "directory": "/home/wei/os/ZZZ-OS",
+    "file": "/home/wei/os/ZZZ-OS/kernel/printk.c",
+    "output": "/home/wei/os/ZZZ-OS/out/kernel/printk.o"
   },
   {
     "arguments": [
@@ -180,6 +232,58 @@
     "directory": "/home/wei/os/ZZZ-OS",
     "file": "/home/wei/os/ZZZ-OS/kernel/vm.c",
     "output": "/home/wei/os/ZZZ-OS/out/kernel/vm.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-fno-builtin",
+      "-g",
+      "-Wall",
+      "-Ikernel",
+      "-Ifs",
+      "-Ifs/ext2",
+      "-Iarch/riscv64",
+      "-Iarch/riscv64/qemu_virt",
+      "-Idrivers",
+      "-Idrivers/of",
+      "-Ilib",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
+      "-c",
+      "-o",
+      "out/fs/block_adapter.o",
+      "fs/block_adapter.c"
+    ],
+    "directory": "/home/wei/os/ZZZ-OS",
+    "file": "/home/wei/os/ZZZ-OS/fs/block_adapter.c",
+    "output": "/home/wei/os/ZZZ-OS/out/fs/block_adapter.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-fno-builtin",
+      "-g",
+      "-Wall",
+      "-Ikernel",
+      "-Ifs",
+      "-Ifs/ext2",
+      "-Iarch/riscv64",
+      "-Iarch/riscv64/qemu_virt",
+      "-Idrivers",
+      "-Idrivers/of",
+      "-Ilib",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
+      "-c",
+      "-o",
+      "out/fs/block_device.o",
+      "fs/block_device.c"
+    ],
+    "directory": "/home/wei/os/ZZZ-OS",
+    "file": "/home/wei/os/ZZZ-OS/fs/block_device.c",
+    "output": "/home/wei/os/ZZZ-OS/out/fs/block_device.o"
   },
   {
     "arguments": [
@@ -336,6 +440,32 @@
     "directory": "/home/wei/os/ZZZ-OS",
     "file": "/home/wei/os/ZZZ-OS/fs/mount.c",
     "output": "/home/wei/os/ZZZ-OS/out/fs/mount.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-fno-builtin",
+      "-g",
+      "-Wall",
+      "-Ikernel",
+      "-Ifs",
+      "-Ifs/ext2",
+      "-Iarch/riscv64",
+      "-Iarch/riscv64/qemu_virt",
+      "-Idrivers",
+      "-Idrivers/of",
+      "-Ilib",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
+      "-c",
+      "-o",
+      "out/fs/path.o",
+      "fs/path.c"
+    ],
+    "directory": "/home/wei/os/ZZZ-OS",
+    "file": "/home/wei/os/ZZZ-OS/fs/path.c",
+    "output": "/home/wei/os/ZZZ-OS/out/fs/path.o"
   },
   {
     "arguments": [
@@ -668,12 +798,64 @@
       "-mcmodel=medany",
       "-c",
       "-o",
+      "out/arch/riscv64/qemu_virt/systimer.o",
+      "arch/riscv64/qemu_virt/systimer.c"
+    ],
+    "directory": "/home/wei/os/ZZZ-OS",
+    "file": "/home/wei/os/ZZZ-OS/arch/riscv64/qemu_virt/systimer.c",
+    "output": "/home/wei/os/ZZZ-OS/out/arch/riscv64/qemu_virt/systimer.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-fno-builtin",
+      "-g",
+      "-Wall",
+      "-Ikernel",
+      "-Ifs",
+      "-Ifs/ext2",
+      "-Iarch/riscv64",
+      "-Iarch/riscv64/qemu_virt",
+      "-Idrivers",
+      "-Idrivers/of",
+      "-Ilib",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
+      "-c",
+      "-o",
       "out/arch/riscv64/qemu_virt/trap_handler.o",
       "arch/riscv64/qemu_virt/trap_handler.c"
     ],
     "directory": "/home/wei/os/ZZZ-OS",
     "file": "/home/wei/os/ZZZ-OS/arch/riscv64/qemu_virt/trap_handler.c",
     "output": "/home/wei/os/ZZZ-OS/out/arch/riscv64/qemu_virt/trap_handler.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-fno-builtin",
+      "-g",
+      "-Wall",
+      "-Ikernel",
+      "-Ifs",
+      "-Ifs/ext2",
+      "-Iarch/riscv64",
+      "-Iarch/riscv64/qemu_virt",
+      "-Idrivers",
+      "-Idrivers/of",
+      "-Ilib",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
+      "-c",
+      "-o",
+      "out/arch/riscv64/qemu_virt/virtio.o",
+      "arch/riscv64/qemu_virt/virtio.c"
+    ],
+    "directory": "/home/wei/os/ZZZ-OS",
+    "file": "/home/wei/os/ZZZ-OS/arch/riscv64/qemu_virt/virtio.c",
+    "output": "/home/wei/os/ZZZ-OS/out/arch/riscv64/qemu_virt/virtio.o"
   },
   {
     "arguments": [
@@ -720,6 +902,58 @@
       "-mcmodel=medany",
       "-c",
       "-o",
+      "out/drivers/uart.o",
+      "drivers/uart.c"
+    ],
+    "directory": "/home/wei/os/ZZZ-OS",
+    "file": "/home/wei/os/ZZZ-OS/drivers/uart.c",
+    "output": "/home/wei/os/ZZZ-OS/out/drivers/uart.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-fno-builtin",
+      "-g",
+      "-Wall",
+      "-Ikernel",
+      "-Ifs",
+      "-Ifs/ext2",
+      "-Iarch/riscv64",
+      "-Iarch/riscv64/qemu_virt",
+      "-Idrivers",
+      "-Idrivers/of",
+      "-Ilib",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
+      "-c",
+      "-o",
+      "out/drivers/virt_disk.o",
+      "drivers/virt_disk.c"
+    ],
+    "directory": "/home/wei/os/ZZZ-OS",
+    "file": "/home/wei/os/ZZZ-OS/drivers/virt_disk.c",
+    "output": "/home/wei/os/ZZZ-OS/out/drivers/virt_disk.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-fno-builtin",
+      "-g",
+      "-Wall",
+      "-Ikernel",
+      "-Ifs",
+      "-Ifs/ext2",
+      "-Iarch/riscv64",
+      "-Iarch/riscv64/qemu_virt",
+      "-Idrivers",
+      "-Idrivers/of",
+      "-Ilib",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
+      "-c",
+      "-o",
       "out/drivers/of/fdt.o",
       "drivers/of/fdt.c"
     ],
@@ -729,167 +963,132 @@
   },
   {
     "arguments": [
-      "/usr/bin/gcc",
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-fno-builtin",
+      "-g",
       "-Wall",
-      "-O2",
-      "-I.",
+      "-Ikernel",
+      "-Ifs",
+      "-Ifs/ext2",
+      "-Iarch/riscv64",
+      "-Iarch/riscv64/qemu_virt",
+      "-Idrivers",
+      "-Idrivers/of",
+      "-Ilib",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
       "-c",
       "-o",
-      "dtc.o",
-      "dtc.c"
+      "out/lib/bitmap.o",
+      "lib/bitmap.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS/tools/dtc",
-    "file": "/home/wei/os/ZZZ-OS/tools/dtc/dtc.c",
-    "output": "/home/wei/os/ZZZ-OS/tools/dtc/dtc.o"
+    "directory": "/home/wei/os/ZZZ-OS",
+    "file": "/home/wei/os/ZZZ-OS/lib/bitmap.c",
+    "output": "/home/wei/os/ZZZ-OS/out/lib/bitmap.o"
   },
   {
     "arguments": [
-      "/usr/bin/gcc",
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-fno-builtin",
+      "-g",
       "-Wall",
-      "-O2",
-      "-I.",
+      "-Ikernel",
+      "-Ifs",
+      "-Ifs/ext2",
+      "-Iarch/riscv64",
+      "-Iarch/riscv64/qemu_virt",
+      "-Idrivers",
+      "-Idrivers/of",
+      "-Ilib",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
       "-c",
       "-o",
-      "flattree.o",
-      "flattree.c"
+      "out/lib/hashtable.o",
+      "lib/hashtable.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS/tools/dtc",
-    "file": "/home/wei/os/ZZZ-OS/tools/dtc/flattree.c",
-    "output": "/home/wei/os/ZZZ-OS/tools/dtc/flattree.o"
+    "directory": "/home/wei/os/ZZZ-OS",
+    "file": "/home/wei/os/ZZZ-OS/lib/hashtable.c",
+    "output": "/home/wei/os/ZZZ-OS/out/lib/hashtable.o"
   },
   {
     "arguments": [
-      "/usr/bin/gcc",
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-fno-builtin",
+      "-g",
       "-Wall",
-      "-O2",
-      "-I.",
+      "-Ikernel",
+      "-Ifs",
+      "-Ifs/ext2",
+      "-Iarch/riscv64",
+      "-Iarch/riscv64/qemu_virt",
+      "-Idrivers",
+      "-Idrivers/of",
+      "-Ilib",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
       "-c",
       "-o",
-      "fstree.o",
-      "fstree.c"
+      "out/lib/lru.o",
+      "lib/lru.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS/tools/dtc",
-    "file": "/home/wei/os/ZZZ-OS/tools/dtc/fstree.c",
-    "output": "/home/wei/os/ZZZ-OS/tools/dtc/fstree.o"
+    "directory": "/home/wei/os/ZZZ-OS",
+    "file": "/home/wei/os/ZZZ-OS/lib/lru.c",
+    "output": "/home/wei/os/ZZZ-OS/out/lib/lru.o"
   },
   {
     "arguments": [
-      "/usr/bin/gcc",
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-fno-builtin",
+      "-g",
       "-Wall",
-      "-O2",
-      "-I.",
+      "-Ikernel",
+      "-Ifs",
+      "-Ifs/ext2",
+      "-Iarch/riscv64",
+      "-Iarch/riscv64/qemu_virt",
+      "-Idrivers",
+      "-Idrivers/of",
+      "-Ilib",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
       "-c",
       "-o",
-      "livetree.o",
-      "livetree.c"
+      "out/lib/string.o",
+      "lib/string.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS/tools/dtc",
-    "file": "/home/wei/os/ZZZ-OS/tools/dtc/livetree.c",
-    "output": "/home/wei/os/ZZZ-OS/tools/dtc/livetree.o"
+    "directory": "/home/wei/os/ZZZ-OS",
+    "file": "/home/wei/os/ZZZ-OS/lib/string.c",
+    "output": "/home/wei/os/ZZZ-OS/out/lib/string.o"
   },
   {
     "arguments": [
-      "/usr/bin/gcc",
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-fno-builtin",
+      "-g",
       "-Wall",
-      "-O2",
-      "-I.",
+      "-Ikernel",
+      "-Ifs",
+      "-Ifs/ext2",
+      "-Iarch/riscv64",
+      "-Iarch/riscv64/qemu_virt",
+      "-Idrivers",
+      "-Idrivers/of",
+      "-Ilib",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-mcmodel=medany",
       "-c",
       "-o",
-      "srcpos.o",
-      "srcpos.c"
+      "out/lib/utils.o",
+      "lib/utils.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS/tools/dtc",
-    "file": "/home/wei/os/ZZZ-OS/tools/dtc/srcpos.c",
-    "output": "/home/wei/os/ZZZ-OS/tools/dtc/srcpos.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/gcc",
-      "-Wall",
-      "-O2",
-      "-I.",
-      "-c",
-      "-o",
-      "treesource.o",
-      "treesource.c"
-    ],
-    "directory": "/home/wei/os/ZZZ-OS/tools/dtc",
-    "file": "/home/wei/os/ZZZ-OS/tools/dtc/treesource.c",
-    "output": "/home/wei/os/ZZZ-OS/tools/dtc/treesource.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/gcc",
-      "-Wall",
-      "-O2",
-      "-I.",
-      "-c",
-      "-o",
-      "util.o",
-      "util.c"
-    ],
-    "directory": "/home/wei/os/ZZZ-OS/tools/dtc",
-    "file": "/home/wei/os/ZZZ-OS/tools/dtc/util.c",
-    "output": "/home/wei/os/ZZZ-OS/tools/dtc/util.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/gcc",
-      "-Wall",
-      "-O2",
-      "-I.",
-      "-c",
-      "-o",
-      "dtc-lexer.o",
-      "dtc-lexer.c"
-    ],
-    "directory": "/home/wei/os/ZZZ-OS/tools/dtc",
-    "file": "/home/wei/os/ZZZ-OS/tools/dtc/dtc-lexer.c",
-    "output": "/home/wei/os/ZZZ-OS/tools/dtc/dtc-lexer.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/gcc",
-      "-Wall",
-      "-O2",
-      "-I.",
-      "-c",
-      "-o",
-      "dtc-parser.tab.o",
-      "dtc-parser.tab.c"
-    ],
-    "directory": "/home/wei/os/ZZZ-OS/tools/dtc",
-    "file": "/home/wei/os/ZZZ-OS/tools/dtc/dtc-parser.tab.c",
-    "output": "/home/wei/os/ZZZ-OS/tools/dtc/dtc-parser.tab.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/gcc",
-      "-Wall",
-      "-O2",
-      "-I.",
-      "-c",
-      "-o",
-      "checks.o",
-      "checks.c"
-    ],
-    "directory": "/home/wei/os/ZZZ-OS/tools/dtc",
-    "file": "/home/wei/os/ZZZ-OS/tools/dtc/checks.c",
-    "output": "/home/wei/os/ZZZ-OS/tools/dtc/checks.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/gcc",
-      "-Wall",
-      "-O2",
-      "-I.",
-      "-c",
-      "-o",
-      "data.o",
-      "data.c"
-    ],
-    "directory": "/home/wei/os/ZZZ-OS/tools/dtc",
-    "file": "/home/wei/os/ZZZ-OS/tools/dtc/data.c",
-    "output": "/home/wei/os/ZZZ-OS/tools/dtc/data.o"
+    "directory": "/home/wei/os/ZZZ-OS",
+    "file": "/home/wei/os/ZZZ-OS/lib/utils.c",
+    "output": "/home/wei/os/ZZZ-OS/out/lib/utils.o"
   }
 ]

@@ -14,7 +14,6 @@
 #include "string.h"
 #include "path.h"
 
-#define be32_to_cpu(x) __bswapsi2(x)
 #define ALIGN_UP(x, align) (((x) + (align) - 1) & ~((align) - 1))
 #define ALIGN_DOWN(x, align) ((x) & ~((align) - 1))
 #define GET_NEXT_TOKEN(x, len)                                                                                                 \
@@ -126,7 +125,7 @@ static int add_fdt_child(struct fdt_node *parent, struct fdt_node *child) {
 static struct fdt_node *parse_struct_block(const char *struct_block,char *strings) {
     struct fdt_node *root = NULL;
     struct fdt_node *curr = NULL;
-    u32 *p = (u32 *)struct_block; // 跳过FDT_BEGIN_NODE
+    u32 *p = (u32 *)struct_block; 
 
     while (1) {
         u32 token = be32_to_cpu(*p);
@@ -136,10 +135,11 @@ static struct fdt_node *parse_struct_block(const char *struct_block,char *string
                 const char *name = (const char *)p;p++;
                 printk("in node: %s\n", name);
                 struct fdt_node *new_node = (struct fdt_node *)new_fdt_node(name, curr);
-                if (root == NULL)
+                if (root == NULL) {
                     root = new_node;
-                else 
+                }else { 
                     add_fdt_child(curr, new_node);
+                }
                 curr = new_node;
                 break;
             }
@@ -151,7 +151,7 @@ static struct fdt_node *parse_struct_block(const char *struct_block,char *string
                 if (strcmp(new_prop->name, "phandle")==0) {
                     u32 phandle = be32_to_cpu(*(u32*)new_prop->value); 
                     if (phandle < PHANDLE_MAX -1) {
-                        phandle_table[phandle] = curr; // 只存一定数值的phandle，超出的要用的时候再解析
+                        phandle_table[phandle] = curr; // 只存一定数值的phandle，超出的部分等到要用的时候再解析
                     }
                 } 
                 add_fdt_prop(curr, new_prop);
@@ -266,6 +266,15 @@ u32 fdt_get_phandle(const struct fdt_node *node) {
     return 0;
 }
 
+u32* fdt_get_reg(const struct fdt_node *node) {
+    if (!node) return 0;
+    struct fdt_prop *prop = fdt_get_prop_by_name(node, "reg");
+    if (prop) {
+        return  (u32 *)prop->value;
+    }
+    return 0;
+}
+
 struct fdt_node* fdt_find_node_by_phandle(u32 phandle) {
     if (!root_node) return NULL;
 
@@ -302,7 +311,7 @@ struct fdt_node* fdt_find_node_by_phandle(u32 phandle) {
 
 u32 fdt_get_address_cells(const struct fdt_node *node) {
     if (!node) return -1;
-    struct fdt_node *current = (struct fdt_node *)node;
+    struct fdt_node *current = (struct fdt_node *)node->parent;
     struct fdt_prop *prop = NULL;
 
     while (current) {
@@ -318,7 +327,7 @@ u32 fdt_get_address_cells(const struct fdt_node *node) {
 
 u32 fdt_get_size_cells(const struct fdt_node *node) {
     if (!node) return -1;
-    struct fdt_node *current = (struct fdt_node *)node;
+    struct fdt_node *current = (struct fdt_node *)node->parent;
     struct fdt_prop *prop = NULL;
 
     while (current) {
@@ -338,7 +347,6 @@ int fdt_get_memory(uintptr_t *base, uintptr_t *size) {
         return -1;
     }
 
-    
     u32 address_cells = fdt_get_address_cells(memory_node);
     u32 size_cells = fdt_get_size_cells(memory_node);
     struct fdt_prop *reg_prop = fdt_get_prop_by_name(memory_node, "reg");
@@ -350,17 +358,17 @@ int fdt_get_memory(uintptr_t *base, uintptr_t *size) {
     printk("#size-cells = %d\n",size_cells);
     u32 *reg_values = (u32 *)reg_prop->value;
 
-    uintptr_t addr = 0;
+    uintptr_t bs = 0;
     uintptr_t sz = 0;
 
     for (u32 i = 0; i < address_cells; i++) {
-        addr = (addr << 32) | be32_to_cpu(reg_values[i]);
+        bs = (bs << 32) | be32_to_cpu(reg_values[i]);
     }
     for (u32 i = 0; i < size_cells; i++) {
         sz = (sz << 32) | be32_to_cpu(reg_values[address_cells + i]);
     }
 
-    *base = addr;
+    *base = bs;
     *size = sz;
 
     return 0;

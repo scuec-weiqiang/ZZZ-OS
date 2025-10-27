@@ -9,8 +9,8 @@
 */
 #ifndef UART_H
 #define UART_H
-
-extern void uart_init();
+extern void uart_reg_init();
+extern int uart_init();
 extern void uart_putc(char c);
 extern void uart_puts(char *s);
 extern char uart_getc();

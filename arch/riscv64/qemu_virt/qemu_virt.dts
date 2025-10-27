@@ -31,16 +31,19 @@
             reg = <0xc000000 0x4000000>;
         };
        
-        rtc: rtc@50000000 {
-            compatible = "wq,rtc";
+        time: time@50000000 {
+            compatible = "wq,time";
             reg = <0x50000000 0x1c>;
         };
-
+  
         uart0: uart@10000000 {
             compatible = "wq,uart";
             reg = <0x10000000 0x8>;
             interrupt-parent = <&plic>;
+            interrupts = <10>;
         };
+
+
 
     };
 };

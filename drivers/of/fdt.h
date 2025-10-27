@@ -64,4 +64,13 @@ struct fdt_node {
 extern int fdt_init(void *dtb);
 extern void fdt_test();
 
+extern struct fdt_node* fdt_find_node_by_path(const char* path);
+extern struct fdt_node* fdt_find_node_by_compatible(const char* compatible_prop);
+extern struct fdt_prop* fdt_get_prop_by_name(const struct fdt_node* node, const char* name);
+extern struct fdt_node* fdt_find_node_by_phandle(u32 phandle);
+extern u32 fdt_get_address_cells(const struct fdt_node *node);
+extern u32 fdt_get_size_cells(const struct fdt_node *node);
+extern u32* fdt_get_reg(const struct fdt_node *node);
+extern int fdt_get_memory(uintptr_t *base, uintptr_t *size);
+extern struct fdt_node* fdt_get_interrupt_parent(const struct fdt_node *node);
 #endif

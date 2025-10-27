@@ -62,7 +62,7 @@ enum UTC
 extern void get_current_time(struct system_time *t);
 extern u32 get_current_unix_timestamp(enum UTC utc); 
 
-extern void timestamp_init();
+extern int timestamp_init();
 extern u32 system_time_to_unix_timestamp(const struct system_time *t);
 
 #endif

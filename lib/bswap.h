@@ -22,4 +22,7 @@ static inline unsigned long long __bswapdi2(unsigned long long x) {
            ((x >> 40) & 0x000000000000FF00) | (x >> 56);
 }
 
+#define be32_to_cpu(x) __bswapsi2(x)
+#define be64_to_cpu(x) __bswapdi2(x)
+
 #endif

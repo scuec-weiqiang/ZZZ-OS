@@ -20,6 +20,7 @@ struct chrdev
 };
 
 extern int register_chrdev(dev_t major, const char *name, const struct file_ops *fops);
+extern int unregister_chrdev(dev_t major, const char *name);
 extern struct file_ops *get_chr_fops(dev_t major);
 
 #endif /* _CHRDEV_H */

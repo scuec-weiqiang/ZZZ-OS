@@ -214,7 +214,7 @@ void kernel_page_table_init()
     //设置satp寄存器
     asm volatile("csrw satp,%0"::"r"(satp_val));
     asm volatile("sfence.vma zero, zero");
-    printk("kernel page table init success!\n");
+    // printk("kernel page table init success!\n");
 }
 
 int copyin(pgtbl_t *pagetable, char *dst, uintptr_t src_va, size_t len)

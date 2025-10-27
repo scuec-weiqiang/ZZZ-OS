@@ -8,12 +8,15 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
 #include "time.h"
+#include "bswap.h"
 #include "types.h"
 #include "platform.h"
 #include "vfs.h"
 #include "vfs_types.h"
 #include "chrdev.h"
 #include "string.h"
+#include "fdt.h"
+#include "printk.h"
 
 // 固定地址的时间缓冲区
 struct system_time *system_time = NULL;
@@ -22,8 +25,7 @@ struct system_time *system_time = NULL;
 static const char days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 // 判断是否为闰年
-static int is_leap_year(u32 year)
-{
+static int is_leap_year(u32 year) {
     if (year % 4 != 0)
         return 0;
     if (year % 100 != 0)
@@ -34,23 +36,19 @@ static int is_leap_year(u32 year)
 }
 
 // 计算从1970年到指定年份的总天数
-static u32 days_since_epoch(u32 year, u32 month, u32 day)
-{
+static u32 days_since_epoch(u32 year, u32 month, u32 day) {
     u32 days = 0;
 
     // 累加完整年份的天数
-    for (u32 y = 1970; y < year; y++)
-    {
+    for (u32 y = 1970; y < year; y++) {
         days += is_leap_year(y) ? 366 : 365;
     }
 
     // 累加当月之前的月份天数
-    for (u32 m = 1; m < month; m++)
-    {
+    for (u32 m = 1; m < month; m++) {
         days += days_in_month[m - 1];
         // 闰年2月加1天
-        if (m == 2 && is_leap_year(year))
-        {
+        if (m == 2 && is_leap_year(year)) {
             days += 1;
         }
     }
@@ -61,13 +59,11 @@ static u32 days_since_epoch(u32 year, u32 month, u32 day)
     return days;
 }
 
-void adjust_timezone(struct system_time *t, enum UTC utc)
-{
+void adjust_timezone(struct system_time *t, enum UTC utc) {
     int hour = (int)t->hour - utc;
     
     // 处理小时为负的情况（向前调整日期）
-    while (hour < 0)
-    {
+    while (hour < 0) {
         hour += 24;
         // 借一天
         t->day--;
@@ -109,8 +105,7 @@ void adjust_timezone(struct system_time *t, enum UTC utc)
 }
 
 // 将system_time_t转换为Unix时间戳（自1970-01-01 00:00:00 UTC以来的秒数）
-u32 system_time_to_unix_timestamp(const struct system_time *t)
-{
+u32 system_time_to_unix_timestamp(const struct system_time *t) {
     // 基本校验
     if (t->year < 1970 || t->month < 1 || t->month > 12 ||
         t->day < 1 || t->day > 31 || t->hour > 23 ||
@@ -124,14 +119,12 @@ u32 system_time_to_unix_timestamp(const struct system_time *t)
 }
 
 // 读取当前时间的函数
-void get_current_time(struct system_time *t)
-{
+void get_current_time(struct system_time *t) {
     // 简单的内存读取操作
     *t = *system_time;
 }
 
-u32 get_current_unix_timestamp(enum UTC utc)
-{
+u32 get_current_unix_timestamp(enum UTC utc) {
     struct system_time t;
     get_current_time(&t);
     adjust_timezone(&t, utc);
@@ -139,13 +132,11 @@ u32 get_current_unix_timestamp(enum UTC utc)
 }
 
 
-int timestamp_open(struct inode *inode, struct file *file)
-{
+static int timestamp_open(struct inode *inode, struct file *file) {
     return 0;
 }
 
-ssize_t timestamp_read(struct inode *inode, void *buf, size_t size, loff_t *offset)
-{
+static ssize_t timestamp_read(struct inode *inode, void *buf, size_t size, loff_t *offset) {
     if (inode == NULL || buf == NULL || offset == NULL)
     {
         return -1; // 错误处理
@@ -168,25 +159,34 @@ ssize_t timestamp_read(struct inode *inode, void *buf, size_t size, loff_t *offs
     return bytes_to_read;
 }
 
-
-struct file_ops timestamp_file_ops = {
+static struct file_ops timestamp_file_ops = {
     .open = timestamp_open,
     .read = timestamp_read,
     .write = NULL
 };
 
 
-void timestamp_init()
-{
-    system_time = (struct system_time *)REAL_TIME_BASE;
+int timestamp_init() {
+    struct fdt_node *node =  fdt_find_node_by_compatible("wq,time");
+    if (!node) {
+        printk("time_init: can not find compatible wq,time\n");
+        return -1;
+    }
+
+    u32 *reg = fdt_get_reg(node);
+    
+    system_time = (struct system_time *)(uintptr_t)be32_to_cpu(*(unsigned int*)reg);
     dev_t devnr = 1; 
     register_chrdev(devnr,"time", &timestamp_file_ops);
     if(lookup("/time") == NULL)
         mknod("/time", S_IFCHR|0644, devnr);
 }
 
-void timestamp_deinit()
-{
+void timestamp_deinit() {
+    unregister_chrdev(1, "time");
+    if (lookup("/time")) {
+        
+    }
     system_time = NULL;
 }
 
