@@ -30,12 +30,12 @@ pgtbl_t* create_pgtbl()
     return pgd;
 }
 
-void create_pte(pte_t *pte, uintptr_t pa, u64 flags)
+void create_pte(pte_t *pte, uintptr_t pa, uint64_t flags)
 {
     *pte = PA2PTE(pa) | flags | PTE_V;
 }
 
-pgtbl_t* get_child_pgtbl(pgtbl_t *parent_pgd, u64 vpn, bool create)
+pgtbl_t* get_child_pgtbl(pgtbl_t *parent_pgd, uint64_t vpn, bool create)
 {
     if(parent_pgd == NULL) return NULL;
 
@@ -70,9 +70,9 @@ uintptr_t map_walk(pgtbl_t *pgd, uintptr_t va)
 {
     CHECK(pgd != NULL, "pgd is NULL", return 0;);
 
-    u64 vpn2 = (va >> 30) & 0x1ff;
-    u64 vpn1 = (va >> 21) & 0x1ff;
-    u64 vpn0 = (va >> 12) & 0x1ff;
+    uint64_t vpn2 = (va >> 30) & 0x1ff;
+    uint64_t vpn1 = (va >> 21) & 0x1ff;
+    uint64_t vpn0 = (va >> 12) & 0x1ff;
 
     va = ALIGN_DOWN(va, PAGE_SIZE);
 
@@ -94,15 +94,15 @@ uintptr_t map_walk(pgtbl_t *pgd, uintptr_t va)
     return l0;
 }
 
-int mmap(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, enum pgt_size page_size, u64 flags)
+int mmap(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, enum pgt_size page_size, uint64_t flags)
 {
     CHECK(pgd != NULL, "pgd is NULL", return -1;);
     CHECK(vaddr % page_size == 0, "vaddr is not page aligned", return -1;);
     CHECK(paddr % page_size == 0, "paddr is not page aligned", return -1;);
 
-    u64 vpn2 = (vaddr >> 30) & 0x1ff;
-    u64 vpn1 = (vaddr >> 21) & 0x1ff;
-    u64 vpn0 = (vaddr >> 12) & 0x1ff;
+    uint64_t vpn2 = (vaddr >> 30) & 0x1ff;
+    uint64_t vpn1 = (vaddr >> 21) & 0x1ff;
+    uint64_t vpn0 = (vaddr >> 12) & 0x1ff;
 
     switch (page_size)
     {
@@ -140,7 +140,7 @@ int mmap(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, enum pgt_size page_size
     return 0;
 }
 
-int map_range(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, size_t size, u64 flags)
+int map_range(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, size_t size, uint64_t flags)
 {
     CHECK(pgd != NULL, "pgd is NULL", return -1;);
     CHECK(vaddr % PAGE_SIZE_4K == 0, "vaddr is not page aligned", return -1;);

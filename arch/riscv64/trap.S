@@ -49,10 +49,8 @@ kernel_trap_entry:
     csrr t0, stval             
     STORE t0, 35*REG_SIZE(sp)    
    
-    csrr a0, sepc
-    csrr a1, scause
-    li a3, REG_SIZE
-    add a2, sp, a3
+    li a1, REG_SIZE
+    add a0, sp, a1
     call trap_handler
     csrw sepc, a0
 

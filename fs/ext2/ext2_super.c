@@ -25,18 +25,18 @@ struct superblock* ext2_fill_super(struct fs_type *fs_type, struct block_device 
     struct ext2_superblock *sb = malloc(EXT2_SUPERBLOCK_SIZE);
     CHECK(sb!=NULL,"ext2_fill_super error: malloc memory failed!",goto clean;);
     
-    u64 read_cnt = (EXT2_SUPERBLOCK_SIZE + bdev->sector_size -1)/bdev->sector_size;
-    u64 read_pos = EXT2_SUPERBLOCK_OFFSET / bdev->sector_size; 
-    for(u64 i=0;i<read_cnt;i++)
+    uint64_t read_cnt = (EXT2_SUPERBLOCK_SIZE + bdev->sector_size -1)/bdev->sector_size;
+    uint64_t read_pos = EXT2_SUPERBLOCK_OFFSET / bdev->sector_size; 
+    for(uint64_t i=0;i<read_cnt;i++)
     {
-        ret =  bdev->read((u8*)sb+bdev->sector_size*i,read_pos+i); 
+        ret =  bdev->read((uint8_t*)sb+bdev->sector_size*i,read_pos+i); 
         CHECK(ret>=0,"ext2_fill_super error: read disk failed!",goto clean;);
     }
 
     CHECK(sb->s_magic==EXT2_SUPER_MAGIC,"ext2_fill_super error: not ext2 filesystem!",goto clean;);
     
     // 获得文件系统块大小
-    u32 block_size = 1024<<sb->s_log_block_size;
+    uint32_t block_size = 1024<<sb->s_log_block_size;
 
     // 注册该文件系统对应的块适配器
     ret = block_adapter_register(fs_type->name,bdev->name,block_size);
@@ -45,9 +45,9 @@ struct superblock* ext2_fill_super(struct fs_type *fs_type, struct block_device 
     // 打开块适配器，后面可以按文件系统块为单位读写磁盘
     struct block_adapter *adap = block_adapter_open(fs_type->name);
 
-    u64 group_cnt = (sb->s_blocks_count + sb->s_blocks_per_group -1)/sb->s_blocks_per_group;
-    u64 gdt_block = (block_size==1024) ? 2:1 ;
-    u64 gdb_count = (group_cnt*sizeof(struct ext2_groupdesc)+block_size-1)/block_size;
+    uint64_t group_cnt = (sb->s_blocks_count + sb->s_blocks_per_group -1)/sb->s_blocks_per_group;
+    uint64_t gdt_block = (block_size==1024) ? 2:1 ;
+    uint64_t gdb_count = (group_cnt*sizeof(struct ext2_groupdesc)+block_size-1)/block_size;
     struct ext2_groupdesc *gdt = malloc(group_cnt*sizeof(struct ext2_groupdesc));
     //读取块描述符
     ret = block_adapter_read(adap,gdt,gdt_block,gdb_count);
@@ -129,11 +129,11 @@ int ext2_sync_super(struct superblock *sb)
     struct ext2_fs_info *fs_info = (struct ext2_fs_info*)sb->s_private; 
     int ret;
     // 同步超级块
-    u64 block_size = sb->s_block_size;
-    u64 write_offset = EXT2_SUPERBLOCK_OFFSET % block_size; 
-    u64 write_pos = EXT2_SUPERBLOCK_OFFSET / block_size; 
-    u64 write_cnt = EXT2_SUPERBLOCK_SIZE / block_size; 
-    u8 *super_buf = malloc(block_size);
+    uint64_t block_size = sb->s_block_size;
+    uint64_t write_offset = EXT2_SUPERBLOCK_OFFSET % block_size; 
+    uint64_t write_pos = EXT2_SUPERBLOCK_OFFSET / block_size; 
+    uint64_t write_cnt = EXT2_SUPERBLOCK_SIZE / block_size; 
+    uint8_t *super_buf = malloc(block_size);
     //先读
     ret = block_adapter_read(sb->adap,super_buf,write_pos,write_cnt);
     CHECK(ret>=0,"ext2_sync_super error: read super block failed!",return -1;);
@@ -145,7 +145,7 @@ int ext2_sync_super(struct superblock *sb)
 
 
     // 同步块描述符
-    u64 gdt_block = (block_size==1024) ? 2:1 ;
+    uint64_t gdt_block = (block_size==1024) ? 2:1 ;
     ret = block_adapter_write(sb->adap,fs_info->group_desc,gdt_block,fs_info->s_gdb_count);
     CHECK(ret>=0,"ext2_sync_super error: write group desc failed!",return -1;);
 

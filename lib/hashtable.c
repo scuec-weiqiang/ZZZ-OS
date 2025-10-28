@@ -13,7 +13,7 @@
 #include "utils.h"
 #include "malloc.h"
 
-typedef u64 hval_t;
+typedef uint64_t hval_t;
 
 typedef size_t (*hash_func_t)(const struct hlist_node*);
 typedef hval_t (*hash_compare_t)(const struct hlist_node*, const struct hlist_node*);

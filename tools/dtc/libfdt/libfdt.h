@@ -887,13 +887,13 @@ static inline int fdt_setprop_inplace_u32(void *fdt, int nodeoffset,
 }
 
 /**
- * fdt_setprop_inplace_u64 - change the value of a 64-bit integer property
+ * fdt_setprop_inplace_uint64_t - change the value of a 64-bit integer property
  * @fdt: pointer to the device tree blob
  * @nodeoffset: offset of the node whose property to change
  * @name: name of the property to change
  * @val: 64-bit integer value to replace the property with
  *
- * fdt_setprop_inplace_u64() replaces the value of a given property
+ * fdt_setprop_inplace_uint64_t() replaces the value of a given property
  * with the 64-bit integer value in val, converting val to big-endian
  * if necessary.  This function cannot change the size of a property,
  * and so will only work if the property already exists and has length
@@ -914,7 +914,7 @@ static inline int fdt_setprop_inplace_u32(void *fdt, int nodeoffset,
  *	-FDT_ERR_BADSTRUCTURE,
  *	-FDT_ERR_TRUNCATED, standard meanings
  */
-static inline int fdt_setprop_inplace_u64(void *fdt, int nodeoffset,
+static inline int fdt_setprop_inplace_uint64_t(void *fdt, int nodeoffset,
 					  const char *name, uint64_t val)
 {
 	val = cpu_to_fdt64(val);
@@ -996,7 +996,7 @@ static inline int fdt_property_u32(void *fdt, const char *name, uint32_t val)
 	val = cpu_to_fdt32(val);
 	return fdt_property(fdt, name, &val, sizeof(val));
 }
-static inline int fdt_property_u64(void *fdt, const char *name, uint64_t val)
+static inline int fdt_property_uint64_t(void *fdt, const char *name, uint64_t val)
 {
 	val = cpu_to_fdt64(val);
 	return fdt_property(fdt, name, &val, sizeof(val));
@@ -1159,13 +1159,13 @@ static inline int fdt_setprop_u32(void *fdt, int nodeoffset, const char *name,
 }
 
 /**
- * fdt_setprop_u64 - set a property to a 64-bit integer
+ * fdt_setprop_uint64_t - set a property to a 64-bit integer
  * @fdt: pointer to the device tree blob
  * @nodeoffset: offset of the node whose property to change
  * @name: name of the property to change
  * @val: 64-bit integer value for the property (native endian)
  *
- * fdt_setprop_u64() sets the value of the named property in the given
+ * fdt_setprop_uint64_t() sets the value of the named property in the given
  * node to the given 64-bit integer value (converting to big-endian if
  * necessary), or creates a new property with that value if it does
  * not already exist.
@@ -1186,7 +1186,7 @@ static inline int fdt_setprop_u32(void *fdt, int nodeoffset, const char *name,
  *	-FDT_ERR_BADLAYOUT,
  *	-FDT_ERR_TRUNCATED, standard meanings
  */
-static inline int fdt_setprop_u64(void *fdt, int nodeoffset, const char *name,
+static inline int fdt_setprop_uint64_t(void *fdt, int nodeoffset, const char *name,
 				  uint64_t val)
 {
 	val = cpu_to_fdt64(val);
@@ -1301,13 +1301,13 @@ static inline int fdt_appendprop_u32(void *fdt, int nodeoffset,
 }
 
 /**
- * fdt_appendprop_u64 - append a 64-bit integer value to a property
+ * fdt_appendprop_uint64_t - append a 64-bit integer value to a property
  * @fdt: pointer to the device tree blob
  * @nodeoffset: offset of the node whose property to change
  * @name: name of the property to change
  * @val: 64-bit integer value to append to the property (native endian)
  *
- * fdt_appendprop_u64() appends the given 64-bit integer value
+ * fdt_appendprop_uint64_t() appends the given 64-bit integer value
  * (converting to big-endian if necessary) to the value of the named
  * property in the given node, or creates a new property with that
  * value if it does not already exist.
@@ -1328,7 +1328,7 @@ static inline int fdt_appendprop_u32(void *fdt, int nodeoffset,
  *	-FDT_ERR_BADLAYOUT,
  *	-FDT_ERR_TRUNCATED, standard meanings
  */
-static inline int fdt_appendprop_u64(void *fdt, int nodeoffset,
+static inline int fdt_appendprop_uint64_t(void *fdt, int nodeoffset,
 				     const char *name, uint64_t val)
 {
 	val = cpu_to_fdt64(val);

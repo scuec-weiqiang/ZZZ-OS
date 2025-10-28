@@ -57,7 +57,7 @@ struct dentry* lookup(const char* path)
     return d_parent;
 }
 
-struct dentry* mkdir(const char* path,u16 mode)
+struct dentry* mkdir(const char* path,uint16_t mode)
 {
     CHECK(path != NULL, "", return NULL;);
 
@@ -123,7 +123,7 @@ struct dentry* rmdir(const char* path)
 return NULL;
 }
 
-struct dentry* mknod(const char* path,u16 mode,dev_t devnr)
+struct dentry* mknod(const char* path,uint16_t mode,dev_t devnr)
 {
     CHECK(path != NULL, "", return NULL;);
 
@@ -156,7 +156,7 @@ exit:
 
 }
 
-struct dentry* creat(const char* path,u16 mode)
+struct dentry* creat(const char* path,uint16_t mode)
 {
     CHECK(path != NULL, "", return NULL;);
 
@@ -187,7 +187,7 @@ exit:
     return d_child; 
 }
 
-struct file* open(const char *path, u32 flags)
+struct file* open(const char *path, uint32_t flags)
 {
     struct dentry *dentry = lookup(path);
     struct file *file = (struct file*)malloc(sizeof(struct file));

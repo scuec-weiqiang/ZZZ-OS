@@ -66,7 +66,7 @@ struct inode* create_inode(struct superblock *sb)
 
     memset(new_inode_ret, 0, sizeof(struct inode));
 
-    u32 current_time = 0;
+    uint32_t current_time = 0;
     // 初始化时间戳，这里用的是当前北京时间的时间戳，但是这里的时间可能会被实际读取的inode时间覆盖，这里先初始化一下。
     new_inode_ret->i_atime.tv_sec = current_time;
     new_inode_ret->i_atime.tv_nsec = 0;
@@ -113,7 +113,7 @@ static hval_t icache_lru_hash(const struct hlist_node *node)
     uintptr_t sb_ptr = (uintptr_t)inode->i_sb;
     
     // 使用黄金比例相关的魔数
-    const u32 golden_ratio = 0x9E3779B9U;
+    const uint32_t golden_ratio = 0x9E3779B9U;
     
     // 混合两个值
     hval_t hash = (hval_t)sb_ptr * golden_ratio;

@@ -20,7 +20,7 @@
 
 struct list proc_list_head[MAX_HARTS_NUM];
 
-u64 proc_count[MAX_HARTS_NUM];
+uint64_t proc_count[MAX_HARTS_NUM];
 
 static pid_t alloc_pid()
 {

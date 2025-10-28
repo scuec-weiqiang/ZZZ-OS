@@ -14,20 +14,20 @@
 
 typedef struct timespec 
 {
-    u64 tv_sec;   // 秒数（自 Unix 纪元时间 1970-01-01 00:00:00 起）
-    u64 tv_nsec;  // 纳秒数（0 ~ 999,999,999）
+    uint64_t tv_sec;   // 秒数（自 Unix 纪元时间 1970-01-01 00:00:00 起）
+    uint64_t tv_nsec;  // 纳秒数（0 ~ 999,999,999）
 }timespec_t;
 
 // 定义时间结构体
 struct system_time
 {
-    u32 year;   // 年份
-    u32 month;  // 月份 (1-12)
-    u32 day;    // 日期 (1-31)
-    u32 hour;   // 小时 (0-23)
-    u32 minute; // 分钟 (0-59)
-    u32 second; // 秒 (0-59)
-    u32 usec;   // 微秒 (0-999999)
+    uint32_t year;   // 年份
+    uint32_t month;  // 月份 (1-12)
+    uint32_t day;    // 日期 (1-31)
+    uint32_t hour;   // 小时 (0-23)
+    uint32_t minute; // 分钟 (0-59)
+    uint32_t second; // 秒 (0-59)
+    uint32_t usec;   // 微秒 (0-999999)
 };
 
 enum UTC
@@ -60,9 +60,9 @@ enum UTC
 };
 
 extern void get_current_time(struct system_time *t);
-extern u32 get_current_unix_timestamp(enum UTC utc); 
+extern uint32_t get_current_unix_timestamp(enum UTC utc); 
 
 extern int timestamp_init();
-extern u32 system_time_to_unix_timestamp(const struct system_time *t);
+extern uint32_t system_time_to_unix_timestamp(const struct system_time *t);
 
 #endif

@@ -22,11 +22,11 @@
 
 struct swtimer
 {
-    u64 timer_id;
-    u64 period; 
+    uint64_t timer_id;
+    uint64_t period; 
     char status;//-1:销毁，0:暂停，1:开启
-    u64 tick;
-    u64 mode;
+    uint64_t tick;
+    uint64_t mode;
     void (*timer_task)();
     struct list swtimer_node;    
 };
@@ -94,20 +94,20 @@ void swtimer_check()
 /***************************************************************
  * @description: 创建一个软件定时器
  * @param void (*timer_task)() [in]: 定时器任务
- * @param {u64} period [in]:  执行的周期长短，以硬件定时器的tick为单位
- * @param {u8} mode [in]:  执行次数，达到次数后会被销毁
+ * @param {uint64_t} period [in]:  执行的周期长短，以硬件定时器的tick为单位
+ * @param {uint8_t} mode [in]:  执行次数，达到次数后会被销毁
  *                  mode == 0 --> 无限次
  * @return {struct swtimer*} 返回创建的定时器指针
 ***************************************************************/
-struct swtimer* swtimer_create(void (*timer_task)(),u64 period,u8 mode)
+struct swtimer* swtimer_create(void (*timer_task)(),uint64_t period,uint8_t mode)
 {
     struct swtimer *new_timer = page_alloc(1);        
     if((struct swtimer*)NULL == new_timer) return NULL;
  
-    switch ((u64)swtimer_head)
+    switch ((uint64_t)swtimer_head)
     {
-        case (u64)NULL:
-            static u64 id = 0;
+        case (uint64_t)NULL:
+            static uint64_t id = 0;
             swtimer_head = page_alloc(1); 
             INIT_LIST_HEAD(&swtimer_head->swtimer_node);
         default:

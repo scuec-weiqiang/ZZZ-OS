@@ -48,8 +48,8 @@ void *memcpy(void *dest, const void *src, size_t size)
 
 void *memcpy32(void *dest, const void *src, size_t size)
 {
-    u32 *d = dest;
-    const u32 *s = src;
+    uint32_t *d = dest;
+    const uint32_t *s = src;
     size_t words = size / 4;
     for (size_t i = 0; i < words; i++)
         d[i] = s[i];

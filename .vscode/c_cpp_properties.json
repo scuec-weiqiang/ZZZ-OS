@@ -3,6 +3,7 @@
         {
             "name": "Linux",
             "includePath": [
+                "${workspaceFolder}/",
                 "${workspaceFolder}/kernel",
                 "${workspaceFolder}/fs",
                 "${workspaceFolder}/fs/ext2",

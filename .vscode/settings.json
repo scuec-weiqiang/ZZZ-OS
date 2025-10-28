@@ -84,7 +84,9 @@
         "vm.h": "c",
         "usys.h": "c",
         "syscall_num.h": "c",
-        "chrdev.h": "c"
+        "chrdev.h": "c",
+        "fdt.h": "c",
+        "fs_init.h": "c"
     },
-    "C_Cpp.errorSquiggles": "enabled"
+    "C_Cpp.errorSquiggles": "disabled"
 }

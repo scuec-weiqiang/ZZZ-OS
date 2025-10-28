@@ -18,14 +18,14 @@
 #include "platform.h"
 
 struct uart_reg {
-   u8 RHR_THR_DLL;
-   u8 IER_DLM;
-   u8 FCR_ISR;
-   u8 LCR;
-   u8 MCR;
-   u8 LSR;
-   u8 MSR;
-   u8 SPR;
+   uint8_t RHR_THR_DLL;
+   uint8_t IER_DLM;
+   uint8_t FCR_ISR;
+   uint8_t LCR;
+   uint8_t MCR;
+   uint8_t LSR;
+   uint8_t MSR;
+   uint8_t SPR;
 };
 
 uintptr_t uart_base= UART_BASE;
@@ -49,7 +49,7 @@ void uart_reg_init() {
     UART0.LCR |= (0x03<<0);//设置传输字长为8位
     UART0.LCR &= ~(1<<2);//停止位 1位
 
-    u8 a = UART0.IER_DLM;
+    uint8_t a = UART0.IER_DLM;
     a |= 0x01;
     UART0.IER_DLM = a;//打开中断
 }
@@ -123,7 +123,7 @@ int uart_init()
         return -1;
     }
 
-    u32 *reg = fdt_get_reg(node);
+    uint32_t *reg = fdt_get_reg(node);
     
     uart_base = (uintptr_t)be32_to_cpu(*(unsigned int*)reg);
     

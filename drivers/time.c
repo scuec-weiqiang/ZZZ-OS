@@ -25,7 +25,7 @@ struct system_time *system_time = NULL;
 static const char days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 // 判断是否为闰年
-static int is_leap_year(u32 year) {
+static int is_leap_year(uint32_t year) {
     if (year % 4 != 0)
         return 0;
     if (year % 100 != 0)
@@ -36,16 +36,16 @@ static int is_leap_year(u32 year) {
 }
 
 // 计算从1970年到指定年份的总天数
-static u32 days_since_epoch(u32 year, u32 month, u32 day) {
-    u32 days = 0;
+static uint32_t days_since_epoch(uint32_t year, uint32_t month, uint32_t day) {
+    uint32_t days = 0;
 
     // 累加完整年份的天数
-    for (u32 y = 1970; y < year; y++) {
+    for (uint32_t y = 1970; y < year; y++) {
         days += is_leap_year(y) ? 366 : 365;
     }
 
     // 累加当月之前的月份天数
-    for (u32 m = 1; m < month; m++) {
+    for (uint32_t m = 1; m < month; m++) {
         days += days_in_month[m - 1];
         // 闰年2月加1天
         if (m == 2 && is_leap_year(year)) {
@@ -101,11 +101,11 @@ void adjust_timezone(struct system_time *t, enum UTC utc) {
         }
     }
 
-    t->hour = (u32)hour;
+    t->hour = (uint32_t)hour;
 }
 
 // 将system_time_t转换为Unix时间戳（自1970-01-01 00:00:00 UTC以来的秒数）
-u32 system_time_to_unix_timestamp(const struct system_time *t) {
+uint32_t system_time_to_unix_timestamp(const struct system_time *t) {
     // 基本校验
     if (t->year < 1970 || t->month < 1 || t->month > 12 ||
         t->day < 1 || t->day > 31 || t->hour > 23 ||
@@ -114,7 +114,7 @@ u32 system_time_to_unix_timestamp(const struct system_time *t) {
         return 0; // 无效时间返回0
     }
     // 计算总秒数 = 天数×86400 + 小时×3600 + 分钟×60 + 秒
-    u32 days = days_since_epoch(t->year, t->month, t->day);
+    uint32_t days = days_since_epoch(t->year, t->month, t->day);
     return days * 86400 + t->hour * 3600 + t->minute * 60 + t->second;
 }
 
@@ -124,7 +124,7 @@ void get_current_time(struct system_time *t) {
     *t = *system_time;
 }
 
-u32 get_current_unix_timestamp(enum UTC utc) {
+uint32_t get_current_unix_timestamp(enum UTC utc) {
     struct system_time t;
     get_current_time(&t);
     adjust_timezone(&t, utc);
@@ -153,7 +153,7 @@ static ssize_t timestamp_read(struct inode *inode, void *buf, size_t size, loff_
         bytes_to_read = sizeof(struct system_time) - *offset; // 调整读取大小
     }
 
-    memcpy32(buf, (u8 *)system_time + *offset, bytes_to_read);
+    memcpy32(buf, (uint8_t *)system_time + *offset, bytes_to_read);
     *offset += bytes_to_read;
 
     return bytes_to_read;
@@ -173,7 +173,7 @@ int timestamp_init() {
         return -1;
     }
 
-    u32 *reg = fdt_get_reg(node);
+    uint32_t *reg = fdt_get_reg(node);
     
     system_time = (struct system_time *)(uintptr_t)be32_to_cpu(*(unsigned int*)reg);
     dev_t devnr = 1; 

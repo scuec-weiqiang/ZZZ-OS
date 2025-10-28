@@ -17,16 +17,16 @@ int ext2_readpage(struct page *page)
 {
     struct inode *inode = page->inode;
     page->under_io = true;  // 表示正在进行IO操作
-    u32 page_index = page->index;  // 页号
-    u32 block_size = inode->i_sb->s_block_size;
-    u32 blocks_per_page = VFS_PAGE_SIZE / block_size;
+    uint32_t page_index = page->index;  // 页号
+    uint32_t block_size = inode->i_sb->s_block_size;
+    uint32_t blocks_per_page = VFS_PAGE_SIZE / block_size;
 
     char *kaddr = page->data;  // 页的内存地址
 
     for (int i = 0; i < blocks_per_page; i++) 
     {
-        u32 file_block = page_index * blocks_per_page + i;
-        u32 phys_block = ext2_block_mapping(inode, file_block); // 文件逻辑块号 → 磁盘物理块号
+        uint32_t file_block = page_index * blocks_per_page + i;
+        uint32_t phys_block = ext2_block_mapping(inode, file_block); // 文件逻辑块号 → 磁盘物理块号
 
         if (phys_block == 0) 
         {
@@ -52,16 +52,16 @@ int ext2_writepage(struct page *page)
 {
     struct inode *inode = page->inode;
     page->under_io = true;  // 表示正在进行IO操作
-    u32 page_index = page->index;  // 页号
-    u32 block_size = inode->i_sb->s_block_size;
-    u32 blocks_per_page = VFS_PAGE_SIZE / block_size;
+    uint32_t page_index = page->index;  // 页号
+    uint32_t block_size = inode->i_sb->s_block_size;
+    uint32_t blocks_per_page = VFS_PAGE_SIZE / block_size;
 
     char *kaddr = page->data;  // 页的内存地址
 
     for (int i = 0; i < blocks_per_page; i++) 
     {
-        u32 file_block = page_index * blocks_per_page + i;
-        u32 phys_block = ext2_block_mapping(inode, file_block); // 文件逻辑块号 → 磁盘物理块号
+        uint32_t file_block = page_index * blocks_per_page + i;
+        uint32_t phys_block = ext2_block_mapping(inode, file_block); // 文件逻辑块号 → 磁盘物理块号
 
         if (phys_block == 0) 
         {

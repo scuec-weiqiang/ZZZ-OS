@@ -14,7 +14,7 @@
 #include "spinlock.h"
 #include "ext2_cache.h"
 
-int ext2_bno_group(struct superblock *vfs_sb, u64 bno)
+int ext2_bno_group(struct superblock *vfs_sb, uint64_t bno)
 {
     CHECK(vfs_sb != NULL, "", return -1;);
     struct ext2_fs_info *fs_info = (struct ext2_fs_info *)vfs_sb->s_private;
@@ -73,7 +73,7 @@ int ext2_alloc_bno(struct superblock *vfs_sb)
  *
  * @return 成功时返回释放的块号，失败时返回-1
  */
-int ext2_release_bno(struct superblock *vfs_sb, u64 bno)
+int ext2_release_bno(struct superblock *vfs_sb, uint64_t bno)
 {
     BFREE_LOCK;
 
@@ -81,7 +81,7 @@ int ext2_release_bno(struct superblock *vfs_sb, u64 bno)
 
     struct ext2_fs_info *fs_info = (struct ext2_fs_info *)vfs_sb->s_private;
     struct bitmap *bm = NULL;
-    u32 group = ext2_bno_group(vfs_sb, bno);
+    uint32_t group = ext2_bno_group(vfs_sb, bno);
     ext2_load_block_bitmap_cache(vfs_sb, group);
     bm = fs_info->bbm_cache.bbm;
     int ret = bitmap_clear_bit(bm, bno);
@@ -97,11 +97,11 @@ int ext2_release_bno(struct superblock *vfs_sb, u64 bno)
     return bno;
 }
 
-static int find_sub(struct block_adapter *adap, u32 block_index, u32 index)
+static int find_sub(struct block_adapter *adap, uint32_t block_index, uint32_t index)
 {
     CHECK(adap != NULL, "", return -1;);
-    u32 block_size = block_adapter_get_block_size(adap);
-    u32 *buf = malloc(block_size);
+    uint32_t block_size = block_adapter_get_block_size(adap);
+    uint32_t *buf = malloc(block_size);
     CHECK(buf != NULL, "", return -1;);
     int ret = block_adapter_read(adap, buf, block_index, 1);
     CHECK(ret >= 0, "", return -1;);
@@ -120,17 +120,17 @@ static int find_sub(struct block_adapter *adap, u32 block_index, u32 index)
  *
  * @return 映射得到的块地址，如果映射失败则返回 -1
  */
-int ext2_block_mapping(struct inode *inode, u64 index)
+int ext2_block_mapping(struct inode *inode, uint64_t index)
 {
     CHECK(inode != NULL, "", return -1;);
     CHECK(inode->i_sb->s_private != NULL, "", return -1;);
-    u32 block_size = inode->i_sb->s_block_size;
-    u32 per_block = block_size / sizeof(u32);
+    uint32_t block_size = inode->i_sb->s_block_size;
+    uint32_t per_block = block_size / sizeof(uint32_t);
     struct ext2_inode *ext2_inode = (struct ext2_inode *)inode->i_private;
     struct block_adapter *adap = (struct block_adapter *)inode->i_sb->adap;
-    u64 first_index = 0;
-    u64 second_index = 0;
-    u64 third_index = 0;
+    uint64_t first_index = 0;
+    uint64_t second_index = 0;
+    uint64_t third_index = 0;
     int sub_block_index = 0;
     int ret = -1;
     // 直接索引

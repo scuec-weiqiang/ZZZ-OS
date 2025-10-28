@@ -79,7 +79,7 @@ static void free_disk_chain(int index)
     while (1)
     {
         free_disk_desc(index);
-        u16 next = virt_disk.disk_queue.desc[index].next;
+        uint16_t next = virt_disk.disk_queue.desc[index].next;
         if(virt_disk.disk_queue.desc[index].flags & VIRTQ_DESC_F_NEXT)
         {
             index = next;
@@ -130,13 +130,13 @@ int virt_disk_rw(void *buffer, int sector, enum virt_disk_rw rwflag)
     virt_disk.req[index[0]].sector = sector; // 指明向哪一个扇区读写
 
     // 讲请求头与数据缓冲区绑定起来
-    virt_disk.disk_queue.desc[index[0]].addr = KERNEL_PA((u64)&virt_disk.req[index[0]]);
+    virt_disk.disk_queue.desc[index[0]].addr = KERNEL_PA((uint64_t)&virt_disk.req[index[0]]);
     virt_disk.disk_queue.desc[index[0]].len = sizeof(struct virtio_blk_req);
     virt_disk.disk_queue.desc[index[0]].flags = VIRTQ_DESC_F_NEXT;
     virt_disk.disk_queue.desc[index[0]].next = index[1];
 
     // 配置数据缓冲区
-    virt_disk.disk_queue.desc[index[1]].addr = KERNEL_PA((u64)buffer);
+    virt_disk.disk_queue.desc[index[1]].addr = KERNEL_PA((uint64_t)buffer);
     virt_disk.disk_queue.desc[index[1]].len = SECTOR_SIZE;
     if (rwflag == VIRT_DISK_READ)// 如果是从磁盘读数据 
     {
@@ -149,7 +149,7 @@ int virt_disk_rw(void *buffer, int sector, enum virt_disk_rw rwflag)
     virt_disk.disk_queue.desc[index[1]].next = index[2];
 
     // 配置状态码
-    virt_disk.disk_queue.desc[index[2]].addr = KERNEL_PA((u64)&virt_disk.status[index[0]]);
+    virt_disk.disk_queue.desc[index[2]].addr = KERNEL_PA((uint64_t)&virt_disk.status[index[0]]);
     virt_disk.disk_queue.desc[index[2]].len = 1;
     virt_disk.disk_queue.desc[index[2]].flags = VIRTQ_DESC_F_WRITE;
     virt_disk.disk_queue.desc[index[2]].next = 0;
@@ -221,14 +221,14 @@ int virt_disk_init()
 
     virtio->queue_num = QUEUE_NUM;
 
-    virtio->queue_desc_low = (u32)((uintptr_t) KERNEL_PA(virt_disk.disk_queue.desc) & 0xFFFFFFFF);
-    virtio->queue_desc_high = (u32)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.desc) >> 32);
+    virtio->queue_desc_low = (uint32_t)((uintptr_t) KERNEL_PA(virt_disk.disk_queue.desc) & 0xFFFFFFFF);
+    virtio->queue_desc_high = (uint32_t)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.desc) >> 32);
 
-    virtio->queue_avail_low = (u32)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.avail) & 0xFFFFFFFF);
-    virtio->queue_avail_high = (u32)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.avail) >> 32);
+    virtio->queue_avail_low = (uint32_t)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.avail) & 0xFFFFFFFF);
+    virtio->queue_avail_high = (uint32_t)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.avail) >> 32);
 
-    virtio->queue_used_low= (u32)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.used) & 0xFFFFFFFF);
-    virtio->queue_used_high = (u32)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.used) >> 32);
+    virtio->queue_used_low= (uint32_t)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.used) & 0xFFFFFFFF);
+    virtio->queue_used_high = (uint32_t)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.used) >> 32);
 
     virtio->queue_ready = 1;
 
@@ -241,7 +241,7 @@ int virt_disk_init()
 
     __sync_synchronize();
 
-    for(u32 i = 0;i < QUEUE_NUM;i++)
+    for(uint32_t i = 0;i < QUEUE_NUM;i++)
     {
         virt_disk.free[i] = 1;// 1表示空闲，0表示正在使用
     }

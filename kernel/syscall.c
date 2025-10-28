@@ -167,7 +167,7 @@ static sysfuncPtr syscalls[] = {
 
 void do_syscall(struct trap_frame *ctx)
 {
-    u64 num = ctx->a7; // 获取系统调用号
+    uint64_t num = ctx->a7; // 获取系统调用号
     if (num < SYSCALL_END)
     {
         ctx->a0 = syscalls[num](ctx); // 执行对应的处理函数，并将返回值存入 a0 中

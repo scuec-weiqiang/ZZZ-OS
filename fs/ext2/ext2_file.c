@@ -34,8 +34,8 @@ ssize_t ext2_file_read(struct inode *inode, void *buf, size_t size, loff_t *offs
     ssize_t bytes_read = 0;
     pgoff_t start_page = (*offset) / VFS_PAGE_SIZE;
     pgoff_t end_page = ((*offset) + size - 1) / VFS_PAGE_SIZE;
-    u32 page_offset = 0;
-    u32 bytes_to_copy = 0;
+    uint32_t page_offset = 0;
+    uint32_t bytes_to_copy = 0;
 
     for (pgoff_t i = start_page; i <= end_page; ++i)
     {
@@ -68,7 +68,7 @@ ssize_t ext2_file_read(struct inode *inode, void *buf, size_t size, loff_t *offs
             bytes_to_copy = VFS_PAGE_SIZE;
         }
 
-        memcpy((u8 *)buf + (i - start_page) * VFS_PAGE_SIZE + page_offset, page->data + page_offset, bytes_to_copy);
+        memcpy((uint8_t *)buf + (i - start_page) * VFS_PAGE_SIZE + page_offset, page->data + page_offset, bytes_to_copy);
         pput(page);
         bytes_read += bytes_to_copy;
     }
@@ -85,8 +85,8 @@ ssize_t ext2_file_write(struct inode *inode, const void *buf, size_t size, loff_
     ssize_t bytes_write = 0;
     pgoff_t start_page = (*offset) / VFS_PAGE_SIZE;
     pgoff_t end_page = ((*offset) + size - 1) / VFS_PAGE_SIZE;
-    u32 page_offset = 0;
-    u32 bytes_to_copy = 0;
+    uint32_t page_offset = 0;
+    uint32_t bytes_to_copy = 0;
 
     for (pgoff_t i = start_page; i <= end_page; ++i)
     {
@@ -119,7 +119,7 @@ ssize_t ext2_file_write(struct inode *inode, const void *buf, size_t size, loff_
             bytes_to_copy = VFS_PAGE_SIZE;
         }
 
-        memcpy(page->data + page_offset, (u8 *)buf + (i - start_page) * VFS_PAGE_SIZE + page_offset, bytes_to_copy);
+        memcpy(page->data + page_offset, (uint8_t *)buf + (i - start_page) * VFS_PAGE_SIZE + page_offset, bytes_to_copy);
         page->dirty = true;
         pput(page);
         pcache_sync(page); // 同步page缓存

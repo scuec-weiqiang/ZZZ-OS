@@ -14,26 +14,26 @@
     #define GNUC
 
     #ifdef RISCV64
-        typedef signed char         s8;    
-        typedef signed short        s16;       
-        typedef signed int          s32;
-        typedef signed long         s64;
+        typedef signed char         int8_t;    
+        typedef signed short        int16_t;       
+        typedef signed int          int32_t;
+        typedef signed long         int64_t;
         typedef signed long         ssize_t;
         typedef signed long         intptr_t;
 
-        typedef unsigned char       u8;    
-        typedef unsigned short      u16;       
-        typedef unsigned int        u32;
-        typedef unsigned long       u64;
+        typedef unsigned char       uint8_t;    
+        typedef unsigned short      uint16_t;       
+        typedef unsigned int        uint32_t;
+        typedef unsigned long       uint64_t;
         typedef unsigned long       size_t;
         typedef unsigned long       uintptr_t;
 
-        #define U8_MAX     (0xff)
-        #define U16_MAX    (0xffff)
+        #define UINT8_MAX     (0xff)
+        #define UINT16_MAX    (0xffff)
         #define U32_MAX    (0xffffffff)
-        #define U64_MAX    (0xffffffffffffffff)
+        #define UINT64_MAX    (0xffffffffffffffff)
 
-        typedef u64                 reg_t;
+        typedef uint64_t                 reg_t;
     #endif 
 
     typedef enum { false, true } bool;

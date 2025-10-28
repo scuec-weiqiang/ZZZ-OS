@@ -18,7 +18,7 @@
 
 struct scheduler scheduler[MAX_HARTS_NUM];
 
-static u64         _check_expire(u64 now_time,u64 expire_time);
+static uint64_t         _check_expire(uint64_t now_time,uint64_t expire_time);
 static struct proc* _get_next_task(enum hart_id hart_id);
 
 extern void swtch(struct context* old, struct context* new);
@@ -91,7 +91,7 @@ static struct proc* _get_next_task(enum hart_id hart_id)
 }
 
 
-static inline u64 _check_expire(u64 now_time,u64 expire_time)
+static inline uint64_t _check_expire(uint64_t now_time,uint64_t expire_time)
 {
     return now_time >= expire_time?1:0;
 }
