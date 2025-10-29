@@ -7,9 +7,9 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "types.h"
-#include "check.h"
-#include "string.h"
+#include "os/types.h"
+#include "os/check.h"
+#include "os/string.h"
 
 
 /**

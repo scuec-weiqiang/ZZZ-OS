@@ -3,24 +3,25 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-15 15:04:59
- * @LastEditTime: 2025-10-09 23:17:40
+ * @LastEditTime: 2025-10-29 23:28:57
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "ext2_inode.h"
-#include "vfs_types.h"
-#include "ext2_types.h"
-#include "icache.h"
-#include "malloc.h"
-#include "check.h"
-#include "string.h"
-#include "spinlock.h"
-#include "ext2_cache.h"
-#include "time.h"
-#include "ext2_block.h"
-#include "ext2_page.h"
-#include "ext2_namei.h"
-#include "ext2_file.h"
+#include "fs/ext2/ext2_inode.h"
+#include "fs/vfs_types.h"
+#include "fs/ext2/ext2_types.h"
+#include "fs/icache.h"
+#include "os/malloc.h"
+#include "os/check.h"
+#include "os/string.h"
+#include "asm/spinlock.h"
+#include "fs/ext2/ext2_cache.h"
+#include "drivers/time.h"
+#include "fs/ext2/ext2_block.h"
+#include "fs/ext2/ext2_page.h"
+#include "fs/ext2/ext2_namei.h"
+#include "fs/ext2/ext2_file.h"
+#include "fs/ext2/ext2_super.h"
 
 uint64_t ext2_ino_group(struct superblock *vfs_sb,uint64_t ino)
 {

@@ -28,7 +28,7 @@
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <os/string.h>
 
 #include <libfdt.h>
 

@@ -1,0 +1,15 @@
+OBJ_Y += ext2/
+
+OBJ_Y += block_adapter.o
+OBJ_Y += block_device.o
+OBJ_Y += chrdev.o
+OBJ_Y += dcache.o
+OBJ_Y += fs_init.o
+OBJ_Y += fs_type.o
+OBJ_Y += icache.o
+OBJ_Y += mount.o
+OBJ_Y += path.o
+OBJ_Y += pcache.o
+OBJ_Y += super.o
+OBJ_Y += vfs.o
+

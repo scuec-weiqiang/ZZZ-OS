@@ -1,0 +1,1 @@
+CFLAGS += -march=rv64gc -mabi=lp64d

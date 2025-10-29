@@ -1,11 +1,11 @@
-#include "types.h"
-#include "container_of.h"
-#include "lru.h"
-#include "vfs_types.h"
-#include "check.h"
-#include "string.h"
-#include "malloc.h"
-#include "list.h"
+#include "os/types.h"
+#include "os/container_of.h"
+#include "os/lru.h"
+#include "fs/vfs_types.h"
+#include "os/check.h"
+#include "os/string.h"
+#include "os/malloc.h"
+#include "os/list.h"
 
 struct dentry *create_dentry(const char *name)
 {

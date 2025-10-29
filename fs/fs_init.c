@@ -1,20 +1,20 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/vfs/fs_init.c
+ * @FilePath: /ZZZ-OS/fs/fs_init.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-23 19:20:48
- * @LastEditTime: 2025-09-07 20:14:18
+ * @LastEditTime: 2025-10-29 22:26:44
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "vfs_types.h"
-#include "fs_type.h"
-#include "icache.h"
-#include "pcache.h"
-#include "dcache.h"
-#include "mount.h"
+#include "fs/vfs_types.h"
+#include "fs/fs_type.h"
+#include "fs/icache.h"
+#include "fs/pcache.h"
+#include "fs/dcache.h"
+#include "fs/mount.h"
 
-#include "ext2_super.h"
+#include "fs/ext2/ext2_super.h"
 
 int fs_init()
 {

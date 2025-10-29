@@ -7,11 +7,11 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "types.h"
-#include "hlist.h"
-#include "check.h"
-#include "utils.h"
-#include "malloc.h"
+#include "os/types.h"
+#include "os/hlist.h"
+#include "os/check.h"
+#include "os/utils.h"
+#include "os/malloc.h"
 
 typedef uint64_t hval_t;
 

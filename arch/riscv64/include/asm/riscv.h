@@ -1,7 +1,7 @@
 #ifndef RISCV_H
 #define RISCV_H
 
-#include "types.h"
+#include "os/types.h"
 
 #define MCAUSE_MASK_INTERRUPT 0x8000000000000000
 #define MCAUSE_MASK_CAUSECODE 0x7fffffffffffffff

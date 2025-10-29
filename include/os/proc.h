@@ -1,22 +1,22 @@
 /**
- * @FilePath: /ZZZ-OS/kernel/proc.h
+ * @FilePath: /ZZZ-OS/include/os/os/proc.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-30 13:50:23
- * @LastEditTime: 2025-10-04 21:12:07
+ * @LastEditTime: 2025-10-29 21:50:22
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #ifndef KERNEL_PROC_H
 #define KERNEL_PROC_H
 
-#include "types.h"
-#include "riscv.h"
-#include "vm.h"
-#include "list.h"
-#include "elf.h"
-#include "vfs_types.h"
-#include "platform.h"
+#include "os/types.h"
+#include "asm/riscv.h"
+#include "os/vm.h"
+#include "os/list.h"
+#include "os/elf.h"
+#include "fs/vfs_types.h"
+#include "asm/platform.h"
 
 #define PROC_STACK_SIZE PAGE_SIZE
 

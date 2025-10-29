@@ -1,18 +1,18 @@
 /**
- * @FilePath: /vboot/home/wei/os/ZZZ-OS/lib/lru.c
+ * @FilePath: /ZZZ-OS/lib/lru.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-21 14:53:56
- * @LastEditTime: 2025-10-10 01:14:40
+ * @LastEditTime: 2025-10-29 22:29:35
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "hashtable.h"
-#include "list.h"
-#include "check.h"
-#include "utils.h"
-#include "malloc.h"
-#include "lru.h"
+#include "os/hashtable.h"
+#include "os/list.h"
+#include "os/check.h"
+#include "os/utils.h"
+#include "os/malloc.h"
+#include "os/lru.h"
 
 /**
 * @brief 初始化LRU缓存

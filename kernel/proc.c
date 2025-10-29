@@ -7,16 +7,16 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "proc.h"
-#include "vfs.h"
-#include "elf.h"
-#include "vm.h"
-#include "check.h"
-#include "string.h"
-#include "platform.h"
-#include "malloc.h"
-#include "systimer.h"
-#include "sched.h"
+#include "os/proc.h"
+#include "fs/vfs.h"
+#include "os/elf.h"
+#include "os/vm.h"
+#include "os/check.h"
+#include "os/string.h"
+#include "asm/platform.h"
+#include "os/malloc.h"
+#include "asm/systimer.h"
+#include "os/sched.h"
 
 struct list proc_list_head[MAX_HARTS_NUM];
 

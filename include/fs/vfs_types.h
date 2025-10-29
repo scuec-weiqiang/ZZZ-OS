@@ -1,21 +1,21 @@
 /**
- * @FilePath: /ZZZ-OS/fs/vfs_types.h
+ * @FilePath: /ZZZ-OS/include/fs/vfs_types.h
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-13 16:16:30
- * @LastEditTime: 2025-10-09 21:49:59
+ * @LastEditTime: 2025-10-29 21:51:21
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
 #ifndef VFS_TYPES_H
 #define VFS_TYPES_H
 
-#include "block_adapter.h"
-#include "list.h"
-#include "lru.h"
-#include "spinlock.h"
-#include "time.h"
-#include "types.h"
+#include "fs/block_adapter.h"
+#include "os/list.h"
+#include "os/lru.h"
+#include "asm/spinlock.h"
+#include "drivers/time.h"
+#include "os/types.h"
 
 typedef long long loff_t;
 typedef int64_t ino_t;

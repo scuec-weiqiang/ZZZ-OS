@@ -1,25 +1,25 @@
 /**
  * @FilePath: /ZZZ-OS/fs/ext2/ext2_dir.c
  * * @Description: * @Author: scuec_weiqiang scuec_weiqiang@qq.com
- * @LastEditTime: 2025-10-10 00:54:12
+ * @LastEditTime: 2025-10-29 22:25:31
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * * @Copyright : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025. */
 
-#include "vfs_types.h"
-#include "icache.h"
-#include "pcache.h"
-#include "dcache.h"
-#include "ext2_cache.h"
-#include "ext2_types.h"
-#include "ext2_block.h"
-#include "ext2_super.h"
-#include "ext2_inode.h"
-#include "ext2_dir.h"
+#include "fs/vfs_types.h"
+#include "fs/icache.h"
+#include "fs/pcache.h"
+#include "fs/dcache.h"
+#include "fs/ext2/ext2_cache.h"
+#include "fs/ext2/ext2_types.h"
+#include "fs/ext2/ext2_block.h"
+#include "fs/ext2/ext2_super.h"
+#include "fs/ext2/ext2_inode.h"
+#include "fs/ext2/ext2_dir.h"
 
-#include "check.h"
-#include "list.h"
-#include "malloc.h"
-#include "string.h"
+#include "os/check.h"
+#include "os/list.h"
+#include "os/malloc.h"
+#include "os/string.h"
 
 #define EXT2_ENTRY_LEN(name_len) (((sizeof(struct ext2_dir_entry_2) + (name_len) + 3) / 4) * 4)
 

@@ -1,0 +1,9 @@
+OBJ_Y += ext2_block.o
+OBJ_Y += ext2_cache.o
+OBJ_Y += ext2_dir.o
+OBJ_Y += ext2_file.o
+OBJ_Y += ext2_inode.o
+OBJ_Y += ext2_namei.o
+OBJ_Y += ext2_page.o
+OBJ_Y += ext2_super.o
+

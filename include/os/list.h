@@ -1,8 +1,8 @@
 #ifndef _LIST_H
 #define _LIST_H
 
-#include "container_of.h"
-#include "types.h"
+#include "os/container_of.h"
+#include "os/types.h"
 
 struct list
 {

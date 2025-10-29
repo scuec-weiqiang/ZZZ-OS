@@ -1,14 +1,14 @@
-#include "uart.h"
-#include "printk.h"
-#include "riscv.h"
-#include "systimer.h"
-#include "plic.h"
-#include "uart.h"
-#include "clint.h"
-#include "vm.h"
-#include "types.h"
-#include "syscall.h"
-#include "sched.h"
+#include "drivers/uart.h"
+#include "os/printk.h"
+#include "asm/riscv.h"
+#include "asm/systimer.h"
+#include "asm/plic.h"
+#include "drivers/uart.h"
+#include "asm/clint.h"
+#include "os/vm.h"
+#include "os/types.h"
+#include "os/syscall.h"
+#include "os/sched.h"
 
 extern void kernel_trap_entry();
 
@@ -117,17 +117,17 @@ trap_func_t interrupt_handlers[] = {
     m_extern_interrupt_handler
 };
 
-reg_t trap_handler(reg_t ctx)
+reg_t trap_handler(reg_t _ctx)
 {
-    struct trap_frame* ctx = (struct trap_frame *)ctx;
+    struct trap_frame* ctx = (struct trap_frame *)_ctx;
     reg_t return_epc = ctx->sepc;
     uint64_t cause_code = ctx->scause & MCAUSE_MASK_CAUSECODE;
-    uint64_t is_interrupt = (cause & MCAUSE_MASK_INTERRUPT);
+    uint64_t is_interrupt = (ctx->scause & MCAUSE_MASK_INTERRUPT);
     if(is_interrupt) // 中断
     {   
         if(interrupt_handlers[cause_code] != NULL && cause_code < 12) //前12个是标准中断
         {
-            return_epc = interrupt_handlers[cause_code](epc);
+            return_epc = interrupt_handlers[cause_code](ctx->sepc);
         }    
         else
         {

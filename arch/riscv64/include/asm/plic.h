@@ -1,5 +1,5 @@
 /*******************************************************************************************
- * @FilePath: /ZZZ/arch/riscv64/qemu_virt/plic.h
+ * @FilePath: /ZZZ/arch/riscv64/qemu_virt/asm/plic.h
  * @Description  : 平台中断控制器头文件，用于屏蔽中断和设置中断优先级等操作。
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
@@ -9,8 +9,8 @@
 #ifndef PLIC_H
 #define PLIC_H
 
-#include "types.h"
-#include "platform.h"
+#include "os/types.h"
+#include "asm/platform.h"
 
 /***************************************************************
  * @description: 

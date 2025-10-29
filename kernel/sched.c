@@ -7,14 +7,14 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "printk.h"
-#include "malloc.h"
-#include "sched.h"
-#include "proc.h"
-#include "symbols.h"
-#include "platform.h"
-#include "list.h"
-#include "systimer.h"
+#include "os/printk.h"
+#include "os/malloc.h"
+#include "os/sched.h"
+#include "os/proc.h"
+#include "asm/symbols.h"
+#include "asm/platform.h"
+#include "os/list.h"
+#include "asm/systimer.h"
 
 struct scheduler scheduler[MAX_HARTS_NUM];
 

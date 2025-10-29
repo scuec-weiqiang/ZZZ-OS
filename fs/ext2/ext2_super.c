@@ -1,20 +1,20 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/ext2/ext2_super.c
+ * @FilePath: /ZZZ-OS/fs/ext2/ext2_super.c
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-12 18:21:56
- * @LastEditTime: 2025-09-04 01:28:41
+ * @LastEditTime: 2025-10-29 22:26:24
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include "ext2_types.h"
-#include "vfs_types.h"
-#include "malloc.h"
-#include "ext2_erros.h"
-#include "check.h"
-#include "ext2_inode.h"
-#include "icache.h"
-#include "string.h"
+#include "fs/ext2/ext2_types.h"
+#include "fs/vfs_types.h"
+#include "os/malloc.h"
+#include "fs/ext2/ext2_erros.h"
+#include "os/check.h"
+#include "fs/ext2/ext2_inode.h"
+#include "fs/icache.h"
+#include "os/string.h"
 
 
 struct superblock* ext2_fill_super(struct fs_type *fs_type, struct block_device *bdev, int flags)

@@ -8,12 +8,12 @@
  * @
  * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
 ***************************************************************/
-#include "types.h"
-#include "malloc.h"
-#include "list.h"
-#include "systimer.h"
-#include "printk.h"
-#include "sched.h"
+#include "os/types.h"
+#include "os/malloc.h"
+#include "os/list.h"
+#include "asm/systimer.h"
+#include "os/printk.h"
+#include "os/sched.h"
 
 #define SWTIMER_ON (1)
 #define SWTIMER_OFF (0)

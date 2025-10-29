@@ -20,7 +20,7 @@
 #ifndef _SWTIMER_H
 #define _SWTIMER_H
 
-#include "types.h"
+#include "os/types.h"
 
 struct swtimer;
 

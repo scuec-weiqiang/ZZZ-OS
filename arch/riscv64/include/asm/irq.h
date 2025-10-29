@@ -10,7 +10,7 @@
 #ifndef _ASM_IRQ_H
 #define _ASM_IRQ_H
 
-#include <os/types.h>
+#include <os/os/types.h>
 
 struct {
     void (*handler)(unsigned int irq, void *dev_id);  // 中断处理函数

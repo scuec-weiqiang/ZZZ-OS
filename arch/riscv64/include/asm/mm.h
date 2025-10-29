@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ-OS/arch/riscv64/mm.h
+ * @FilePath: /ZZZ-OS/arch/riscv64/asm/mm.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 13:05:59
@@ -11,7 +11,7 @@
 #ifndef _MM_H
 #define _MM_H
 
-#include "types.h"
+#include "os/types.h"
 
 #define PTE_V (1 << 0)      // 有效位
 #define PTE_R (1 << 1)      // 可读

@@ -1,5 +1,5 @@
 /**
- * @FilePath: /vboot/lib/hlist.h
+ * @FilePath: /vboot/lib/os/hlist.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 23:13:18
@@ -11,7 +11,7 @@
 #ifndef HASH_H
 #define HASH_H
 
-#include "types.h"
+#include "os/types.h"
 
 struct hlist_node
 {

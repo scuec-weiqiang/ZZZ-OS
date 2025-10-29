@@ -50,7 +50,7 @@
  */
 #include "libfdt_env.h"
 
-#include <fdt.h>
+#include <drivers/of/fdt.h>
 #include <libfdt.h>
 
 #include "libfdt_internal.h"

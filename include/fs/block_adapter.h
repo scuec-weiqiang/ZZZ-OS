@@ -1,5 +1,5 @@
 /**
- * @FilePath: /vboot/fs/block_adapter.h
+ * @FilePath: /vboot/fs/fs/block_adapter.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-13 12:42:26
@@ -10,8 +10,8 @@
 #ifndef BLOCK_ADAPTER_H
 #define BLOCK_ADAPTER_H
 
-#include "types.h"
-#include "block_device.h"
+#include "os/types.h"
+#include "fs/block_device.h"
 
 struct block_adapter;
 

@@ -7,11 +7,11 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "vfs_types.h"
-#include "ext2_types.h"
-#include "ext2_block.h"
-#include "block_adapter.h"
-#include "string.h"
+#include "fs/vfs_types.h"
+#include "fs/ext2/ext2_types.h"
+#include "fs/ext2/ext2_block.h"
+#include "fs/block_adapter.h"
+#include "os/string.h"
 
 int ext2_readpage(struct page *page) 
 {

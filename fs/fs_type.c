@@ -7,10 +7,10 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "vfs_types.h"
-#include "list.h"
-#include "check.h"
-#include "string.h"
+#include "fs/vfs_types.h"
+#include "os/list.h"
+#include "os/check.h"
+#include "os/string.h"
 
 static struct list g_fs_types = {&g_fs_types, &g_fs_types};
 

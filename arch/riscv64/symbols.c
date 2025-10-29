@@ -3,11 +3,11 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 13:05:59
- * @LastEditTime: 2025-10-23 20:05:56
+ * @LastEditTime: 2025-10-29 21:41:45
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "types.h"
+#include "os/types.h"
 
 extern char __text_start[], __text_end[];
 extern char __rodata_start[], __rodata_end[];

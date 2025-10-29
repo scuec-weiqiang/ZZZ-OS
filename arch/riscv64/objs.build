@@ -1,0 +1,6 @@
+OBJ_Y += boot.o 
+OBJ_Y += swtch.o 
+OBJ_Y += symbols.o 
+OBJ_Y += systimer.o 
+OBJ_Y += trap_handler.o
+OBJ_Y += trap.o

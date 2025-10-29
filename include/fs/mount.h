@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/vfs/mount.h
+ * @FilePath: /ZZZ/kernel/fs/vfs/fs/mount.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-01 22:50:39
@@ -10,7 +10,7 @@
 #ifndef VFS_MOUNT_H
 #define VFS_MOUNT_H
 
-#include "vfs_types.h"
+#include "fs/vfs_types.h"
 
 extern struct list vfs_mount_points;
 extern int mount(const char *type_name, const char *bdev_name, int flags);

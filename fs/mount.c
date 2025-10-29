@@ -7,11 +7,11 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include "vfs_types.h"
-#include "fs_type.h"
-#include "dcache.h"
-#include "check.h"
-#include "malloc.h"
+#include "fs/vfs_types.h"
+#include "fs/fs_type.h"
+#include "fs/dcache.h"
+#include "os/check.h"
+#include "os/malloc.h"
 
 /* 挂载点链表 */
 struct list vfs_mount_points = LIST_HEAD_INIT(vfs_mount_points);

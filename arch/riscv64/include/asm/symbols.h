@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ-OS/arch/riscv64/symbols.h
+ * @FilePath: /ZZZ-OS/arch/riscv64/asm/symbols.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-01 16:47:45
@@ -10,7 +10,7 @@
 #ifndef SYMBOLS_H
 #define SYMBOLS_H
 
-#include "types.h"
+#include "os/types.h"
 extern uintptr_t text_start;
 extern uintptr_t text_end;
 extern uintptr_t text_size;

@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ/arch/riscv64/qemu_virt/platform.h
+ * @FilePath: /ZZZ/arch/riscv64/qemu_virt/asm/platform.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-16 23:59:39

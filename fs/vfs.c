@@ -8,18 +8,18 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 
-#include "vfs.h"
-#include "mount.h"
-#include "vfs_types.h"
-#include "dcache.h"
-#include "path.h"
+#include "fs/vfs.h"
+#include "fs/mount.h"
+#include "fs/vfs_types.h"
+#include "fs/dcache.h"
+#include "fs/path.h"
 
-#include "check.h"
-#include "string.h"
+#include "os/check.h"
+#include "os/string.h"
 
-#include "icache.h"
-#include "malloc.h"
-#include "chrdev.h"
+#include "fs/icache.h"
+#include "os/malloc.h"
+#include "fs/chrdev.h"
 
 struct dentry* current = NULL;
 

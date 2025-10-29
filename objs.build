@@ -1,0 +1,5 @@
+OBJ_Y += arch/ 
+OBJ_Y += drivers/ 
+OBJ_Y += fs/ 
+OBJ_Y += kernel/ 
+OBJ_Y += lib/ 

@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ/arch/riscv64/qemu_virt/clint.h
+ * @FilePath: /ZZZ/arch/riscv64/qemu_virt/asm/clint.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
@@ -8,7 +8,7 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 /*******************************************************************************************
- * @FilePath: /ZZZ/arch/riscv64/qemu_virt/clint.h
+ * @FilePath: /ZZZ/arch/riscv64/qemu_virt/asm/clint.h
  * @Description  : 核心本地中断控制器(Core Local Interruptor)头文件 ，用于定时器中断和软件中断的触发。
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
@@ -19,8 +19,8 @@
 #ifndef CLINT_H
 #define CLINT_H
 
-#include "types.h"
-#include "platform.h"
+#include "os/types.h"
+#include "asm/platform.h"
 
 
 

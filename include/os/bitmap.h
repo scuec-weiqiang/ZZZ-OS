@@ -1,5 +1,5 @@
 /**
- * @FilePath: /vboot/lib/bitmap.h
+ * @FilePath: /vboot/lib/os/bitmap.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-30 17:54:44
@@ -10,7 +10,7 @@
 #ifndef BITMAP_H    
 #define BITMAP_H
 
-#include "types.h"
+#include "os/types.h"
 
 #define BITMAP_ARR(x) ((char*)(x)+sizeof(size_t))
 

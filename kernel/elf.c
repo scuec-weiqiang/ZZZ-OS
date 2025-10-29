@@ -7,12 +7,12 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "types.h"
-#include "printk.h"
-#include "elf.h"
-#include "malloc.h"
-#include "check.h"
-#include "string.h"
+#include "os/types.h"
+#include "os/printk.h"
+#include "os/elf.h"
+#include "os/malloc.h"
+#include "os/check.h"
+#include "os/string.h"
 
 static int elf_check(const char *elf)
 {

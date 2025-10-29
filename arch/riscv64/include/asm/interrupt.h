@@ -11,10 +11,10 @@
 #ifndef _INTERRUPT_H
 #define _INTERRUPT_H
 
-#include "types.h"
-#include "riscv.h"
-#include "platform.h"
-#include "plic.h"
+#include "os/types.h"
+#include "asm/riscv.h"
+#include "asm/platform.h"
+#include "asm/plic.h"
 
 
 /***************************************************************

@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ/kernel/malloc.h
+ * @FilePath: /ZZZ/kernel/os/malloc.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-15 17:26:52
@@ -10,8 +10,8 @@
 #ifndef _PAGE_ALLOC_H
 #define _PAGE_ALLOC_H
 
-#include "types.h"
-#include "mm.h"
+#include "os/types.h"
+#include "asm/mm.h"
 
 #define RESERVED_PAGE_NUM           8
 #define RESERVED_PAGE_SIZE          RESERVED_PAGE_NUM*PAGE_SIZE 

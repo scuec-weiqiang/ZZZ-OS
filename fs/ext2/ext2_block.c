@@ -1,18 +1,18 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/ext2/ext2_block.c
+ * @FilePath: /ZZZ-OS/fs/ext2/ext2_block.c
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-12 18:21:24
- * @LastEditTime: 2025-09-01 19:42:42
+ * @LastEditTime: 2025-10-29 22:24:40
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include "vfs_types.h"
-#include "ext2_types.h"
-#include "malloc.h"
-#include "check.h"
-#include "spinlock.h"
-#include "ext2_cache.h"
+#include "fs/vfs_types.h"
+#include "fs/ext2/ext2_types.h"
+#include "os/malloc.h"
+#include "os/check.h"
+#include "asm/spinlock.h"
+#include "fs/ext2/ext2_cache.h"
 
 int ext2_bno_group(struct superblock *vfs_sb, uint64_t bno)
 {

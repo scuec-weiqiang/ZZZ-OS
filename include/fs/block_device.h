@@ -1,5 +1,5 @@
 /**
- * @FilePath: /vboot/fs/block_device.h
+ * @FilePath: /vboot/fs/fs/block_device.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-12 17:30:39
@@ -10,7 +10,7 @@
 #ifndef BLOCK_DEVICE_H
 #define BLOCK_DEVICE_H
 
-#include "types.h"
+#include "os/types.h"
 
 struct block_device {
     char     name[16];       // 设备名，比如 "sda", "vda"

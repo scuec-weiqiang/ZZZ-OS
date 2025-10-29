@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ-OS/lib/lru.h
+ * @FilePath: /ZZZ-OS/lib/os/lru.h
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-21 14:54:03
@@ -10,9 +10,9 @@
 #ifndef LRU_H
 #define LRU_H
 
-#include "hashtable.h"
-#include "list.h"
-#include "types.h"
+#include "os/hashtable.h"
+#include "os/list.h"
+#include "os/types.h"
 
 // LRU节点结构：嵌入哈希表节点和双向链表节点
 struct lru_node

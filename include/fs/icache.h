@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ-OS/fs/icache.h
+ * @FilePath: /ZZZ-OS/fs/fs/icache.h
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-28 00:53:13
@@ -9,9 +9,9 @@
  */
 #ifndef VFS_CACHE_H
 #define VFS_CACHE_H
-#include "types.h"
-#include "lru.h"
-#include "vfs_types.h"
+#include "os/types.h"
+#include "os/lru.h"
+#include "fs/vfs_types.h"
 
 extern struct lru_cache *global_inode_cache;
 

@@ -1,0 +1,5 @@
+OBJ_Y += of/
+OBJ_Y += time.o
+OBJ_Y += uart.o
+OBJ_Y += virtio.o
+OBJ_Y += virt_disk.o

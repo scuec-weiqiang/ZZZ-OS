@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ-OS/lib/string.h
+ * @FilePath: /ZZZ-OS/lib/os/string.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-09 02:40:04
@@ -11,7 +11,7 @@
 #ifndef _STRING_H
 #define _STRING_H
 
-#include "types.h"  
+#include "os/types.h"  
 
 extern void* memset(void *dest, int ch, size_t size);
 extern void* memcpy(void *dest, const void *src, size_t size);

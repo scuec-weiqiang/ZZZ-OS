@@ -7,15 +7,15 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "vfs_types.h"
-#include "malloc.h"
-#include "check.h"
-#include "lru.h"
-#include "spinlock.h"
-#include "string.h"
-#include "time.h"
-#include "container_of.h"
-#include "icache.h"
+#include "fs/vfs_types.h"
+#include "os/malloc.h"
+#include "os/check.h"
+#include "os/lru.h"
+#include "asm/spinlock.h"
+#include "os/string.h"
+#include "drivers/time.h"
+#include "os/container_of.h"
+#include "fs/icache.h"
 
 static void inode_lock(struct inode *inode) 
 {

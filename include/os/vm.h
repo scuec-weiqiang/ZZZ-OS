@@ -1,17 +1,17 @@
 /**
- * @FilePath: /ZZZ-OS/kernel/vm.h
+ * @FilePath: /ZZZ-OS/include/os/vm.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:45
- * @LastEditTime: 2025-10-04 21:58:00
+ * @LastEditTime: 2025-10-29 21:49:32
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #ifndef _VM_H
 #define _VM_H
 
-#include "mm.h"
-#include "types.h"
+#include "asm/mm.h"
+#include "os/types.h"
 
 enum pgt_size
 {

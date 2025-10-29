@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ-OS/drivers/of/fdt.h
+ * @FilePath: /ZZZ-OS/drivers/of/drivers/of/fdt.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-20 20:19:54
@@ -22,7 +22,7 @@
 #ifndef FDT_H
 #define FDT_H
 
-#include "types.h"
+#include "os/types.h"
 
 #define FDT_MAGIC 0xd00dfeed
 

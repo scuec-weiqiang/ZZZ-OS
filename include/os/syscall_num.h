@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ-OS/kernel/syscall_num.h
+ * @FilePath: /ZZZ-OS/kernel/os/syscall_num.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-01 16:47:45

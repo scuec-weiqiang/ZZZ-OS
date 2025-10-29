@@ -3,20 +3,20 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-29 00:50:51
- * @LastEditTime: 2025-10-10 00:59:26
+ * @LastEditTime: 2025-10-29 23:28:25
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include "time.h"
-#include "bswap.h"
-#include "types.h"
-#include "platform.h"
-#include "vfs.h"
-#include "vfs_types.h"
-#include "chrdev.h"
-#include "string.h"
-#include "fdt.h"
-#include "printk.h"
+#include "drivers/time.h"
+#include "os/bswap.h"
+#include "os/types.h"
+#include "asm/platform.h"
+#include "fs/vfs.h"
+#include "fs/vfs_types.h"
+#include "fs/chrdev.h"
+#include "os/string.h"
+#include "drivers/of/fdt.h"
+#include "os/printk.h"
 
 // 固定地址的时间缓冲区
 struct system_time *system_time = NULL;
@@ -180,6 +180,7 @@ int timestamp_init() {
     register_chrdev(devnr,"time", &timestamp_file_ops);
     if(lookup("/time") == NULL)
         mknod("/time", S_IFCHR|0644, devnr);
+    return 0;
 }
 
 void timestamp_deinit() {

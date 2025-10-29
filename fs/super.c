@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/kernel/fs/vfs/vfs_super.c
+ * @FilePath: /ZZZ-OS/fs/super.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-21 12:52:30
- * @LastEditTime: 2025-09-01 00:12:50
+ * @LastEditTime: 2025-10-29 22:14:27
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -16,12 +16,12 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "vfs_types.h"
-#include "check.h"
-#include "string.h"
-#include "ext2_types.h"
-#include "malloc.h"
-#include "printk.h"
+#include "fs/vfs_types.h"
+#include "os/check.h"
+#include "os/string.h"
+#include "fs/ext2/ext2_types.h"
+#include "os/malloc.h"
+#include "os/printk.h"
 
 
 

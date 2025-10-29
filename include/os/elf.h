@@ -1,5 +1,5 @@
 /**
- * @FilePath: /vboot/elf.h
+ * @FilePath: /vboot/os/elf.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-30 13:50:36
@@ -10,7 +10,7 @@
 #ifndef ELF_H
 #define ELF_H
 
-#include "types.h"
+#include "os/types.h"
 
 #define PT_LOAD 1
 

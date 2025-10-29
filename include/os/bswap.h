@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ-OS/lib/bswap.h
+ * @FilePath: /ZZZ-OS/lib/os/bswap.h
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-22 22:25:06

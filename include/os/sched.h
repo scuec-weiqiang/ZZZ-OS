@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ-OS/kernel/sched.h
+ * @FilePath: /ZZZ-OS/kernel/os/sched.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-01 02:29:14
@@ -11,10 +11,10 @@
 #ifndef _SCHED_H
 #define _SCHED_H
 
-#include "list.h"
-#include "riscv.h"
-#include "proc.h"
-#include "platform.h"
+#include "os/list.h"
+#include "asm/riscv.h"
+#include "os/proc.h"
+#include "asm/platform.h"
 
 enum sched_state 
 { 

@@ -7,18 +7,18 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "printk.h"
-#include "virtio.h"
-#include "uart.h"
-#include "malloc.h"
-#include "riscv.h"
-#include "mm.h"
-#include "string.h"
-#include "symbols.h"
-#include "plic.h"
-#include "clint.h"
-#include "vm.h"
-#include "check.h"
+#include "os/printk.h"
+#include "drivers/virtio.h"
+#include "drivers/uart.h"
+#include "os/malloc.h"
+#include "asm/riscv.h"
+#include "asm/mm.h"
+#include "os/string.h"
+#include "asm/symbols.h"
+#include "asm/plic.h"
+#include "asm/clint.h"
+#include "os/vm.h"
+#include "os/check.h"
 
 
 pgtbl_t* kernel_pgd = NULL;//kernel_page_global_directory 内核页全局目录

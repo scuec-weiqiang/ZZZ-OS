@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ-OS/fs/vfs.h
+ * @FilePath: /ZZZ-OS/fs/fs/vfs.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-12 21:02:22
@@ -10,7 +10,7 @@
 #ifndef VFS_H
 #define VFS_H
 
-#include "vfs_types.h"
+#include "fs/vfs_types.h"
 
 extern struct dentry* lookup(const char* path);
 extern struct dentry* mkdir(const char* path,uint16_t mode);

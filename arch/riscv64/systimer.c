@@ -1,19 +1,19 @@
 /**
- * @FilePath: /ZZZ-OS/arch/riscv64/qemu_virt/systimer.c
+ * @FilePath: /ZZZ-OS/arch/riscv64/systimer.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-19 21:58:52
- * @LastEditTime: 2025-09-23 21:22:24
+ * @LastEditTime: 2025-10-29 21:45:20
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 
-#include "types.h"
-#include "platform.h"
-#include "interrupt.h"
-#include "clint.h" 
-#include "systimer.h"
-#include "riscv.h"
+#include "os/types.h"
+#include "asm/platform.h"
+#include "asm/interrupt.h"
+#include "asm/clint.h" 
+#include "asm/systimer.h"
+#include "asm/riscv.h"
 
 //系统时钟以0核为基准
 static uint64_t systimer_tick[MAX_HARTS_NUM] = {0};

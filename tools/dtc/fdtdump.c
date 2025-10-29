@@ -5,10 +5,10 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <os/string.h>
 #include <ctype.h>
 
-#include <fdt.h>
+#include <drivers/of/fdt.h>
 #include <libfdt_env.h>
 
 #include "util.h"

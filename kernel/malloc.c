@@ -8,13 +8,13 @@
  * @
  * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved.
  ***************************************************************/
-#include "malloc.h"
-#include "platform.h"
-#include "printk.h"
-#include "spinlock.h"
-#include "string.h"
-#include "symbols.h"
-#include "types.h"
+#include "os/malloc.h"
+#include "asm/platform.h"
+#include "os/printk.h"
+#include "asm/spinlock.h"
+#include "os/string.h"
+#include "asm/symbols.h"
+#include "os/types.h"
 
 struct spinlock page_lock = SPINLOCK_INIT;
 
@@ -186,7 +186,7 @@ void *malloc(size_t size) {
     return p;
 }
 
-#include "color.h"
+#include "os/color.h"
 uint64_t get_remain_mem() {
     printk(GREEN("remain mem = %d.%dMb\n"), remain_mem / 1024 / 1024, remain_mem / 1024 % 1024);
     return remain_mem;

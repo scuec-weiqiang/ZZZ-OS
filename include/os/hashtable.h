@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ-OS/lib/hashtable.h
+ * @FilePath: /ZZZ-OS/lib/os/hashtable.h
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-21 17:00:57
@@ -21,8 +21,8 @@
 #ifndef HASHTABLE_H
 #define HASHTABLE_H
 
-#include "hlist.h"
-#include "types.h"
+#include "os/hlist.h"
+#include "os/types.h"
 
 typedef uint64_t hval_t;
 

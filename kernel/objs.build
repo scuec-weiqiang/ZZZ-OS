@@ -1,0 +1,11 @@
+OBJ_Y += elf.o
+OBJ_Y += kernel.o
+OBJ_Y += malloc.o
+OBJ_Y += printk.o
+OBJ_Y += proc.o
+OBJ_Y += sched.o
+OBJ_Y += swtimer.o
+OBJ_Y += syscall.o
+OBJ_Y += vm.o
+
+

@@ -8,8 +8,8 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
 
-#include "string.h"
-#include "malloc.h"
+#include "os/string.h"
+#include "os/malloc.h"
 
 /**
  * @brief 将内存区域填充为指定值

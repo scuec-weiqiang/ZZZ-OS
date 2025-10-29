@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ/arch/riscv64/qemu_virt/systimer.h
+ * @FilePath: /ZZZ/arch/riscv64/qemu_virt/asm/systimer.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-17 00:52:26
@@ -11,8 +11,8 @@
 #ifndef __HWTIMER_H
 #define __HWTIMER_H
 
-#include "types.h"
-#include "platform.h"
+#include "os/types.h"
+#include "asm/platform.h"
 
 #define tick_s      SYS_CLOCK_FREQ
 #define tick_ms     (tick_s/1000)

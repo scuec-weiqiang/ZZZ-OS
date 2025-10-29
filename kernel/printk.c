@@ -1,6 +1,6 @@
 #include <stdarg.h>
-#include "types.h"
-#include "uart.h"
+#include "os/types.h"
+#include "drivers/uart.h"
 
 #define __PBUFF_SIZE 4096
 

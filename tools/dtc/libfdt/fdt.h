@@ -1,3 +1,12 @@
+/**
+ * @FilePath: /ZZZ-OS/tools/dtc/libfdt/fdt.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-10-22 16:47:12
+ * @LastEditTime: 2025-10-29 22:58:41
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 #ifndef _FDT_H
 #define _FDT_H
 
@@ -46,8 +55,7 @@ struct fdt_property {
 
 #define FDT_BEGIN_NODE	0x1		/* Start node: full name */
 #define FDT_END_NODE	0x2		/* End node */
-#define FDT_PROP	0x3		/* Property: name off,
-					   size, content */
+#define FDT_PROP	0x3		/* Property: name off,size, content */
 #define FDT_NOP		0x4		/* nop */
 #define FDT_END		0x9
 

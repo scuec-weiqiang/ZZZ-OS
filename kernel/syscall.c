@@ -3,20 +3,20 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-02 18:11:27
- * @LastEditTime: 2025-10-06 18:55:17
+ * @LastEditTime: 2025-10-29 22:29:00
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "types.h"
-#include "syscall.h"
-#include "syscall_num.h"
+#include "os/types.h"
+#include "os/syscall.h"
+#include "os/syscall_num.h"
 
-#include "riscv.h"
-#include "printk.h"
-#include "proc.h"
-#include "sched.h"
-#include "vfs.h"
-#include "malloc.h"
+#include "asm/riscv.h"
+#include "os/printk.h"
+#include "os/proc.h"
+#include "os/sched.h"
+#include "fs/vfs.h"
+#include "os/malloc.h"
 
 int sys_printf(struct trap_frame *ctx)
 {

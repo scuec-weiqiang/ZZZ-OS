@@ -7,15 +7,15 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "platform.h"
-#include "types.h"
-#include "fdt.h"
-#include "bswap.h"
-#include "vfs.h"
-#include "vfs_types.h"
-#include "chrdev.h"
-#include "string.h"
-#include "platform.h"
+#include "asm/platform.h"
+#include "os/types.h"
+#include "drivers/of/fdt.h"
+#include "os/bswap.h"
+#include "fs/vfs.h"
+#include "fs/vfs_types.h"
+#include "fs/chrdev.h"
+#include "os/string.h"
+#include "asm/platform.h"
 
 struct uart_reg {
    uint8_t RHR_THR_DLL;

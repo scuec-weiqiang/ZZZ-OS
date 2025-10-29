@@ -1,5 +1,5 @@
 /**
- * @FilePath: /vboot/lib/utils.h
+ * @FilePath: /vboot/lib/os/utils.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 23:13:38

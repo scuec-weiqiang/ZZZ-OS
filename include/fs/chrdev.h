@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ-OS/fs/chrdev.h
+ * @FilePath: /ZZZ-OS/fs/fs/chrdev.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-09 21:14:01
@@ -10,7 +10,7 @@
 #ifndef _CHRDEV_H
 #define _CHRDEV_H
 
-#include "vfs_types.h"
+#include "fs/vfs_types.h"
 
 struct chrdev
 {

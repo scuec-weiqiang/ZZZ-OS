@@ -3,16 +3,16 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-20 20:25:59
- * @LastEditTime: 2025-10-28 16:34:26
+ * @LastEditTime: 2025-10-29 22:00:55
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright        : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include "fdt.h"
-#include "bswap.h"
-#include "malloc.h"
-#include "path.h"
-#include "printk.h"
-#include "string.h"
+#include "drivers/of/fdt.h"
+#include "os/bswap.h"
+#include "os/malloc.h"
+#include "fs/path.h"
+#include "os/printk.h"
+#include "os/string.h"
 
 #define ALIGN_UP(x, align) (((x) + (align) - 1) & ~((align) - 1))
 #define ALIGN_DOWN(x, align) ((x) & ~((align) - 1))

@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ-OS/fs/pcache.h
+ * @FilePath: /ZZZ-OS/fs/fs/pcache.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-01 17:20:59
@@ -10,8 +10,8 @@
 #ifndef VFS_PCACHE_H
 #define VFS_PCACHE_H
 
-#include "types.h"
-#include "vfs_types.h"
+#include "os/types.h"
+#include "fs/vfs_types.h"
 
 extern int pcache_init(void);
 extern void pcache_destory(void);

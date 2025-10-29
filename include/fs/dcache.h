@@ -1,5 +1,5 @@
 /**
- * @FilePath: /ZZZ-OS/fs/dcache.h
+ * @FilePath: /ZZZ-OS/fs/fs/dcache.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-07 14:26:49
@@ -10,8 +10,8 @@
 #ifndef VFS_DCACHE_H
 #define VFS_DCACHE_H
 
-#include "types.h"
-#include "vfs_types.h"
+#include "os/types.h"
+#include "fs/vfs_types.h"
 
 extern int dcache_init();
 extern void dcache_destroy();

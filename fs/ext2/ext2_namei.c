@@ -7,15 +7,15 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "ext2_types.h"
-#include "ext2_super.h"
-#include "ext2_dir.h"
-#include "ext2_inode.h"
-#include "ext2_cache.h"
-#include "vfs_types.h"
-#include "pcache.h"
-#include "icache.h"
-#include "check.h"
+#include "fs/ext2/ext2_types.h"
+#include "fs/ext2/ext2_super.h"
+#include "fs/ext2/ext2_dir.h"
+#include "fs/ext2/ext2_inode.h"
+#include "fs/ext2/ext2_cache.h"
+#include "fs/vfs_types.h"
+#include "fs/pcache.h"
+#include "fs/icache.h"
+#include "os/check.h"
 
 /**
 * @brief 在ext2文件系统中查找指定目录项

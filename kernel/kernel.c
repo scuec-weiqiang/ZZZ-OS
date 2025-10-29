@@ -3,34 +3,34 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-10-28 16:25:51
+ * @LastEditTime: 2025-10-29 22:27:16
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include "malloc.h"
-#include "printk.h"
+#include "os/malloc.h"
+#include "os/printk.h"
 
-#include "time.h"
-#include "virt_disk.h"
-#include "vm.h"
+#include "drivers/time.h"
+#include "drivers/virt_disk.h"
+#include "os/vm.h"
 
-#include "clint.h"
-#include "plic.h"
-#include "riscv.h"
+#include "asm/clint.h"
+#include "asm/plic.h"
+#include "asm/riscv.h"
 
-#include "elf.h"
-#include "fdt.h"
-#include "fs_init.h"
-#include "interrupt.h"
-#include "platform.h"
-#include "proc.h"
-#include "sched.h"
-#include "string.h"
-#include "symbols.h"
-#include "systimer.h"
-#include "trap_handler.h"
-#include "uart.h"
-#include "vfs.h"
+#include "os/elf.h"
+#include "drivers/of/fdt.h"
+#include "fs/fs_init.h"
+#include "asm/interrupt.h"
+#include "asm/platform.h"
+#include "os/proc.h"
+#include "os/sched.h"
+#include "os/string.h"
+#include "asm/symbols.h"
+#include "asm/systimer.h"
+#include "asm/trap_handler.h"
+#include "drivers/uart.h"
+#include "fs/vfs.h"
 
 uint8_t is_init = 0;
 
