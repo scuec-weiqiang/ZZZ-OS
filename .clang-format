@@ -1,6 +1,6 @@
 # 基本配置
 BasedOnStyle: LLVM       # 基于哪个预设风格修改
-IndentWidth: 8           # 缩进宽度（空格数）
+IndentWidth: 4           # 缩进宽度（空格数）
 TabWidth: 4              # Tab 宽度
 UseTab: Never            # 不使用 Tab，用空格代替（可选：ForIndentation 仅缩进用 Tab）
 

@@ -22,6 +22,14 @@ LDFLAGS += -nostartfiles  # 不使用标准启动文件（如 crt0.o）
 LDFLAGS += -ffreestanding  # 告知编译器这是独立环境（无 OS）
 -include arch/$(ARCH)/config.mk
 
+# 目标架构的asm头文件目录（如arch/riscv64/include/asm）
+ARCH_ASM_DIR := arch/$(ARCH)/include/asm
+# 软链接路径（include/asm）
+ASM_LINK := include/asm
+
+$(ASM_LINK):
+	-rmdir -p include/asm
+	ln -sf ../$(ARCH_ASM_DIR) $(ASM_LINK)
 
 #--------------分层构建---------------#
 KBUILD_PATH = tools/kbuild
@@ -50,7 +58,7 @@ $(DTC):
 	$(MAKE) -C ./tools/dtc
 
 #--------------通用编译---------------#
-all: $(KBUILD_FILE) $(TARGET) $(DTB)
+all: $(ASM_LINK) $(KBUILD_FILE) $(TARGET) $(DTB)
 	sudo mount -o loop ../disk.img ../mount && echo "挂载成功!" || dmesg | tail -n 20
 	sudo cp $(TARGET) ../mount/
 	sudo cp $(DTB) ../mount/
@@ -116,9 +124,10 @@ dtc:
 .PHONY: distclean
 distclean:
 	@echo "正在清理所有输出文件："
-	rm -rf $(BUILD_DIR)
-	$(MAKE) -C $(DTC_PATH) clean
-	$(MAKE) -C $(KBUILD_PATH) clean
+	-rm -rf $(BUILD_DIR)
+	-$(MAKE) -C $(DTC_PATH) clean
+	-$(MAKE) -C $(KBUILD_PATH) clean
+	-rm -rf $(ASM_LINK)
 	@echo "清理完成"
 
 

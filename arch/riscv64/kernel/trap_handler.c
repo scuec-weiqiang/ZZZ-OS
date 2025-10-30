@@ -5,7 +5,7 @@
 #include "asm/plic.h"
 #include "drivers/uart.h"
 #include "asm/clint.h"
-#include "os/vm.h"
+#include "os/mm.h"
 #include "os/types.h"
 #include "os/syscall.h"
 #include "os/sched.h"

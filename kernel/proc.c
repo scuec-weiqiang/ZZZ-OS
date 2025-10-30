@@ -10,7 +10,7 @@
 #include "os/proc.h"
 #include "fs/vfs.h"
 #include "os/elf.h"
-#include "os/vm.h"
+#include "os/mm.h"
 #include "os/check.h"
 #include "os/string.h"
 #include "asm/platform.h"
@@ -68,8 +68,8 @@ struct proc* proc_create(char* path)
     struct proc* new_proc = (struct proc*)malloc(sizeof(struct proc));
     memset(new_proc,0,sizeof(struct proc));
     
-    pgtbl_t* user_pgd = page_alloc(1);
-    memset(user_pgd,0,sizeof(pgtbl_t));
+    pgtable_t* user_pgd = page_alloc(1);
+    memset(user_pgd,0,sizeof(pgtable_t));
 
     char *user_stack = (char*)malloc(PROC_STACK_SIZE);
     memset(user_stack,0,PROC_STACK_SIZE);

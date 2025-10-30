@@ -12,7 +12,7 @@
 
 #include "drivers/time.h"
 #include "drivers/virt_disk.h"
-#include "os/vm.h"
+#include "os/mm.h"
 
 #include "asm/clint.h"
 #include "asm/plic.h"

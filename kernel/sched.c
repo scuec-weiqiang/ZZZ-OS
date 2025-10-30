@@ -7,11 +7,9 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "os/printk.h"
-#include "os/malloc.h"
+#include "os/mm.h"
 #include "os/sched.h"
 #include "os/proc.h"
-#include "asm/symbols.h"
 #include "asm/platform.h"
 #include "os/list.h"
 #include "asm/systimer.h"
@@ -59,8 +57,8 @@ void sched()
         if(!next) continue;
         next->expire_time = next->time_slice + systick();
         scheduler[hart_id].current = next;
-        satp_w((reg_t)make_satp((uintptr_t)next->pgd));
-        asm volatile ("sfence.vma zero, zero"::);
+        switch_pgtable(next->pgd);
+        flush_pgtable();
         swtch(&scheduler[hart_id].ctx,&next->context);
     }
 } 

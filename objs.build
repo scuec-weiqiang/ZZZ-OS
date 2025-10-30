@@ -3,3 +3,4 @@ OBJ_Y += drivers/
 OBJ_Y += fs/ 
 OBJ_Y += kernel/ 
 OBJ_Y += lib/ 
+OBJ_Y += mm/
