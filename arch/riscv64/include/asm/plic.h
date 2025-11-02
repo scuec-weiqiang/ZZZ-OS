@@ -9,8 +9,8 @@
 #ifndef PLIC_H
 #define PLIC_H
 
-#include "os/types.h"
-#include "asm/platform.h"
+#include <os/types.h>
+#include <asm/platform.h>
 
 /***************************************************************
  * @description: 

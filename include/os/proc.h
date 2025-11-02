@@ -10,13 +10,13 @@
 #ifndef KERNEL_PROC_H
 #define KERNEL_PROC_H
 
-#include "os/types.h"
-#include "asm/riscv.h"
-#include "os/mm.h"
-#include "os/list.h"
-#include "os/elf.h"
-#include "fs/vfs_types.h"
-#include "asm/platform.h"
+#include <os/types.h>
+#include <asm/riscv.h>
+#include <os/mm.h>
+#include <os/list.h>
+#include <os/elf.h>
+#include <fs/vfs_types.h>
+#include <asm/platform.h>
 
 #define PROC_STACK_SIZE PAGE_SIZE
 
@@ -59,7 +59,7 @@ struct proc
     struct file *fd_table[256];
     uintptr_t kernel_sp; //内核态栈顶
     uintptr_t user_sp;   //用户态栈顶
-    pgtable_t* pgd;       //页表
+    pgtbl_t* pgd;       //页表
     struct trap_frame *trapframe; //寄存器上下文
     struct context context; //内核上下文
     struct elf_info* elf_info; //程序信息
@@ -67,10 +67,10 @@ struct proc
     enum proc_status status;         //进程状态
     uint64_t expire_time;
     uint64_t time_slice;
-    struct list proc_lnode;
+    struct list_head proc_lnode;
 };
 
-extern struct list proc_list_head[MAX_HARTS_NUM];
+extern struct list_head proc_list_head[MAX_HARTS_NUM];
 extern void proc_init();
 extern struct proc* proc_create(char* path);
 extern struct proc* current_proc();

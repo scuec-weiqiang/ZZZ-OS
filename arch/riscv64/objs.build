@@ -1,2 +1,5 @@
 OBJ_Y += kernel/
 OBJ_Y += mm/
+OBJ_Y += timer/
+OBJ_Y += irq/
+OBJ_Y += swtch.o

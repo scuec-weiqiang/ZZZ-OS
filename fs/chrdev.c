@@ -7,10 +7,10 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "fs/vfs_types.h"
-#include "os/string.h"
-#include "fs/chrdev.h"
-#include "os/malloc.h"
+#include <fs/vfs_types.h>
+#include <os/string.h>
+#include <fs/chrdev.h>
+#include <os/malloc.h>
 
 #define MAX_CHRDEV 256
 static struct chrdev chrdevs[MAX_CHRDEV] = {0};

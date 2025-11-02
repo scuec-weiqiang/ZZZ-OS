@@ -3,34 +3,36 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-10-29 22:27:16
+ * @LastEditTime: 2025-10-31 00:06:24
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include "os/malloc.h"
-#include "os/printk.h"
+#include <os/malloc.h>
+#include <os/printk.h>
 
-#include "drivers/time.h"
-#include "drivers/virt_disk.h"
-#include "os/mm.h"
+#include <drivers/time.h>
+#include <drivers/virt_disk.h>
+#include <os/mm.h>
 
-#include "asm/clint.h"
-#include "asm/plic.h"
-#include "asm/riscv.h"
+#include <asm/clint.h>
+#include <asm/plic.h>
+#include <asm/riscv.h>
 
-#include "os/elf.h"
-#include "drivers/of/fdt.h"
-#include "fs/fs_init.h"
-#include "asm/interrupt.h"
-#include "asm/platform.h"
-#include "os/proc.h"
-#include "os/sched.h"
-#include "os/string.h"
-#include "asm/symbols.h"
-#include "asm/systimer.h"
-#include "asm/trap_handler.h"
-#include "drivers/uart.h"
-#include "fs/vfs.h"
+#include <os/elf.h>
+#include <drivers/of/fdt.h>
+#include <fs/fs_init.h>
+#include <asm/interrupt.h>
+#include <asm/platform.h>
+#include <os/proc.h>
+#include <os/sched.h>
+#include <os/string.h>
+#include <asm/symbols.h>
+#include <asm/arch_timer.h>
+#include <asm/trap_handler.h>
+#include <drivers/uart.h>
+#include <fs/vfs.h>
+#include <asm/pgtbl.h>
+#include <os/page.h>
 
 uint8_t is_init = 0;
 
@@ -78,7 +80,7 @@ void init_kernel() {
 	}
 
 	set_hart_stack();
-	systimer_init(SYS_HZ_1);
+	arch_timer_init(SYS_HZ_1);
 	// s_global_interrupt_enable();
 
 	// creat("/a.txt",S_IFREG|0644);

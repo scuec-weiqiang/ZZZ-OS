@@ -16,12 +16,12 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "fs/vfs_types.h"
-#include "os/check.h"
-#include "os/string.h"
-#include "fs/ext2/ext2_types.h"
-#include "os/malloc.h"
-#include "os/printk.h"
+#include <fs/vfs_types.h>
+#include <os/check.h>
+#include <os/string.h>
+#include <fs/ext2/ext2_types.h>
+#include <os/malloc.h>
+#include <os/printk.h>
 
 
 

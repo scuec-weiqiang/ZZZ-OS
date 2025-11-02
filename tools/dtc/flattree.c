@@ -18,8 +18,8 @@
  *                                                                   USA
  */
 
-#include "dtc.h"
-#include "srcpos.h"
+#include <dtc.h>
+#include <srcpos.h>
 
 #define FTF_FULLPATH	0x1
 #define FTF_VARALIGN	0x2

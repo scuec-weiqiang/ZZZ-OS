@@ -10,7 +10,7 @@
 #ifndef EXT2_PAGE_H
 #define EXT2_PAGE_H
 
-#include "fs/vfs_types.h"
+#include <fs/vfs_types.h>
 
 extern struct aops ext2_aops ;
 

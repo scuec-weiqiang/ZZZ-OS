@@ -7,10 +7,10 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include "os/bitmap.h"
-#include "os/malloc.h"
-#include "os/printk.h"
-#include "os/string.h"
+#include <os/bitmap.h>
+#include <os/malloc.h>
+#include <os/printk.h>
+#include <os/string.h>
 
 struct bitmap {
     size_t size;    // bitmap大小（位数）

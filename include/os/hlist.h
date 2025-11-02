@@ -11,7 +11,7 @@
 #ifndef HASH_H
 #define HASH_H
 
-#include "os/types.h"
+#include <os/types.h>
 
 struct hlist_node
 {

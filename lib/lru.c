@@ -7,12 +7,12 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "os/hashtable.h"
-#include "os/list.h"
-#include "os/check.h"
-#include "os/utils.h"
-#include "os/malloc.h"
-#include "os/lru.h"
+#include <os/hashtable.h>
+#include <os/list.h>
+#include <os/check.h>
+#include <os/utils.h>
+#include <os/malloc.h>
+#include <os/lru.h>
 
 /**
 * @brief 初始化LRU缓存
@@ -75,7 +75,7 @@ void lru_destroy(struct lru_cache *cache)
 {
     CHECK(cache != NULL, "Cache is NULL", return;);
 
-    struct list *pos,*n;
+    struct list_head *pos,*n;
     list_for_each_safe(pos,n,&cache->lhead) 
     {
         struct lru_node *node = container_of(pos, struct lru_node, lnode);

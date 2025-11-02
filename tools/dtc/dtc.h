@@ -35,7 +35,7 @@
 #include <libfdt_env.h>
 #include <fdt.h>
 
-#include "util.h"
+#include <util.h>
 
 #ifdef DEBUG
 #define debug(fmt,args...)	printf(fmt, ##args)

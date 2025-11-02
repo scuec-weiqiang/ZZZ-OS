@@ -1,14 +1,15 @@
 /**
- * @FilePath: /ZZZ/drivers/drivers/uart.h
+ * @FilePath: /ZZZ-OS/include/drivers/uart.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-15 17:10:49
- * @LastEditTime: 2025-09-20 16:59:07
+ * @LastEditTime: 2025-10-31 15:11:56
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #ifndef UART_H
 #define UART_H
+
 extern void uart_reg_init();
 extern int uart_init();
 extern void uart_putc(char c);

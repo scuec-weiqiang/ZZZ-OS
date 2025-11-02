@@ -10,12 +10,12 @@
 #ifndef VFS_TYPES_H
 #define VFS_TYPES_H
 
-#include "fs/block_adapter.h"
-#include "os/list.h"
-#include "os/lru.h"
-#include "asm/spinlock.h"
-#include "drivers/time.h"
-#include "os/types.h"
+#include <fs/block_adapter.h>
+#include <os/list.h>
+#include <os/lru.h>
+#include <asm/spinlock.h>
+#include <drivers/time.h>
+#include <os/types.h>
 
 typedef long long loff_t;
 typedef int64_t ino_t;
@@ -38,8 +38,8 @@ struct fs_type
     void (*kill_sb)(struct superblock *sb);
     struct super_ops *s_ops;
     int fs_flag;
-    struct list sb_lhead;
-    struct list fs_type_lnode;
+    struct list_head sb_lhead;
+    struct list_head fs_type_lnode;
 };
 
 struct super_ops
@@ -70,7 +70,7 @@ struct superblock
 #define VFS_SB_ACTIVE 0x0001 // 超级块处于活动状态
 #define VFS_SB_DIRTY 0x0002  // 超级块需要写回磁盘
 #define VFS_SB_RDONLY 0x0004 // 只读文件系统
-    struct list s_list;
+    struct list_head s_list;
     uint64_t s_block_size;
     struct fs_type *s_type;
     struct block_adapter *adap;
@@ -221,8 +221,8 @@ struct dentry
     struct qstr name;
     struct inode *d_inode;                 // 关联的inode
     struct dentry *d_parent;          // 父目录项
-    struct list d_childs;             // 父目录的子目录链表节点
-    struct list d_subdirs;            // 本目录的子目录项链表头
+    struct list_head d_childs;             // 父目录的子目录链表节点
+    struct list_head d_subdirs;            // 本目录的子目录项链表头
     struct lru_node d_lru_cache_node; // 目录项缓存
     struct spinlock d_lock;
     enum dentry_state d_flags; // dentry状态标志
@@ -254,7 +254,7 @@ struct mount_point
 {
     struct superblock *mnt_sb; // 挂载的超级块
     struct inode *mnt_root;   // 挂载点根目录
-    struct list mnt_list;      // 链表节点
+    struct list_head mnt_list;      // 链表节点
 };
 
 struct path

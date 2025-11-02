@@ -58,13 +58,14 @@ $(DTC):
 	$(MAKE) -C ./tools/dtc
 
 #--------------通用编译---------------#
-all: $(ASM_LINK) $(KBUILD_FILE) $(TARGET) $(DTB)
+all: $(TARGET) $(DTB)
 	sudo mount -o loop ../disk.img ../mount && echo "挂载成功!" || dmesg | tail -n 20
 	sudo cp $(TARGET) ../mount/
 	sudo cp $(DTB) ../mount/
 	sudo umount ../mount
+	
 
-os: $(KBUILD_FILE) $(TARGET)
+os: $(TARGET)
 	sudo mount -o loop ../disk.img ../mount && echo "挂载成功!" || dmesg | tail -n 20
 	sudo cp $(TARGET) ../mount/
 	sudo umount ../mount
@@ -74,15 +75,15 @@ $(TARGET): $(BUILD_OBJS)
 	rm $(KBUILD_FILE)
 	@echo "$@ is ready"
 
-$(BUILD_DIR)/%.o: %.c
+$(BUILD_DIR)/%.o: %.c $(ASM_LINK) $(KBUILD_FILE)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -I$(dir $<) -c $< -o $@
 
-$(BUILD_DIR)/%.o: %.S
+$(BUILD_DIR)/%.o: %.S $(ASM_LINK) $(KBUILD_FILE)
 	@mkdir -p $(dir $@)
 	$(CC) $(ASFLAGS) -I$(dir $<) -c $< -o $@
 
-$(BUILD_DIR)/%.o: %.s
+$(BUILD_DIR)/%.o: %.s $(ASM_LINK) $(KBUILD_FILE)
 	@mkdir -p $(dir $@)
 	$(CC) $(ASFLAGS) -I$(dir $<) -c $< -o $@
 	@echo "汇编：$< → $@"

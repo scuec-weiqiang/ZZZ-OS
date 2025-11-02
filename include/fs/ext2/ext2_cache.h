@@ -10,9 +10,9 @@
 #ifndef EXT2_CACHE_H
 #define EXT2_CACHE_H
 
-#include "os/types.h"
-#include "fs/vfs_types.h"
-#include "fs/ext2/ext2_types.h"
+#include <os/types.h>
+#include <fs/vfs_types.h>
+#include <fs/ext2/ext2_types.h>
 
 extern int ext2_sync_inode_bitmap_cache(struct superblock *vfs_sb);
 extern int ext2_load_inode_bitmap_cache(struct superblock *vfs_sb,uint64_t group);

@@ -1,22 +1,19 @@
-#include "drivers/uart.h"
-#include "os/printk.h"
-#include "asm/riscv.h"
-#include "asm/systimer.h"
-#include "asm/plic.h"
-#include "drivers/uart.h"
-#include "asm/clint.h"
-#include "os/mm.h"
-#include "os/types.h"
-#include "os/syscall.h"
-#include "os/sched.h"
+#include <drivers/uart.h>
+#include <os/printk.h>
+#include <asm/riscv.h>
+#include <asm/arch_timer.h>
+#include <asm/plic.h>
+#include <drivers/uart.h>
+#include <asm/clint.h>
+#include <os/mm.h>
+#include <os/types.h>
+#include <os/syscall.h>
+#include <os/sched.h>
+#include <os/irq.h>
+#include <asm/interrupt.h>
+#include <arch/irq.h>
 
 extern void kernel_trap_entry();
-
-void trap_init()
-{
-    // 设置中断向量
-    stvec_w((reg_t)kernel_trap_entry);
-}
 
 //1
 reg_t s_soft_interrupt_handler(reg_t epc)
@@ -39,7 +36,7 @@ reg_t m_soft_interrupt_handler(reg_t epc)
 reg_t s_timer_interrupt_handler(reg_t epc)
 {
     enum hart_id hart_id = tp_r();
-    systimer_reload(hart_id);
+    arch_timer_reload(hart_id);
     systick_up(hart_id);
     if(scheduler[tp_r()].current->expire_time >= systick())
     {
@@ -117,8 +114,7 @@ trap_func_t interrupt_handlers[] = {
     m_extern_interrupt_handler
 };
 
-reg_t trap_handler(reg_t _ctx)
-{
+reg_t trap_handler(reg_t _ctx) {
     struct trap_frame* ctx = (struct trap_frame *)_ctx;
     reg_t return_epc = ctx->sepc;
     uint64_t cause_code = ctx->scause & MCAUSE_MASK_CAUSECODE;
@@ -198,25 +194,39 @@ reg_t trap_handler(reg_t _ctx)
     return return_epc;
 }
 
-void page_fault_handler(uintptr_t addr)
+
+void trap_init()
 {
-    // satp_w(satp_r() & ~(SATP_MODE)); // 切换到bare模式
-    // // 检查是否为合法地址
-    // if (addr < RAM_BASE || addr >= (RAM_BASE + RAM_SIZE)) 
-    // {
-    //     printk("Invalid page fault at %x\n", addr);
-    //     panic("Page fault");
-    // }
+    // 设置中断向量
+    stvec_w((reg_t)kernel_trap_entry);
+    struct irq_desc clint_soft_desc = {
+        .name = "clint_soft",
+        .type = IRQ_TYPE_CORE,
+        .irq = IRQN_SOFT,
+        .hwirq = CLINT_IRQ_SOFT,
+        .chip = core_irq,
+        .handle = s_soft_interrupt_handler,
+    };
+    irq_register(&clint_soft_desc);
+
+    struct irq_desc clint_timer_desc = {
+        .name = "clint_timer",
+        .type = IRQ_TYPE_CORE,
+        .irq = IRQN_TIMER,
+        .hwirq = CLINT_IRQ_TIMER,
+        .chip = core_irq,
+        .handle = s_timer_interrupt_handler,
+    };
+    irq_register(&clint_timer_desc);
+
+    struct irq_desc plic_extern_desc = {
+        .name = "plic_extern",
+        .type = IRQ_TYPE_EXTERN,
+        .irq = IRQN_EXT,
+        .hwirq = CLINT_IRQ_EXTERN,
+        .chip = extern_irq,
+        .handle = s_extern_interrupt_handler,
+    };
+    irq_register(&plic_extern_desc);
     
-    // // 分配物理页并建立映射
-    // // uintptr_t pa = (uintptr_t)page_alloc(1);
-    // // if (!pa) panic("Out of memory");
-    
-    // // 设置映射 (RW权限)
-    // map_range(kernel_pgd, addr, addr, PAGE_SIZE, PTE_R | PTE_W);
-    
-    // printk("Handled page fault: VA=%x -> PA=%x\n", addr, addr);
-    // satp_w(satp_r() | SATP_MODE); 
-    // // 刷新TLB
-    // asm volatile("sfence.vma");
 }

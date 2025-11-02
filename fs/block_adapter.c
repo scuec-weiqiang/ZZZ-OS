@@ -7,10 +7,10 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include "fs/block_adapter.h"
-#include "os/string.h"
-#include "os/types.h"
-#include "os/malloc.h"
+#include <fs/block_adapter.h>
+#include <os/string.h>
+#include <os/types.h>
+#include <os/malloc.h>
 
 #define ADAP_INVALID_ARG    -1
 #define ADAP_BDEV_NULL      -2

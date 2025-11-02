@@ -18,7 +18,7 @@
  *                                                                   USA
  */
 
-#include "dtc.h"
+#include <dtc.h>
 
 void data_free(struct data d)
 {

@@ -21,8 +21,8 @@
 
 #include <stdio.h>
 
-#include "dtc.h"
-#include "srcpos.h"
+#include <dtc.h>
+#include <srcpos.h>
 
 /* A node in our list of directories to search for source/include files */
 struct search_path {

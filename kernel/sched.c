@@ -3,16 +3,16 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-01 15:16:19
- * @LastEditTime: 2025-10-06 18:51:35
+ * @LastEditTime: 2025-10-31 00:17:13
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "os/mm.h"
-#include "os/sched.h"
-#include "os/proc.h"
-#include "asm/platform.h"
-#include "os/list.h"
-#include "asm/systimer.h"
+#include <os/mm.h>
+#include <os/sched.h>
+#include <os/proc.h>
+#include <asm/platform.h>
+#include <os/list.h>
+#include <asm/arch_timer.h>
 
 struct scheduler scheduler[MAX_HARTS_NUM];
 
@@ -50,15 +50,15 @@ void sched()
 {
     enum hart_id hart_id = tp_r();
     scheduler[hart_id].current = NULL;
-    systimer_start();
+    arch_timer_start();
     while(1)
     {
         struct proc* next = _get_next_task(hart_id);
         if(!next) continue;
         next->expire_time = next->time_slice + systick();
         scheduler[hart_id].current = next;
-        switch_pgtable(next->pgd);
-        flush_pgtable();
+        mm_switch_pgtbl(next->pgd);
+        mm_flush_pgtbl();
         swtch(&scheduler[hart_id].ctx,&next->context);
     }
 } 

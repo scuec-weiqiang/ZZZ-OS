@@ -10,7 +10,7 @@
 #ifndef BITMAP_H    
 #define BITMAP_H
 
-#include "os/types.h"
+#include <os/types.h>
 
 #define BITMAP_ARR(x) ((char*)(x)+sizeof(size_t))
 

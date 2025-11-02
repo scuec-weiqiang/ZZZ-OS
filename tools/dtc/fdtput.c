@@ -26,7 +26,7 @@
 
 #include <libfdt.h>
 
-#include "util.h"
+#include <util.h>
 
 /* These are the operations we support */
 enum oper_type {

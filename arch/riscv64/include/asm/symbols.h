@@ -10,7 +10,7 @@
 #ifndef SYMBOLS_H
 #define SYMBOLS_H
 
-#include "os/types.h"
+#include <os/types.h>
 extern uintptr_t text_start;
 extern uintptr_t text_end;
 extern uintptr_t text_size;

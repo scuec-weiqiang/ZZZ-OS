@@ -7,7 +7,7 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "os/types.h"
+#include <os/types.h>
 
 extern char __text_start[], __text_end[];
 extern char __rodata_start[], __rodata_end[];

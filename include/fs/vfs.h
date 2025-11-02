@@ -10,7 +10,7 @@
 #ifndef VFS_H
 #define VFS_H
 
-#include "fs/vfs_types.h"
+#include <fs/vfs_types.h>
 
 extern struct dentry* lookup(const char* path);
 extern struct dentry* mkdir(const char* path,uint16_t mode);

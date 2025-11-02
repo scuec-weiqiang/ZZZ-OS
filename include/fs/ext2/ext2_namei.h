@@ -10,7 +10,7 @@
 #ifndef EXT2_NAMEI_H
 #define EXT2_NAMEI_H
 
-#include "fs/vfs_types.h"
+#include <fs/vfs_types.h>
 extern struct inode_ops ext2_inode_ops;
 
 #endif

@@ -7,12 +7,12 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright        : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include "drivers/of/fdt.h"
-#include "os/bswap.h"
-#include "os/malloc.h"
-#include "fs/path.h"
-#include "os/printk.h"
-#include "os/string.h"
+#include <drivers/of/fdt.h>
+#include <os/bswap.h>
+#include <os/malloc.h>
+#include <fs/path.h>
+#include <os/printk.h>
+#include <os/string.h>
 
 #define ALIGN_UP(x, align) (((x) + (align) - 1) & ~((align) - 1))
 #define ALIGN_DOWN(x, align) ((x) & ~((align) - 1))

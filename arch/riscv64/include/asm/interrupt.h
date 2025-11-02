@@ -11,10 +11,14 @@
 #ifndef _INTERRUPT_H
 #define _INTERRUPT_H
 
-#include "os/types.h"
-#include "asm/riscv.h"
-#include "asm/platform.h"
-#include "asm/plic.h"
+#include <os/types.h>
+#include <asm/riscv.h>
+#include <asm/platform.h>
+#include <asm/plic.h>
+
+#define CLINT_IRQ_SOFT 1
+#define CLINT_IRQ_TIMER 5 
+#define CLINT_IRQ_EXTERN 9
 
 
 /***************************************************************
@@ -114,6 +118,8 @@ static inline void s_global_interrupt_disable()
     sstatus_w(sstatus_r()&(~0x02));
 }
 
+
+
 static inline void s_timer_interrupt_enable()
 {
     sie_w(sie_r()|0x20);
@@ -123,23 +129,41 @@ static inline void s_timer_interrupt_disable()
 {
     sie_w(sie_r()&(~0x20));
 }
-/***************************************************************
- * @description: 开启外部中断
- * @return {*}
-***************************************************************/
-static inline void s_extern_interrupt_enable()
+
+static inline void s_timer_interrupt_pending()
 {
-    sie_w(sie_r()|0x200);
+    sip_w(sip_r()|0x20);
 }
 
-/***************************************************************
- * @description: 关闭外部中断
- * @return {*}
-***************************************************************/
+static inline void s_timer_interrupt_clear_pending()
+{
+    sip_w(sip_r()&(~0x20));
+}
+
+
+
+static inline void s_extern_interrupt_enable()
+{
+    sie_w(sie_r()|(1<<9));
+}
+
 static inline void s_extern_interrupt_disable()
 {
-    sie_w(sie_r()&(~0x100));
+    sie_w(sie_r()&(~(1<<9)));
 }
+
+static inline void s_extern_interrupt_pending()
+{
+    sip_w(sip_r()|(1<<9));
+}
+
+static inline void s_extern_interrupt_clear_pending()
+{
+    sip_w(sip_r()&(~(1<<9)));
+}
+
+
+
 
 static inline void s_soft_interrupt_enable()
 {
@@ -149,6 +173,16 @@ static inline void s_soft_interrupt_enable()
 static inline void s_soft_interrupt_disable()
 {
     sie_w(sie_r()&(~0x02));
+}
+
+static inline void s_soft_interrupt_pending()
+{
+    sip_w(sip_r()|0x02);
+}
+
+static inline void s_soft_interrupt_clear_pending()
+{
+    sip_w(sip_r()&(~0x02));
 }
 
 #endif

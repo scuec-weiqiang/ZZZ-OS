@@ -18,7 +18,7 @@
  *                                                                   USA
  */
 
-#include "dtc.h"
+#include <dtc.h>
 
 #ifdef TRACE_CHECKS
 #define TRACE(c, ...) \

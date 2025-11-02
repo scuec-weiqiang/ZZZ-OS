@@ -3,22 +3,26 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-16 18:23:57
- * @LastEditTime: 2025-10-06 20:41:26
+ * @LastEditTime: 2025-10-31 01:03:53
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "os/proc.h"
-#include "fs/vfs.h"
-#include "os/elf.h"
-#include "os/mm.h"
-#include "os/check.h"
-#include "os/string.h"
-#include "asm/platform.h"
-#include "os/malloc.h"
-#include "asm/systimer.h"
-#include "os/sched.h"
+#include <os/proc.h>
+#include <fs/vfs.h>
+#include <os/elf.h>
+#include <os/mm.h>
+#include <os/check.h>
+#include <os/string.h>
+#include <asm/platform.h>
+#include <os/malloc.h>
+#include <asm/arch_timer.h>
+#include <os/sched.h>
+#include <os/page.h>
+#include <asm/pgtbl.h>
+#include <arch/mm.h>
 
-struct list proc_list_head[MAX_HARTS_NUM];
+
+struct list_head proc_list_head[MAX_HARTS_NUM];
 
 uint64_t proc_count[MAX_HARTS_NUM];
 
@@ -68,8 +72,7 @@ struct proc* proc_create(char* path)
     struct proc* new_proc = (struct proc*)malloc(sizeof(struct proc));
     memset(new_proc,0,sizeof(struct proc));
     
-    pgtable_t* user_pgd = page_alloc(1);
-    memset(user_pgd,0,sizeof(pgtable_t));
+    pgtbl_t* user_pgd = arch_mmu->new();
 
     char *user_stack = (char*)malloc(PROC_STACK_SIZE);
     memset(user_stack,0,PROC_STACK_SIZE);

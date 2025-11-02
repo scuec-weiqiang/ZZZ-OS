@@ -1,14 +1,15 @@
 /**
- * @FilePath: /ZZZ-OS/kernel/vm.c
+ * @FilePath: /ZZZ-OS/mm/mm.c
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-10-23 20:06:06
+ * @LastEditTime: 2025-10-31 01:05:02
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include <asm/mm.h>
 #include <asm/clint.h>
+#include <arch/mm.h>
+#include <asm/pgtbl.h>
 #include <asm/plic.h>
 #include <asm/riscv.h>
 #include <asm/symbols.h>
@@ -16,13 +17,13 @@
 #include <drivers/virtio.h>
 #include <os/check.h>
 #include <os/malloc.h>
+#include <os/page.h>
 #include <os/printk.h>
 #include <os/string.h>
-#include <os/mm.h>
 
-pgtable_t *kernel_pgd = NULL; // kernel_page_global_directory 内核页全局目录
+pgtbl_t *kernel_pgd = NULL; // kernel_page_global_directory 内核页全局目录
 
-int map_range(pgtable_t *pgd, uintptr_t vaddr, uintptr_t paddr, size_t size, uint64_t flags) {
+int map_range(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, size_t size, uint64_t flags) {
     CHECK(pgd != NULL, "pgd is NULL", return -1;);
     CHECK(vaddr % PAGE_SIZE_4K == 0, "vaddr is not page aligned", return -1;);
     CHECK(paddr % PAGE_SIZE_4K == 0, "paddr is not page aligned", return -1;);
@@ -49,30 +50,31 @@ int map_range(pgtable_t *pgd, uintptr_t vaddr, uintptr_t paddr, size_t size, uin
             chunk_size = PAGE_SIZE_4K;
         }
 
-        if (arch_map_page(pgd, va, pa, chunk_size, flags) < 0) {
+        if (arch_mmu->map(pgd, va, pa, chunk_size, flags) < 0) {
             return -1;
         }
 
         va += chunk_size;
         pa += chunk_size;
     }
-    asm volatile("sfence.vma zero, zero"); // 刷新 TLB
+    arch_mmu->flush_pgtlb();
     return 0;
 }
 
-int unmap_range(pgtable_t *pgd, uintptr_t vaddr, size_t size) {
-    return 0;
+int unmap_range(pgtbl_t *pgd, uintptr_t va) {
+    
+    return arch_mmu->unmap(pgd, va);
 }
 
-void switch_pgtable(pgtable_t *pgd) {
-    arch_switch_pgd(pgd);
+void mm_switch_pgtbl(pgtbl_t *pgd) {
+    arch_mmu->switch_pgtbl(pgd);
 }
 
-void flush_pgtable() {
-    arch_flush_tlb();
+void mm_flush_pgtbl() {
+    arch_mmu->flush_pgtlb();
 }
 
-void page_table_init(pgtable_t *pgd) {
+void page_table_init(pgtbl_t *pgd) {
     // 映射内核代码段，数据段，栈以及堆的保留页到虚拟地址空间
     map_range(pgd, (uintptr_t)text_start, (uintptr_t)KERNEL_PA(text_start), (size_t)text_size, PTE_R | PTE_X);
     map_range(pgd, (uintptr_t)rodata_start, (uintptr_t)KERNEL_PA(rodata_start), (size_t)rodata_size, PTE_R);
@@ -90,18 +92,18 @@ void page_table_init(pgtable_t *pgd) {
 }
 
 void kernel_page_table_init() {
-    kernel_pgd = (pgtable_t *)arch_new_pgtable();
+    kernel_pgd = (pgtbl_t *)arch_mmu->new();
     if (kernel_pgd == NULL)
         return;
     page_table_init(kernel_pgd);
-    arch_switch_pgd(kernel_pgd);
-    arch_flush_tlb();
+    arch_mmu->switch_pgtbl(kernel_pgd);
+    arch_mmu->flush_pgtlb();
 }
 
-int copyin(pgtable_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
+int copyin(pgtbl_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
     size_t n = 0;
     while (n < len) {
-        uintptr_t src = arch_va_to_pa(pagetable, src_va);
+        uintptr_t src = arch_mmu->translate(pagetable, src_va);
         if (src == 0) {
             return -1;
         }
@@ -119,10 +121,10 @@ int copyin(pgtable_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
     return n;
 }
 
-int copyout(pgtable_t *pagetable, uintptr_t dst_va, char *src, size_t len) {
+int copyout(pgtbl_t *pagetable, uintptr_t dst_va, char *src, size_t len) {
     size_t n = 0;
     while (n < len) {
-        uintptr_t dst = arch_va_to_pa(pagetable, dst_va);
+        uintptr_t dst = arch_mmu->translate(pagetable, dst_va);
         if (dst == 0) {
             return -1;
         }

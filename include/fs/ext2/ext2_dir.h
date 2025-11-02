@@ -10,7 +10,7 @@
 #ifndef EXT2_DIR_H
 #define EXT2_DIR_H
 
-#include "fs/vfs_types.h"
+#include <fs/vfs_types.h>
 extern struct inode *ext2_find(struct inode *i_parent, const char *name);
 
 // 辅助结构：查到的空槽信息

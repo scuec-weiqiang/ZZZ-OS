@@ -22,7 +22,7 @@
 #ifndef FDT_H
 #define FDT_H
 
-#include "os/types.h"
+#include <os/types.h>
 
 #define FDT_MAGIC 0xd00dfeed
 

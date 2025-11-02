@@ -12,7 +12,7 @@
 #define _CHECK_H
 
  // 使用你的打印函数
-#include "os/printk.h" 
+#include <os/printk.h> 
 
 static inline void __check_fail(const char *expr, const char *file, int line, const char *func)
 {

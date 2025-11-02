@@ -7,14 +7,14 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include "fs/vfs_types.h"
-#include "fs/fs_type.h"
-#include "fs/dcache.h"
-#include "os/check.h"
-#include "os/malloc.h"
+#include <fs/vfs_types.h>
+#include <fs/fs_type.h>
+#include <fs/dcache.h>
+#include <os/check.h>
+#include <os/malloc.h>
 
 /* 挂载点链表 */
-struct list vfs_mount_points = LIST_HEAD_INIT(vfs_mount_points);
+struct list_head vfs_mount_points = LIST_HEAD_INIT(vfs_mount_points);
 
 // static struct superblock *g_root_sb = NULL;
 static struct dentry *g_root_dentry;

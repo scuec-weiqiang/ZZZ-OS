@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ/arch/riscv64/qemu_virt/asm/systimer.h
+ * @FilePath: /ZZZ-OS/arch/riscv64/include/asm/arch_timer.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-17 00:52:26
- * @LastEditTime: 2025-09-21 00:04:28
+ * @LastEditTime: 2025-10-30 21:31:39
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -11,14 +11,14 @@
 #ifndef __HWTIMER_H
 #define __HWTIMER_H
 
-#include "os/types.h"
-#include "asm/platform.h"
+#include <os/types.h>
+#include <asm/platform.h>
 
 #define tick_s      SYS_CLOCK_FREQ
 #define tick_ms     (tick_s/1000)
 #define tick_us     (tick_ms/1000)
 
-enum systimer_hz{
+enum arch_timer_hz{
     SYS_HZ_1000 = 1*tick_ms,
     SYS_HZ_250 = 4*tick_ms,
     SYS_HZ_100 = 10*tick_ms,
@@ -30,11 +30,11 @@ enum systimer_hz{
     SYS_HZ_1 = 1000*tick_ms,
 };
 
-extern void systimer_init(enum systimer_hz hz);
-extern void systimer_start();
-extern void systimer_pause();
-extern void systimer_period(enum systimer_hz hz);
-extern void systimer_reload();
+extern void arch_timer_init(enum arch_timer_hz hz);
+extern void arch_timer_start();
+extern void arch_timer_pause();
+extern void arch_timer_period(enum arch_timer_hz hz);
+extern void arch_timer_reload();
 extern uint64_t systick();
 extern void systick_up();
 

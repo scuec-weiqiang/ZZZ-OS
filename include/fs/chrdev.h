@@ -10,7 +10,7 @@
 #ifndef _CHRDEV_H
 #define _CHRDEV_H
 
-#include "fs/vfs_types.h"
+#include <fs/vfs_types.h>
 
 struct chrdev
 {

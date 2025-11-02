@@ -11,7 +11,7 @@
 #include <drivers/of/fdt.h>
 #include <libfdt_env.h>
 
-#include "util.h"
+#include <util.h>
 
 #define ALIGN(x, a)	(((x) + ((a) - 1)) & ~((a) - 1))
 #define PALIGN(p, a)	((void *)(ALIGN((unsigned long)(p), (a))))

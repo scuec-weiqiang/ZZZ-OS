@@ -18,8 +18,8 @@
  *                                                                   USA
  */
 
-#include "dtc.h"
-#include "srcpos.h"
+#include <dtc.h>
+#include <srcpos.h>
 
 extern FILE *yyin;
 extern int yyparse(void);

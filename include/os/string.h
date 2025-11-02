@@ -11,7 +11,7 @@
 #ifndef _STRING_H
 #define _STRING_H
 
-#include "os/types.h"  
+#include <os/types.h>  
 
 extern void* memset(void *dest, int ch, size_t size);
 extern void* memcpy(void *dest, const void *src, size_t size);

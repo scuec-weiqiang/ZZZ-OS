@@ -1,17 +1,16 @@
 /**
- * @FilePath: /ZZZ/kernel/os/malloc.h
+ * @FilePath: /ZZZ-OS/include/os/malloc.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-15 17:26:52
- * @LastEditTime: 2025-09-20 16:58:14
+ * @LastEditTime: 2025-10-30 23:16:21
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #ifndef _PAGE_ALLOC_H
 #define _PAGE_ALLOC_H
 
-#include "os/types.h"
-#include "asm/mm.h"
+#include <os/types.h>
 
 #define RESERVED_PAGE_NUM           8
 #define RESERVED_PAGE_SIZE          RESERVED_PAGE_NUM*PAGE_SIZE 

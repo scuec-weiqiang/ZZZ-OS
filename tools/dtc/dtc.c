@@ -18,8 +18,8 @@
  *                                                                   USA
  */
 
-#include "dtc.h"
-#include "srcpos.h"
+#include <dtc.h>
+#include <srcpos.h>
 
 /*
  * Command line options

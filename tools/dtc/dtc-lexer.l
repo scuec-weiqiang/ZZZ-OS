@@ -35,9 +35,9 @@ COMMENT		"/*"([^*]|\*+[^*/])*\*+"/"
 LINECOMMENT	"//".*\n
 
 %{
-#include "dtc.h"
-#include "srcpos.h"
-#include "dtc-parser.tab.h"
+#include <dtc.h>
+#include <srcpos.h>
+#include <dtc-parser.tab.h>
 
 YYLTYPE yylloc;
 

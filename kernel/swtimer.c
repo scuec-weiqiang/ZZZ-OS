@@ -8,12 +8,12 @@
  * @
  * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
 ***************************************************************/
-#include "os/types.h"
-#include "os/malloc.h"
-#include "os/list.h"
-#include "asm/systimer.h"
-#include "os/printk.h"
-#include "os/sched.h"
+#include <os/types.h>
+#include <os/malloc.h>
+#include <os/list.h>
+#include <asm/arch_timer.h>
+#include <os/printk.h>
+#include <os/sched.h>
 
 #define SWTIMER_ON (1)
 #define SWTIMER_OFF (0)
@@ -28,7 +28,7 @@ struct swtimer
     uint64_t tick;
     uint64_t mode;
     void (*timer_task)();
-    struct list swtimer_node;    
+    struct list_head swtimer_node;    
 };
 
 struct swtimer *swtimer_head = NULL;

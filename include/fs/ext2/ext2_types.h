@@ -1,9 +1,9 @@
 #ifndef EXT2_H
 #define EXT2_H
 
-#include "os/types.h"
-#include "os/bitmap.h"
-#include "fs/vfs_types.h"
+#include <os/types.h>
+#include <os/bitmap.h>
+#include <fs/vfs_types.h>
 
 typedef uint32_t ext2_ino_t;
 typedef uint32_t ext2_bno_t;

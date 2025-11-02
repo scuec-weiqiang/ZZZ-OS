@@ -10,8 +10,8 @@
 #ifndef EXT2_INODE_H
 #define EXT2_INODE_H
 
-#include "os/types.h"
-#include "fs/vfs_types.h"
+#include <os/types.h>
+#include <fs/vfs_types.h>
 
 extern uint64_t ext2_ino_group(struct superblock *vfs_sb,uint64_t ino);
 extern struct super_ops ext2_s_ops;

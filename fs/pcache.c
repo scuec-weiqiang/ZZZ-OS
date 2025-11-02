@@ -7,14 +7,14 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include "os/types.h"
-#include "os/container_of.h"
-#include "os/lru.h"
-#include "asm/spinlock.h"
-#include "fs/vfs_types.h"
-#include "os/check.h"
-#include "os/string.h"
-#include "os/malloc.h"
+#include <os/types.h>
+#include <os/container_of.h>
+#include <os/lru.h>
+#include <asm/spinlock.h>
+#include <fs/vfs_types.h>
+#include <os/check.h>
+#include <os/string.h>
+#include <os/malloc.h>
 
 struct lru_cache *global_page_cache = NULL;
 

@@ -9,9 +9,9 @@
  */
 #ifndef VFS_CACHE_H
 #define VFS_CACHE_H
-#include "os/types.h"
-#include "os/lru.h"
-#include "fs/vfs_types.h"
+#include <os/types.h>
+#include <os/lru.h>
+#include <fs/vfs_types.h>
 
 extern struct lru_cache *global_inode_cache;
 

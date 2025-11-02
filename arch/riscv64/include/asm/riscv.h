@@ -1,7 +1,7 @@
 #ifndef RISCV_H
 #define RISCV_H
 
-#include "os/types.h"
+#include <os/types.h>
 
 #define MCAUSE_MASK_INTERRUPT 0x8000000000000000
 #define MCAUSE_MASK_CAUSECODE 0x7fffffffffffffff
@@ -302,11 +302,7 @@ static inline void pmpaddr0_w(reg_t a)
     asm volatile("csrw pmpaddr0,%0" ::"r"(a));
 }
 
-static inline void sfence_vma()
-{
-    // the zero, zero means flush all TLB entries.
-    asm volatile("sfence.vma zero, zero");
-}
+
 
 // #define M_TO_U(x)    __PROTECT(
 //     mstatus_w(mscratch_r() & ~(3<<11));

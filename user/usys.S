@@ -7,7 +7,7 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "syscall_num.h"
+#include <syscall_num.h>
 
 .global print
 print:

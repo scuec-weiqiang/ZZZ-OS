@@ -19,8 +19,8 @@
 #ifndef CLINT_H
 #define CLINT_H
 
-#include "os/types.h"
-#include "asm/platform.h"
+#include <os/types.h>
+#include <asm/platform.h>
 
 
 

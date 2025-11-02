@@ -10,7 +10,7 @@
 #ifndef ELF_H
 #define ELF_H
 
-#include "os/types.h"
+#include <os/types.h>
 
 #define PT_LOAD 1
 

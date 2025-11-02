@@ -11,10 +11,10 @@
 #ifndef _SCHED_H
 #define _SCHED_H
 
-#include "os/list.h"
-#include "asm/riscv.h"
-#include "os/proc.h"
-#include "asm/platform.h"
+#include <os/list.h>
+#include <asm/riscv.h>
+#include <os/proc.h>
+#include <asm/platform.h>
 
 enum sched_state 
 { 
@@ -26,8 +26,8 @@ enum sched_state
 struct scheduler
 { 
     uint64_t task_num;
-    struct list ready_queue;
-    struct list wait_queue; 
+    struct list_head ready_queue;
+    struct list_head wait_queue; 
     struct proc* current;
     struct context ctx;   // 调度器的上下文
 };

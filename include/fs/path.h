@@ -10,7 +10,7 @@
 #ifndef VFS_PATH_H
 #define VFS_PATH_H
 
-#include "os/types.h"
+#include <os/types.h>
 
 extern char *path_split(char *str, const char *delim);
 extern int base_dir_split(const char *path,char *dirname, char *basename);

@@ -10,7 +10,7 @@
 #ifndef VIRTIO_H
 #define VIRTIO_H
 
-#include "os/types.h"
+#include <os/types.h>
 
 #define VIRTIO_MMIO_BASE 0x10001000
 

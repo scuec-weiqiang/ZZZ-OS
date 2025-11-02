@@ -10,9 +10,9 @@
 #ifndef VFS_MOUNT_H
 #define VFS_MOUNT_H
 
-#include "fs/vfs_types.h"
+#include <fs/vfs_types.h>
 
-extern struct list vfs_mount_points;
+extern struct list_head vfs_mount_points;
 extern int mount(const char *type_name, const char *bdev_name, int flags);
 extern int mount_rootfs();
 extern struct dentry *get_root();

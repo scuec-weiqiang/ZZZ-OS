@@ -10,7 +10,7 @@
 #ifndef BLOCK_DEVICE_H
 #define BLOCK_DEVICE_H
 
-#include "os/types.h"
+#include <os/types.h>
 
 struct block_device {
     char     name[16];       // 设备名，比如 "sda", "vda"

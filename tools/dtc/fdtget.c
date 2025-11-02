@@ -32,7 +32,7 @@
 
 #include <libfdt.h>
 
-#include "util.h"
+#include <util.h>
 
 enum display_mode {
 	MODE_SHOW_VALUE,	/* show values for node properties */

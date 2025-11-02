@@ -10,7 +10,7 @@
 #ifndef _VFS_SUPER_H
 #define _VFS_SUPER_H
 
-#include "fs/vfs_types.h"
+#include <fs/vfs_types.h>
 
 extern struct superblock *alloc_super(struct fs_type *fs_type);
 extern void free_super(struct superblock *sb);

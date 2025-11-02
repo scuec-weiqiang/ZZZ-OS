@@ -32,9 +32,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "libfdt.h"
-#include "util.h"
-#include "version_gen.h"
+#include <libfdt.h>
+#include <util.h>
+#include <version_gen.h>
 
 char *xstrdup(const char *s)
 {

@@ -7,16 +7,16 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include "drivers/time.h"
-#include "os/bswap.h"
-#include "os/types.h"
-#include "asm/platform.h"
-#include "fs/vfs.h"
-#include "fs/vfs_types.h"
-#include "fs/chrdev.h"
-#include "os/string.h"
-#include "drivers/of/fdt.h"
-#include "os/printk.h"
+#include <drivers/time.h>
+#include <os/bswap.h>
+#include <os/types.h>
+#include <asm/platform.h>
+#include <fs/vfs.h>
+#include <fs/vfs_types.h>
+#include <fs/chrdev.h>
+#include <os/string.h>
+#include <drivers/of/fdt.h>
+#include <os/printk.h>
 
 // 固定地址的时间缓冲区
 struct system_time *system_time = NULL;

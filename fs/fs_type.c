@@ -7,12 +7,12 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "fs/vfs_types.h"
-#include "os/list.h"
-#include "os/check.h"
-#include "os/string.h"
+#include <fs/vfs_types.h>
+#include <os/list.h>
+#include <os/check.h>
+#include <os/string.h>
 
-static struct list g_fs_types = {&g_fs_types, &g_fs_types};
+static struct list_head g_fs_types = {&g_fs_types, &g_fs_types};
 
 int fs_register(struct fs_type *fs_type)
 {
@@ -40,7 +40,7 @@ int fs_unregister(struct fs_type *fs_type)
 
 struct fs_type* fs_get(const char* name)
 {
-    struct list *pos;
+    struct list_head *pos;
     list_for_each(pos,&g_fs_types)
     {
         struct fs_type *fs = container_of(pos,struct fs_type,fs_type_lnode);
