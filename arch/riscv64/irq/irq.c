@@ -10,12 +10,10 @@
 #include <arch/irq.h>
 #include <asm/trap_handler.h>
 #include <asm/interrupt.h>
+#include <os/list.h>
 
-static void riscv64_irq_ctrl_init(void) {
-    // 初始化中断控制器的代码
-    trap_init();
-}
+extern struct irq_chip clint;
 
-static void riscv64_irq_ctrl_enable(int irq) {
-    // 使能指定中断号的代码
+void arch_irq_init() {
+    clint.ops->init();
 }

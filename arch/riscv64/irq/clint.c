@@ -8,12 +8,13 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include <arch/irq.h>
+#include <asm/trap_handler.h>
 #include <asm/interrupt.h>
 #include <os/irq.h>
 
 
 static void riscv64_clint_init(void) {
-    
+   trap_init(); 
 }
 
 static void riscv64_clint_enable(int hwirq) {
@@ -81,7 +82,7 @@ static void riscv64_clint_clear_pending(int hwirq) {
 }
 
 // CLINT不支持优先级设置
-static void riscv64_clint_set_priority(int priority) {
+static void riscv64_clint_set_priority(int hwirq, int priority) {
 }
 
 // CLINT不支持优先级获取函数
@@ -89,7 +90,7 @@ static int riscv64_clint_get_priority() {
     return 0;
 }
 
-struct irq_chip riscv64_clint_chip = {
+struct irq_chip_ops riscv64_clint_chip_ops = {
     .init = riscv64_clint_init,
     .enable = riscv64_clint_enable,
     .disable = riscv64_clint_disable,
@@ -98,4 +99,7 @@ struct irq_chip riscv64_clint_chip = {
     .get_priority = riscv64_clint_get_priority, 
 };
 
-struct irq_chip *core_irq = &riscv64_clint_chip;
+struct irq_chip clint = {
+    .name = "riscv,clint",
+    .ops = &riscv64_clint_chip_ops,
+};

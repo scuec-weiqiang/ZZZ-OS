@@ -35,9 +35,8 @@ reg_t m_soft_interrupt_handler(reg_t epc)
 //5
 reg_t s_timer_interrupt_handler(reg_t epc)
 {
-    enum hart_id hart_id = tp_r();
-    arch_timer_reload(hart_id);
-    systick_up(hart_id);
+    arch_timer_reload();
+    systick_up();
     if(scheduler[tp_r()].current->expire_time >= systick())
     {
         printk("\n");
@@ -199,34 +198,4 @@ void trap_init()
 {
     // 设置中断向量
     stvec_w((reg_t)kernel_trap_entry);
-    struct irq_desc clint_soft_desc = {
-        .name = "clint_soft",
-        .type = IRQ_TYPE_CORE,
-        .irq = IRQN_SOFT,
-        .hwirq = CLINT_IRQ_SOFT,
-        .chip = core_irq,
-        .handle = s_soft_interrupt_handler,
-    };
-    irq_register(&clint_soft_desc);
-
-    struct irq_desc clint_timer_desc = {
-        .name = "clint_timer",
-        .type = IRQ_TYPE_CORE,
-        .irq = IRQN_TIMER,
-        .hwirq = CLINT_IRQ_TIMER,
-        .chip = core_irq,
-        .handle = s_timer_interrupt_handler,
-    };
-    irq_register(&clint_timer_desc);
-
-    struct irq_desc plic_extern_desc = {
-        .name = "plic_extern",
-        .type = IRQ_TYPE_EXTERN,
-        .irq = IRQN_EXT,
-        .hwirq = CLINT_IRQ_EXTERN,
-        .chip = extern_irq,
-        .handle = s_extern_interrupt_handler,
-    };
-    irq_register(&plic_extern_desc);
-    
 }
