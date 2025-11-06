@@ -7,17 +7,23 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include <arch/irq.h>
+#include <asm/irq.h>
 #include <asm/trap_handler.h>
 #include <asm/interrupt.h>
-#include <os/irq.h>
 
-
-static void riscv64_clint_init(void) {
+static void riscv64_clint_init(struct irq_chip* self) {
    trap_init(); 
 }
 
-static void riscv64_clint_enable(int hwirq) {
+static int riscv64_clint_ack(struct irq_chip *self) {
+   return  0;
+}
+
+static void riscv64_clint_eio(struct irq_chip *self, int hwirq) {
+    
+}
+
+static void riscv64_clint_enable(struct irq_chip* self, int hwirq) {
     switch (hwirq) {
     case CLINT_IRQ_SOFT: // 软件中断
         s_soft_interrupt_enable();
@@ -33,7 +39,7 @@ static void riscv64_clint_enable(int hwirq) {
     }
 }
 
-static void riscv64_clint_disable(int hwirq) {
+static void riscv64_clint_disable(struct irq_chip* self, int hwirq) {
     switch (hwirq) {
     case CLINT_IRQ_SOFT: // 软件中断
         s_soft_interrupt_disable();
@@ -49,7 +55,7 @@ static void riscv64_clint_disable(int hwirq) {
     }
 }
 
-static void riscv64_clint_pending(int hwirq) {
+static void riscv64_clint_set_pending(struct irq_chip* self, int hwirq) {
     switch (hwirq) {
     case CLINT_IRQ_SOFT: // 软件中断
         s_soft_interrupt_pending();
@@ -65,7 +71,7 @@ static void riscv64_clint_pending(int hwirq) {
     }
 }
 
-static void riscv64_clint_clear_pending(int hwirq) {
+static void riscv64_clint_clear_pending(struct irq_chip* self, int hwirq) {
     switch (hwirq) {
     case CLINT_IRQ_SOFT: // 软件中断
         s_soft_interrupt_clear_pending();
@@ -81,25 +87,42 @@ static void riscv64_clint_clear_pending(int hwirq) {
     }
 }
 
+static int riscv64_clint_get_pending(struct irq_chip *self, int hwirq) {
+    int ret = 0;
+    switch (hwirq) {
+    case CLINT_IRQ_SOFT: // 软件中断
+        ret = s_soft_interrupt_get_pending();
+        break;
+    case CLINT_IRQ_TIMER: // 定时器中断
+        ret = s_timer_interrupt_get_pending();
+        break;
+    case CLINT_IRQ_EXTERN: // 外部中断
+        ret = s_extern_interrupt_get_pending();
+        break;
+    default:
+        break;
+    }
+    return ret;
+}
+
 // CLINT不支持优先级设置
-static void riscv64_clint_set_priority(int hwirq, int priority) {
+static void riscv64_clint_set_priority(struct irq_chip* self, int hwirq, int priority) {
 }
 
 // CLINT不支持优先级获取函数
-static int riscv64_clint_get_priority() {
+static int riscv64_clint_get_priority(struct irq_chip* self, int hwirq) {
     return 0;
 }
 
 struct irq_chip_ops riscv64_clint_chip_ops = {
     .init = riscv64_clint_init,
+    .ack = riscv64_clint_ack,
+    .eoi = riscv64_clint_eio,   
     .enable = riscv64_clint_enable,
     .disable = riscv64_clint_disable,
-    .pending = riscv64_clint_pending,
+    .set_pending = riscv64_clint_set_pending,
+    .clear_pending = riscv64_clint_clear_pending,
+    .get_pending = riscv64_clint_get_pending,
     .set_priority = riscv64_clint_set_priority, 
     .get_priority = riscv64_clint_get_priority, 
-};
-
-struct irq_chip clint = {
-    .name = "riscv,clint",
-    .ops = &riscv64_clint_chip_ops,
 };

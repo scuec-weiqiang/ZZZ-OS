@@ -1,0 +1,4 @@
+OBJ_Y += clint.o 
+OBJ_Y += irq.o 
+OBJ_Y += trap_handler.o 
+OBJ_Y += trap.o 

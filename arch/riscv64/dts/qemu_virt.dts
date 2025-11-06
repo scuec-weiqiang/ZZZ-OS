@@ -26,8 +26,15 @@
         #size-cells = <1>;
         compatible = "simple-bus";
 
+        clint: clint@2000000 {
+            compatible = "riscv,clint0";
+            interrupt-controller;
+            reg = <0x2000000 0x10000>;
+        };
+
         plic: plic@c000000 {
             compatible = "wq,plic";
+            interrupt-controller;
             reg = <0xc000000 0x4000000>;
         };
        

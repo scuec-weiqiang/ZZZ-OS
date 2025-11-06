@@ -45,32 +45,32 @@ enum fdt_token {
 };
 
 // 属性结构
-struct fdt_prop {
+struct device_prop {
     char *name;
     uint32_t length;
     void *value;
-    struct fdt_prop *next;
+    struct device_prop *next;
 };
 
-struct fdt_node {
+struct device_node {
     char *name;
     char *full_path; // 全路径（如 /soc/uart@12340000）
-    struct fdt_node *parent;
-    struct fdt_node *children;
-    struct fdt_node *sibling;
-    struct fdt_prop *properties;
+    struct device_node *parent;
+    struct device_node *children;
+    struct device_node *sibling;
+    struct device_prop *properties;
 };
 
 extern int fdt_init(void *dtb);
 extern void fdt_test();
 
-extern struct fdt_node* fdt_find_node_by_path(const char* path);
-extern struct fdt_node* fdt_find_node_by_compatible(const char* compatible_prop);
-extern struct fdt_prop* fdt_get_prop_by_name(const struct fdt_node* node, const char* name);
-extern struct fdt_node* fdt_find_node_by_phandle(uint32_t phandle);
-extern uint32_t fdt_get_address_cells(const struct fdt_node *node);
-extern uint32_t fdt_get_size_cells(const struct fdt_node *node);
-extern uint32_t* fdt_get_reg(const struct fdt_node *node);
+extern struct device_node* fdt_find_node_by_path(const char* path);
+extern struct device_node* fdt_find_node_by_compatible(const char* compatible_prop);
+extern struct device_prop* fdt_get_prop_by_name(const struct device_node* node, const char* name);
+extern struct device_node* fdt_find_node_by_phandle(uint32_t phandle);
+extern uint32_t fdt_get_address_cells(const struct device_node *node);
+extern uint32_t fdt_get_size_cells(const struct device_node *node);
+extern uint32_t* fdt_get_reg(const struct device_node *node);
 extern int fdt_get_memory(uintptr_t *base, uintptr_t *size);
-extern struct fdt_node* fdt_get_interrupt_parent(const struct fdt_node *node);
+extern struct device_node* fdt_get_interrupt_parent(const struct device_node *node);
 #endif

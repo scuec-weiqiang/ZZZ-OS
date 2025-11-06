@@ -1,7 +1,7 @@
 #include <os/check.h>
 #include <os/malloc.h>
 #include <os/string.h>
-#include <arch/mm.h>
+#include <asm/mm.h>
 #include <asm/barrier.h>
 #include <asm/riscv.h>
 #include <asm/pgtbl.h>
@@ -28,17 +28,17 @@ static inline uintptr_t make_satp(uintptr_t va_or_pa) {
     return SATP_MODE | (pa >> 12);
 }
 
-static pgtbl_t *arch_new_pgtbl() {
+pgtbl_t *arch_new_pgtbl() {
     pgtbl_t *pgd = (pgtbl_t *)malloc(sizeof(pgtbl_t));
     pgd->root = (pte_t *)page_alloc(1);
     memset(pgd->root, 0, PAGE_SIZE);
     return pgd;
 }
 
-static void arch_destroy_pgtbl(pgtbl_t *pgd) {
+void arch_destroy_pgtbl(pgtbl_t *pgd) {
     if (pgd) {
         if (pgd->root) {
-            free((uintptr_t)pgd->root);
+            free((void*)pgd->root);
         }
         free(pgd);
     }
@@ -74,7 +74,7 @@ static int is_pte_leaf(pte_t pte) {
     return (pte & (PTE_R | PTE_W | PTE_X)) != 0;
 }
 
-static uintptr_t arch_va_to_pa(pgtbl_t *pgd, uintptr_t va) {
+uintptr_t arch_va_to_pa(pgtbl_t *pgd, uintptr_t va) {
     CHECK(pgd != NULL && pgd->root != NULL, "pgd is NULL", return 0;);
 
     uint64_t vpn2 = (va >> 30) & 0x1ff;
@@ -101,11 +101,11 @@ static uintptr_t arch_va_to_pa(pgtbl_t *pgd, uintptr_t va) {
     return l0;
 }
 
-static void arch_mmu_init() {
+void arch_mmu_init() {
 
 }
 
-static int arch_map(pgtbl_t *pgd, uintptr_t va, uintptr_t pa, enum page_size page_size, uint32_t flags) {
+int arch_map(pgtbl_t *pgd, uintptr_t va, uintptr_t pa, enum page_size page_size, uint32_t flags) {
     CHECK(pgd != NULL, "pgd is NULL", return -1;);
     CHECK(va % page_size == 0, "vaddr is not page aligned", return -1;);
     CHECK(pa % page_size == 0, "paddr is not page aligned", return -1;);
@@ -142,29 +142,16 @@ static int arch_map(pgtbl_t *pgd, uintptr_t va, uintptr_t pa, enum page_size pag
     return 0;
 }
 
-static int arch_unmap(pgtbl_t *pgd, uintptr_t va) {
+int arch_unmap(pgtbl_t *pgd, uintptr_t va) {
 
     return 0;
 }
 
-static void arch_flush_pgtbl() {
+void arch_flush_pgtbl() {
     sfence_vma();
 }
 
-static void arch_switch_pgtbl(pgtbl_t *pgd) {
+void arch_switch_pgtbl(pgtbl_t *pgd) {
     uintptr_t satp_val = make_satp((uintptr_t)pgd);
     satp_w((reg_t)satp_val);
 }
-
-static struct arch_mmu riscv64_mmu_ops = {
-    .init = arch_mmu_init,
-    .new = arch_new_pgtbl,
-    .destroy = arch_destroy_pgtbl,
-    .map = arch_map,
-    .unmap = arch_unmap,
-    .translate = arch_va_to_pa,
-    .flush_pgtlb = arch_flush_pgtbl,
-    .switch_pgtbl = arch_switch_pgtbl,
-};  
-
-struct arch_mmu *arch_mmu = &riscv64_mmu_ops;

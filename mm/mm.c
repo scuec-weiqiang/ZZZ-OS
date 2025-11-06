@@ -7,10 +7,10 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include <asm/clint.h>
-#include <arch/mm.h>
+#include <asm/clint_timer.h>
+#include <asm/mm.h>
 #include <asm/pgtbl.h>
-#include <asm/plic.h>
+#include <asm/riscv_plic.h>
 #include <asm/riscv.h>
 #include <asm/symbols.h>
 #include <drivers/uart.h>
@@ -22,6 +22,10 @@
 #include <os/string.h>
 
 pgtbl_t *kernel_pgd = NULL; // kernel_page_global_directory 内核页全局目录
+
+pgtbl_t *mm_new_pgtbl() {
+    return arch_new_pgtbl();
+}
 
 int map_range(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, size_t size, uint64_t flags) {
     CHECK(pgd != NULL, "pgd is NULL", return -1;);
@@ -50,28 +54,28 @@ int map_range(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, size_t size, uint6
             chunk_size = PAGE_SIZE_4K;
         }
 
-        if (arch_mmu->map(pgd, va, pa, chunk_size, flags) < 0) {
+        if (arch_map(pgd, va, pa, chunk_size, flags) < 0) {
             return -1;
         }
 
         va += chunk_size;
         pa += chunk_size;
     }
-    arch_mmu->flush_pgtlb();
+    arch_flush_pgtbl();
     return 0;
 }
 
 int unmap_range(pgtbl_t *pgd, uintptr_t va) {
     
-    return arch_mmu->unmap(pgd, va);
+    return arch_unmap(pgd, va);
 }
 
 void mm_switch_pgtbl(pgtbl_t *pgd) {
-    arch_mmu->switch_pgtbl(pgd);
+    arch_switch_pgtbl(pgd);
 }
 
 void mm_flush_pgtbl() {
-    arch_mmu->flush_pgtlb();
+    arch_flush_pgtbl();
 }
 
 void page_table_init(pgtbl_t *pgd) {
@@ -92,18 +96,18 @@ void page_table_init(pgtbl_t *pgd) {
 }
 
 void kernel_page_table_init() {
-    kernel_pgd = (pgtbl_t *)arch_mmu->new();
+    kernel_pgd = (pgtbl_t *)arch_new_pgtbl();
     if (kernel_pgd == NULL)
         return;
     page_table_init(kernel_pgd);
-    arch_mmu->switch_pgtbl(kernel_pgd);
-    arch_mmu->flush_pgtlb();
+    arch_switch_pgtbl(kernel_pgd);
+    arch_flush_pgtbl();
 }
 
 int copyin(pgtbl_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
     size_t n = 0;
     while (n < len) {
-        uintptr_t src = arch_mmu->translate(pagetable, src_va);
+        uintptr_t src = arch_va_to_pa(pagetable, src_va);
         if (src == 0) {
             return -1;
         }
@@ -124,7 +128,7 @@ int copyin(pgtbl_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
 int copyout(pgtbl_t *pagetable, uintptr_t dst_va, char *src, size_t len) {
     size_t n = 0;
     while (n < len) {
-        uintptr_t dst = arch_mmu->translate(pagetable, dst_va);
+        uintptr_t dst = arch_va_to_pa(pagetable, dst_va);
         if (dst == 0) {
             return -1;
         }

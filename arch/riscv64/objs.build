@@ -1,4 +1,4 @@
-OBJ_Y += kernel/
+OBJ_Y += boot/ 
 OBJ_Y += mm/
 OBJ_Y += timer/
 OBJ_Y += irq/

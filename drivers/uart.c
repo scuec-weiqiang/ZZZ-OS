@@ -118,7 +118,7 @@ static struct file_ops uart_file_ops = {
 
 int uart_init()
 {
-    struct fdt_node *node =  fdt_find_node_by_compatible("wq,uart");
+    struct device_node *node =  fdt_find_node_by_compatible("wq,uart");
     if (!node) {
         return -1;
     }

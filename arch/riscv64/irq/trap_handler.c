@@ -2,16 +2,15 @@
 #include <os/printk.h>
 #include <asm/riscv.h>
 #include <asm/arch_timer.h>
-#include <asm/plic.h>
+#include <asm/riscv_plic.h>
 #include <drivers/uart.h>
-#include <asm/clint.h>
 #include <os/mm.h>
 #include <os/types.h>
 #include <os/syscall.h>
 #include <os/sched.h>
 #include <os/irq.h>
 #include <asm/interrupt.h>
-#include <arch/irq.h>
+#include <asm/irq.h>
 
 extern void kernel_trap_entry();
 

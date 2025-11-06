@@ -18,7 +18,7 @@
 #define tick_ms     (tick_s/1000)
 #define tick_us     (tick_ms/1000)
 
-enum arch_timer_hz{
+enum arch_timer_hz {
     SYS_HZ_1000 = 1*tick_ms,
     SYS_HZ_250 = 4*tick_ms,
     SYS_HZ_100 = 10*tick_ms,

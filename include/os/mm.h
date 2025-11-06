@@ -31,6 +31,7 @@ extern pgtbl_t *kernel_pgd; // 内核页全局目录
 extern void mm_init();
 extern int map_range(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, size_t size, uint64_t flags);
 extern int unmap_range(pgtbl_t *pgd, uintptr_t vaddr);
+extern pgtbl_t* mm_new_pgtbl();
 extern void mm_switch_pgtbl(pgtbl_t *pgd);
 extern void mm_flush_pgtbl();
 extern uintptr_t va_to_pa(pgtbl_t *pgd, uintptr_t va);

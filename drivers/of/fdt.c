@@ -24,12 +24,12 @@ static const char *struct_block;
 static const char *strings;
 
 #define PHANDLE_MAX 1
-static struct fdt_node *phandle_table[PHANDLE_MAX] = {NULL};
+static struct device_node *phandle_table[PHANDLE_MAX] = {NULL};
 
-static const struct fdt_node *root_node;
+static const struct device_node *root_node;
 
-static struct fdt_node *new_fdt_node(const char *name, struct fdt_node *parent) {
-    struct fdt_node *node = (struct fdt_node *)malloc(sizeof(struct fdt_node));
+static struct device_node *new_fdt_node(const char *name, struct device_node *parent) {
+    struct device_node *node = (struct device_node *)malloc(sizeof(struct device_node));
     node->name = strdup(name);
     node->full_path = NULL;
     node->parent = parent;
@@ -52,21 +52,21 @@ static struct fdt_node *new_fdt_node(const char *name, struct fdt_node *parent) 
     return node;
 }
 
-static void free_fdt_node(struct fdt_node *node) {
+static void free_fdt_node(struct device_node *node) {
     if (!node)
         return;
     if (node->children != NULL) {
-        struct fdt_node *child = node->children;
+        struct device_node *child = node->children;
         while (child) {
-            struct fdt_node *next = child->sibling;
+            struct device_node *next = child->sibling;
             free_fdt_node(child);
             child = next;
         }
     }
     free(node->name);
-    struct fdt_prop *prop = node->properties;
+    struct device_prop *prop = node->properties;
     while (prop) {
-        struct fdt_prop *next = prop->next;
+        struct device_prop *next = prop->next;
         free(prop->name);
         free(prop);
         prop = next;
@@ -74,10 +74,10 @@ static void free_fdt_node(struct fdt_node *node) {
     free(node);
 }
 
-static struct fdt_prop *new_fdt_prop(const char *name, uint32_t len, const void *value) {
+static struct device_prop *new_fdt_prop(const char *name, uint32_t len, const void *value) {
     if (!name || !value)
         return NULL;
-    struct fdt_prop *prop = (struct fdt_prop *)malloc(sizeof(struct fdt_prop));
+    struct device_prop *prop = (struct device_prop *)malloc(sizeof(struct device_prop));
     prop->name = strdup(name);
     prop->length = len;
     prop->value = malloc(len);
@@ -86,7 +86,7 @@ static struct fdt_prop *new_fdt_prop(const char *name, uint32_t len, const void 
     return prop;
 }
 
-static void free_fdt_prop(struct fdt_prop *prop) {
+static void free_fdt_prop(struct device_prop *prop) {
     if (!prop)
         return;
     free(prop->name);
@@ -94,13 +94,13 @@ static void free_fdt_prop(struct fdt_prop *prop) {
     free(prop);
 }
 
-static int add_fdt_prop(struct fdt_node *node, struct fdt_prop *prop) {
+static int add_fdt_prop(struct device_node *node, struct device_prop *prop) {
     if (!node || !prop)
         return -1;
     if (!node->properties) {
         node->properties = prop;
     } else {
-        struct fdt_prop *p = node->properties;
+        struct device_prop *p = node->properties;
         while (p->next)
             p = p->next;
         p->next = prop;
@@ -108,13 +108,13 @@ static int add_fdt_prop(struct fdt_node *node, struct fdt_prop *prop) {
     return 0;
 }
 
-static int add_fdt_child(struct fdt_node *parent, struct fdt_node *child) {
+static int add_fdt_child(struct device_node *parent, struct device_node *child) {
     if (!parent || !child)
         return -1;
     if (!parent->children) {
         parent->children = child;
     } else {
-        struct fdt_node *n = parent->children;
+        struct device_node *n = parent->children;
         while (n->sibling)
             n = n->sibling;
         n->sibling = child;
@@ -122,9 +122,9 @@ static int add_fdt_child(struct fdt_node *parent, struct fdt_node *child) {
     return 0;
 }
 
-static struct fdt_node *parse_struct_block(const char *struct_block, char *strings) {
-    struct fdt_node *root = NULL;
-    struct fdt_node *curr = NULL;
+static struct device_node *parse_struct_block(const char *struct_block, char *strings) {
+    struct device_node *root = NULL;
+    struct device_node *curr = NULL;
     uint32_t *p = (uint32_t *)struct_block;
 
     while (1) {
@@ -135,7 +135,7 @@ static struct fdt_node *parse_struct_block(const char *struct_block, char *strin
             const char *name = (const char *)p;
             p++;
             printk("in node: %s\n", name);
-            struct fdt_node *new_node = (struct fdt_node *)new_fdt_node(name, curr);
+            struct device_node *new_node = (struct device_node *)new_fdt_node(name, curr);
             if (root == NULL) {
                 root = new_node;
             } else {
@@ -150,7 +150,7 @@ static struct fdt_node *parse_struct_block(const char *struct_block, char *strin
             uint32_t nameoff = be32_to_cpu(*p);
             p++;
             const char *prop_name = strings + nameoff;
-            struct fdt_prop *new_prop = new_fdt_prop(prop_name, len, p);
+            struct device_prop *new_prop = new_fdt_prop(prop_name, len, p);
             if (strcmp(new_prop->name, "phandle") == 0) {
                 uint32_t phandle = be32_to_cpu(*(uint32_t *)new_prop->value);
                 if (phandle < PHANDLE_MAX - 1) {
@@ -177,11 +177,11 @@ static struct fdt_node *parse_struct_block(const char *struct_block, char *strin
     return NULL;
 }
 
-static struct fdt_node *find_child_node_by_name(const struct fdt_node *parent, const char *name) {
+static struct device_node *find_child_node_by_name(const struct device_node *parent, const char *name) {
     if (!parent || !name)
         return NULL;
 
-    struct fdt_node *child = parent->children;
+    struct device_node *child = parent->children;
     while (child) {
         if (strcmp(child->name, name) == 0) {
             return child;
@@ -192,10 +192,10 @@ static struct fdt_node *find_child_node_by_name(const struct fdt_node *parent, c
     return NULL;
 }
 
-struct fdt_node *fdt_find_node_by_path(const char *path) {
+struct device_node *fdt_find_node_by_path(const char *path) {
     if (!root_node || !path)
         return NULL;
-    struct fdt_node *current_node = (struct fdt_node *)root_node;
+    struct device_node *current_node = (struct device_node *)root_node;
     char *path_dup = strdup(path);
     char *token = path_split(path_dup, "/");
 
@@ -209,23 +209,23 @@ struct fdt_node *fdt_find_node_by_path(const char *path) {
     return current_node;
 }
 
-struct fdt_node *fdt_find_node_by_compatible(const char *compatible_prop) {
+struct device_node *fdt_find_node_by_compatible(const char *compatible_prop) {
     if (!root_node || !compatible_prop)
         return NULL;
 
     // 使用队列进行深度优先搜索
-    struct fdt_node **queue = (struct fdt_node **)malloc(sizeof(struct fdt_node *) * 512);
+    struct device_node **queue = (struct device_node **)malloc(sizeof(struct device_node *) * 512);
     int front = 0, rear = 0;
 
-    queue[rear] = (struct fdt_node *)root_node;
+    queue[rear] = (struct device_node *)root_node;
     rear++;
 
     while (front < rear) {
-        struct fdt_node *current_node = queue[front];
+        struct device_node *current_node = queue[front];
         front++;
 
         // 检查当前节点的 compatible 属性
-        struct fdt_prop *prop = current_node->properties;
+        struct device_prop *prop = current_node->properties;
         while (prop) {
             if (strcmp(prop->name, "compatible") == 0) {
                 if (strncmp((const char *)prop->value, compatible_prop, prop->length) == 0) {
@@ -237,7 +237,7 @@ struct fdt_node *fdt_find_node_by_compatible(const char *compatible_prop) {
         }
 
         // 将子节点加入队列
-        struct fdt_node *child = current_node->children;
+        struct device_node *child = current_node->children;
         while (child) {
             queue[rear] = child;
             rear++;
@@ -249,11 +249,11 @@ struct fdt_node *fdt_find_node_by_compatible(const char *compatible_prop) {
     return NULL;
 }
 
-struct fdt_prop *fdt_get_prop_by_name(const struct fdt_node *node, const char *name) {
+struct device_prop *fdt_get_prop_by_name(const struct device_node *node, const char *name) {
     if (!node || !name)
         return NULL;
 
-    struct fdt_prop *prop = node->properties;
+    struct device_prop *prop = node->properties;
     while (prop) {
         if (strcmp(prop->name, name) == 0) {
             return prop;
@@ -263,27 +263,27 @@ struct fdt_prop *fdt_get_prop_by_name(const struct fdt_node *node, const char *n
     return NULL;
 }
 
-uint32_t fdt_get_phandle(const struct fdt_node *node) {
+uint32_t fdt_get_phandle(const struct device_node *node) {
     if (!node)
         return 0;
-    struct fdt_prop *prop = fdt_get_prop_by_name(node, "phandle");
+    struct device_prop *prop = fdt_get_prop_by_name(node, "phandle");
     if (prop) {
         return be32_to_cpu(*(uint32_t *)prop->value);
     }
     return 0;
 }
 
-uint32_t *fdt_get_reg(const struct fdt_node *node) {
+uint32_t *fdt_get_reg(const struct device_node *node) {
     if (!node)
         return 0;
-    struct fdt_prop *prop = fdt_get_prop_by_name(node, "reg");
+    struct device_prop *prop = fdt_get_prop_by_name(node, "reg");
     if (prop) {
         return (uint32_t *)prop->value;
     }
     return 0;
 }
 
-struct fdt_node *fdt_find_node_by_phandle(uint32_t phandle) {
+struct device_node *fdt_find_node_by_phandle(uint32_t phandle) {
     if (!root_node)
         return NULL;
 
@@ -293,12 +293,12 @@ struct fdt_node *fdt_find_node_by_phandle(uint32_t phandle) {
 
     int front = 0;
     int rear = 0;
-    struct fdt_node **queue = (struct fdt_node **)malloc(sizeof(struct fdt_node *) * 512);
-    queue[rear] = (struct fdt_node *)root_node;
+    struct device_node **queue = (struct device_node **)malloc(sizeof(struct device_node *) * 512);
+    queue[rear] = (struct device_node *)root_node;
     rear++;
 
     while (front < rear) {
-        struct fdt_node *curr = queue[front];
+        struct device_node *curr = queue[front];
         front++;
 
         uint32_t curr_phandle = fdt_get_phandle(curr);
@@ -307,7 +307,7 @@ struct fdt_node *fdt_find_node_by_phandle(uint32_t phandle) {
             return curr;
         }
 
-        struct fdt_node *child = curr->children;
+        struct device_node *child = curr->children;
         while (child) {
             queue[rear] = child;
             rear++;
@@ -318,11 +318,11 @@ struct fdt_node *fdt_find_node_by_phandle(uint32_t phandle) {
     return NULL;
 }
 
-uint32_t fdt_get_address_cells(const struct fdt_node *node) {
+uint32_t fdt_get_address_cells(const struct device_node *node) {
     if (!node)
         return -1;
-    struct fdt_node *current = (struct fdt_node *)node->parent;
-    struct fdt_prop *prop = NULL;
+    struct device_node *current = (struct device_node *)node->parent;
+    struct device_prop *prop = NULL;
 
     while (current) {
         prop = fdt_get_prop_by_name(current, "#address-cells");
@@ -335,11 +335,11 @@ uint32_t fdt_get_address_cells(const struct fdt_node *node) {
     return 2;
 }
 
-uint32_t fdt_get_size_cells(const struct fdt_node *node) {
+uint32_t fdt_get_size_cells(const struct device_node *node) {
     if (!node)
         return -1;
-    struct fdt_node *current = (struct fdt_node *)node->parent;
-    struct fdt_prop *prop = NULL;
+    struct device_node *current = (struct device_node *)node->parent;
+    struct device_prop *prop = NULL;
 
     while (current) {
         prop = fdt_get_prop_by_name(current, "#size-cells");
@@ -353,14 +353,14 @@ uint32_t fdt_get_size_cells(const struct fdt_node *node) {
 }
 
 int fdt_get_memory(uintptr_t *base, uintptr_t *size) {
-    struct fdt_node *memory_node = fdt_find_node_by_path("/memory");
+    struct device_node *memory_node = fdt_find_node_by_path("/memory");
     if (!memory_node) {
         return -1;
     }
 
     uint32_t address_cells = fdt_get_address_cells(memory_node);
     uint32_t size_cells = fdt_get_size_cells(memory_node);
-    struct fdt_prop *reg_prop = fdt_get_prop_by_name(memory_node, "reg");
+    struct device_prop *reg_prop = fdt_get_prop_by_name(memory_node, "reg");
     if (!reg_prop || reg_prop->length < 16) {
         return -1;
     }
@@ -385,10 +385,10 @@ int fdt_get_memory(uintptr_t *base, uintptr_t *size) {
     return 0;
 }
 
-struct fdt_node *fdt_get_interrupt_parent(const struct fdt_node *node) {
+struct device_node *fdt_get_interrupt_parent(const struct device_node *node) {
     if (!node)
         return NULL;
-    struct fdt_prop *prop = fdt_get_prop_by_name(node, "interrupt-parent");
+    struct device_prop *prop = fdt_get_prop_by_name(node, "interrupt-parent");
     if (!prop) {
         return NULL;
     }
@@ -397,7 +397,7 @@ struct fdt_node *fdt_get_interrupt_parent(const struct fdt_node *node) {
     return fdt_find_node_by_phandle(phandle);
 }
 
-int fdt_walk_node(const struct fdt_node *node, int level) {
+int fdt_walk_node(const struct device_node *node, int level) {
     if (!node)
         return 0;
 
@@ -406,7 +406,7 @@ int fdt_walk_node(const struct fdt_node *node, int level) {
     }
     level++;
     printk("%s\n", node->name);
-    struct fdt_node *curr = node->children;
+    struct device_node *curr = node->children;
     while (curr) {
         fdt_walk_node(curr, level + 1);
         curr = curr->sibling;
@@ -430,7 +430,7 @@ int fdt_init(void *dtb) {
 void fdt_test() {
     root_node = parse_struct_block(struct_block, (char *)strings);
     fdt_walk_node(root_node, 0);
-    struct fdt_node *node = fdt_find_node_by_path("/soc/rtc@0x50000000");
+    struct device_node *node = fdt_find_node_by_path("/soc/rtc@0x50000000");
     if (node) {
         printk("Found node: %s\n", node->name);
     }

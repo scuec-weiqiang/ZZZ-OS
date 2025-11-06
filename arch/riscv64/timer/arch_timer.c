@@ -11,7 +11,6 @@
 #include <os/types.h>
 #include <asm/platform.h>
 #include <asm/interrupt.h>
-#include <asm/clint.h> 
 #include <asm/arch_timer.h>
 #include <asm/riscv.h>
 

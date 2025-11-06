@@ -8,7 +8,7 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include <os/irq.h>
-#include <arch/irq.h>
+#include <asm/irq.h>
 
 #define IRQ_COUNT 128
 struct irq_desc irq_desc[IRQ_COUNT];

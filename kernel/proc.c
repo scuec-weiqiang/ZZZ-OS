@@ -19,7 +19,7 @@
 #include <os/sched.h>
 #include <os/page.h>
 #include <asm/pgtbl.h>
-#include <arch/mm.h>
+#include <asm/mm.h>
 
 
 struct list_head proc_list_head[MAX_HARTS_NUM];
@@ -36,7 +36,7 @@ static pid_t alloc_pid()
 void proc_setup()
 {
     struct proc* p = scheduler[tp_r()].current;
-    p->expire_time = systick(tp_r()) + p->time_slice;
+    p->expire_time = systick() + p->time_slice;
     p->status = PROC_RUNNING;
     // satp_w(make_satp(p->pgd));
     // asm volatile ("sfence.vma zero, zero"::);
@@ -72,7 +72,7 @@ struct proc* proc_create(char* path)
     struct proc* new_proc = (struct proc*)malloc(sizeof(struct proc));
     memset(new_proc,0,sizeof(struct proc));
     
-    pgtbl_t* user_pgd = arch_mmu->new();
+    pgtbl_t* user_pgd = arch_new_pgtbl();
 
     char *user_stack = (char*)malloc(PROC_STACK_SIZE);
     memset(user_stack,0,PROC_STACK_SIZE);

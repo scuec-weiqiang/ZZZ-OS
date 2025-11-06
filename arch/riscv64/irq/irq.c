@@ -7,13 +7,13 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include <arch/irq.h>
+#include <asm/irq.h>
 #include <asm/trap_handler.h>
 #include <asm/interrupt.h>
+#include <asm/clint.h>
 #include <os/list.h>
 
 extern struct irq_chip clint;
 
 void arch_irq_init() {
-    clint.ops->init();
 }

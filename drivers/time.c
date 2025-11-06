@@ -167,7 +167,7 @@ static struct file_ops timestamp_file_ops = {
 
 
 int timestamp_init() {
-    struct fdt_node *node =  fdt_find_node_by_compatible("wq,time");
+    struct device_node *node =  fdt_find_node_by_compatible("wq,time");
     if (!node) {
         printk("time_init: can not find compatible wq,time\n");
         return -1;

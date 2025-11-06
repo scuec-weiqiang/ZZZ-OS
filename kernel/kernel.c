@@ -14,8 +14,7 @@
 #include <drivers/virt_disk.h>
 #include <os/mm.h>
 
-#include <asm/clint.h>
-#include <asm/plic.h>
+#include <asm/riscv_plic.h>
 #include <asm/riscv.h>
 
 #include <os/elf.h>
