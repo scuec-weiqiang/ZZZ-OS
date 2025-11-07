@@ -118,12 +118,12 @@ static struct file_ops uart_file_ops = {
 
 int uart_init()
 {
-    struct device_node *node =  fdt_find_node_by_compatible("wq,uart");
+    struct device_node *node =  of_find_node_by_compatible("wq,uart");
     if (!node) {
         return -1;
     }
 
-    uint32_t *reg = fdt_get_reg(node);
+    uint32_t *reg = of_get_reg(node);
     
     uart_base = (uintptr_t)be32_to_cpu(*(unsigned int*)reg);
     

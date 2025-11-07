@@ -51,4 +51,6 @@
 #define __out
 #define __user
 
+typedef uint32_t dev_t;
+
 #endif

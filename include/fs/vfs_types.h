@@ -19,7 +19,7 @@
 
 typedef long long loff_t;
 typedef int64_t ino_t;
-typedef uint32_t dev_t;
+
 
 struct superblock;
 struct inode;

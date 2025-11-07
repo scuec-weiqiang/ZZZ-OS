@@ -167,13 +167,13 @@ static struct file_ops timestamp_file_ops = {
 
 
 int timestamp_init() {
-    struct device_node *node =  fdt_find_node_by_compatible("wq,time");
+    struct device_node *node =  of_find_node_by_compatible("wq,time");
     if (!node) {
         printk("time_init: can not find compatible wq,time\n");
         return -1;
     }
 
-    uint32_t *reg = fdt_get_reg(node);
+    uint32_t *reg = of_get_reg(node);
     
     system_time = (struct system_time *)(uintptr_t)be32_to_cpu(*(unsigned int*)reg);
     dev_t devnr = 1; 
