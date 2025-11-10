@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ-OS/drivers/of/drivers/of/fdt.h
+ * @FilePath: /ZZZ-OS/include/drivers/of/fdt.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-20 20:19:54
- * @LastEditTime: 2025-10-28 15:38:01
+ * @LastEditTime: 2025-11-10 20:29:05
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -56,6 +56,7 @@ struct device_prop {
 struct device_node {
     char *name;
     char *full_path; // 全路径（如 /soc/uart@12340000）
+    char *type;
     struct device_node *parent;
     struct device_node *children;
     struct device_node *sibling;

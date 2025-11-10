@@ -1,3 +1,12 @@
+/**
+ * @FilePath: /ZZZ-OS/include/os/driver_model.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-11-10 20:21:56
+ * @LastEditTime: 2025-11-11 01:26:47
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 #ifndef OS_DRIVER_MODEL_H
 #define OS_DRIVER_MODEL_H
 
@@ -30,17 +39,17 @@ struct device {
 };
 
 struct platform_device {
-    struct device_node *of_node;   // 对应 device tree 节点
     const char *name;              // 例如 "ns16550a"
+    struct device_node *of_node;   // 对应 device tree 节点
+    // struct platform_device *parent;  // optional
     void *platform_data;           // optional
     struct resource *resources;
     int num_resources;
     struct device *dev;            // device core
-    // struct platform_device *next;
     struct list_head link;         // 链接到全局 platform device 列表
 };
 
-struct list_head platform_device_list;
+extern struct list_head platform_device_list;
 
 
 struct of_device_id {

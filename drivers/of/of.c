@@ -226,6 +226,43 @@ int of_device_is_available(const struct device_node *node) {
     return -1;
 }
 
+int of_device_is_type(const struct device_node *node, const char *type) {
+    if (!node || !type)
+        return -1;
+
+    if (strcmp(type, "soc") == 0 && strcmp(node->name, "soc") == 0) {
+       return 0; 
+    }
+
+    struct device_prop *prop = of_get_prop_by_name(node, "device_type");
+    if (!prop)
+        return -1;
+
+    if (strncmp((const char *)prop->value, type, prop->length) == 0) {
+        return 0;
+    }
+
+    prop = of_get_prop_by_name(node, "compatible");
+    if (!prop)
+        return -1;
+    if (strncmp((const char *)prop->value, type, prop->length) == 0) {
+        return 0;
+    }
+    
+    return -1;
+}
+
+// int of_node_is_bus(const struct device_node *np)
+// {
+//     if (of_node_is_type(np, "simple-bus"))
+//         return 0;
+//     if (fdt_get_prop_by_name(np, "ranges"))
+//         return 0;
+//     // if (fdt_get_prop_by_name(np, "compatible") &&
+//     //     strstr((char*)prop->value, "bus"))
+//     //     return 1;
+//     return 0;
+// }
 
 void of_test() {
    

@@ -1,3 +1,12 @@
+/**
+ * @FilePath: /ZZZ-OS/drivers/core/driver.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-11-10 20:21:56
+ * @LastEditTime: 2025-11-10 21:34:46
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 #include "os/types.h"
 #include <os/driver_model.h>
 #include <os/list.h>
@@ -5,9 +14,9 @@
 #include <os/string.h>
 
 static struct list_head driver_list = LIST_HEAD_INIT(driver_list);
+struct list_head platform_device_list = LIST_HEAD_INIT(platform_device_list);
 
-bool device_matches_driver(struct platform_device *pdev, struct platform_driver *drv)
-{
+bool device_matches_driver(struct platform_device *pdev, struct platform_driver *drv) {
     const struct of_device_id *m = drv->of_match_table;
     for (; m && m->compatible; m++) {
         struct device_prop *prop = of_get_prop_by_name(pdev->of_node, "compatible");

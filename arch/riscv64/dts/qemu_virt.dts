@@ -12,11 +12,12 @@
     };
 
     cpus {
-        compatible = "riscv";
+        // compatible = "riscv";
         #address-cells = <1>;
         #size-cells = <1>;
         cpu0: cpu@0 {
             compatible = "riscv";
+            device_type = "cpu";
             clock-frequency = <10000000>;
         };
     };

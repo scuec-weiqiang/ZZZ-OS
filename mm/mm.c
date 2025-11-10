@@ -3,11 +3,10 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-10-31 01:05:02
+ * @LastEditTime: 2025-11-10 21:54:12
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include <asm/clint_timer.h>
 #include <asm/mm.h>
 #include <asm/pgtbl.h>
 #include <asm/riscv_plic.h>
@@ -31,7 +30,6 @@ int map_range(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, size_t size, uint6
     CHECK(pgd != NULL, "pgd is NULL", return -1;);
     CHECK(vaddr % PAGE_SIZE_4K == 0, "vaddr is not page aligned", return -1;);
     CHECK(paddr % PAGE_SIZE_4K == 0, "paddr is not page aligned", return -1;);
-
     size = ALIGN_UP(size, PAGE_SIZE);
 
     uintptr_t va = vaddr;
@@ -61,6 +59,7 @@ int map_range(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, size_t size, uint6
         va += chunk_size;
         pa += chunk_size;
     }
+
     arch_flush_pgtbl();
     return 0;
 }
@@ -100,6 +99,7 @@ void kernel_page_table_init() {
     if (kernel_pgd == NULL)
         return;
     page_table_init(kernel_pgd);
+    
     arch_switch_pgtbl(kernel_pgd);
     arch_flush_pgtbl();
 }

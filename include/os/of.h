@@ -1,3 +1,12 @@
+/**
+ * @FilePath: /ZZZ-OS/include/os/of.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-11-10 20:21:56
+ * @LastEditTime: 2025-11-11 01:09:16
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 #ifndef __KERNEL_OF_H__
 #define __KERNEL_OF_H__
 
@@ -14,4 +23,7 @@ extern uint32_t* of_get_reg(const struct device_node *node);
 extern int of_get_memory(uintptr_t *base, uintptr_t *size);
 extern struct device_node* of_get_interrupt_parent(const struct device_node *node);
 extern int of_device_is_available(const struct device_node *node);
+extern int of_device_is_type(const struct device_node *node, const char *type);
+// extern int of_node_is_bus(const struct device_node *node);
+
 #endif // __KERNEL_OF_H__

@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-10-31 00:06:24
+ * @LastEditTime: 2025-11-10 21:35:15
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -32,6 +32,7 @@
 #include <fs/vfs.h>
 #include <asm/pgtbl.h>
 #include <os/page.h>
+#include <drivers/of/of_platform.h>
 
 uint8_t is_init = 0;
 
@@ -62,7 +63,8 @@ void init_kernel() {
 		close(dtb);
 
 		fdt_init(buff);
-		fdt_test();
+		of_test();
+		of_platform_populate();
 		free(buff);
 
 		timestamp_init();

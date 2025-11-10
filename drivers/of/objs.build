@@ -1,1 +1,3 @@
 OBJ_Y += fdt.o
+OBJ_Y += of_platform.o
+OBJ_Y += of.o

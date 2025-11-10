@@ -1,3 +1,12 @@
+/**
+ * @FilePath: /ZZZ-OS/include/asm/irq.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-11-10 20:21:56
+ * @LastEditTime: 2025-11-10 21:33:00
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 #ifndef __ARCH_IRQ_H__
 #define __ARCH_IRQ_H__
 
@@ -27,6 +36,6 @@ struct irq_chip {
     void *priv;
 };
 
-struct list_head irq_chip_list;
+extern struct list_head irq_chip_list;
 
 #endif // __ARCH_IRQ_H__

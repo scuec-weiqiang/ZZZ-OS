@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-20 20:25:59
- * @LastEditTime: 2025-10-29 22:00:55
+ * @LastEditTime: 2025-11-10 21:25:07
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright        : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -219,6 +219,7 @@ int fdt_init(void *dtb) {
     struct_block = (char *)dtb + (size_t)be32_to_cpu(fdt->off_dt_struct);
     strings = (char *)dtb + (size_t)be32_to_cpu(fdt->off_dt_strings);
     fdt_root_node = parse_struct_block(struct_block, (char *)strings);
+
     return 0;
 }
 
