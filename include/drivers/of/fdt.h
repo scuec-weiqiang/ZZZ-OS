@@ -62,7 +62,7 @@ struct device_node {
     struct device_prop *properties;
 };
 
-extern const struct device_node *root_node;
+extern const struct device_node *fdt_root_node;
 extern struct device_node *phandle_table[PHANDLE_MAX];
 
 extern struct device_node *fdt_new_node(const char *name, struct device_node *parent);

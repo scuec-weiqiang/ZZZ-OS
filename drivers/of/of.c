@@ -1,3 +1,4 @@
+#include "os/types.h"
 #include <drivers/of/fdt.h>
 #include <os/printk.h>
 #include <os/string.h>
@@ -6,9 +7,9 @@
 #include <os/bswap.h>
 
 struct device_node *of_find_node_by_path(const char *path) {
-    if (!root_node || !path)
+    if (!fdt_root_node || !path)
         return NULL;
-    struct device_node *current_node = (struct device_node *)root_node;
+    struct device_node *current_node = (struct device_node *)fdt_root_node;
     char *path_dup = strdup(path);
     char *token = path_split(path_dup, "/");
 
@@ -23,14 +24,14 @@ struct device_node *of_find_node_by_path(const char *path) {
 }
 
 struct device_node *of_find_node_by_compatible(const char *compatible_prop) {
-    if (!root_node || !compatible_prop)
+    if (!fdt_root_node || !compatible_prop)
         return NULL;
 
     // 使用队列进行深度优先搜索
     struct device_node **queue = (struct device_node **)malloc(sizeof(struct device_node *) * 512);
     int front = 0, rear = 0;
 
-    queue[rear] = (struct device_node *)root_node;
+    queue[rear] = (struct device_node *)fdt_root_node;
     rear++;
 
     while (front < rear) {
@@ -97,7 +98,7 @@ uint32_t *of_get_reg(const struct device_node *node) {
 }
 
 struct device_node *of_find_node_by_phandle(uint32_t phandle) {
-    if (!root_node)
+    if (!fdt_root_node)
         return NULL;
 
     if (phandle <= PHANDLE_MAX - 1) {
@@ -107,7 +108,7 @@ struct device_node *of_find_node_by_phandle(uint32_t phandle) {
     int front = 0;
     int rear = 0;
     struct device_node **queue = (struct device_node **)malloc(sizeof(struct device_node *) * 512);
-    queue[rear] = (struct device_node *)root_node;
+    queue[rear] = (struct device_node *)fdt_root_node;
     rear++;
 
     while (front < rear) {
@@ -203,10 +204,32 @@ struct device_node *of_get_interrupt_parent(const struct device_node *node) {
     return of_find_node_by_phandle(phandle);
 }
 
+int of_device_is_available(const struct device_node *node) {
+    if (!node) {
+        return -1;
+    }
+
+    struct device_prop *status = of_get_prop_by_name(node, "status");
+
+    if (!status) {
+        return 0;
+    }
+
+    if (0 == strcmp(status->value, "okay")) {
+       return 0; 
+    }
+
+    if (0 == strcmp(status->value, "disabled")) {
+        return -1;
+    }
+
+    return -1;
+}
+
 
 void of_test() {
    
-    fdt_walk_node(root_node, 0);
+    fdt_walk_node(fdt_root_node, 0);
     struct device_node *node = of_find_node_by_path("/soc/rtc@0x50000000");
     if (node) {
         printk("Found node: %s\n", node->name);

@@ -1,8 +1,10 @@
 #ifndef OS_DRIVER_MODEL_H
 #define OS_DRIVER_MODEL_H
 
+#include <os/list.h>
 #include <drivers/of/fdt.h>
-#include <stdint.h>
+#include <os/types.h>
+#include <os/list.h>
 
 enum resource_type {
     RESOURCE_IRQ,
@@ -33,9 +35,12 @@ struct platform_device {
     void *platform_data;           // optional
     struct resource *resources;
     int num_resources;
-    // struct device *dev;            // device core
-    struct platform_device *next;
+    struct device *dev;            // device core
+    // struct platform_device *next;
+    struct list_head link;         // 链接到全局 platform device 列表
 };
+
+struct list_head platform_device_list;
 
 
 struct of_device_id {
@@ -48,7 +53,8 @@ struct platform_driver {
     const struct of_device_id *of_match_table; // null-terminated
     int (*probe)(struct platform_device *pdev);
     int (*remove)(struct platform_device *pdev);
-    struct platform_driver *next;
+    // struct platform_driver *next;
+    struct list_head link;         
 };
 
 #endif // OS_DRIVER_MODEL_H

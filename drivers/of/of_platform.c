@@ -1,3 +1,5 @@
+#include "drivers/of/fdt.h"
+#include "os/list.h"
 #include <os/string.h>
 #include <os/of.h>
 #include <os/driver_model.h>
@@ -23,5 +25,19 @@ struct platform_device *platform_device_create_from_node(struct device_node *np)
         pdev->num_resources = 1;
     }
 
+    list_add(&platform_device_list, &pdev->link);
+    return pdev;
+}
 
+void of_platform_populate() {
+    struct device_node **queue = (struct device_node **)malloc(sizeof(struct device_node*)*512);
+    int front=0,rear=0;
+
+    queue[rear] = (struct device_node *)fdt_root_node;
+    rear++;    
+
+    while(front < rear) {
+        struct device_node *node = queue[front];
+
+    }
 }

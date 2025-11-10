@@ -25,7 +25,7 @@ static const char *struct_block;
 static const char *strings;
 
 struct device_node *phandle_table[PHANDLE_MAX] = {NULL};
-const struct device_node *root_node;
+const struct device_node *fdt_root_node;
 
 struct device_node *fdt_new_node(const char *name, struct device_node *parent) {
     struct device_node *node = (struct device_node *)malloc(sizeof(struct device_node));
@@ -218,7 +218,7 @@ int fdt_init(void *dtb) {
 
     struct_block = (char *)dtb + (size_t)be32_to_cpu(fdt->off_dt_struct);
     strings = (char *)dtb + (size_t)be32_to_cpu(fdt->off_dt_strings);
-    root_node = parse_struct_block(struct_block, (char *)strings);
+    fdt_root_node = parse_struct_block(struct_block, (char *)strings);
     return 0;
 }
 

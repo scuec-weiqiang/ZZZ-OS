@@ -13,5 +13,5 @@ extern uint32_t of_get_size_cells(const struct device_node *node);
 extern uint32_t* of_get_reg(const struct device_node *node);
 extern int of_get_memory(uintptr_t *base, uintptr_t *size);
 extern struct device_node* of_get_interrupt_parent(const struct device_node *node);
-
+extern int of_device_is_available(const struct device_node *node);
 #endif // __KERNEL_OF_H__
