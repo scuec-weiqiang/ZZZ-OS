@@ -5,6 +5,7 @@ OBJ_Y += proc.o
 OBJ_Y += sched.o
 OBJ_Y += swtimer.o
 OBJ_Y += syscall.o
+OBJ_Y += console.o
 OBJ_Y += irq/
 
 

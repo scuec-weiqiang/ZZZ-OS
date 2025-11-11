@@ -85,6 +85,7 @@ void page_table_init(pgtbl_t *pgd) {
     map_range(pgd, (uintptr_t)bss_start, (uintptr_t)KERNEL_PA(bss_start), (size_t)bss_size, PTE_R | PTE_W);
     map_range(pgd, (uintptr_t)heap_start, (uintptr_t)KERNEL_PA(heap_start), (size_t)heap_size, PTE_R | PTE_W);
     map_range(pgd, (uintptr_t)stack_start, (uintptr_t)KERNEL_PA(stack_start), (size_t)stack_size * 2, PTE_R | PTE_W);
+    map_range(pgd, (uintptr_t)initcall_start, (uintptr_t)KERNEL_PA(initcall_start), (size_t)initcall_size * 2, PTE_R | PTE_W);
 
     // 恒等映射外设寄存器地址空间到内核虚拟地址空间
     map_range(pgd, (uintptr_t)CLINT_BASE, (uintptr_t)CLINT_BASE, 12 * PAGE_SIZE, PTE_R | PTE_W);
@@ -102,6 +103,7 @@ void kernel_page_table_init() {
     
     arch_switch_pgtbl(kernel_pgd);
     arch_flush_pgtbl();
+    printk("kernel page init success!\n");
 }
 
 int copyin(pgtbl_t *pagetable, char *dst, uintptr_t src_va, size_t len) {

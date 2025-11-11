@@ -29,6 +29,10 @@ extern uintptr_t stack_size;
 extern uintptr_t heap_start;
 extern uintptr_t heap_end;
 extern uintptr_t heap_size;
+extern uintptr_t initcall_start;
+extern uintptr_t initcall_end;
+extern uintptr_t initcall_size;
+
 extern uintptr_t core_num;
 
 extern void symbols_init();

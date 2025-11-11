@@ -15,7 +15,7 @@ extern char __data_start[], __data_end[];
 extern char __bss_start[], __bss_end[];
 extern char __stack_start[], __stack_end[];
 extern char __heap_start[], __heap_end[];
-
+extern char __initcall_start[],__initcall_end[];
 
 uintptr_t text_start;
 uintptr_t text_end;
@@ -35,6 +35,10 @@ uintptr_t stack_size;
 uintptr_t heap_start;
 uintptr_t heap_end;
 uintptr_t heap_size;
+uintptr_t initcall_start;
+uintptr_t initcall_end;
+uintptr_t initcall_size;
+
 
 
 void symbols_init()
@@ -57,6 +61,10 @@ void symbols_init()
     heap_start = (uintptr_t)&__heap_start;
     heap_end = (uintptr_t)&__heap_end;
     heap_size = (heap_end - heap_start);
+
+    initcall_start = (uintptr_t)&__initcall_start;
+    initcall_end = (uintptr_t)&__initcall_end;
+    initcall_size = (initcall_end - initcall_start);
 }
 
 /**

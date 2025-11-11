@@ -25,5 +25,5 @@ extern struct device_node* of_get_interrupt_parent(const struct device_node *nod
 extern int of_device_is_available(const struct device_node *node);
 extern int of_device_is_type(const struct device_node *node, const char *type);
 // extern int of_node_is_bus(const struct device_node *node);
-
+extern void of_test();
 #endif // __KERNEL_OF_H__

@@ -7,15 +7,17 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
+#include "os/module.h"
 #include <asm/platform.h>
 #include <os/types.h>
-#include <drivers/of/fdt.h>
+#include <os/of.h>
 #include <os/bswap.h>
 #include <fs/vfs.h>
 #include <fs/vfs_types.h>
 #include <fs/chrdev.h>
 #include <os/string.h>
 #include <asm/platform.h>
+#include <os/console.h>
 
 struct uart_reg {
    uint8_t RHR_THR_DLL;
@@ -126,11 +128,13 @@ int uart_init()
     uint32_t *reg = of_get_reg(node);
     
     uart_base = (uintptr_t)be32_to_cpu(*(unsigned int*)reg);
+    uart_reg_init();
     
     dev_t devnr = 2; 
     register_chrdev(devnr,"uart", &uart_file_ops);
     if(lookup("/uart") == NULL)
         mknod("/uart", S_IFCHR|0644, devnr);
+    console_register(uart_putc);
     return 0;
 }
 
@@ -139,7 +143,8 @@ void uart_deinit() {
     if (lookup("/uart")) {
         
     }
-    uart_base = NULL;
+    uart_base = 0;
 }
 
+module_init(uart_init);
 

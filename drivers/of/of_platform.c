@@ -14,6 +14,7 @@
 #include <os/driver_model.h>
 #include <os/malloc.h>
 #include <os/bswap.h>
+#include <os/printk.h>
 
 struct platform_device *platform_device_create_from_node(struct device_node *np) {
     if (!np) return 0;
@@ -44,7 +45,7 @@ void of_platform_populate() {
     int front=0,rear=0;
     struct device_node *node=NULL ,*child=NULL;
     struct platform_device *pdev=NULL;
-    struct device_prop *prop=NULL;
+    // struct device_prop *prop=NULL;
 
     queue[rear] = (struct device_node *)fdt_root_node;
     rear++;    

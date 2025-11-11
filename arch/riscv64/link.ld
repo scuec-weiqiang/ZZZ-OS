@@ -24,6 +24,13 @@ SECTIONS
         _text_end = .;
     } > RAM
 
+    . = ALIGN(8);
+    _initcall_start = .;
+    .initcall : {
+        KEEP(*(.initcall))     /* 保留所有 initcall 段内容 */
+    }
+    _initcall_end = .;
+
     .rodata : ALIGN(8) {
         . = ALIGN(4096);
        _rodata_start = .; 
@@ -62,6 +69,8 @@ SECTIONS
     PROVIDE_HIDDEN(__text_start = _text_start);
     PROVIDE_HIDDEN(__text_end = _text_end);
 
+    PROVIDE_HIDDEN(__initcall_start = _initcall_start);
+    PROVIDE_HIDDEN(__initcall_end = _initcall_end);
 
     PROVIDE_HIDDEN(__trap_start = _trap_start);
     PROVIDE_HIDDEN(__trap_end = _trap_end);

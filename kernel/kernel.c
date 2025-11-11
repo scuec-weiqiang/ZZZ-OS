@@ -33,6 +33,8 @@
 #include <asm/pgtbl.h>
 #include <os/page.h>
 #include <drivers/of/of_platform.h>
+#include <os/of.h>
+#include <os/module.h>
 
 uint8_t is_init = 0;
 
@@ -49,7 +51,7 @@ void init_kernel() {
 		zero_bss();
 		symbols_init();
 		trap_init();
-		uart_reg_init();
+		// uart_reg_init();
 
 		malloc_init();
 		kernel_page_table_init();
@@ -67,16 +69,17 @@ void init_kernel() {
 		of_platform_populate();
 		free(buff);
 
-		timestamp_init();
+		do_initcalls();
+
 		struct system_time t;
 		read(open("/time", 0), (char *)&t, sizeof(t));
 		printk("Current time: %d-%d-%d %d:%d:%d.%d\n", t.year, t.month, t.day, t.hour, t.minute,
 		       t.second, t.usec);
 		printk("Current time:%x\n", get_current_unix_timestamp(UTC8));
 
-		uart_init();
+		// uart_init();
 		write(open("/uart", 0), "hello driver\n", sizeof("hello dirver\n"));
-
+		
 		is_init = 1;
 	}
 

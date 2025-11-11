@@ -15,8 +15,9 @@
 #include <fs/vfs_types.h>
 #include <fs/chrdev.h>
 #include <os/string.h>
-#include <drivers/of/fdt.h>
+#include <os/of.h>
 #include <os/printk.h>
+#include <os/module.h>
 
 // 固定地址的时间缓冲区
 struct system_time *system_time = NULL;
@@ -190,6 +191,8 @@ void timestamp_deinit() {
     }
     system_time = NULL;
 }
+
+module_init(timestamp_init);
 
 
 
