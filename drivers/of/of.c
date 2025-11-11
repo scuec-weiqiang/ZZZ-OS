@@ -97,6 +97,21 @@ uint32_t *of_get_reg(const struct device_node *node) {
     return 0;
 }
 
+uint32_t *of_read_u32_array(const struct device_node *node, const char *prop_name, int count) {
+    if (!node || !prop_name || count <= 0)
+        return NULL;
+
+    struct device_prop *prop = of_get_prop_by_name(node, prop_name);
+    if (!prop || prop->length < count * sizeof(uint32_t))
+        return NULL;
+
+    uint32_t *array = (uint32_t *)malloc(count * sizeof(uint32_t));
+    for (int i = 0; i < count; i++) {
+        array[i] = be32_to_cpu(((uint32_t *)prop->value)[i]);
+    }
+    return array;
+}
+
 struct device_node *of_find_node_by_phandle(uint32_t phandle) {
     if (!fdt_root_node)
         return NULL;

@@ -10,7 +10,7 @@
 #ifndef __KERNEL_IRQ_DOMAIN_H__
 #define __KERNEL_IRQ_DOMAIN_H__
 
-#include <asm/irq.h>
+#include <os/irq_chip.h>
 #include <os/list.h>
 
 struct irq_domain {

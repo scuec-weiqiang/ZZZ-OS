@@ -10,7 +10,7 @@
 #include <os/sched.h>
 #include <os/irq.h>
 #include <asm/interrupt.h>
-#include <asm/irq.h>
+#include <os/irq_chip.h>
 
 extern void kernel_trap_entry();
 

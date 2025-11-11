@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-10 20:21:56
- * @LastEditTime: 2025-11-11 01:26:47
+ * @LastEditTime: 2025-11-11 21:14:45
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -61,7 +61,7 @@ struct platform_driver {
     const char *name;
     const struct of_device_id *of_match_table; // null-terminated
     int (*probe)(struct platform_device *pdev);
-    int (*remove)(struct platform_device *pdev);
+    void (*remove)(struct platform_device *pdev);
     // struct platform_driver *next;
     struct list_head link;         
 };

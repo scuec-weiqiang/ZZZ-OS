@@ -3,15 +3,14 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-31 01:18:22
- * @LastEditTime: 2025-10-31 20:14:43
+ * @LastEditTime: 2025-11-12 01:35:40
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include <asm/irq.h>
+#include <os/irq_chip.h>
 #include <asm/trap_handler.h>
 #include <asm/riscv_plic.h>
 #include <asm/riscv.h>
-
 
 static void riscv64_plic_init(struct irq_chip* self) {
 }

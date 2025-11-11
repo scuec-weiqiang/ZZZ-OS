@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ-OS/arch/riscv64/asm/symbols.h
+ * @FilePath: /ZZZ-OS/arch/riscv64/include/asm/symbols.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-01 16:47:45
- * @LastEditTime: 2025-10-23 20:05:45
+ * @LastEditTime: 2025-11-11 20:43:10
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -32,6 +32,9 @@ extern uintptr_t heap_size;
 extern uintptr_t initcall_start;
 extern uintptr_t initcall_end;
 extern uintptr_t initcall_size;
+extern uintptr_t exitcall_start;
+extern uintptr_t exitcall_end;
+extern uintptr_t exitcall_size;
 
 extern uintptr_t core_num;
 

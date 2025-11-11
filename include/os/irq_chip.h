@@ -1,14 +1,14 @@
 /**
- * @FilePath: /ZZZ-OS/include/asm/irq.h
+ * @FilePath: /ZZZ-OS/include/os/irq_chip.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-10 20:21:56
- * @LastEditTime: 2025-11-10 21:33:00
+ * @LastEditTime: 2025-11-12 01:31:28
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#ifndef __ARCH_IRQ_H__
-#define __ARCH_IRQ_H__
+#ifndef __KERNEL_IRQ_H__
+#define __KERNEL_IRQ_H__
 
 #include <os/types.h>
 #include <os/list.h>
@@ -32,10 +32,12 @@ struct irq_chip {
     char name[32];                       // 中断控制器名称
     int hart;
     struct irq_chip_ops *ops;            // 中断控制器操作函数指针
-    struct list_head *link;          // 链表节点 
+    struct list_head link;          // 链表节点 
     void *priv;
 };
 
 extern struct list_head irq_chip_list;
+extern struct irq_chip* irq_chip_register(char *name, struct irq_chip_ops *ops, int hart, void *priv);
+extern struct irq_chip* irq_chip_lookup(char *name);
 
 #endif // __ARCH_IRQ_H__

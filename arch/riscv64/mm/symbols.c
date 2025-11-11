@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ-OS/arch/riscv64/symbols.c
+ * @FilePath: /ZZZ-OS/arch/riscv64/mm/symbols.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 13:05:59
- * @LastEditTime: 2025-10-29 21:41:45
+ * @LastEditTime: 2025-11-12 00:03:21
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -16,6 +16,7 @@ extern char __bss_start[], __bss_end[];
 extern char __stack_start[], __stack_end[];
 extern char __heap_start[], __heap_end[];
 extern char __initcall_start[],__initcall_end[];
+extern char __exitcall_start[],__exitcall_end[];
 
 uintptr_t text_start;
 uintptr_t text_end;
@@ -38,6 +39,9 @@ uintptr_t heap_size;
 uintptr_t initcall_start;
 uintptr_t initcall_end;
 uintptr_t initcall_size;
+uintptr_t exitcall_start;
+uintptr_t exitcall_end;
+uintptr_t exitcall_size;
 
 
 
@@ -65,6 +69,10 @@ void symbols_init()
     initcall_start = (uintptr_t)&__initcall_start;
     initcall_end = (uintptr_t)&__initcall_end;
     initcall_size = (initcall_end - initcall_start);
+
+    exitcall_start = (uintptr_t)&__exitcall_start;
+    exitcall_end = (uintptr_t)&__exitcall_end;
+    exitcall_size = (exitcall_end - exitcall_start);
 }
 
 /**

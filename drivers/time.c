@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ-OS/drivers/time.c
+ * @FilePath: /vboot/home/wei/os/ZZZ-OS/drivers/time.c
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-29 00:50:51
- * @LastEditTime: 2025-10-29 23:28:25
+ * @LastEditTime: 2025-11-11 23:52:11
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -18,9 +18,12 @@
 #include <os/of.h>
 #include <os/printk.h>
 #include <os/module.h>
+#include <os/mm.h>
+#include <os/driver_model.h>
+#include <drivers/core/driver.h>
 
 // 固定地址的时间缓冲区
-struct system_time *system_time = NULL;
+static struct system_time *system_time = NULL;
 
 // 定义每月的天数（非闰年）
 static const char days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
@@ -127,6 +130,9 @@ void get_current_time(struct system_time *t) {
 
 uint32_t get_current_unix_timestamp(enum UTC utc) {
     struct system_time t;
+    if (system_time == NULL) {
+        return 0;
+    }
     get_current_time(&t);
     adjust_timezone(&t, utc);
     return system_time_to_unix_timestamp(&t);
@@ -167,32 +173,44 @@ static struct file_ops timestamp_file_ops = {
 };
 
 
-int timestamp_init() {
+static int timestamp_probe(struct platform_device *pdev) {
     struct device_node *node =  of_find_node_by_compatible("wq,time");
     if (!node) {
         printk("time_init: can not find compatible wq,time\n");
         return -1;
     }
 
-    uint32_t *reg = of_get_reg(node);
+    uint32_t *reg = of_read_u32_array(node,"reg", 2);
     
-    system_time = (struct system_time *)(uintptr_t)be32_to_cpu(*(unsigned int*)reg);
+    system_time = (struct system_time *)(reg[0]);
+    ioremap(reg[0], reg[1]);
+    
     dev_t devnr = 1; 
     register_chrdev(devnr,"time", &timestamp_file_ops);
     if(lookup("/time") == NULL)
         mknod("/time", S_IFCHR|0644, devnr);
+    printk("timestamp init success\n");
     return 0;
 }
 
-void timestamp_deinit() {
+static void timestamp_remove(struct platform_device *pdev) {
     unregister_chrdev(1, "time");
     if (lookup("/time")) {
-        
     }
     system_time = NULL;
 }
 
-module_init(timestamp_init);
+static struct platform_driver timestamp_driver = {
+    .name = "time_driver",
+    .probe = timestamp_probe,
+    .remove = timestamp_remove,
+    .of_match_table = (const struct of_device_id[]) {
+        { .compatible = "wq,time" },
+        { /* sentinel */ }
+    },
+};
+
+module_platform_driver(timestamp_driver);
 
 
 

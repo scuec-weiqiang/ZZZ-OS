@@ -31,6 +31,13 @@ SECTIONS
     }
     _initcall_end = .;
 
+    . = ALIGN(8);
+    _exitcall_start = .;
+    .exitcall : {
+        KEEP(*(.exitcall))     /* 保留所有 exitcall 段内容 */
+    }
+    _exitcall_end = .;
+
     .rodata : ALIGN(8) {
         . = ALIGN(4096);
        _rodata_start = .; 
@@ -71,6 +78,9 @@ SECTIONS
 
     PROVIDE_HIDDEN(__initcall_start = _initcall_start);
     PROVIDE_HIDDEN(__initcall_end = _initcall_end);
+
+    PROVIDE_HIDDEN(__exitcall_start = _exitcall_start);
+    PROVIDE_HIDDEN(__exitcall_end = _exitcall_end);
 
     PROVIDE_HIDDEN(__trap_start = _trap_start);
     PROVIDE_HIDDEN(__trap_end = _trap_end);

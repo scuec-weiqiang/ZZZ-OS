@@ -1,5 +1,6 @@
 OBJ_Y += irq.o
 OBJ_Y += irq_domain.o
+OBJ_Y += irq_chip.o
 
 
 

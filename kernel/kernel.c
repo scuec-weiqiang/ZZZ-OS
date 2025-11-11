@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-11-10 21:35:15
+ * @LastEditTime: 2025-11-12 00:28:37
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -70,15 +70,6 @@ void init_kernel() {
 		free(buff);
 
 		do_initcalls();
-
-		struct system_time t;
-		read(open("/time", 0), (char *)&t, sizeof(t));
-		printk("Current time: %d-%d-%d %d:%d:%d.%d\n", t.year, t.month, t.day, t.hour, t.minute,
-		       t.second, t.usec);
-		printk("Current time:%x\n", get_current_unix_timestamp(UTC8));
-
-		// uart_init();
-		write(open("/uart", 0), "hello driver\n", sizeof("hello dirver\n"));
 		
 		is_init = 1;
 	}

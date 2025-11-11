@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-10 20:21:56
- * @LastEditTime: 2025-11-10 21:34:46
+ * @LastEditTime: 2025-11-11 21:15:12
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -12,6 +12,7 @@
 #include <os/list.h>
 #include <os/of.h>
 #include <os/string.h>
+#include <os/printk.h>
 
 static struct list_head driver_list = LIST_HEAD_INIT(driver_list);
 struct list_head platform_device_list = LIST_HEAD_INIT(platform_device_list);
@@ -40,9 +41,20 @@ int platform_driver_register(struct platform_driver *drv) {
             if (!pdev->dev->driver_data) {
                 if (drv->probe(pdev) == 0) {
                     pdev->dev->driver_data = drv;
+                    return 0;
                 }
             }
         }
     }
+    printk("platform_driver_register: no matching device for driver %s\n", drv->name);
+    return -1;
+}
+
+int platform_driver_unregister(struct platform_driver *drv) {
+    if (!drv) {
+        return -1;
+    }
+    list_del(&drv->link);
+    drv->remove(NULL);
     return 0;
 }

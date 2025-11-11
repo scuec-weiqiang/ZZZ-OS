@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-30 20:43:47
- * @LastEditTime: 2025-10-31 00:51:12
+ * @LastEditTime: 2025-11-11 23:41:35
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -13,6 +13,12 @@
 #include <os/types.h>
 
 typedef struct pgtbl pgtbl_t;
+
+#define PTE_V (1 << 0)      // 有效位
+#define PTE_R (1 << 1)      // 可读
+#define PTE_W (1 << 2)      // 可写
+#define PTE_X (1 << 3)      // 可执行
+#define PTE_U (1 << 4)      // 用户模式可访问
 
 /**
  * 用户虚拟地址空间描述
@@ -38,5 +44,8 @@ extern uintptr_t va_to_pa(pgtbl_t *pgd, uintptr_t va);
 
 extern void kernel_page_table_init();
 extern void page_table_init(pgtbl_t *pgd);
+
+#define ioremap(pa, size)   map_range(kernel_pgd, (uintptr_t)(pa), (uintptr_t)(pa), (size_t)(size), PTE_R | PTE_W )
+#define iounmap(va)         unmap_range(kernel_pgd, (uintptr_t)(va))
 
 #endif
