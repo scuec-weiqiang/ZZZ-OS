@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ-OS/lib/os/types.h
+ * @FilePath: /ZZZ-OS/include/os/types.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 19:42:44
- * @LastEditTime: 2025-10-28 15:23:35
+ * @LastEditTime: 2025-11-12 15:45:19
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -28,14 +28,14 @@
         typedef unsigned long       size_t;
         typedef unsigned long       uintptr_t;
 
-        #define UINT8_MAX     (0xff)
-        #define UINT16_MAX    (0xffff)
-        #define UINT32_MAX    (0xffffffff)
-        #define UINT64_MAX    (0xffffffffffffffff)
-
-        typedef uint64_t                 reg_t;
     #endif 
 
+    #define UINT8_MAX     (0xff)
+    #define UINT16_MAX    (0xffff)
+    #define UINT32_MAX    (0xffffffff)
+    #define UINT64_MAX    (0xffffffffffffffff)
+
+    typedef uintptr_t                 reg_t;
     typedef enum { false, true } bool;
 
     #define NULL ((void *)0)

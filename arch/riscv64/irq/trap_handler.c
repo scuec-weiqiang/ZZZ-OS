@@ -11,48 +11,52 @@
 #include <os/irq.h>
 #include <asm/interrupt.h>
 #include <os/irq_chip.h>
+#include <os/irq_domain.h>
+#include <os/irq.h>
+#include <os/irqreturn.h>
 
 extern void kernel_trap_entry();
 
+
 //1
-reg_t s_soft_interrupt_handler(reg_t epc)
+irqreturn_t s_soft_interrupt_handler(int virq, void *dev_id)
 {
     sip_w(sip_r() & ~SIP_SSIP);
     
-    return epc;
+    return IRQ_HANDLED;
     
 }
 
 //3
-reg_t m_soft_interrupt_handler(reg_t epc)
+irqreturn_t m_soft_interrupt_handler(int virq, void *dev_id)
 {
     
     sip_w(sip_r() | SIP_SSIP);
-    return epc;
+    return IRQ_HANDLED;
 }
 
 //5
-reg_t s_timer_interrupt_handler(reg_t epc)
+irqreturn_t s_timer_interrupt_handler(int virq, void *dev_id)
 {
     arch_timer_reload();
     systick_up();
-    if(scheduler[tp_r()].current->expire_time >= systick())
-    {
-        printk("\n");
-        yield();
-    }
-    // printk("tick:%du\n",systick(hart_id));
-    return epc;
+    // if(scheduler[tp_r()].current->expire_time >= systick())
+    // {
+    //     printk("\n");
+    //     yield();
+    // }
+    printk("tick:%du\n",systick());
+    return IRQ_HANDLED;
 }
 
 //7
-reg_t m_timer_interrupt_handler(reg_t epc)
+irqreturn_t m_timer_interrupt_handler(int virq, void *dev_id)
 {
-    return epc;
+    return IRQ_HANDLED;
 }
 
 //9
-reg_t s_extern_interrupt_handler(reg_t epc)
+irqreturn_t s_extern_interrupt_handler(int virq, void *dev_id)
 {
     enum hart_id hart_id = tp_r();
     uint32_t irqn = __plic_claim(hart_id);
@@ -70,11 +74,11 @@ reg_t s_extern_interrupt_handler(reg_t epc)
     {
         __plic_complete(0,irqn);
     }
-    return epc;
+    return IRQ_HANDLED;
 }
 
 //11
-reg_t m_extern_interrupt_handler(reg_t epc)
+irqreturn_t m_extern_interrupt_handler(int virq, void *dev_id)
 {
     enum hart_id hart_id = tp_r();
     uint32_t irqn = __plic_claim(hart_id);
@@ -92,41 +96,20 @@ reg_t m_extern_interrupt_handler(reg_t epc)
     {
         __plic_complete(0,irqn);
     }
-    return epc;
+    return IRQ_HANDLED;
 }
 
-typedef reg_t (*trap_func_t)(reg_t epc);
-
-trap_func_t interrupt_handlers[] = {
-    NULL,
-    s_soft_interrupt_handler,
-    NULL,
-    m_soft_interrupt_handler,
-    NULL,
-    s_timer_interrupt_handler,
-    NULL,
-    m_timer_interrupt_handler,
-    NULL,
-    s_extern_interrupt_handler,
-    NULL,
-    m_extern_interrupt_handler
-};
-
 reg_t trap_handler(reg_t _ctx) {
+    printk("trap handler enter\n");
     struct trap_frame* ctx = (struct trap_frame *)_ctx;
     reg_t return_epc = ctx->sepc;
     uint64_t cause_code = ctx->scause & MCAUSE_MASK_CAUSECODE;
     uint64_t is_interrupt = (ctx->scause & MCAUSE_MASK_INTERRUPT);
     if(is_interrupt) // 中断
     {   
-        if(interrupt_handlers[cause_code] != NULL && cause_code < 12) //前12个是标准中断
-        {
-            return_epc = interrupt_handlers[cause_code](ctx->sepc);
-        }    
-        else
-        {
-            printk("unknown interruption!\n cause code is %l\n",cause_code);
-        }    
+        struct irq_chip *chip = irq_chip_lookup("riscv64_clint");
+        int virq = irq_domain_get_virq(chip, cause_code);
+        do_irq(_ctx, (void *)(uintptr_t)virq);
     }
     else
     {

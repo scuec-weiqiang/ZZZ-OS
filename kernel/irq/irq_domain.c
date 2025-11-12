@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-01 00:18:54
- * @LastEditTime: 2025-11-12 00:35:54
+ * @LastEditTime: 2025-11-12 16:49:11
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -31,10 +31,10 @@ struct irq_domain *irq_domain_create(struct irq_chip *chip, unsigned int virq_ba
     }
 
     for (i = 0; i < hw_irq_count; i++) {
-        domain->hw_to_virq[i] = virq_base + i;
+        domain->hw_to_virq[i] = -1;
     }
 
-    list_add(&domain->link, &irq_domains);
+    list_add(&irq_domains, &domain->link);
 
     return domain;
 }
@@ -46,6 +46,14 @@ void irq_domain_destroy(struct irq_domain *domain) {
     list_del(&domain->link);
     free(domain->hw_to_virq);
     free(domain);
+}
+
+int irq_domain_add_mapping(struct irq_domain *domain, unsigned int hwirq) {
+    if (hwirq >= domain->hw_irq_count) {
+        return -1; // Invalid hwirq
+    }
+    domain->hw_to_virq[hwirq] = domain->virq_base + hwirq;
+    return domain->hw_to_virq[hwirq];
 }
 
 struct irq_domain *irq_domain_lookup(unsigned int virq) {

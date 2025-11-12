@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-11-12 00:28:37
+ * @LastEditTime: 2025-11-12 16:55:44
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -50,10 +50,9 @@ void init_kernel() {
 	if (hart == HART_0) {
 		zero_bss();
 		symbols_init();
-		trap_init();
-		// uart_reg_init();
-
 		malloc_init();
+
+		irq_init();
 		kernel_page_table_init();
 
 		virt_disk_init();
@@ -73,10 +72,11 @@ void init_kernel() {
 		
 		is_init = 1;
 	}
-
+	printk("init success\n");
 	set_hart_stack();
 	arch_timer_init(SYS_HZ_1);
-	// s_global_interrupt_enable();
+	arch_timer_start();
+	s_global_interrupt_enable();
 
 	// creat("/a.txt",S_IFREG|0644);
 	// mkdir("/dir1",S_IFDIR|0644);

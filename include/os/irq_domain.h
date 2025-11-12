@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-01 00:38:49
- * @LastEditTime: 2025-11-01 01:47:06
+ * @LastEditTime: 2025-11-12 15:35:10
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -23,6 +23,7 @@ struct irq_domain {
 
 extern struct irq_domain *irq_domain_create(struct irq_chip *chip, unsigned int virq_base, unsigned int hw_irq_count);
 extern void irq_domain_destroy(struct irq_domain *domain);
+extern int irq_domain_add_mapping(struct irq_domain *domain, unsigned int hwirq);
 extern struct irq_domain *irq_domain_lookup(unsigned int virq);
 extern int irq_domain_get_virq(struct irq_chip *chip, unsigned int hwirq);
 
