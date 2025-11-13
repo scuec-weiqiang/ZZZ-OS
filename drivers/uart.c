@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-15 17:10:59
- * @LastEditTime: 2025-11-12 00:12:26
+ * @LastEditTime: 2025-11-13 23:27:19
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -16,6 +16,8 @@
 #include <os/mm.h>
 #include <os/of.h>
 #include <os/string.h>
+#include <os/irqreturn.h>
+#include <os/irq.h>
 
 struct uart_reg {
     uint8_t RHR_THR_DLL;
@@ -71,11 +73,12 @@ void uart_puts(char *s) {
     }
 }
 
-void uart0_iqr() {
-    // char a = uart_getc();
-    // printk("%c",a);
-    // if('\r'==a)
-    //     printk("\n");
+irqreturn_t uart0_iqr(reg_t ctx, void *arg) {
+    char a = uart_getc();
+    printk("%c",a);
+    if('\r'==a)
+        printk("\n");
+    return IRQ_HANDLED;
 }
 
 static int uart_open(struct inode *inode, struct file *file) {
@@ -122,7 +125,12 @@ int uart_prob(struct platform_device *pdev) {
     register_chrdev(devnr, "uart", &uart_file_ops);
     if (lookup("/uart") == NULL)
         mknod("/uart", S_IFCHR | 0644, devnr);
+
+    int virq = platform_get_irq(pdev, 0);
+    irq_register(virq, uart0_iqr, "uart0_irq",NULL);
+
     console_register(uart_putc);
+    irq_enable(virq);
     return 0;
 }
 

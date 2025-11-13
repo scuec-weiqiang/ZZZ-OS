@@ -10,7 +10,24 @@
 #define PLIC_H
 
 #include <os/types.h>
-#include <asm/platform.h>
+
+#define PLIC_BASE                     0x0c000000
+#define PLIC_PRIORITY_BASE            (PLIC_BASE + (0x0000))
+#define PLIC_PENDING_BASE             (PLIC_BASE + (0x1000))
+#define PLIC_INT_EN_BASE              (PLIC_BASE + (0x2000))
+#define PLIC_INT_THRSHOLD_BASE        (PLIC_BASE + (0x200000))
+#define PLIC_CLAIM_BASE               (PLIC_BASE + (0x200004))
+#define PLIC_COMPLETE_BASE            (PLIC_BASE + (0x200004))
+
+
+static inline uint32_t plic_get_context(uint32_t hart)
+{
+    // unsigned long sstatus;
+    // asm volatile("csrr %0, sstatus" : "=r"(sstatus));
+    // // 如果sstatus可访问且SIE位可读写，说明当前在S态
+    // return (sstatus & 0x2) ? (hart * 2 + 1) : (hart * 2);
+    return hart * 2 + 1; // 仅支持S态
+}
 
 /***************************************************************
  * @description: 
@@ -55,7 +72,7 @@ static  inline uint32_t __plic_pending_get(uint32_t irqn)
 static inline void __plic_interrupt_enable(uint32_t hart,uint32_t irqn)
 {
     volatile uint32_t *plic_int_en = (volatile uint32_t *)PLIC_INT_EN_BASE;
-    plic_int_en[hart*0x80 + 4*(irqn/32)] |= (1<<(irqn%32));
+    plic_int_en[plic_get_context(hart) * 0x80/4 + 4*(irqn/32)] |= (1<<(irqn%32));
 }
 
 /***************************************************************
@@ -67,7 +84,7 @@ static inline void __plic_interrupt_enable(uint32_t hart,uint32_t irqn)
 static  inline void __plic_interrupt_disable(uint32_t hart,uint32_t irqn)
 {
     volatile uint32_t *plic_int_en = (volatile uint32_t *)PLIC_INT_EN_BASE;
-    plic_int_en[hart*0x80 + 4*(irqn/32)]  &= ~(1<<(irqn%32));
+    plic_int_en[plic_get_context(hart) * 0x80/4 + 4*(irqn/32)]  &= ~(1<<(irqn%32));
 }
 
 /***************************************************************
@@ -79,7 +96,7 @@ static  inline void __plic_interrupt_disable(uint32_t hart,uint32_t irqn)
 static  inline void __plic_threshold_set(uint32_t hart,uint32_t threshold)
 {
     volatile uint32_t *plic_int_thrshold = (volatile uint32_t *)PLIC_INT_THRSHOLD_BASE;
-    plic_int_thrshold[hart*0x1000] = threshold;
+    plic_int_thrshold[plic_get_context(hart) * 0x1000] = threshold;
 }
 
 /***************************************************************
@@ -90,7 +107,7 @@ static  inline void __plic_threshold_set(uint32_t hart,uint32_t threshold)
 static  inline uint32_t __plic_claim(uint32_t hart)
 {
     volatile uint32_t *plic_claim = (volatile uint32_t *)PLIC_CLAIM_BASE ;
-    return  plic_claim[hart*0x1000];
+    return  plic_claim[plic_get_context(hart) * 0x1000/4];
 }
 
 /***************************************************************
@@ -101,8 +118,8 @@ static  inline uint32_t __plic_claim(uint32_t hart)
 ***************************************************************/
 static  inline void __plic_complete(uint32_t hart,uint32_t irqn)
 {
-    volatile uint32_t *plic_claim = (volatile uint32_t *)PLIC_CLAIM_BASE ;
-    plic_claim[hart*0x1000]= irqn;
+    volatile uint32_t *plic_complete = (volatile uint32_t *)PLIC_COMPLETE_BASE;
+    plic_complete[plic_get_context(hart) * 0x1000/4]= irqn;
 }
 
 

@@ -1,9 +1,9 @@
 /**
- * @FilePath: /vboot/home/wei/os/ZZZ-OS/kernel/irq/irq_chip.c
+ * @FilePath: /ZZZ-OS/kernel/irq/irq_chip.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-12 01:16:43
- * @LastEditTime: 2025-11-12 16:48:12
+ * @LastEditTime: 2025-11-13 21:33:10
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -25,13 +25,13 @@ struct irq_chip* irq_chip_register(char *name, struct irq_chip_ops *ops, int har
     return chip;
 }
 
-struct irq_chip* irq_chip_lookup(char *name) {
+struct irq_chip* irq_chip_lookup(char *name, int hart) {
     struct irq_chip *chip;
     struct list_head *pos;
 
     list_for_each(pos, &irq_chip_list) {
         chip = list_entry(pos, struct irq_chip, link);
-        if (strcmp(chip->name, name) == 0) {
+        if (strcmp(chip->name, name) == 0 && chip->hart == hart) {
             return chip;
         }
     }

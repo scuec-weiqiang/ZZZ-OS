@@ -1,3 +1,12 @@
+/**
+ * @FilePath: /vboot/home/wei/os/ZZZ-OS/kernel/console.c
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-11-11 20:15:50
+ * @LastEditTime: 2025-11-14 01:57:14
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 #include <os/types.h>
 #include <os/compiler_attributes.h>
 
@@ -30,10 +39,11 @@ void console_register(void (*fn)(char c)) {
 
 void console_puts(char *str) {
     int i = 0;
-    do {
+    while(str[i]) {
         ring_putc(str[i]);
         i++;
-    }while(str[i]);
+    }
+    ring_putc(0);
 }
 
 void console_flush(void) {
@@ -42,8 +52,9 @@ void console_flush(void) {
     }
 
     int c = 0;
+    c = (int)ring_getc();
     while (c != -1) {
-        c = (int)ring_getc();
         fn_putc((char)c);
+        c = (int)ring_getc();
     } 
 }

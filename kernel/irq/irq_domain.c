@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-01 00:18:54
- * @LastEditTime: 2025-11-12 16:49:11
+ * @LastEditTime: 2025-11-13 21:49:20
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -11,6 +11,13 @@
 #include <os/malloc.h>
 
 struct list_head irq_domains = LIST_HEAD_INIT(irq_domains);
+static unsigned int next_virq_base = 0;
+
+int irq_domain_alloc_virq_base(unsigned int count) {
+    unsigned int virq_base = next_virq_base;
+    next_virq_base += count;
+    return virq_base;
+}
 
 struct irq_domain *irq_domain_create(struct irq_chip *chip, unsigned int virq_base, unsigned int hw_irq_count) {
     struct irq_domain *domain;
@@ -35,6 +42,7 @@ struct irq_domain *irq_domain_create(struct irq_chip *chip, unsigned int virq_ba
     }
 
     list_add(&irq_domains, &domain->link);
+    chip->priv = domain;
 
     return domain;
 }

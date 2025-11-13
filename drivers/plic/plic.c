@@ -1,19 +1,21 @@
 /**
- * @FilePath: /ZZZ-OS/arch/riscv64/irq/plic.c
+ * @FilePath: /ZZZ-OS/drivers/plic/plic.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-31 01:18:22
- * @LastEditTime: 2025-11-12 01:35:40
+ * @LastEditTime: 2025-11-14 01:46:07
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include "os/driver_model.h"
 #include "riscv_plic.h"
 #include <os/irq_chip.h>
-#include <asm/trap_handler.h>
 #include <asm/riscv.h>
 #include <drivers/core/driver.h>
 #include <os/irq_domain.h>
+#include <os/irqreturn.h>
+#include <os/mm.h>
+#include <asm/irq.h>
 
 static void riscv64_plic_init(struct irq_chip* self) {
 }
@@ -47,6 +49,7 @@ static void riscv64_plic_clear_pending(struct irq_chip* self, int hwirq) {
 }
   
 static void riscv64_plic_set_priority(struct irq_chip* self, int hwirq, int priority) {
+    __plic_threshold_set(0, 0);
     __plic_priority_set(hwirq, priority);
 }
 
@@ -67,15 +70,53 @@ struct irq_chip_ops riscv64_plic_chip_ops = {
     .get_priority = riscv64_plic_get_priority, 
 };
 
+
+static irqreturn_t extern_interrupt_handler(int virq, void *dev_id)
+{
+    int hart_id = tp_r();
+
+    struct irq_chip *chip = irq_chip_lookup("riscv,plic", tp_r());
+    if (chip) {
+        int extern_irq = chip->ops->ack(chip);
+        // printk("PLIC: hart %d extern irq %d\n", hart_id, extern_irq);
+        int virq = irq_domain_get_virq(chip, extern_irq);
+        if (virq >= 0) {
+            do_irq(NULL, (void *)(uintptr_t)virq);
+        } else {
+            printk("Invalid virq!\n");
+        }
+        if (virq) {
+            chip->ops->eoi(chip, extern_irq);
+        }
+        return IRQ_HANDLED;
+    } else {
+        printk("IRQ chip not found!\n");
+    }
+    
+    return IRQ_NONE;
+}
+
+
 static int riscv_plic_probe(struct platform_device *pdev) {
-    int irq_count = 0;
-    struct irq_chip *chip = irq_chip_register("riscv64_plic", &riscv64_plic_chip_ops, 0, NULL);
-    struct irq_domain *domain = irq_domain_create(chip, 16, irq_count);
+    struct device_node *node = of_find_node_by_compatible("riscv,plic");
+    if (!node) {
+        return -1;
+    }
+    uint32_t *reg = of_read_u32_array(node, "riscv,ndev", 1);
+    int irq_count = (int)reg[0];
 
-    irq_domain_add_mapping(domain, 0); // 将全局中断号0也进行映射，方便控制全局中断，但是不注册中断函数
+    reg = of_read_u32_array(node, "reg", 2);
+    ioremap(reg[0], reg[1]);
 
-    // int virq = irq_domain_add_mapping(domain, CLINT_IRQ_SOFT);
-    // irq_register(virq, s_soft_interrupt_handler, "s_soft_irq", NULL);
+    reg = of_read_u32_array(node, "interrupts-extended", 2);
+    int hwirq = (int)reg[1]; 
+    
+    int virq_base = irq_domain_alloc_virq_base(irq_count);
+    struct irq_chip *chip = irq_chip_register("riscv,plic", &riscv64_plic_chip_ops, 0, NULL);
+    struct irq_domain *domain = irq_domain_create(chip, virq_base, irq_count);
+
+    arch_local_irq_register(hwirq, extern_interrupt_handler, "riscv_plic_extern", 0, NULL);
+
     return 0;
 }
 
@@ -95,5 +136,5 @@ static struct platform_driver riscv_plic_driver = {
     .of_match_table = riscv_plic_match
 };
 
-module_platform_driver(riscv_plic_driver);
+module_platform_irq(riscv_plic_driver);
 

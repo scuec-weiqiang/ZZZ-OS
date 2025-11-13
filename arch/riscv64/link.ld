@@ -38,6 +38,21 @@ SECTIONS
     }
     _exitcall_end = .;
 
+        . = ALIGN(8);
+    _irqinitcall_start = .;
+    .irqinitcall : {
+        KEEP(*(.irqinitcall))     /* 保留所有 initcall 段内容 */
+    }
+    _irqinitcall_end = .;
+
+    
+    . = ALIGN(8);
+    _irqexitcall_start = .;
+    .irqexitcall : {
+        KEEP(*(.irqexitcall))     /* 保留所有 exitcall 段内容 */
+    }
+    _irqexitcall_end = .;
+
     .rodata : ALIGN(8) {
         . = ALIGN(4096);
        _rodata_start = .; 
@@ -81,6 +96,13 @@ SECTIONS
 
     PROVIDE_HIDDEN(__exitcall_start = _exitcall_start);
     PROVIDE_HIDDEN(__exitcall_end = _exitcall_end);
+
+
+    PROVIDE_HIDDEN(__irqinitcall_start = _irqinitcall_start);
+    PROVIDE_HIDDEN(__irqinitcall_end = _irqinitcall_end);
+
+    PROVIDE_HIDDEN(__irqexitcall_start = _irqexitcall_start);
+    PROVIDE_HIDDEN(__irqexitcall_end = _irqexitcall_end);
 
     PROVIDE_HIDDEN(__trap_start = _trap_start);
     PROVIDE_HIDDEN(__trap_end = _trap_end);

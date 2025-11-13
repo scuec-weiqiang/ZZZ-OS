@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-31 14:39:47
- * @LastEditTime: 2025-11-12 16:41:10
+ * @LastEditTime: 2025-11-13 23:44:32
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -36,6 +36,9 @@ extern reg_t do_irq(reg_t ctx,void *arg);
 extern void irq_set_priority(int virq, int priority);
 extern int irq_get_priority(int virq);
 
-#define GLOBAL 0
+#define GLOBAL_IRQ 0
+#define SOFT_IRQ 1
+#define TIMER_IRQ 5
+#define EXTERN_IRQ 9
 
 #endif // __KERNEL_IRQ_H

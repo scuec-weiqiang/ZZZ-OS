@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ-OS/arch/riscv64/kernel/arch_timer.c
+ * @FilePath: /ZZZ-OS/arch/riscv64/timer/arch_timer.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-19 21:58:52
- * @LastEditTime: 2025-10-30 21:21:02
+ * @LastEditTime: 2025-11-13 23:28:35
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -13,6 +13,7 @@
 #include <asm/interrupt.h>
 #include <asm/arch_timer.h>
 #include <asm/riscv.h>
+#include <os/irq.h>
 
 //系统时钟以0核为基准
 static uint64_t arch_timer_tick[MAX_HARTS_NUM] = {0};
@@ -55,10 +56,10 @@ void arch_timer_init( enum arch_timer_hz hz)
 void arch_timer_start()
 {
     arch_timer_reload();
-    s_timer_interrupt_enable();
+    irq_enable(TIMER_IRQ);
 }
 
 void arch_timer_pause()
 {
-    s_timer_interrupt_disable();
+    irq_disable(TIMER_IRQ);
 }

@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-11-12 16:55:44
+ * @LastEditTime: 2025-11-14 01:45:41
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -62,14 +62,15 @@ void init_kernel() {
 		free(buff);
 
 		do_initcalls();
+		irq_enable(EXTERN_IRQ);
 		
 		is_init = 1;
 	} 
 	printk("init success\n");
 	set_hart_stack();
 	arch_timer_init(SYS_HZ_1);
-	arch_timer_start();
-	irq_enable(GLOBAL);
+	// arch_timer_start();
+	irq_enable(GLOBAL_IRQ);
 	// creat("/a.txt",S_IFREG|0644);
 	// mkdir("/dir1",S_IFDIR|0644);
 
@@ -77,8 +78,8 @@ void init_kernel() {
 
 	// proc_create("/proc2.elf");
 	// proc_create("/proc1.elf");
-
 	while (1) {
+
 	}
 	sched_init(hart);
 	sched();

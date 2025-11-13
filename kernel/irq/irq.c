@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-31 14:53:42
- * @LastEditTime: 2025-11-12 16:42:35
+ * @LastEditTime: 2025-11-14 01:34:52
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -24,18 +24,7 @@ void irq_init(void) {
     }
     arch_irq_init();
 }
- 
-int irq_register(int virq, irq_handler_t handler, const char *name, void *dev_id) {
-    if (virq < 0 || virq >= IRQ_COUNT) {
-        return -1;
-    }
-    irq_desc[virq].handler = handler;
-    irq_desc[virq].name = name;
-    irq_desc[virq].dev_id = dev_id;
-    irq_desc[virq].domain = irq_domain_lookup(virq);
-    
-    return 0;
-}
+
 
 void irq_enable(int virq) {
     struct irq_domain *domain = irq_domain_lookup(virq);
@@ -67,7 +56,7 @@ int irq_get_priority(int virq) {
 }
 
 reg_t do_irq(reg_t ctx,void *arg) {
-   int virq = (int)(uintptr_t)arg;
+    int virq = (int)(uintptr_t)arg;
     if (virq < 0 || virq >= IRQ_COUNT) {
         return ctx;
     }
@@ -76,4 +65,17 @@ reg_t do_irq(reg_t ctx,void *arg) {
         return handler(virq, irq_desc[virq].dev_id);
     }
     return ctx;
+}
+
+int irq_register(int virq, irq_handler_t handler, const char *name, void *dev_id) {
+    if (virq < 0 || virq >= IRQ_COUNT) {
+        return -1;
+    }
+    irq_desc[virq].handler = handler;
+    irq_desc[virq].name = name;
+    irq_desc[virq].dev_id = dev_id;
+    irq_desc[virq].virq = virq;
+    irq_desc[virq].domain = irq_domain_lookup(virq);
+    irq_set_priority(virq, 1);
+    return 0;
 }

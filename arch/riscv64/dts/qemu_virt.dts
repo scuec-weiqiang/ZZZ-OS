@@ -34,7 +34,7 @@
             #interrupt-cells = <1>;
             riscv,max-priority = <7>;
             riscv,ndev = <53>;       // 支持的外设中断数量
-            interrupts-extended = <&CPU0 11>; // 通知目标CPU
+            interrupts-extended = <&cpu0 9>; // 通知目标CPU
         };
        
         time: time@50000000 {

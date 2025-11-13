@@ -3,13 +3,12 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-11-12 00:02:47
+ * @LastEditTime: 2025-11-13 23:39:34
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
 #include <asm/mm.h>
 #include <asm/pgtbl.h>
-#include <asm/riscv_plic.h>
 #include <asm/riscv.h>
 #include <asm/symbols.h>
 #include <drivers/uart.h>
@@ -86,11 +85,12 @@ void page_table_init(pgtbl_t *pgd) {
     map_range(pgd, (uintptr_t)heap_start, (uintptr_t)KERNEL_PA(heap_start), (size_t)heap_size, PTE_R | PTE_W);
     map_range(pgd, (uintptr_t)stack_start, (uintptr_t)KERNEL_PA(stack_start), (size_t)stack_size * 2, PTE_R | PTE_W);
     map_range(pgd, (uintptr_t)initcall_start, (uintptr_t)KERNEL_PA(initcall_start), (size_t)initcall_size, PTE_R | PTE_W | PTE_X);
-    map_range(pgd, (uintptr_t)exitcall_start, (uintptr_t)KERNEL_PA(exitcall_start), (size_t)exitcall_size * 2, PTE_R | PTE_W | PTE_X);
-
+    map_range(pgd, (uintptr_t)exitcall_start, (uintptr_t)KERNEL_PA(exitcall_start), (size_t)exitcall_size , PTE_R | PTE_W | PTE_X);
+    map_range(pgd, (uintptr_t)irqinitcall_start, (uintptr_t)KERNEL_PA(irqinitcall_start), (size_t)irqinitcall_size, PTE_R | PTE_W | PTE_X);
+    map_range(pgd, (uintptr_t)irqexitcall_start, (uintptr_t)KERNEL_PA(irqexitcall_start), (size_t)irqexitcall_size , PTE_R | PTE_W | PTE_X);
     // 恒等映射外设寄存器地址空间到内核虚拟地址空间
-    map_range(pgd, (uintptr_t)CLINT_BASE, (uintptr_t)CLINT_BASE, 12 * PAGE_SIZE, PTE_R | PTE_W);
-    map_range(pgd, (uintptr_t)PLIC_BASE, (uintptr_t)PLIC_BASE, 0x200 * PAGE_SIZE, PTE_R | PTE_W);
+    // map_range(pgd, (uintptr_t)CLINT_BASE, (uintptr_t)CLINT_BASE, 12 * PAGE_SIZE, PTE_R | PTE_W);
+    // map_range(pgd, (uintptr_t)PLIC_BASE, (uintptr_t)PLIC_BASE, 0x200 * PAGE_SIZE, PTE_R | PTE_W);
     map_range(pgd, (uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, PTE_R | PTE_W);
 }
 

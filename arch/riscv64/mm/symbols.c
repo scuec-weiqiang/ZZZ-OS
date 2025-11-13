@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 13:05:59
- * @LastEditTime: 2025-11-12 00:03:21
+ * @LastEditTime: 2025-11-13 23:50:11
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -17,6 +17,8 @@ extern char __stack_start[], __stack_end[];
 extern char __heap_start[], __heap_end[];
 extern char __initcall_start[],__initcall_end[];
 extern char __exitcall_start[],__exitcall_end[];
+extern char __irqinitcall_start[],__irqinitcall_end[];
+extern char __irqexitcall_start[],__irqexitcall_end[];
 
 uintptr_t text_start;
 uintptr_t text_end;
@@ -43,6 +45,12 @@ uintptr_t exitcall_start;
 uintptr_t exitcall_end;
 uintptr_t exitcall_size;
 
+uintptr_t irqinitcall_start;
+uintptr_t irqinitcall_end;
+uintptr_t irqinitcall_size;
+uintptr_t irqexitcall_start;
+uintptr_t irqexitcall_end;
+uintptr_t irqexitcall_size;
 
 
 void symbols_init()
@@ -70,9 +78,18 @@ void symbols_init()
     initcall_end = (uintptr_t)&__initcall_end;
     initcall_size = (initcall_end - initcall_start);
 
+    
+    irqinitcall_start = (uintptr_t)&__irqinitcall_start;
+    irqinitcall_end = (uintptr_t)&__irqinitcall_end;
+    irqinitcall_size = (irqinitcall_end - irqinitcall_start);
+
     exitcall_start = (uintptr_t)&__exitcall_start;
     exitcall_end = (uintptr_t)&__exitcall_end;
     exitcall_size = (exitcall_end - exitcall_start);
+    
+    irqexitcall_start = (uintptr_t)&__irqexitcall_start;
+    irqexitcall_end = (uintptr_t)&__irqexitcall_end;
+    irqexitcall_size = (irqexitcall_end - irqexitcall_start);
 }
 
 /**
