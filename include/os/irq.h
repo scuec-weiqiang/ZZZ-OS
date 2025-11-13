@@ -7,8 +7,8 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#ifndef KERNEL_IRQ_H
-#define KERNEL_IRQ_H
+#ifndef __KERNEL_IRQ_H
+#define __KERNEL_IRQ_H
 
 #include <os/types.h>
 #include <os/irqreturn.h>
@@ -24,7 +24,7 @@ struct irq_desc {
     // int hwirq;                          // 硬件中断号
     // struct irq_chip *chip;        // 指向控制器私有数据
     struct irq_domain *domain;    // 所属中断域
-    irq_handler_t *handler;        // 中断处理函数
+    irq_handler_t handler;        // 中断处理函数
     void *dev_id;                  // 设备标识符         
 };
 
@@ -36,5 +36,6 @@ extern reg_t do_irq(reg_t ctx,void *arg);
 extern void irq_set_priority(int virq, int priority);
 extern int irq_get_priority(int virq);
 
+#define GLOBAL 0
 
-#endif // KERNEL_IRQ_H
+#endif // __KERNEL_IRQ_H

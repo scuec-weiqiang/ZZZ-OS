@@ -7,7 +7,6 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include "os/module.h"
 #include <drivers/core/driver.h>
 #include <fs/chrdev.h>
 #include <fs/vfs.h>
@@ -135,10 +134,9 @@ void uart_remove() {
 }
 
 static struct of_device_id uart_of_match[] = {
-    {
-        .compatible = "wq,uart",
-    },
-    {/* sentinel */}};
+    {.compatible = "wq,uart",},
+    {/* sentinel */}
+};
 
 static struct platform_driver uart_driver = {
     .name = "uart_driver",

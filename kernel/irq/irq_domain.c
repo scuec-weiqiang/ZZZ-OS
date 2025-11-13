@@ -87,3 +87,12 @@ int irq_domain_get_virq(struct irq_chip *chip, unsigned int hwirq) {
 
     return -1; // Domain not found
 }
+
+int irq_domain_get_hwirq(struct irq_domain *domain, int virq ) {
+    for (int i = 0; i<domain->hw_irq_count; i++) {
+        if (domain->hw_to_virq[i] == virq) {
+            return i;
+        }
+    }
+    return -1;
+}

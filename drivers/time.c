@@ -182,7 +182,7 @@ static int timestamp_probe(struct platform_device *pdev) {
 
     uint32_t *reg = of_read_u32_array(node,"reg", 2);
     
-    system_time = (struct system_time *)(reg[0]);
+    system_time = (struct system_time *)((uintptr_t)reg[0]);
     ioremap(reg[0], reg[1]);
     
     dev_t devnr = 1; 

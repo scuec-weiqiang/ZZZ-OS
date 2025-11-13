@@ -25,6 +25,9 @@ static void riscv64_clint_eio(struct irq_chip *self, int hwirq) {
 
 static void riscv64_clint_enable(struct irq_chip* self, int hwirq) {
     switch (hwirq) {
+    case 0:
+        s_global_interrupt_enable();
+        break;
     case CLINT_IRQ_SOFT: // 软件中断
         s_soft_interrupt_enable();
         break;
@@ -41,6 +44,9 @@ static void riscv64_clint_enable(struct irq_chip* self, int hwirq) {
 
 static void riscv64_clint_disable(struct irq_chip* self, int hwirq) {
     switch (hwirq) {
+    case 0:
+        s_global_interrupt_disable();
+        break;
     case CLINT_IRQ_SOFT: // 软件中断
         s_soft_interrupt_disable();
         break;

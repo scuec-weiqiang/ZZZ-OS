@@ -18,7 +18,7 @@ struct irq_desc irq_desc[IRQ_COUNT];
 void irq_init(void) {
     for (int i=0; i<IRQ_COUNT; i++) {
         irq_desc[i].name = NULL;
-        irq_desc[i].virq = i;
+        irq_desc[i].virq = -1;
         irq_desc[i].handler = NULL;
         irq_desc[i].dev_id = NULL;
     }
@@ -38,23 +38,32 @@ int irq_register(int virq, irq_handler_t handler, const char *name, void *dev_id
 }
 
 void irq_enable(int virq) {
-
+    struct irq_domain *domain = irq_domain_lookup(virq);
+    int hwirq = irq_domain_get_hwirq(domain, virq);
+    domain->chip->ops->enable(domain->chip,hwirq);
 }
 
 void irq_disable(int virq) {
-
+    struct irq_domain *domain = irq_domain_lookup(virq);
+    int hwirq = irq_domain_get_hwirq(domain, virq);
+    domain->chip->ops->disable(domain->chip,hwirq);
 }
 
 void irq_acknowledge(int virq) {
-
+    struct irq_domain *domain = irq_domain_lookup(virq);
+    domain->chip->ops->ack(domain->chip);
 }
 
-void irq_set_priority(int, int priority) {
-
+void irq_set_priority(int virq, int priority) {
+    struct irq_domain *domain = irq_domain_lookup(virq);
+    int hwirq = irq_domain_get_hwirq(domain, virq);
+    domain->chip->ops->set_priority(domain->chip, hwirq, priority);
 }
 
-int irq_get_priority(int) {
-
+int irq_get_priority(int virq) {
+    struct irq_domain *domain = irq_domain_lookup(virq);
+    int hwirq = irq_domain_get_hwirq(domain, virq);
+    return domain->chip->ops->get_priority(domain->chip,hwirq);
 }
 
 reg_t do_irq(reg_t ctx,void *arg) {

@@ -14,7 +14,7 @@
 #include <os/irqreturn.h>
 
 extern void trap_init();
-extern  s_soft_interrupt_handler(int virq, void *dev_id);
+extern irqreturn_t s_soft_interrupt_handler(int virq, void *dev_id);
 // extern reg_t m_soft_interrupt_handler(reg_t epc);
 extern irqreturn_t s_timer_interrupt_handler(int virq, void *dev_id);
 // extern reg_t m_timer_interrupt_handler(reg_t epc);

@@ -27,16 +27,14 @@
         #size-cells = <1>;
         compatible = "simple-bus";
 
-        clint: clint@2000000 {
-            compatible = "riscv,clint0";
-            interrupt-controller;
-            reg = <0x2000000 0x10000>;
-        };
-
         plic: plic@c000000 {
-            compatible = "wq,plic";
+            compatible = "riscv,plic";
             interrupt-controller;
             reg = <0xc000000 0x4000000>;
+            #interrupt-cells = <1>;
+            riscv,max-priority = <7>;
+            riscv,ndev = <53>;       // 支持的外设中断数量
+            interrupts-extended = <&CPU0 11>; // 通知目标CPU
         };
        
         time: time@50000000 {
@@ -50,8 +48,6 @@
             interrupt-parent = <&plic>;
             interrupts = <10>;
         };
-
-
 
     };
 };

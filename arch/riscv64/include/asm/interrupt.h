@@ -14,7 +14,7 @@
 #include <os/types.h>
 #include <asm/riscv.h>
 #include <asm/platform.h>
-#include <asm/riscv_plic.h>
+// #include <asm/riscv_plic.h>
 
 #define CLINT_IRQ_SOFT 1
 #define CLINT_IRQ_TIMER 5 
@@ -130,12 +130,12 @@ static inline int s_extern_interrupt_get_pending()
     return (sip_r()&(1<<9))?1:0;
 }
 
-static inline void extern_interrupt_setting(enum hart_id hart_id,uint32_t iqrn,uint32_t priority)
-{ 
-    __plic_priority_set(iqrn,priority);
-    __plic_threshold_set(hart_id,0);
-    __plic_interrupt_enable(hart_id,iqrn);
-} 
+// static inline void extern_interrupt_setting(enum hart_id hart_id,uint32_t iqrn,uint32_t priority)
+// { 
+//     __plic_priority_set(iqrn,priority);
+//     __plic_threshold_set(hart_id,0);
+//     __plic_interrupt_enable(hart_id,iqrn);
+// } 
 
 
 

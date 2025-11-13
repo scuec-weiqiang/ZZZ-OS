@@ -26,5 +26,6 @@ extern void irq_domain_destroy(struct irq_domain *domain);
 extern int irq_domain_add_mapping(struct irq_domain *domain, unsigned int hwirq);
 extern struct irq_domain *irq_domain_lookup(unsigned int virq);
 extern int irq_domain_get_virq(struct irq_chip *chip, unsigned int hwirq);
+extern int irq_domain_get_hwirq(struct irq_domain *domain, int virq );
 
 #endif

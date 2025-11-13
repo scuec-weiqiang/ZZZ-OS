@@ -14,27 +14,21 @@
 #include <drivers/virt_disk.h>
 #include <os/mm.h>
 
-#include <asm/riscv_plic.h>
-#include <asm/riscv.h>
-
 #include <os/elf.h>
 #include <drivers/of/fdt.h>
 #include <fs/fs_init.h>
-#include <asm/interrupt.h>
-#include <asm/platform.h>
 #include <os/proc.h>
 #include <os/sched.h>
 #include <os/string.h>
 #include <asm/symbols.h>
 #include <asm/arch_timer.h>
-#include <asm/trap_handler.h>
 #include <drivers/uart.h>
 #include <fs/vfs.h>
-#include <asm/pgtbl.h>
 #include <os/page.h>
 #include <drivers/of/of_platform.h>
 #include <os/of.h>
 #include <os/module.h>
+#include <os/irq.h>
 
 uint8_t is_init = 0;
 
@@ -45,7 +39,6 @@ void set_hart_stack() {
 }
 
 void init_kernel() {
-	s_global_interrupt_disable();
 	enum hart_id hart = HART_0;
 	if (hart == HART_0) {
 		zero_bss();
@@ -71,13 +64,12 @@ void init_kernel() {
 		do_initcalls();
 		
 		is_init = 1;
-	}
+	} 
 	printk("init success\n");
 	set_hart_stack();
 	arch_timer_init(SYS_HZ_1);
 	arch_timer_start();
-	s_global_interrupt_enable();
-
+	irq_enable(GLOBAL);
 	// creat("/a.txt",S_IFREG|0644);
 	// mkdir("/dir1",S_IFDIR|0644);
 

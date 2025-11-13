@@ -34,8 +34,9 @@ void arch_irq_init() {
     struct irq_chip *chip = irq_chip_register("riscv64_clint", &riscv64_clint_chip_ops, 0, NULL);
     struct irq_domain *domain = irq_domain_create(chip, RISCV64_CLINT_IRQ_BASE, RISCV64_CLINT_IRQ_COUNT);
 
-    int virq = 0;
-    virq = irq_domain_add_mapping(domain, CLINT_IRQ_SOFT);
+    irq_domain_add_mapping(domain, 0); // 将全局中断号0也进行映射，方便控制全局中断，但是不注册中断函数
+
+    int virq = irq_domain_add_mapping(domain, CLINT_IRQ_SOFT);
     irq_register(virq, s_soft_interrupt_handler, "s_soft_irq", NULL);
 
     virq = irq_domain_add_mapping(domain, CLINT_IRQ_TIMER);
