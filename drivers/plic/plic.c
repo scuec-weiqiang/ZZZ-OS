@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-31 01:18:22
- * @LastEditTime: 2025-11-14 01:46:07
+ * @LastEditTime: 2025-11-14 02:10:26
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -16,9 +16,6 @@
 #include <os/irqreturn.h>
 #include <os/mm.h>
 #include <asm/irq.h>
-
-static void riscv64_plic_init(struct irq_chip* self) {
-}
 
 static void riscv64_plic_enable(struct irq_chip* self, int hwirq) {
     __plic_interrupt_enable(self->hart, hwirq);
@@ -58,7 +55,6 @@ static int riscv64_plic_get_priority(struct irq_chip* self, int hwirq) {
 }
 
 struct irq_chip_ops riscv64_plic_chip_ops = {
-    .init = riscv64_plic_init,
     .ack = riscv64_plic_ack,
     .eoi = riscv64_plic_eio,
     .enable = riscv64_plic_enable,
@@ -70,15 +66,12 @@ struct irq_chip_ops riscv64_plic_chip_ops = {
     .get_priority = riscv64_plic_get_priority, 
 };
 
-
-static irqreturn_t extern_interrupt_handler(int virq, void *dev_id)
-{
+static irqreturn_t extern_interrupt_handler(int virq, void *dev_id) {
     int hart_id = tp_r();
 
     struct irq_chip *chip = irq_chip_lookup("riscv,plic", tp_r());
     if (chip) {
         int extern_irq = chip->ops->ack(chip);
-        // printk("PLIC: hart %d extern irq %d\n", hart_id, extern_irq);
         int virq = irq_domain_get_virq(chip, extern_irq);
         if (virq >= 0) {
             do_irq(NULL, (void *)(uintptr_t)virq);
@@ -95,7 +88,6 @@ static irqreturn_t extern_interrupt_handler(int virq, void *dev_id)
     
     return IRQ_NONE;
 }
-
 
 static int riscv_plic_probe(struct platform_device *pdev) {
     struct device_node *node = of_find_node_by_compatible("riscv,plic");
@@ -121,12 +113,11 @@ static int riscv_plic_probe(struct platform_device *pdev) {
 }
 
 static void riscv_plic_remove(struct platform_device *pdev) {
-
 }
 
 static struct of_device_id riscv_plic_match[] = {
     {.compatible = "riscv,plic"},
-    {""}
+    {/* sentinel */}
 };
 
 static struct platform_driver riscv_plic_driver = {

@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-20 20:19:54
- * @LastEditTime: 2025-11-10 20:29:05
+ * @LastEditTime: 2025-11-16 23:58:38
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -23,6 +23,7 @@
 #define FDT_H
 
 #include <os/types.h>
+#include <os/list.h>
 
 #define FDT_MAGIC 0xd00dfeed
 #define PHANDLE_MAX 1024
@@ -57,10 +58,14 @@ struct device_node {
     char *name;
     char *full_path; // 全路径（如 /soc/uart@12340000）
     char *type;
+    int depth;
     struct device_node *parent;
     struct device_node *children;
     struct device_node *sibling;
     struct device_prop *properties;
+
+    // optional: if necessary,you can make nodes tree flat, so we can traverse nodes you need easily
+    struct list_head node;
 };
 
 extern const struct device_node *fdt_root_node;
@@ -75,6 +80,7 @@ extern int fdt_add_child(struct device_node *parent, struct device_node *child);
 extern struct device_node *parse_struct_block(const char *struct_block, char *strings);
 extern struct device_node *find_child_node_by_name(const struct device_node *parent, const char *name);
 extern int fdt_walk_node(const struct device_node *node, int level);
+extern int fdt_walk(struct device_node *node, struct list_head *list);
 extern int fdt_init(void *dtb);
 
 

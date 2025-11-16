@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-10 20:21:56
- * @LastEditTime: 2025-11-13 21:48:43
+ * @LastEditTime: 2025-11-14 02:04:54
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -16,7 +16,6 @@
 struct irq_chip;
 
 struct irq_chip_ops {
-    void (*init)(struct irq_chip* self);                   // 初始化中断控制器
     int  (*ack)(struct irq_chip* self);
     void (*eoi)(struct irq_chip* self, int hwirq);
     void (*enable)(struct irq_chip* self, int hwirq);             // 使能中断

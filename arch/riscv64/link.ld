@@ -24,35 +24,34 @@ SECTIONS
         _text_end = .;
     } > RAM
 
-    . = ALIGN(8);
-    _initcall_start = .;
     .initcall : {
+        . = ALIGN(4096);
+        _initcall_start = .;
         KEEP(*(.initcall))     /* 保留所有 initcall 段内容 */
+        _initcall_end = .;
     }
-    _initcall_end = .;
 
-    . = ALIGN(8);
-    _exitcall_start = .;
     .exitcall : {
+        . = ALIGN(4096);
+        _exitcall_start = .;
         KEEP(*(.exitcall))     /* 保留所有 exitcall 段内容 */
+        _exitcall_end = .;
     }
-    _exitcall_end = .;
-
-        . = ALIGN(8);
-    _irqinitcall_start = .;
-    .irqinitcall : {
-        KEEP(*(.irqinitcall))     /* 保留所有 initcall 段内容 */
-    }
-    _irqinitcall_end = .;
-
     
-    . = ALIGN(8);
-    _irqexitcall_start = .;
-    .irqexitcall : {
-        KEEP(*(.irqexitcall))     /* 保留所有 exitcall 段内容 */
+    .irqinitcall : {
+        . = ALIGN(4096);
+        _irqinitcall_start = .;
+        KEEP(*(.irqinitcall))     /* 保留所有 initcall 段内容 */
+        _irqinitcall_end = .;
     }
-    _irqexitcall_end = .;
-
+    
+    .irqexitcall : {
+        . = ALIGN(4096);
+        _irqexitcall_start = .;
+        KEEP(*(.irqexitcall))     /* 保留所有 exitcall 段内容 */
+        _irqexitcall_end = .;
+    }
+    
     .rodata : ALIGN(8) {
         . = ALIGN(4096);
        _rodata_start = .; 

@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 19:42:44
- * @LastEditTime: 2025-11-12 15:45:19
+ * @LastEditTime: 2025-11-14 16:06:56
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -35,7 +35,10 @@
     #define UINT32_MAX    (0xffffffff)
     #define UINT64_MAX    (0xffffffffffffffff)
 
-    typedef uintptr_t                 reg_t;
+    typedef uintptr_t     reg_t;
+    typedef uintptr_t     phys_addr_t;
+    typedef uintptr_t     virt_addr_t;
+
     typedef enum { false, true } bool;
 
     #define NULL ((void *)0)

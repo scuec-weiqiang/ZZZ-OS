@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-15 17:10:59
- * @LastEditTime: 2025-11-13 23:27:19
+ * @LastEditTime: 2025-11-14 02:20:34
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -39,7 +39,7 @@ uintptr_t uart_base = 0;
 #define WAIT_FOR_TRANS_READY(uartx) while (0 == (uartx.LSR & UART_TX_IDLE))
 #define WAIT_FOR_RECEIVE_READY(uartx) while (0 == (uartx.LSR & UART_RX_IDLE))
 
-void uart_reg_init() {
+static void uart_reg_init() {
 
     UART0.IER_DLM = 0x00; // 关闭中断
 
@@ -56,24 +56,24 @@ void uart_reg_init() {
     UART0.IER_DLM = a; // 打开中断
 }
 
-void uart_putc(char c) {
+static void uart_putc(char c) {
     WAIT_FOR_TRANS_READY(UART0);
     UART0.RHR_THR_DLL = c;
 }
 
-char uart_getc() {
+static char uart_getc() {
     WAIT_FOR_RECEIVE_READY(UART0);
     return UART0.RHR_THR_DLL;
 }
 
-void uart_puts(char *s) {
+static void uart_puts(char *s) {
     while (*s) {
         uart_putc(*s);
         s++;
     }
 }
 
-irqreturn_t uart0_iqr(reg_t ctx, void *arg) {
+static irqreturn_t uart0_iqr(reg_t ctx, void *arg) {
     char a = uart_getc();
     printk("%c",a);
     if('\r'==a)
@@ -110,7 +110,7 @@ static struct file_ops uart_file_ops = {
     .write = uart_write,
 };
 
-int uart_prob(struct platform_device *pdev) {
+static int uart_prob(struct platform_device *pdev) {
     struct device_node *node = of_find_node_by_compatible("wq,uart");
     if (!node) {
         return -1;
@@ -134,7 +134,7 @@ int uart_prob(struct platform_device *pdev) {
     return 0;
 }
 
-void uart_remove() {
+static void uart_remove() {
     unregister_chrdev(2, "/uart");
     if (lookup("/uart")) {
     }

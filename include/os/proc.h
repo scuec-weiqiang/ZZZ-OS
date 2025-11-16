@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ-OS/include/os/os/proc.h
+ * @FilePath: /ZZZ-OS/include/os/proc.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-30 13:50:23
- * @LastEditTime: 2025-10-29 21:50:22
+ * @LastEditTime: 2025-11-14 15:24:41
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */

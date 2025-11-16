@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-11-13 23:39:34
+ * @LastEditTime: 2025-11-14 02:15:04
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -11,7 +11,6 @@
 #include <asm/pgtbl.h>
 #include <asm/riscv.h>
 #include <asm/symbols.h>
-#include <drivers/uart.h>
 #include <drivers/virtio.h>
 #include <os/check.h>
 #include <os/malloc.h>

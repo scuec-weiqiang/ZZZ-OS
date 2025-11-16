@@ -1,67 +1,48 @@
-#include <drivers/uart.h>
-#include <os/printk.h>
-#include <asm/riscv.h>
 #include <asm/arch_timer.h>
-#include <drivers/uart.h>
-#include <os/mm.h>
-#include <os/types.h>
-#include <os/syscall.h>
-#include <os/sched.h>
-#include <os/irq.h>
 #include <asm/interrupt.h>
+#include <asm/riscv.h>
+#include <os/irq.h>
 #include <os/irq_chip.h>
 #include <os/irq_domain.h>
-#include <os/irq.h>
 #include <os/irqreturn.h>
+#include <os/mm.h>
+#include <os/printk.h>
+#include <os/sched.h>
+#include <os/syscall.h>
+#include <os/types.h>
 
 extern void kernel_trap_entry();
 
-//1
-irqreturn_t s_soft_interrupt_handler(int virq, void *dev_id)
-{
-    sip_w(sip_r() & ~SIP_SSIP);
-    
-    return IRQ_HANDLED;
-    
+void trap_init() {
+    // 设置中断向量
+    stvec_w((reg_t)kernel_trap_entry);
 }
 
-//3
-// irqreturn_t m_soft_interrupt_handler(int virq, void *dev_id)
-// {
-    
-//     sip_w(sip_r() | SIP_SSIP);
-//     return IRQ_HANDLED;
-// }
+// 1
+irqreturn_t s_soft_interrupt_handler(int virq, void *dev_id) {
+    sip_w(sip_r() & ~SIP_SSIP);
+    return IRQ_HANDLED;
+}
 
-//5
-irqreturn_t s_timer_interrupt_handler(int virq, void *dev_id)
-{
+// 5
+irqreturn_t s_timer_interrupt_handler(int virq, void *dev_id) {
     arch_timer_reload();
     systick_up();
-    // if(scheduler[tp_r()].current->expire_time >= systick())
-    // {
-    //     printk("\n");
-    //     yield();
-    // }
-    printk("tick:%du\n",systick());
+    if (scheduler[tp_r()].current->expire_time >= systick()) {
+        printk("\n");
+        yield();
+    }
+    // printk("tick:%du\n",systick());
     return IRQ_HANDLED;
 }
-
-//7
-// irqreturn_t m_timer_interrupt_handler(int virq, void *dev_id)
-// {
-//     return IRQ_HANDLED;
-// }
-
-//9
 
 reg_t trap_handler(reg_t _ctx) {
     // printk("trap handler enter\n");
-    struct trap_frame* ctx = (struct trap_frame *)_ctx;
+    struct trap_frame *ctx = (struct trap_frame *)_ctx;
     reg_t return_epc = ctx->sepc;
     uint64_t cause_code = ctx->scause & MCAUSE_MASK_CAUSECODE;
     uint64_t is_interrupt = (ctx->scause & MCAUSE_MASK_INTERRUPT);
-    if(is_interrupt) {   
+    if (is_interrupt) {
         struct irq_chip *chip = irq_chip_lookup("riscv64_clint", tp_r());
         if (chip) {
             int virq = irq_domain_get_virq(chip, cause_code);
@@ -74,8 +55,8 @@ reg_t trap_handler(reg_t _ctx) {
             printk("IRQ chip not found!\n");
         }
     } else {
-        printk("\nstval is %xu\n",stval_r());
-        printk("occour in %xu\n",ctx->sepc);
+        printk("\nstval is %xu\n", stval_r());
+        printk("occour in %xu\n", ctx->sepc);
         switch (cause_code) {
         case 0:
             panic("Instruction address misaligned!\n");
@@ -101,7 +82,7 @@ reg_t trap_handler(reg_t _ctx) {
         case 7:
             // panic("\033[32mStore/AMO access fault\n\033[0m");
             panic("Store/AMO access fault\n");
-            break;    
+            break;
         case 8:
             // printk("Environment call from U-mode\n");
             do_syscall((struct trap_frame *)ctx);
@@ -131,13 +112,7 @@ reg_t trap_handler(reg_t _ctx) {
             break;
         }
     }
-    
+
     return return_epc;
 }
 
-
-void trap_init()
-{
-    // 设置中断向量
-    stvec_w((reg_t)kernel_trap_entry);
-}

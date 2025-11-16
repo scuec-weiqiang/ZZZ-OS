@@ -94,6 +94,16 @@ static inline void list_add_tail(struct list_head *head, struct list_head *node)
     __list_add(node, head->prev, head);
 }
 
+static inline void list_add_before(struct list_head *pos, struct list_head *node)
+{
+    __list_add(node, pos->prev, pos);
+}
+
+static inline void list_add_after(struct list_head *pos, struct list_head *node)
+{
+    __list_add(node, pos, pos->next);
+}
+
 /***************************************************************
  * @description:删除节点
  * @param {struct list_head} *node [in]:  需要删除的节点
@@ -102,7 +112,6 @@ static inline void list_add_tail(struct list_head *head, struct list_head *node)
 static inline void list_del(struct list_head *node)
 {
     __list_del(node->prev, node->next);
-    node->prev = NULL;
     node->next = NULL;
 }
 
@@ -141,7 +150,7 @@ static inline int list_empty(const struct list_head *head)
 }
 
 /***************************************************************
- * @description:
+ * @description: 将链表<head>合并到某一链表节点<node>的后面
  * @param {list} *head [in/out]:
  * @param {struct list_head} *node [in/out]:
  * @return {*}
@@ -170,11 +179,11 @@ static inline void list_splice_init(struct list_head *head, struct list_head *no
 /***************************************************************
  * @description: 访问链表成员所在的结构体
  * @mptr: 链表成员的地址
- * @stype: 结构体的类型
- * @member:结构体的成员名
+ * @struct_type: 结构体的类型
+ * @struct_member:结构体的成员名
  ***************************************************************/
-#define list_entry(mptr, stype, member) \
-    container_of(mptr, stype, member)
+#define list_entry(mptr, struct_type, struct_member) \
+    container_of(mptr, struct_type, struct_member)
 
 /***************************************************************
  * @description: 从前向后遍历链表
@@ -201,23 +210,22 @@ static inline void list_splice_init(struct list_head *head, struct list_head *no
  * @description: 遍历由链表成员串起来的结构体
  * @pos: 一个结构体指针
  * @head: 链表头节点地址
- * @stype: 结构体类型,如tcb_t
- * @member: 结构体中链表成员的名字
+ * @struct_type: 结构体类型,如tcb_t
+ * @struct_member: 结构体中链表成员的名字
  ***************************************************************/
-#define list_for_each_entry(pos, head, stype, member)     \
-    for ((pos) = list_entry((head)->next, stype, member); \
-         &(pos->member) != (head);                        \
-         (pos) = list_entry((pos->member.next), stype, member))
+#define list_for_each_entry(pos, head, struct_type, struct_member)     \
+    for ((pos) = list_entry((head)->next, struct_type, struct_member); \
+         &(pos->struct_member) != (head);\
+         (pos) = list_entry((pos->struct_member.next), struct_type, struct_member))
 
-#define list_for_each_entry_safe(pos, n, head, stype, member) \
-    for ((pos) = list_entry((head)->next, stype, member),     \
-        (n) = list_entry((pos->member.next), stype, member);  \
-         &(pos->member) != (head);                            \
-         (pos) = (n), (n) = list_entry((n->member.next), stype, member))
+#define list_for_each_entry_safe(pos, n, head, struct_type, struct_member) \
+    for ((pos) = list_entry((head)->next, struct_type, struct_member), (n) = list_entry((pos->struct_member.next), struct_type, struct_member);  \
+         &(pos->struct_member) != (head);                            \
+         (pos) = (n), (n) = list_entry((n->struct_member.next), struct_type, struct_member))
 
-#define list_for_each_entry_prev(pos, head, stype, member) \
-    for ((pos) = list_entry((head)->prev, stype, member);  \
-         &(pos->member) != (head);                         \
-         (pos) = list_entry((pos->member.prev), stype, member))
+#define list_for_each_entry_prev(pos, head, struct_type, struct_member) \
+    for ((pos) = list_entry((head)->prev, struct_type, struct_member); \
+         &(pos->struct_member) != (head);\
+         (pos) = list_entry((pos->struct_member.prev), struct_type, struct_member))
 
 #endif

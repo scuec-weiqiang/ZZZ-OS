@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-16 18:23:57
- * @LastEditTime: 2025-10-31 01:03:53
+ * @LastEditTime: 2025-11-14 15:24:51
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -49,7 +49,7 @@ void proc_setup()
 
 void proc_init()
 {
-    for(enum hart_id hart_id = HART_0;hart_id < MAX_HARTS_NUM; hart_id++)
+    for(int hart_id = 0;hart_id < MAX_HARTS_NUM; hart_id++)
     {
         INIT_LIST_HEAD(&proc_list_head[hart_id])
         proc_count[hart_id] = 0;
@@ -108,7 +108,7 @@ struct proc* proc_create(char* path)
     new_proc->pid = alloc_pid();
     new_proc->status = PROC_RUNABLE;
     new_proc->time_slice = PROC_DEFAULT_SLICE;
-    enum hart_id hart_id = tp_r();
+    int hart_id = tp_r();
     list_add(&proc_list_head[hart_id], &new_proc->proc_lnode);
     proc_count[hart_id]++;
     return new_proc;

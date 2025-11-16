@@ -34,7 +34,7 @@ struct scheduler
 
 extern struct scheduler scheduler[MAX_HARTS_NUM];
 
-extern void sched_init(enum hart_id hart_id);
+extern void sched_init(int hart_id);
 extern void sched();
 extern void yield();
 

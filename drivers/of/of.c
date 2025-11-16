@@ -112,6 +112,21 @@ uint32_t *of_read_u32_array(const struct device_node *node, const char *prop_nam
     return array;
 }
 
+uint64_t *of_read_u64_array(const struct device_node *node, const char *prop_name, int count) {
+    if (!node || !prop_name || count <= 0)
+        return NULL;
+
+    struct device_prop *prop = of_get_prop_by_name(node, prop_name);
+    if (!prop || prop->length < count * sizeof(uint64_t))
+        return NULL;
+
+    uint64_t *array = (uint64_t *)malloc(count * sizeof(uint64_t));
+    for (int i = 0; i < count; i++) {
+        array[i] = be64_to_cpu(((uint64_t *)prop->value)[i]);
+    }
+    return array;
+}
+
 struct device_node *of_find_node_by_phandle(uint32_t phandle) {
     if (!fdt_root_node)
         return NULL;
@@ -181,31 +196,6 @@ uint32_t of_get_size_cells(const struct device_node *node) {
     return 2;
 }
 
-int of_get_memory(uintptr_t *base, uintptr_t *size) {
-    struct device_node *memory_node = of_find_node_by_path("/memory");
-    if (!memory_node) {
-        return -1;
-    }
-
-    uint32_t address_cells = of_get_address_cells(memory_node);
-    uint32_t size_cells = of_get_size_cells(memory_node);
-    uint32_t *reg_values = of_get_reg(memory_node);
-
-    uintptr_t bs = 0;
-    uintptr_t sz = 0;
-
-    for (uint32_t i = 0; i < address_cells; i++) {
-        bs = (bs << 32) | be32_to_cpu(reg_values[i]);
-    }
-    for (uint32_t i = 0; i < size_cells; i++) {
-        sz = (sz << 32) | be32_to_cpu(reg_values[address_cells + i]);
-    }
-
-    *base = bs;
-    *size = sz;
-
-    return 0;
-}
 
 struct device_node *of_get_interrupt_parent(const struct device_node *node) {
     if (!node)
@@ -281,7 +271,16 @@ int of_device_is_type(const struct device_node *node, const char *type) {
 
 void of_test() {
    
-    fdt_walk_node(fdt_root_node, 0);
+    // fdt_walk_node(fdt_root_node, 0);
+    struct list_head list = LIST_HEAD_INIT(list);
+    fdt_walk(fdt_root_node, &list);
+    struct device_node *pos;
+    list_for_each_entry(pos, &list, struct device_node, node) {
+        for (int i = 0; i < pos->depth; i++) {
+            printk("  ");
+        }
+        printk("%s\n", pos->name);
+    }
     struct device_node *node = of_find_node_by_path("/soc/rtc@0x50000000");
     if (node) {
         printk("Found node: %s\n", node->name);
@@ -291,14 +290,18 @@ void of_test() {
     if (node) {
         printk("Found node: %s\n", node->name);
     }
-    uintptr_t base, size;
-    if (of_get_memory(&base, &size) == 0) {
-        printk("Memory base: %xu, size: %xu\n", base, size);
-    }
+    // uintptr_t base, size;
+    // if (of_get_memory(&base, &size) == 0) {
+    //     printk("Memory base: %xu, size: %xu\n", base, size);
+    // }
 
     node = of_find_node_by_compatible("wq,uart");
     node = of_get_interrupt_parent(node);
     if (node) {
         printk("interrupt-parent = %s\n", node->name);
     }
+    // extern int of_scan_memory();
+    // extern void memblock_dump();
+    // of_scan_memory();
+    // memblock_dump();
 }

@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-11-14 01:45:41
+ * @LastEditTime: 2025-11-17 00:02:16
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -22,13 +22,13 @@
 #include <os/string.h>
 #include <asm/symbols.h>
 #include <asm/arch_timer.h>
-#include <drivers/uart.h>
 #include <fs/vfs.h>
 #include <os/page.h>
 #include <drivers/of/of_platform.h>
 #include <os/of.h>
 #include <os/module.h>
 #include <os/irq.h>
+#include <os/mm/memblock.h>
 
 uint8_t is_init = 0;
 
@@ -39,10 +39,11 @@ void set_hart_stack() {
 }
 
 void init_kernel() {
-	enum hart_id hart = HART_0;
-	if (hart == HART_0) {
+	int hart = 0;
+	if (hart == 0) {
 		zero_bss();
 		symbols_init();
+		memblock_init();
 		malloc_init();
 
 		irq_init();
@@ -70,7 +71,10 @@ void init_kernel() {
 	set_hart_stack();
 	arch_timer_init(SYS_HZ_1);
 	// arch_timer_start();
-	irq_enable(GLOBAL_IRQ);
+	// irq_enable(GLOBAL_IRQ);
+	of_scan_memory();
+	of_scan_reserved_memory();
+	memblock_dump();
 	// creat("/a.txt",S_IFREG|0644);
 	// mkdir("/dir1",S_IFDIR|0644);
 

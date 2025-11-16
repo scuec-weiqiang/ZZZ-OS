@@ -5,10 +5,19 @@
     compatible = "wq,qemu-virt";
 
     memory {
-        #address-cells = <1>;
-        #size-cells = <1>;
         device_type = "memory";
-        reg = <0xffffffff 0xc0200000 0x0 0x8000000>; /* 512MB RAM */
+        reg = < 0x0 0x80000000 0x0 0x8000000>; 
+    };
+
+    reserved-memory {
+        #address-cells = <2>;
+        #size-cells = <2>;
+        ranges;
+
+        boot: reserved@80000000 {
+            reg = <0x0 0x80000000 0x0 0x200000>; // 保留内存区域
+            no-map;
+        };
     };
 
     cpus {

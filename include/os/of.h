@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-10 20:21:56
- * @LastEditTime: 2025-11-11 20:57:27
+ * @LastEditTime: 2025-11-16 23:53:35
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -21,10 +21,12 @@ extern uint32_t of_get_address_cells(const struct device_node *node);
 extern uint32_t of_get_size_cells(const struct device_node *node);
 extern uint32_t* of_get_reg(const struct device_node *node);
 extern uint32_t *of_read_u32_array(const struct device_node *node, const char *prop_name, int count);
-extern int of_get_memory(uintptr_t *base, uintptr_t *size);
+extern uint64_t *of_read_u64_array(const struct device_node *node, const char *prop_name, int count);
 extern struct device_node* of_get_interrupt_parent(const struct device_node *node);
 extern int of_device_is_available(const struct device_node *node);
 extern int of_device_is_type(const struct device_node *node, const char *type);
 // extern int of_node_is_bus(const struct device_node *node);
+extern int of_scan_memory();
+extern int of_scan_reserved_memory();
 extern void of_test();
 #endif // __KERNEL_OF_H__

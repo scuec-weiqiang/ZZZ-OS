@@ -1,2 +1,3 @@
 OBJ_Y += malloc.o
 OBJ_Y += mm.o 
+OBJ_Y += memblock.o

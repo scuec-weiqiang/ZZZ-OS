@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-31 01:18:22
- * @LastEditTime: 2025-10-31 20:14:43
+ * @LastEditTime: 2025-11-14 02:20:01
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -11,16 +11,11 @@
 #include <asm/trap_handler.h>
 #include <asm/interrupt.h>
 
-static void riscv64_clint_init(struct irq_chip* self) {
-   trap_init(); 
-}
-
 static int riscv64_clint_ack(struct irq_chip *self) {
    return  0;
 }
 
-static void riscv64_clint_eio(struct irq_chip *self, int hwirq) {
-    
+static void riscv64_clint_eio(struct irq_chip *self, int hwirq) {   
 }
 
 static void riscv64_clint_enable(struct irq_chip* self, int hwirq) {
@@ -121,7 +116,6 @@ static int riscv64_clint_get_priority(struct irq_chip* self, int hwirq) {
 }
 
 struct irq_chip_ops riscv64_clint_chip_ops = {
-    .init = riscv64_clint_init,
     .ack = riscv64_clint_ack,
     .eoi = riscv64_clint_eio,   
     .enable = riscv64_clint_enable,

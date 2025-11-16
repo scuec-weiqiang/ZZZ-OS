@@ -17,7 +17,7 @@
 struct scheduler scheduler[MAX_HARTS_NUM];
 
 static uint64_t         _check_expire(uint64_t now_time,uint64_t expire_time);
-static struct proc* _get_next_task(enum hart_id hart_id);
+static struct proc* _get_next_task(int hart_id);
 
 extern void swtch(struct context* old, struct context* new);
 
@@ -25,7 +25,7 @@ extern void swtch(struct context* old, struct context* new);
  * @brief: 
  * @return {*}
 *******************************************************************************************/
-void sched_init(enum hart_id hart_id)
+void sched_init(int hart_id)
 {
     INIT_LIST_HEAD(&scheduler[hart_id].ready_queue);
     INIT_LIST_HEAD(&scheduler[hart_id].wait_queue);
@@ -35,7 +35,7 @@ void sched_init(enum hart_id hart_id)
 
 void yield()
 {
-    enum hart_id hart_id = tp_r();
+    int hart_id = tp_r();
     struct proc* p = scheduler[hart_id].current;
     if(p == NULL)
     {
@@ -48,7 +48,7 @@ void yield()
 
 void sched()
 {
-    enum hart_id hart_id = tp_r();
+    int hart_id = tp_r();
     scheduler[hart_id].current = NULL;
     arch_timer_start();
     while(1)
@@ -64,7 +64,7 @@ void sched()
 } 
 
 
-static struct proc* _get_next_task(enum hart_id hart_id)
+static struct proc* _get_next_task(int hart_id)
 {
     if(list_empty(&scheduler[hart_id].ready_queue))//如果就绪队列为空
     { 

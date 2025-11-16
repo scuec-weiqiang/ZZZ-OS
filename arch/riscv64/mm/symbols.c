@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 13:05:59
- * @LastEditTime: 2025-11-13 23:50:11
+ * @LastEditTime: 2025-11-16 23:46:53
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -90,6 +90,17 @@ void symbols_init()
     irqexitcall_start = (uintptr_t)&__irqexitcall_start;
     irqexitcall_end = (uintptr_t)&__irqexitcall_end;
     irqexitcall_size = (irqexitcall_end - irqexitcall_start);
+
+    printk("text:        start= %xu, end=  %xu, size=  %xu\n", text_start, text_end, text_size);
+    printk("rodata:      start= %xu, end=  %xu, size=  %xu\n", rodata_start, rodata_end, rodata_size);
+    printk("data:        start= %xu, end=  %xu, size=  %xu\n", data_start, data_end, data_size);
+    printk("bss:         start= %xu, end=  %xu, size=  %xu\n", bss_start, bss_end, bss_size);
+    printk("stack:       start= %xu, end=  %xu, size=  %xu\n", stack_start, stack_end, stack_size);
+    printk("heap:        start= %xu, end=  %xu, size=  %xu\n", heap_start, heap_end, heap_size);
+    printk("initcall:    start= %xu, end=  %xu, size=  %xu\n", initcall_start, initcall_end, initcall_size);
+    printk("irqinitcall: start= %xu, end=  %xu, size=  %xu\n", irqinitcall_start, irqinitcall_end, irqinitcall_size);
+    printk("exitcall:    start= %xu, end=  %xu, size=  %xu\n", exitcall_start, exitcall_end, exitcall_size);
+    printk("irqexitcall: start= %xu, end=  %xu, size=  %xu\n", irqexitcall_start, irqexitcall_end, irqexitcall_size);
 }
 
 /**

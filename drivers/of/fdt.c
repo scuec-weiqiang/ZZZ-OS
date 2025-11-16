@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-20 20:25:59
- * @LastEditTime: 2025-11-10 21:25:07
+ * @LastEditTime: 2025-11-17 00:00:28
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright        : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -133,7 +133,7 @@ struct device_node *parse_struct_block(const char *struct_block, char *strings) 
         case FDT_BEGIN_NODE: {
             const char *name = (const char *)p;
             p++;
-            printk("in node: %s\n", name);
+            // printk("in node: %s\n", name);
             struct device_node *new_node = (struct device_node *)fdt_new_node(name, curr);
             if (root == NULL) {
                 root = new_node;
@@ -141,6 +141,7 @@ struct device_node *parse_struct_block(const char *struct_block, char *strings) 
                 fdt_add_child(curr, new_node);
             }
             curr = new_node;
+            curr->depth = curr->parent ? curr->parent->depth + 1 : 0;
             break;
         }
         case FDT_PROP: {
@@ -208,6 +209,36 @@ int fdt_walk_node(const struct device_node *node, int level) {
     level--;
     return level;
 }
+
+
+int fdt_walk(struct device_node *node, struct list_head *list) {
+    if (!node && !list)
+        return -1;
+
+    // 使用队列进行深度优先搜索
+    struct device_node *queue[32];
+    int front = 0, rear = 0;
+
+    queue[rear] = node;
+    rear++;
+
+    while (front < rear) {
+        struct device_node *current_node = queue[front];
+        front++;
+
+        list_add_tail(list,&current_node->node);
+
+        // 将子节点加入队列
+        struct device_node *child = current_node->children;
+        while (child) {
+            queue[rear] = child;
+            rear++;
+            child = child->sibling;
+        }
+    }
+    return 0;
+}
+
 
 int fdt_init(void *dtb) {
     fdt = (struct fdt_header *)dtb;
