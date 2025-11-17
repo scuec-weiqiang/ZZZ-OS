@@ -73,7 +73,7 @@ static void uart_puts(char *s) {
     }
 }
 
-static irqreturn_t uart0_iqr(reg_t ctx, void *arg) {
+static irqreturn_t uart0_iqr(int virq, void *dev_id) {
     char a = uart_getc();
     printk("%c",a);
     if('\r'==a)

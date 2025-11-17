@@ -10,13 +10,14 @@
 #include <asm/mm.h>
 #include <asm/pgtbl.h>
 #include <asm/riscv.h>
-#include <asm/symbols.h>
+#include <os/mm/symbols.h>
 #include <drivers/virtio.h>
 #include <os/check.h>
 #include <os/malloc.h>
 #include <os/page.h>
 #include <os/printk.h>
 #include <os/string.h>
+#include <os/mm.h>
 
 pgtbl_t *kernel_pgd = NULL; // kernel_page_global_directory 内核页全局目录
 
@@ -87,9 +88,8 @@ void page_table_init(pgtbl_t *pgd) {
     map_range(pgd, (uintptr_t)exitcall_start, (uintptr_t)KERNEL_PA(exitcall_start), (size_t)exitcall_size , PTE_R | PTE_W | PTE_X);
     map_range(pgd, (uintptr_t)irqinitcall_start, (uintptr_t)KERNEL_PA(irqinitcall_start), (size_t)irqinitcall_size, PTE_R | PTE_W | PTE_X);
     map_range(pgd, (uintptr_t)irqexitcall_start, (uintptr_t)KERNEL_PA(irqexitcall_start), (size_t)irqexitcall_size , PTE_R | PTE_W | PTE_X);
-    // 恒等映射外设寄存器地址空间到内核虚拟地址空间
-    // map_range(pgd, (uintptr_t)CLINT_BASE, (uintptr_t)CLINT_BASE, 12 * PAGE_SIZE, PTE_R | PTE_W);
-    // map_range(pgd, (uintptr_t)PLIC_BASE, (uintptr_t)PLIC_BASE, 0x200 * PAGE_SIZE, PTE_R | PTE_W);
+
+
     map_range(pgd, (uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, PTE_R | PTE_W);
 }
 

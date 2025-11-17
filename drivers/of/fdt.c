@@ -46,7 +46,7 @@ struct device_node *fdt_new_node(const char *name, struct device_node *parent) {
         memcpy(node->full_path + parent_path_len, "/", 1);
         memcpy(node->full_path + parent_path_len + 1, name, name_len + 1);
     } else {
-        node->full_path = strdup(name);
+        node->full_path = (char*)name;
     }
     return node;
 }

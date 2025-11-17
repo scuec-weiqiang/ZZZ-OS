@@ -1,3 +1,5 @@
 OBJ_Y += malloc.o
 OBJ_Y += mm.o 
 OBJ_Y += memblock.o
+OBJ_Y += symbols.o
+OBJ_Y += early_malloc.o

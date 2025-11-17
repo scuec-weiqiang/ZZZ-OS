@@ -10,6 +10,8 @@
 #include <os/mm/memblock.h>
 #include <os/of.h>
 #include <os/bswap.h>
+#include <os/printk.h>
+#include <stdint.h>
 
 int of_scan_memory() {
     struct device_node *memory_node = of_find_node_by_path("/memory");
@@ -42,7 +44,7 @@ int of_scan_memory() {
 
         for (int i = 0; i < len; i += address_cells + size_cells) {
             if (address_cells == 2) {
-                start = ((uint64_t)be32_to_cpu(reg[i])) | be32_to_cpu(reg[i + 1] << 32);
+                start = ((uint64_t)be32_to_cpu(reg[i])) | be32_to_cpu((uintptr_t)reg[i + 1] << 32);
             } else if (address_cells == 1) {
                 start = be32_to_cpu(reg[i]);
             } else {
@@ -50,7 +52,7 @@ int of_scan_memory() {
             }
 
             if (size_cells == 2) {
-                size = ((uint64_t)be32_to_cpu(reg[i + address_cells])) | be32_to_cpu(reg[i + address_cells + 1] << 32);
+                size = ((uint64_t)be32_to_cpu(reg[i + address_cells])) | be32_to_cpu((uintptr_t)reg[i + address_cells + 1] << 32);
             } else if (size_cells == 1) {
                 size = be32_to_cpu(reg[i + address_cells]);
             } else {
@@ -100,7 +102,7 @@ int of_scan_reserved_memory() {
 
         for (int i = 0; i < len; i += address_cells + size_cells) {
             if (address_cells == 2) {
-                start = ((uint64_t)be32_to_cpu(reg[i])) | be32_to_cpu(reg[i + 1] << 32);
+                start = ((uint64_t)be32_to_cpu(reg[i])) | be32_to_cpu((uintptr_t)reg[i + 1] << 32);
             } else if (address_cells == 1) {
                 start = be32_to_cpu(reg[i]);
             } else {
@@ -108,7 +110,7 @@ int of_scan_reserved_memory() {
             }
 
             if (size_cells == 2) {
-                size = ((uint64_t)be32_to_cpu(reg[i + address_cells])) | be32_to_cpu(reg[i + address_cells + 1] << 32);
+                size = ((uint64_t)be32_to_cpu(reg[i + address_cells])) | be32_to_cpu((uintptr_t)reg[i + address_cells + 1] << 32);
             } else if (size_cells == 1) {
                 size = be32_to_cpu(reg[i + address_cells]);
             } else {

@@ -15,6 +15,7 @@
 #include <os/printk.h>
 #include <os/malloc.h>
 #include <asm/pgtbl.h>
+#include <os/mm.h>
 
 struct virt_disk
 {

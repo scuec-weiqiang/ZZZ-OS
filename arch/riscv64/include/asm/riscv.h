@@ -124,9 +124,9 @@ static inline void sp_w(reg_t a)
 
 static inline void satp_w(reg_t a)
 {
-    asm volatile("sfence.vma zero, zero");
+    // asm volatile("sfence.vma zero, zero");
     asm volatile("csrw satp,%0" ::"r"(a));
-    asm volatile("sfence.vma zero, zero");
+    // asm volatile("sfence.vma zero, zero");
 }
 
 static inline void medeleg_w(reg_t a)

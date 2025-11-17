@@ -8,6 +8,8 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include <os/irq_chip.h>
+#include <os/string.h>
+#include <os/malloc.h>
 
 struct list_head irq_chip_list = LIST_HEAD_INIT(irq_chip_list);
 

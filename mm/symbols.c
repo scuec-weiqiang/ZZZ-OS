@@ -8,6 +8,7 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include <os/types.h>
+#include <os/printk.h>
 
 extern char __text_start[], __text_end[];
 extern char __rodata_start[], __rodata_end[];
@@ -19,6 +20,7 @@ extern char __initcall_start[],__initcall_end[];
 extern char __exitcall_start[],__exitcall_end[];
 extern char __irqinitcall_start[],__irqinitcall_end[];
 extern char __irqexitcall_start[],__irqexitcall_end[];
+extern char __kernel_start[],__kernel_end[];
 
 uintptr_t text_start;
 uintptr_t text_end;
@@ -52,6 +54,9 @@ uintptr_t irqexitcall_start;
 uintptr_t irqexitcall_end;
 uintptr_t irqexitcall_size;
 
+uintptr_t kernel_start;
+uintptr_t kernel_end;
+uintptr_t kernel_size;
 
 void symbols_init()
 {
@@ -90,6 +95,11 @@ void symbols_init()
     irqexitcall_start = (uintptr_t)&__irqexitcall_start;
     irqexitcall_end = (uintptr_t)&__irqexitcall_end;
     irqexitcall_size = (irqexitcall_end - irqexitcall_start);
+
+    kernel_start = (uintptr_t)&__kernel_start;
+    kernel_end = (uintptr_t)&__kernel_end;
+    kernel_size = kernel_end - kernel_start;
+
 
     printk("text:        start= %xu, end=  %xu, size=  %xu\n", text_start, text_end, text_size);
     printk("rodata:      start= %xu, end=  %xu, size=  %xu\n", rodata_start, rodata_end, rodata_size);

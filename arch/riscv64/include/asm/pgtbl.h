@@ -25,14 +25,10 @@
 #define SATP_SV39 (8L << 60)
 #define SATP_MODE SATP_SV39 
 
-#define KERNEL_PA_BASE 0x80000000
-#define KERNEL_VA_BASE 0xffffffffc0000000
-#define KERNEL_VA_START 0xffffffffc0200000
-#define KERNEL_VA(pa) (KERNEL_VA_BASE + ((uint64_t)(pa)) - KERNEL_PA_BASE)
-#define KERNEL_PA(va) ((uint64_t)(va) - KERNEL_VA_BASE + KERNEL_PA_BASE)
 
-#define KERNEL_MMIO_BASE 0xFFFFFFBFC00000
-#define KERNEL_MMIO_VA(pa) (KERNEL_MMIO_BASE + ((uint64_t)(pa)))
+
+// #define KERNEL_MMIO_BASE 0xFFFFFFBFC00000
+// #define KERNEL_MMIO_VA(pa) (KERNEL_MMIO_BASE + ((uint64_t)(pa)))
 
 
 

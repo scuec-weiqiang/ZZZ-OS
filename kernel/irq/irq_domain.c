@@ -31,7 +31,7 @@ struct irq_domain *irq_domain_create(struct irq_chip *chip, unsigned int virq_ba
     domain->virq_base = virq_base;
     domain->hw_irq_count = hw_irq_count;
 
-    domain->hw_to_virq = (unsigned int *)malloc(sizeof(unsigned int) * hw_irq_count);
+    domain->hw_to_virq = (int *)malloc(sizeof(unsigned int) * hw_irq_count);
     if (!domain->hw_to_virq) {
         free(domain);
         return NULL;

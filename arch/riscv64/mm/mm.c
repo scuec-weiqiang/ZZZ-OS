@@ -5,7 +5,8 @@
 #include <asm/barrier.h>
 #include <asm/riscv.h>
 #include <asm/pgtbl.h>
-#include <asm/page.h>
+#include <os/pfn.h>
+#include <os/mm.h>
 
 typedef uintptr_t pte_t;
 typedef uintptr_t pgd_t;
@@ -30,7 +31,7 @@ static inline uintptr_t make_satp(uintptr_t va_or_pa) {
 }
 
 static pgd_t *new_pgd() {
-    pgtbl_t *pgd = (pgd_t*)page_alloc(1);
+    pgd_t *pgd = (pgd_t*)page_alloc(1);
     return pgd;
 }
 

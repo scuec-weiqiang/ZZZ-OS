@@ -41,8 +41,9 @@ extern uintptr_t irqinitcall_size;
 extern uintptr_t irqexitcall_start;
 extern uintptr_t irqexitcall_end;
 extern uintptr_t irqexitcall_size;
-
-extern uintptr_t core_num;
+extern uintptr_t kernel_start;
+extern uintptr_t kernel_end;
+extern uintptr_t kernel_size;
 
 extern void symbols_init();
 extern void zero_bss();

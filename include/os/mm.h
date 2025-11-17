@@ -20,6 +20,12 @@ typedef struct pgtbl pgtbl_t;
 #define PTE_X (1 << 3)      // 可执行
 #define PTE_U (1 << 4)      // 用户模式可访问
 
+#define KERNEL_PA_BASE 0x80000000
+#define KERNEL_VA_BASE 0xffffffffc0000000
+#define KERNEL_VA_START 0xffffffffc0200000
+#define KERNEL_VA(pa) (KERNEL_VA_BASE + ((uint64_t)(pa)) - KERNEL_PA_BASE)
+#define KERNEL_PA(va) ((uint64_t)(va) - KERNEL_VA_BASE + KERNEL_PA_BASE)
+
 /**
  * 用户虚拟地址空间描述
  */

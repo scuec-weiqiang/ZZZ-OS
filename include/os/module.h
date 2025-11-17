@@ -12,7 +12,7 @@
 
 #include "os/printk.h"
 #include <os/compiler_attributes.h>
-#include <asm/symbols.h>
+#include <os/mm/symbols.h>
 
 typedef int(*initcall_t)(void);
 

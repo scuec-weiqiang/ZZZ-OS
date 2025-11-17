@@ -43,6 +43,10 @@ extern struct memblock memblock;
 extern void memblock_init(void);
 extern int memblock_add(phys_addr_t base, size_t size);
 extern int memblock_reserve(phys_addr_t base, size_t size);
+extern int memblock_remove(phys_addr_t base, size_t size);
+extern void memblock_mark_nomap(phys_addr_t base, size_t size);
+// extern void memblock_mark_reusable(phys_addr_t base, size_t size);
+extern void *memblock_alloc(size_t size, int align);
 extern uint64_t memblock_phys_total(void);
 extern void memblock_dump(void);
 

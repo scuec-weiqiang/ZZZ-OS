@@ -34,7 +34,7 @@ void arch_irq_init() {
     irq_register(virq, s_timer_interrupt_handler, "timer_irq", NULL);
 }
 
-int arch_local_irq_register(int hwirq, irqreturn_t (*handler)(reg_t, void *), char *name, int hart, void *dev_id) {
+int arch_local_irq_register(int hwirq, irq_handler_t handler, char *name, int hart, void *dev_id) {
     struct irq_chip *chip = irq_chip_lookup("riscv64_clint", hart);
     if (!chip) {
         return -1;
@@ -51,7 +51,7 @@ int arch_local_irq_register(int hwirq, irqreturn_t (*handler)(reg_t, void *), ch
     return 0;
 }
 
-int arch_extern_irq_register(int hwirq, irqreturn_t (*handler)(reg_t, void *), char *name, int hart, void *dev_id) {
+int arch_extern_irq_register(int hwirq, irq_handler_t handler, char *name, int hart, void *dev_id) {
     struct irq_chip *chip = irq_chip_lookup("riscv64_plic", hart);
     if (!chip) {
         return -1;

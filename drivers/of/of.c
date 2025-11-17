@@ -12,7 +12,7 @@ struct device_node *of_find_node_by_path(const char *path) {
     struct device_node *current_node = (struct device_node *)fdt_root_node;
     char *path_dup = strdup(path);
     char *token = path_split(path_dup, "/");
-
+ 
     while (token) {
         current_node = find_child_node_by_name(current_node, token);
         if (!current_node) {
@@ -137,7 +137,7 @@ struct device_node *of_find_node_by_phandle(uint32_t phandle) {
 
     int front = 0;
     int rear = 0;
-    struct device_node **queue = (struct device_node **)malloc(sizeof(struct device_node *) * 512);
+    struct device_node **queue = (struct device_node **)malloc(sizeof(struct device_node*)*512);
     queue[rear] = (struct device_node *)fdt_root_node;
     rear++;
 
@@ -147,7 +147,6 @@ struct device_node *of_find_node_by_phandle(uint32_t phandle) {
 
         uint32_t curr_phandle = fdt_get_phandle(curr);
         if (phandle == curr_phandle) {
-            free(queue);
             return curr;
         }
 

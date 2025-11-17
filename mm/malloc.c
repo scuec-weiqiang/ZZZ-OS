@@ -13,11 +13,14 @@
 #include <os/printk.h>
 #include <asm/spinlock.h>
 #include <os/string.h>
-#include <asm/symbols.h>
+#include <os/mm/symbols.h>
 #include <os/types.h>
 #include <os/page.h>
+#include <os/mm/early_malloc.h>
 
 struct spinlock page_lock = SPINLOCK_INIT;
+
+static int is_init = 0;
 
 // page management struct
 typedef struct PageM {
@@ -84,6 +87,9 @@ void malloc_init() {
  * @return {*}
  ***************************************************************/
 void *page_alloc(size_t npages) {
+    if (!is_init) {
+        return early_page_alloc(npages);
+    }
     spin_lock(&page_lock);
     uintptr_t reserved_end = (uintptr_t)heap_start + pages_num * sizeof(PageM_t);
     uint64_t num_blank = 0;
@@ -150,6 +156,10 @@ void print_page(uint64_t start, uint64_t end) {
  * @return {*}
  ***************************************************************/
 void free(void *p) {
+    if (!is_init) {
+        return early_free(p);
+    }
+
     spin_lock(&page_lock);
     if ((NULL == p)                                 // 传入的地址是空指针
         || ((uintptr_t)p > (alloc_end - PAGE_SIZE)) // 传入的地址在最后一个page之后
@@ -171,6 +181,10 @@ void free(void *p) {
 }
 
 void *malloc(size_t size) {
+    if (!is_init) {
+        return early_malloc(size);
+    }
+    
     if (size == 0) {
         return NULL;
     }

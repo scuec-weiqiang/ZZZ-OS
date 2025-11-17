@@ -8,15 +8,19 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 
+#include "os/types.h"
 #include <os/mm/memblock.h>
 #include <os/printk.h>
 #include <os/list.h>
+#include <os/pfn.h>
 
 // #define MARK_NOMAP(x) ((x).flags |= 0x1)
 // #define MARK_REUSABLE(x) ((x).flags &= ~0x1)
 #define MEMBLOCK_NONE     0
 #define MEMBLOCK_NOMAP    (1 << 0)
 #define MEMBLOCK_REUSABLE    (1 << 1)
+
+#define IS_NOMAP(flags) ((flags) & MEMBLOCK_NOMAP)
 
 static struct memblock_region memblock_regions_pool[INIT_MEMBLOCK_REGIONS];
 
@@ -176,6 +180,51 @@ int memblock_reserve(phys_addr_t base, size_t size) {
     return 0;
 }
 
+int memblock_remove(phys_addr_t base, size_t size) {
+    struct memblock_type *type = &memblock.memory;
+    struct memblock_region *pos = NULL, *tmp = NULL;
+    list_for_each_entry_safe(pos, tmp, &type->regions, struct memblock_region, node) {
+        if (memblock_addrs_overlap(base, size, pos->base, pos->size)) {
+            phys_addr_t pos_end = pos->base + pos->size;
+            phys_addr_t end = base + size;
+
+            phys_addr_t left_base =  pos->base;
+            phys_addr_t left_end = base < pos_end ? base : pos_end;
+            size_t left_size = left_end - left_base;            
+
+            phys_addr_t right_base = end < pos_end ? end : pos_end;
+            phys_addr_t right_end = pos_end;
+            size_t right_size = right_end - right_base;
+            
+
+            struct memblock_region* new_region = NULL;
+            int flags = pos->flags;
+            list_del(&pos->node);
+            free_region(pos);
+
+            if (left_size >0) {
+                new_region = alloc_region();
+                new_region->base = left_base;
+                new_region->size = left_size;
+                new_region->flags = flags;
+                list_add(&type->regions, &new_region->node);
+                memblock_merge_regions(type, new_region);
+            }
+            
+            if (right_size >0) {
+                new_region = alloc_region();
+                new_region->base = right_base;
+                new_region->size = right_size;
+                new_region->flags = flags;
+                list_add(&type->regions, &new_region->node);
+                memblock_merge_regions(type, new_region);
+            }
+            memblock_sort(type);
+        }
+    }
+    return 0;
+}
+
 void memblock_mark_nomap(phys_addr_t base, size_t size) {
     struct memblock_type *type = &memblock.memory;
     struct memblock_region *pos = NULL, *tmp = NULL;
@@ -236,6 +285,22 @@ void memblock_mark_reusable(phys_addr_t base, size_t size) {
  
 }
 
+void *memblock_alloc(size_t size, int align) {
+    struct memblock_region *pos = NULL;
+    struct memblock_type *type = &memblock.memory;
+    list_for_each_entry(pos, &type->regions, struct memblock_region, node) {
+        if (pos->size >= size && !(IS_NOMAP(pos->flags)) ) {
+            phys_addr_t aligned_base = ALIGN_UP(pos->base, align);
+            if (pos->size - (aligned_base - pos->base) >= size) {
+                memblock_remove(aligned_base, size);
+                memblock_reserve(aligned_base, size);
+                return (void*)aligned_base;
+            }
+        }
+    }
+    return NULL;
+}
+
 uint64_t memblock_phys_total(void) {
     // uint64_t total = 0;
     // for (int i = 0; i < memblock.memory.cnt; i++) {
@@ -274,11 +339,11 @@ void memblock_dump(void) {
     }
     printk("end\n");
 
-    // print_nomap_regions();
-    // printk("Reserved Regions:\n");
-    // list_for_each_entry(region, &memblock.reserved.regions, struct memblock_region, node) {
-    //     printk("  Region %d: Start: %xu, Size: %xu\n", region->__idx,
-    //            region->base,
-    //            region->size);
-    // }
+    print_nomap_regions();
+    printk("Reserved Regions:\n");
+    list_for_each_entry(region, &memblock.reserved.regions, struct memblock_region, node) {
+        printk("  Region %d: Start: %xu, Size: %xu\n", region->__idx,
+               region->base,
+               region->size);
+    }
 }

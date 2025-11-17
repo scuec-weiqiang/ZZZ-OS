@@ -16,6 +16,8 @@
 #include <os/irqreturn.h>
 #include <os/mm.h>
 #include <asm/irq.h>
+#include <os/irq.h>
+#include <os/of.h>
 
 static void riscv64_plic_enable(struct irq_chip* self, int hwirq) {
     __plic_interrupt_enable(self->hart, hwirq);
@@ -67,14 +69,14 @@ struct irq_chip_ops riscv64_plic_chip_ops = {
 };
 
 static irqreturn_t extern_interrupt_handler(int virq, void *dev_id) {
-    int hart_id = tp_r();
+    // int hart_id = tp_r();
 
     struct irq_chip *chip = irq_chip_lookup("riscv,plic", tp_r());
     if (chip) {
         int extern_irq = chip->ops->ack(chip);
         int virq = irq_domain_get_virq(chip, extern_irq);
         if (virq >= 0) {
-            do_irq(NULL, (void *)(uintptr_t)virq);
+            do_irq(virq, (void *)(uintptr_t)virq);
         } else {
             printk("Invalid virq!\n");
         }
@@ -105,7 +107,7 @@ static int riscv_plic_probe(struct platform_device *pdev) {
     
     int virq_base = irq_domain_alloc_virq_base(irq_count);
     struct irq_chip *chip = irq_chip_register("riscv,plic", &riscv64_plic_chip_ops, 0, NULL);
-    struct irq_domain *domain = irq_domain_create(chip, virq_base, irq_count);
+    irq_domain_create(chip, virq_base, irq_count);
 
     arch_local_irq_register(hwirq, extern_interrupt_handler, "riscv_plic_extern", 0, NULL);
 

@@ -13,6 +13,7 @@ MEMORY {
 SECTIONS
 {
     . = ORIGIN(RAM);
+    _kernel_start = .;
     .text : ALIGN(4) {
         _text_start = .;
         *(.text.entry)
@@ -75,6 +76,7 @@ SECTIONS
         . = ALIGN(4096);
         _bss_end = .;
     } > RAM 
+    _kernel_end = .;
 
     . = ALIGN(4096);
     _heap_start = .;
@@ -83,7 +85,7 @@ SECTIONS
     _stack_start = _stack_end - STACK_SIZE * CORE_NUM;
 
     _heap_end = _stack_start;
-
+  
     /* 符号导出（保持不变） */
     PROVIDE_HIDDEN(__core_num = CORE_NUM);
 
@@ -123,4 +125,9 @@ SECTIONS
 
     PROVIDE_HIDDEN(__heap_start = _heap_start);
     PROVIDE_HIDDEN(__heap_end = _heap_end);
+
+    PROVIDE_HIDDEN(__kernel_start = _kernel_start);
+    PROVIDE_HIDDEN(__kernel_end = _kernel_end);
+    
 }
+

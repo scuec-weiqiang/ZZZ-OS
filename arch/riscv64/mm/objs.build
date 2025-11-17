@@ -1,2 +1,1 @@
-OBJ_Y += symbols.o 
 OBJ_Y += mm.o
