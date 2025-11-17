@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-11-17 00:02:16
+ * @LastEditTime: 2025-11-17 21:42:58
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -31,7 +31,6 @@
 #include <os/proc.h>
 #include <os/sched.h>
 #include <os/string.h>
-#include <os/mm/symbols.h>
 
 uint8_t is_init = 0;
 
@@ -46,20 +45,18 @@ void init_kernel(void *dtb) {
     if (hart == 0) {
         symbols_init();
         // zero_bss();
-        memblock_init();
 		early_malloc_init();
 
 		fdt_init(dtb);
-		of_scan_memory();
-		of_scan_reserved_memory();
-		memblock_reserve(KERNEL_PA(kernel_start), kernel_size);
+        memblock_init();
+		
 
 		printk("a\n");
+        kernel_page_table_init();
         malloc_init();
         // of_test();
         of_platform_populate();
         irq_init();
-        kernel_page_table_init();
 
         virt_disk_init();
         fs_init();
@@ -73,10 +70,9 @@ void init_kernel(void *dtb) {
     set_hart_stack();
     arch_timer_init(SYS_HZ_1);
     // arch_timer_start();
-    // irq_enable(GLOBAL_IRQ);
+    irq_enable(GLOBAL_IRQ);
     // memblock_reserve(KERNEL_PA(kernel_start), kernel_size);
 
-    memblock_dump();
     // creat("/a.txt",S_IFREG|0644);
     // mkdir("/dir1",S_IFDIR|0644);
 

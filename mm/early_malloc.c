@@ -2,6 +2,7 @@
 #include <os/pfn.h>
 #include <os/printk.h>
 #include <os/types.h>
+#include <os/mm/memblock.h>
 
 static uintptr_t alloc_pos;
 static size_t free_size = 0;

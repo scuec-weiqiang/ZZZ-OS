@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-20 20:25:59
- * @LastEditTime: 2025-11-17 00:00:28
+ * @LastEditTime: 2025-11-17 20:10:01
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright        : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -216,7 +216,7 @@ int fdt_walk(struct device_node *node, struct list_head *list) {
         return -1;
 
     // 使用队列进行深度优先搜索
-    struct device_node *queue[32];
+    struct device_node **queue = malloc(sizeof(struct device_node *) * 512);
     int front = 0, rear = 0;
 
     queue[rear] = node;

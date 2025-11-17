@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-04-15 17:26:52
- * @LastEditTime: 2025-10-30 23:16:21
+ * @LastEditTime: 2025-11-17 22:09:14
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -20,5 +20,6 @@ extern void* page_alloc(size_t npages);
 extern void* malloc(size_t size);
 extern void free(void* p);
 extern uint64_t get_remain_mem();
+extern void update_alloc_state();
 
 #endif

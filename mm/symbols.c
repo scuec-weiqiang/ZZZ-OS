@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ-OS/arch/riscv64/mm/symbols.c
+ * @FilePath: /ZZZ-OS/mm/symbols.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 13:05:59
- * @LastEditTime: 2025-11-16 23:46:53
+ * @LastEditTime: 2025-11-17 21:10:56
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -21,6 +21,7 @@ extern char __exitcall_start[],__exitcall_end[];
 extern char __irqinitcall_start[],__irqinitcall_end[];
 extern char __irqexitcall_start[],__irqexitcall_end[];
 extern char __kernel_start[],__kernel_end[];
+extern char _early_stack_start[], _early_stack_end[];
 
 uintptr_t text_start;
 uintptr_t text_end;
@@ -57,6 +58,10 @@ uintptr_t irqexitcall_size;
 uintptr_t kernel_start;
 uintptr_t kernel_end;
 uintptr_t kernel_size;
+
+uintptr_t early_stack_start;
+uintptr_t early_stack_end;
+uintptr_t early_stack_size;
 
 void symbols_init()
 {
@@ -99,6 +104,10 @@ void symbols_init()
     kernel_start = (uintptr_t)&__kernel_start;
     kernel_end = (uintptr_t)&__kernel_end;
     kernel_size = kernel_end - kernel_start;
+
+    early_stack_start = (uintptr_t)&_early_stack_start;
+    early_stack_end = (uintptr_t)&_early_stack_end;
+    early_stack_size = early_stack_end - early_stack_start;
 
 
     printk("text:        start= %xu, end=  %xu, size=  %xu\n", text_start, text_end, text_size);

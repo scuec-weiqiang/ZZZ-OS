@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ-OS/include/asm/symbols.h
+ * @FilePath: /ZZZ-OS/include/os/mm/symbols.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-01 16:47:45
- * @LastEditTime: 2025-11-13 23:39:14
+ * @LastEditTime: 2025-11-17 21:12:00
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -44,6 +44,9 @@ extern uintptr_t irqexitcall_size;
 extern uintptr_t kernel_start;
 extern uintptr_t kernel_end;
 extern uintptr_t kernel_size;
+extern uintptr_t early_stack_start;
+extern uintptr_t early_stack_end;
+extern uintptr_t early_stack_size;
 
 extern void symbols_init();
 extern void zero_bss();

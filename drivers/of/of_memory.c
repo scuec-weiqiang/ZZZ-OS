@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ-OS/drivers/of/of_memory.c
+ * @FilePath: /vboot/home/wei/os/ZZZ-OS/drivers/of/of_memory.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-14 16:36:20
- * @LastEditTime: 2025-11-17 00:13:07
+ * @LastEditTime: 2025-11-17 20:14:47
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -44,7 +44,7 @@ int of_scan_memory() {
 
         for (int i = 0; i < len; i += address_cells + size_cells) {
             if (address_cells == 2) {
-                start = ((uint64_t)be32_to_cpu(reg[i])) | be32_to_cpu((uintptr_t)reg[i + 1] << 32);
+                start = ((uint64_t)be32_to_cpu(reg[i])) | be32_to_cpu(reg[i + 1] << 32);
             } else if (address_cells == 1) {
                 start = be32_to_cpu(reg[i]);
             } else {
@@ -52,7 +52,7 @@ int of_scan_memory() {
             }
 
             if (size_cells == 2) {
-                size = ((uint64_t)be32_to_cpu(reg[i + address_cells])) | be32_to_cpu((uintptr_t)reg[i + address_cells + 1] << 32);
+                size = ((uint64_t)be32_to_cpu(reg[i + address_cells])) | be32_to_cpu(reg[i + address_cells + 1] << 32);
             } else if (size_cells == 1) {
                 size = be32_to_cpu(reg[i + address_cells]);
             } else {
@@ -102,7 +102,7 @@ int of_scan_reserved_memory() {
 
         for (int i = 0; i < len; i += address_cells + size_cells) {
             if (address_cells == 2) {
-                start = ((uint64_t)be32_to_cpu(reg[i])) | be32_to_cpu((uintptr_t)reg[i + 1] << 32);
+                start = ((uint64_t)be32_to_cpu(reg[i])) | be32_to_cpu(reg[i + 1] << 32);
             } else if (address_cells == 1) {
                 start = be32_to_cpu(reg[i]);
             } else {
@@ -110,7 +110,7 @@ int of_scan_reserved_memory() {
             }
 
             if (size_cells == 2) {
-                size = ((uint64_t)be32_to_cpu(reg[i + address_cells])) | be32_to_cpu((uintptr_t)reg[i + address_cells + 1] << 32);
+                size = ((uint64_t)be32_to_cpu(reg[i + address_cells])) | be32_to_cpu(reg[i + address_cells + 1] << 32);
             } else if (size_cells == 1) {
                 size = be32_to_cpu(reg[i + address_cells]);
             } else {

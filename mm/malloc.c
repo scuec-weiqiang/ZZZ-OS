@@ -18,9 +18,15 @@
 #include <os/page.h>
 #include <os/mm/early_malloc.h>
 
+enum alloc_state {
+    EARLY_ALLOC,
+    MEMBLOCK_ALLOC,
+    NORMAL_ALLOC
+};
+
 struct spinlock page_lock = SPINLOCK_INIT;
 
-static int is_init = 0;
+static enum alloc_state alloc_state = EARLY_ALLOC;
 
 // page management struct
 typedef struct PageM {
@@ -41,21 +47,13 @@ static uint64_t pages_num = 0;
 
 uint64_t remain_mem = RAM_SIZE;
 
-void print_maddr() {
-    printk("_text_start = %x---->", text_start);
-    printk("_text_end = %x\n", text_end);
-    printk("_rodata_start = %x---->", rodata_start);
-    printk("_rodata_end = %x\n", rodata_end);
-    printk("_data_start = %x---->", data_start);
-    printk("_data_end = %x\n", data_end);
-    printk("_bss_start = %x---->", bss_start);
-    printk("_bss_end = %x\n", bss_end);
-    printk("_heap_start = %x---->", heap_start);
-    printk("_heap_end = %x\n", heap_end);
-    printk("_heap_size = %x\n", heap_size);
-    printk("_stack_start = %x---->", stack_start);
-    printk("_stack_end = %x\n", stack_end);
+void update_alloc_state() {
+    alloc_state++;
+    if (alloc_state > NORMAL_ALLOC) {
+        alloc_state = NORMAL_ALLOC;
+    }
 }
+
 /***************************************************************
  * @description:
  * @return {*}
@@ -73,12 +71,14 @@ void malloc_init() {
     printk("alloc_end = %xu\n", alloc_end);
     printk("num_pages = %xu\n", pages_num);
     PageM_t *pagem_i = (PageM_t *)heap_start;
+    memblock_dump();
     for (int i = 0; i < pages_num; i++) {
         _CLEAR(pagem_i);
         pagem_i++;
     }
     remain_mem = pages_num * PAGE_SIZE;
-    // printk("malloc init success\n");
+    printk("malloc init success\n");
+    update_alloc_state();
 }
 
 /***************************************************************
@@ -87,9 +87,24 @@ void malloc_init() {
  * @return {*}
  ***************************************************************/
 void *page_alloc(size_t npages) {
-    if (!is_init) {
+    switch (alloc_state) {
+    case EARLY_ALLOC:
         return early_page_alloc(npages);
+        break;
+    case MEMBLOCK_ALLOC:
+        {
+            void *p = memblock_alloc(npages * PAGE_SIZE, PAGE_SIZE);
+            if (p) {
+                remain_mem -= npages * PAGE_SIZE;
+            }
+            return p;
+        }
+        break;
+    case NORMAL_ALLOC:
+        goto nomal;
     }
+
+    nomal:
     spin_lock(&page_lock);
     uintptr_t reserved_end = (uintptr_t)heap_start + pages_num * sizeof(PageM_t);
     uint64_t num_blank = 0;
@@ -140,7 +155,7 @@ void *page_alloc(size_t npages) {
     spin_unlock(&page_lock);
     return NULL;
 }
-void print_page(uint64_t start, uint64_t end) {
+static void print_page(uint64_t start, uint64_t end) {
     PageM_t *pagem_i = (PageM_t *)heap_start + start;
     for (int i = start; i < end; i++) {
         printk("pagem %x ->>%x = %x\n", pagem_i,
@@ -156,10 +171,19 @@ void print_page(uint64_t start, uint64_t end) {
  * @return {*}
  ***************************************************************/
 void free(void *p) {
-    if (!is_init) {
+    switch (alloc_state) {
+    case EARLY_ALLOC:
         return early_free(p);
+        break;
+    case MEMBLOCK_ALLOC:
+        memblock_free((phys_addr_t)p);
+        return;
+        break;
+    case NORMAL_ALLOC:
+        goto nomal;
     }
 
+    nomal:
     spin_lock(&page_lock);
     if ((NULL == p)                                 // 传入的地址是空指针
         || ((uintptr_t)p > (alloc_end - PAGE_SIZE)) // 传入的地址在最后一个page之后
@@ -181,13 +205,23 @@ void free(void *p) {
 }
 
 void *malloc(size_t size) {
-    if (!is_init) {
-        return early_malloc(size);
-    }
-    
     if (size == 0) {
         return NULL;
     }
+
+    switch (alloc_state) {
+    case EARLY_ALLOC:
+        return early_malloc(size);
+        break;
+    case MEMBLOCK_ALLOC:
+        memblock_alloc(size,8);
+        return;
+        break;
+    case NORMAL_ALLOC:
+        goto nomal;
+    }
+
+    nomal:
     if (size > pages_num * PAGE_SIZE) {
         printk("malloc error: size too large\n");
         return NULL;

@@ -6,6 +6,7 @@ CORE_NUM = 2;               /* 核心数量 */
 RAM_BASE = 0xffffffffc0200000;      /* RAM起始地址 */
 RAM_SIZE = 126M;       /* RAM大小（128MB） */
 
+
 MEMORY {
     RAM (rwx) : ORIGIN = RAM_BASE, LENGTH = RAM_SIZE
 }
@@ -76,7 +77,16 @@ SECTIONS
         . = ALIGN(4096);
         _bss_end = .;
     } > RAM 
+
+    .stack : ALIGN(16) {
+        . = ALIGN(4096);
+        __early_stack_start = .;
+        /* 为主核心分配独立的栈空间，用来做基本的初始化，其他核心等操作系统初始化完毕后再分配 */
+        . = . + STACK_SIZE;
+        __early_stack_end = .;  /* 记录早期栈的结束地址 */
+    } > RAM
     _kernel_end = .;
+
 
     . = ALIGN(4096);
     _heap_start = .;
@@ -128,6 +138,8 @@ SECTIONS
 
     PROVIDE_HIDDEN(__kernel_start = _kernel_start);
     PROVIDE_HIDDEN(__kernel_end = _kernel_end);
-    
+
+    PROVIDE_HIDDEN(_early_stack_start = __early_stack_start);
+    PROVIDE_HIDDEN(_early_stack_end = __early_stack_end); 
 }
 
