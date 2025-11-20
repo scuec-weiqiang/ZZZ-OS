@@ -3,7 +3,7 @@
  * @Description: 
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-14 16:00:57
- * @LastEditTime: 2025-11-17 23:08:05
+ * @LastEditTime: 2025-11-21 00:45:45
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -15,12 +15,8 @@
 #include <os/pfn.h>
 #include <os/mm/symbols.h>
 #include <os/mm.h>
+#include <os/minmax.h>
 
-// #define MARK_NOMAP(x) ((x).flags |= 0x1)
-// #define MARK_REUSABLE(x) ((x).flags &= ~0x1)
-#define MEMBLOCK_NONE     0
-#define MEMBLOCK_NOMAP    (1 << 0)
-#define MEMBLOCK_REUSABLE    (1 << 1)
 
 #define IS_NOMAP(flags) ((flags) & MEMBLOCK_NOMAP)
 
@@ -113,8 +109,8 @@ static void memblock_merge_regions(struct memblock_type *type, struct memblock_r
 
             if ((memblock_addrs_overlap(base, size, rgnbase, rgnsize) ||
                 memblock_addrs_continue(base, size, rgnbase, rgnsize)) && (pos->flags == region->flags)) {
-                phys_addr_t new_base = (base < rgnbase) ? base : rgnbase;
-                phys_addr_t new_end = ((base + size) > (rgnbase + rgnsize)) ? (base + size) : (rgnbase + rgnsize);
+                phys_addr_t new_base = min(base, rgnbase);
+                phys_addr_t new_end = max(base+size, rgnbase+rgnsize);
                 base = new_base;
                 size = new_end - new_base;
 
@@ -130,48 +126,29 @@ static void memblock_merge_regions(struct memblock_type *type, struct memblock_r
     }
 }
 
+static int memblock_add_region(struct memblock_type *type, phys_addr_t base, size_t size, enum memblock_flags flags) {
+    struct memblock_region* region = alloc_region();
+    if (!region) {
+        return -1;
+    }
+    region->base = base;
+    region->size = size;
+    region->flags = flags;
+
+    list_add_tail(&type->regions, &region->node);
+
+    memblock_sort_one(type, region);
+    memblock_merge_regions(type, region);
+
+    type->total_size += size;
+    return 0;
+}
+
 int memblock_add(phys_addr_t base, size_t size) {
-    struct memblock_region* region = alloc_region();
-    if (!region) {
-        return -1;
-    }
-    region->base = base;
-    region->size = size;
-    region->flags = MEMBLOCK_NONE;
-
-    list_add_tail(&memblock.memory.regions, &region->node);
-
-    memblock.memory.cnt++;
-
-    memblock_sort_one(&memblock.memory, region);
-    memblock_merge_regions(&memblock.memory, region);
-
-    memblock.memory.total_size += size;
-    return 0;
+    return memblock_add_region(&memblock.memory, base, size, 0);
 }
 
-int memblock_reserve(phys_addr_t base, size_t size) {
-    struct memblock_region* region = alloc_region();
-    if (!region) {
-        return -1;
-    }
-    region->base = base;
-    region->size = size;
-    region->flags = MEMBLOCK_NONE;
-
-    list_add_tail(&memblock.reserved.regions, &region->node);
-
-    memblock.reserved.cnt++;
-
-    memblock_sort_one(&memblock.reserved, region);
-    memblock_merge_regions(&memblock.reserved, region);
-
-    memblock.reserved.total_size += size;
-    return 0;
-}
-
-int memblock_remove(phys_addr_t base, size_t size) {
-    struct memblock_type *type = &memblock.memory;
+static int memblock_remove_region(struct memblock_type *type, phys_addr_t base, size_t size) {
     struct memblock_region *pos = NULL, *tmp = NULL;
     list_for_each_entry_safe(pos, tmp, &type->regions, struct memblock_region, node) {
         if (memblock_addrs_overlap(base, size, pos->base, pos->size)) {
@@ -179,10 +156,10 @@ int memblock_remove(phys_addr_t base, size_t size) {
             phys_addr_t end = base + size;
 
             phys_addr_t left_base =  pos->base;
-            phys_addr_t left_end = base < pos_end ? base : pos_end;
+            phys_addr_t left_end = min(base, pos_end);
             size_t left_size = left_end - left_base;            
 
-            phys_addr_t right_base = end < pos_end ? end : pos_end;
+            phys_addr_t right_base = min(end , pos_end);
             phys_addr_t right_end = pos_end;
             size_t right_size = right_end - right_base;
             
@@ -215,6 +192,15 @@ int memblock_remove(phys_addr_t base, size_t size) {
     return 0;
 }
 
+int memblock_remove(phys_addr_t base, size_t size) {
+    return memblock_remove_region(&memblock.memory, base, size);
+}
+
+int memblock_reserve(phys_addr_t base, size_t size) {
+    return memblock_add_region(&memblock.reserved, base, size, 0);
+}
+
+
 void memblock_mark_nomap(phys_addr_t base, size_t size) {
     struct memblock_type *type = &memblock.memory;
     struct memblock_region *pos = NULL, *tmp = NULL;
@@ -224,14 +210,14 @@ void memblock_mark_nomap(phys_addr_t base, size_t size) {
             phys_addr_t end = base + size;
 
             phys_addr_t left_base =  pos->base;
-            phys_addr_t left_end = base < pos_end ? base : pos_end;
+            phys_addr_t left_end = min(base, pos_end);
             size_t left_size = left_end - left_base;            
 
-            phys_addr_t mid_base = base > pos->base ? base : pos->base;
-            phys_addr_t mid_end = end < pos_end ? end : pos_end;
+            phys_addr_t mid_base = max(base, pos->base);
+            phys_addr_t mid_end = min(end, pos_end);
             size_t mid_size = mid_end - mid_base;
 
-            phys_addr_t right_base = end < pos_end ? end : pos_end;
+            phys_addr_t right_base = min(end, pos_end);
             phys_addr_t right_end = pos_end;
             size_t right_size = right_end - right_base;
             
@@ -289,8 +275,8 @@ void *memblock_alloc(size_t size, int align) {
     struct memblock_type *type = &memblock.memory;
     list_for_each_entry(pos, &type->regions, struct memblock_region, node) {
         if (pos->size >= size && !(IS_NOMAP(pos->flags))) {
-            struct memblock_region* res_pos = memblock_is_reserved(pos->base, size);
             phys_addr_t aligned_base = ALIGN_UP(pos->base, align);
+            struct memblock_region* res_pos = memblock_is_reserved(pos->base, size);
             if (res_pos) {
                 phys_addr_t res_base = res_pos->base;
                 size_t res_size = res_pos->size;
@@ -298,11 +284,11 @@ void *memblock_alloc(size_t size, int align) {
                 phys_addr_t pos_end = pos->base + pos->size;
                 phys_addr_t res_end = res_base + res_size;
 
-                phys_addr_t left_base =  pos->base < res_base ? pos->base : res_base;
-                phys_addr_t left_end = res_base < pos_end ? res_base : pos_end;
+                phys_addr_t left_base =  min(pos->base , res_base );
+                phys_addr_t left_end = min(res_base, pos_end );
                 size_t left_size = left_end - left_base;            
 
-                phys_addr_t right_base = res_end < pos_end ? res_end : pos_end;
+                phys_addr_t right_base = min(res_end, pos_end);
                 phys_addr_t right_end = pos_end;
                 size_t right_size = right_end - right_base;
                 
@@ -316,7 +302,6 @@ void *memblock_alloc(size_t size, int align) {
                     continue;
                 }
             }
-            memblock_remove(aligned_base, size);
             memblock_reserve(aligned_base, size);
             return (void*)KERNEL_VA(aligned_base);
         }
@@ -326,28 +311,11 @@ void *memblock_alloc(size_t size, int align) {
 
 void memblock_free(phys_addr_t addr) {
     addr = KERNEL_PA(addr);
-    struct memblock_type *type = &memblock.reserved;
-    struct memblock_region *pos = NULL, *tmp = NULL;
-    list_for_each_entry_safe(pos, tmp, &type->regions, struct memblock_region, node) {
-        if (addr >= pos->base && addr < (pos->base + pos->size)) {
-            phys_addr_t base = pos->base;
-            size_t size = pos->size;
-
-            list_del(&pos->node);
-            free_region(pos);
-
-            memblock_add(base, size);
-            return;
-        }
-    }
+    memblock_remove_region(&memblock.reserved, addr, PAGE_SIZE);
 }
 
 uint64_t memblock_phys_total(void) {
-    // uint64_t total = 0;
-    // for (int i = 0; i < memblock.memory.cnt; i++) {
-    //     total += memblock.memory.regions[i].size;
-    // }
-    // return total;
+    return memblock.memory.total_size;
 }
 
 void print_nomap_regions(void) {
@@ -401,13 +369,13 @@ void memblock_init(void) {
     } 
     free_idx_top = INIT_MEMBLOCK_REGIONS - 1;
     
-    memblock.memory.cnt = 0;
-    memblock.memory.max = INIT_MEMBLOCK_REGIONS;
+    // memblock.memory.cnt = 0;
+    // memblock.memory.max = INIT_MEMBLOCK_REGIONS;
     memblock.memory.total_size = 0;
     INIT_LIST_HEAD(&memblock.memory.regions);
 
-    memblock.reserved.cnt = 0;
-    memblock.reserved.max = INIT_MEMBLOCK_REGIONS;
+    // memblock.reserved.cnt = 0;
+    // memblock.reserved.max = INIT_MEMBLOCK_REGIONS;
     memblock.reserved.total_size = 0;
     INIT_LIST_HEAD(&memblock.reserved.regions);
     of_scan_memory();

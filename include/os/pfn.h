@@ -1,5 +1,16 @@
+/**
+ * @FilePath: /ZZZ-OS/include/os/pfn.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-11-17 19:54:47
+ * @LastEditTime: 2025-11-20 21:16:14
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 #ifndef __KERNEL_PFN_H_
 #define __KERNEL_PFN_H_
+
+typedef unsigned long pfn_t;
 
 #define PAGE_SHIFT 12
 #define PAGE_SIZE  (1UL << PAGE_SHIFT)
