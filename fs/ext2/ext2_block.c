@@ -21,8 +21,8 @@ int ext2_bno_group(struct superblock *vfs_sb, uint64_t bno)
     return (bno) / fs_info->s_blocks_per_group;
 }
 
-struct spinlock ext2_balloc_lock = SPINLOCK_INIT;
-struct spinlock ext2_bfree_lock = SPINLOCK_INIT;
+spinlock_t ext2_balloc_lock = SPINLOCK_INIT;
+spinlock_t ext2_bfree_lock = SPINLOCK_INIT;
 
 #define BALLOC_LOCK spin_lock(&ext2_balloc_lock)
 #define BALLOC_UNLOCK spin_unlock(&ext2_balloc_lock)

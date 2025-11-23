@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-20 20:57:07
- * @LastEditTime: 2025-11-21 01:05:36
+ * @LastEditTime: 2025-11-21 16:44:30
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -36,8 +36,15 @@ void physmem_init(void) {
             high = pos->base + pos->size;
         }
     }
+    printk("Physical memory range: [%x - %x]\n", low, high);
+    first_pfn = phys_to_pfn(low);
+    last_pfn = phys_to_pfn(high);
+    total_pages = last_pfn - first_pfn;
+    printk("Total pages: %u\n", total_pages);
 
-    
+    size_t sz = total_pages * sizeof(struct page);
+    // mem_map = (struct page *)memblock_alloc_array(total_pages, sizeof(struct page), PAGE_SIZE);
+
 }
 
 struct page *pfn_to_page(pfn_t pfn) {

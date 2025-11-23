@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-13 16:16:30
- * @LastEditTime: 2025-10-29 21:51:21
+ * @LastEditTime: 2025-11-21 16:28:53
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -16,6 +16,8 @@
 #include <asm/spinlock.h>
 #include <drivers/time.h>
 #include <os/types.h>
+#include <os/pfn.h>
+#include <os/mm/physmem.h>
 
 typedef long long loff_t;
 typedef int64_t ino_t;
@@ -81,23 +83,7 @@ struct superblock
     void *s_private;
 };
 
-#define VFS_PAGE_SIZE 4096
-typedef uint64_t pgoff_t; // page index
-
-struct page
-{
-    struct lru_node p_lru_cache_node;  // 全局page lru缓存链表节点
-    struct hlist_node self_cache_node; // 哈希表节点，用于快速查找inode私有的page缓存
-    struct spinlock lock;              // page 锁
-    int p_refcount;   // 引用计数
-    // pthread_cond_t  wait;          // 等待/唤醒
-    bool under_io;  // 正在读/写磁盘
-    bool uptodate;  // 内容有效
-    bool dirty;     // 脏页标志
-    struct inode *inode; // 所属 inode
-    pgoff_t index;  // page index in file
-    char *data;       // 指向 PAGE_SIZE 内存
-};
+#define VFS_PAGE_SIZE PAGE_SIZE
 
 struct aops
 {
@@ -185,7 +171,7 @@ struct inode
     struct inode_ops *i_ops;
     struct file_ops *f_ops;                // 文件操作函数表
     struct address_space *i_mapping;  // 地址空间
-    struct spinlock i_lock;           // 保护inode的锁
+    spinlock_t i_lock;           // 保护inode的锁
     struct lru_node i_lru_cache_node; // 缓存节点，用于LRU算法管理
     uint16_t i_flags;                      // inode 标志位
     bool dirty;                       // 是否被修改，需要写回磁盘
@@ -224,7 +210,7 @@ struct dentry
     struct list_head d_childs;             // 父目录的子目录链表节点
     struct list_head d_subdirs;            // 本目录的子目录项链表头
     struct lru_node d_lru_cache_node; // 目录项缓存
-    struct spinlock d_lock;
+    spinlock_t d_lock;
     enum dentry_state d_flags; // dentry状态标志
     struct dentry_ops *d_op;
     int d_refcount; // 引用计数

@@ -24,7 +24,7 @@ enum alloc_state {
     NORMAL_ALLOC
 };
 
-struct spinlock page_lock = SPINLOCK_INIT;
+spinlock_t page_lock = SPINLOCK_INIT;
 
 static enum alloc_state alloc_state = EARLY_ALLOC;
 

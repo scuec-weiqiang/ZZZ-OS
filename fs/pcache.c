@@ -41,7 +41,7 @@ static struct page *create_page(struct inode *inode, pgoff_t index)
     page_lock(p);
     p->inode = inode;
     p->index = index;
-    p->p_refcount = 0;
+    p->refcount = 0;
     p->uptodate = false;
     p->dirty = false;
     p->under_io = true; // 占位态, 表示正在加载
@@ -136,7 +136,7 @@ struct page *pget(struct inode *inode, uint32_t index)
     {
         found_page = container_of(node, struct page, self_cache_node);
         page_lock(found_page);
-        found_page->p_refcount++;
+        found_page->refcount++;
         lru_get(&found_page->p_lru_cache_node); // 从淘汰链表中移除，防止被回收
         page_unlock(found_page);
         return found_page;
@@ -152,7 +152,7 @@ struct page *pget(struct inode *inode, uint32_t index)
     hashtable_insert(inode->i_mapping->page_cache, &found_page->self_cache_node);
 
     page_lock(found_page);
-    found_page->p_refcount = 1; // 第一次引用
+    found_page->refcount = 1; // 第一次引用
     lru_insert(global_page_cache, &found_page->p_lru_cache_node);
     lru_get(&found_page->p_lru_cache_node); 
     page_unlock(found_page);
@@ -165,9 +165,9 @@ int pput(struct page *page)
     CHECK(page != NULL, "pput: page is NULL", return -1;);
     page_lock(page);
     
-    if (page->p_refcount > 0)
+    if (page->refcount > 0)
     {
-        page->p_refcount--;
+        page->refcount--;
         lru_update(global_page_cache, &page->p_lru_cache_node);
         page_unlock(page);
         return 0;

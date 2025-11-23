@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-11-17 21:42:58
+ * @LastEditTime: 2025-11-21 16:42:10
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -31,6 +31,7 @@
 #include <os/proc.h>
 #include <os/sched.h>
 #include <os/string.h>
+#include <os/mm/physmem.h>
 
 uint8_t is_init = 0;
 
@@ -49,7 +50,7 @@ void init_kernel(void *dtb) {
 
 		fdt_init(dtb);
         memblock_init();
-		
+        physmem_init();
 
 		printk("a\n");
         kernel_page_table_init();
