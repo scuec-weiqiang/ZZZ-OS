@@ -29,14 +29,14 @@ static void inode_unlock(struct inode *inode)
 
 static hval_t inode_self_page_cache_hash(const struct hlist_node* node)
 {
-    struct page *page = container_of(node, struct page, p_lru_cache_node);
+    struct page_cache *page = container_of(node, struct page_cache, p_lru_cache_node);
     return page->index % 64;
 }
 
 static int inode_self_page_cache_compare(const struct hlist_node* node_a, const struct hlist_node* node_b)
 {
-    struct page *a = container_of(node_a, struct page, p_lru_cache_node);
-    struct page *b = container_of(node_b, struct page, p_lru_cache_node);
+    struct page_cache *a = container_of(node_a, struct page_cache, p_lru_cache_node);
+    struct page_cache *b = container_of(node_b, struct page_cache, p_lru_cache_node);
     return a->index - b->index;
 }
 

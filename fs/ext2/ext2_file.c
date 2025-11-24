@@ -39,7 +39,7 @@ ssize_t ext2_file_read(struct inode *inode, void *buf, size_t size, loff_t *offs
 
     for (pgoff_t i = start_page; i <= end_page; ++i)
     {
-        struct page *page = pget(inode, i);
+        struct page_cache *page = pget(inode, i);
         if (page == NULL)
         {
             return -1; // 读取页面失败
@@ -90,7 +90,7 @@ ssize_t ext2_file_write(struct inode *inode, const void *buf, size_t size, loff_
 
     for (pgoff_t i = start_page; i <= end_page; ++i)
     {
-        struct page *page = pget(inode, i);
+        struct page_cache *page = pget(inode, i);
         if (page == NULL)
         {
             return -1; // 读取页面失败

@@ -30,7 +30,7 @@ struct uart_reg {
     uint8_t SPR;
 };
 
-uintptr_t uart_base = 0;
+uintptr_t uart_base = 0x10000000;
 #define UART0 (*(volatile struct uart_reg *)(uart_base))
 
 #define UART_TX_IDLE (1 << 5)
@@ -66,7 +66,7 @@ static char uart_getc() {
     return UART0.RHR_THR_DLL;
 }
 
-static void uart_puts(char *s) {
+void uart_puts(char *s) {
     while (*s) {
         uart_putc(*s);
         s++;

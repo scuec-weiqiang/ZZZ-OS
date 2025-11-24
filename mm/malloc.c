@@ -17,6 +17,7 @@
 #include <os/types.h>
 #include <os/page.h>
 #include <os/mm/early_malloc.h>
+#include <os/mm/memblock.h>
 
 enum alloc_state {
     EARLY_ALLOC,
@@ -214,8 +215,7 @@ void *malloc(size_t size) {
         return early_malloc(size);
         break;
     case MEMBLOCK_ALLOC:
-        memblock_alloc(size,8);
-        return;
+        return memblock_alloc(size,8);
         break;
     case NORMAL_ALLOC:
         goto nomal;

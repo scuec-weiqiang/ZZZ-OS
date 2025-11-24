@@ -53,7 +53,7 @@ int ext2_init_dot_entries(struct inode *i_parent, uint32_t parent_inode)
     CHECK(i_parent != NULL, "", return -1;);
 
     struct superblock *vfs_sb = i_parent->i_sb;
-    struct page *page = pget(i_parent, 0);
+    struct page_cache *page = pget(i_parent, 0);
 
     struct ext2_dir_entry_2 *dot = (struct ext2_dir_entry_2 *)page->data;
     dot->inode = i_parent->i_ino;
@@ -99,7 +99,7 @@ struct inode *ext2_find(struct inode *i_parent, const char *name)
 
     for (uint64_t i = 0; i < page_num; i++)
     {
-        struct page *page = pget(i_parent, i);
+        struct page_cache *page = pget(i_parent, i);
         uint32_t offset = 0;
         struct ext2_dir_entry_2 *entry = (struct ext2_dir_entry_2 *)page->data;
         // 开始对这个block中的目录项进行遍历
@@ -189,7 +189,7 @@ int ext2_init_new_entry(struct ext2_dir_entry_2 *new_entry, const char *name, ui
     return 0;
 }
 
-static int ext2_find_free_slot_in_page(struct page *page, uint32_t need_len, dir_slot_t *out)
+static int ext2_find_free_slot_in_page(struct page_cache *page, uint32_t need_len, dir_slot_t *out)
 {
     char *page_buf = page->data;
     uint32_t offset = 0;
@@ -234,7 +234,7 @@ int ext2_find_slot(struct inode *i_parent, size_t name_len, dir_slot_t *slot_out
     uint64_t page_num = (i_parent->i_size + VFS_PAGE_SIZE - 1) / VFS_PAGE_SIZE;
     for (uint64_t i = 0; i < page_num; i++)
     {
-        struct page *page = pget(i_parent, i);
+        struct page_cache *page = pget(i_parent, i);
         uint32_t need_len = EXT2_ENTRY_LEN(name_len);
         ext2_find_free_slot_in_page(page, need_len, slot_out);
         if (slot_out->found == true)
@@ -251,7 +251,7 @@ int ext2_add_entry(struct inode *i_parent, struct dentry *dentry, dir_slot_t *sl
 {
     CHECK(i_parent != NULL, "", return -1;);
 
-    struct page *page = pget(i_parent, slot->page_index); // 获取包含空槽的页
+    struct page_cache *page = pget(i_parent, slot->page_index); // 获取包含空槽的页
     struct ext2_dir_entry_2 *new_entry = (struct ext2_dir_entry_2 *)(page->data + slot->offset);
     struct ext2_dir_entry_2 *prev_entry = (struct ext2_dir_entry_2 *)(page->data + slot->prev_offset);
     if (slot->prev_real_len > 0) // 如果需要修改前一个目录项的rec_len

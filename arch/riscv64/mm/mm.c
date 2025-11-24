@@ -32,13 +32,13 @@ static inline uintptr_t make_satp(uintptr_t va_or_pa) {
 
 static pgd_t *new_pgd() {
     pgd_t *pgd = (pgd_t*)page_alloc(1);
+    memset(pgd, 0, PAGE_SIZE);
     return pgd;
 }
 
 pgtbl_t *arch_new_pgtbl() {
     pgtbl_t *pgtbl = (pgtbl_t *)malloc(sizeof(pgtbl_t));
     pgtbl->root = new_pgd();
-    memset(pgtbl->root, 0, PAGE_SIZE);
     return pgtbl;
 }
 
@@ -66,6 +66,7 @@ static pgd_t *get_child_pgd(pgd_t *parent_pgd, uint64_t vpn, bool create) {
         } else {
             // 否则创建对应子页表
             child_pgd = new_pgd();
+            printk("new pgd = %xu\n",child_pgd);
             if (child_pgd == NULL)
                 return NULL;
             create_pte(&parent_pgd[vpn], KERNEL_PA(child_pgd), 0);
@@ -73,6 +74,9 @@ static pgd_t *get_child_pgd(pgd_t *parent_pgd, uint64_t vpn, bool create) {
         }
         return NULL;
     } else {
+        uintptr_t tmp = parent_pgd[vpn];
+        tmp = PTE2PA(tmp);
+        tmp = KERNEL_VA(tmp);
         return (pgd_t *)KERNEL_VA(PTE2PA(parent_pgd[vpn]));
     }
 }

@@ -39,9 +39,8 @@ struct platform_device *platform_device_create_from_node(struct device_node *np)
     list_add(&platform_device_list, &pdev->link);
     return pdev;
 }
-
+static struct device_node *queue[sizeof(struct device_node*)*512] = {0};
 void of_platform_populate() {
-    struct device_node **queue = (struct device_node **)malloc(sizeof(struct device_node*)*512);
     int front=0,rear=0;
     struct device_node *node=NULL ,*child=NULL;
     struct platform_device *pdev=NULL;

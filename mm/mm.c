@@ -92,7 +92,10 @@ void page_table_init(pgtbl_t *pgd) {
     map_range(pgd, kernel_start, KERNEL_PA(kernel_start), kernel_size, PTE_R | PTE_W | PTE_X);
     map_range(pgd, (uintptr_t)heap_start, (uintptr_t)KERNEL_PA(heap_start), (size_t)heap_size, PTE_R | PTE_W);
     map_range(pgd, (uintptr_t)stack_start, (uintptr_t)KERNEL_PA(stack_start), (size_t)stack_size * 2, PTE_R | PTE_W);
+
     map_range(pgd, (uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, PTE_R | PTE_W);
+    map_range(pgd, (uintptr_t)0x10000000, (uintptr_t)0x10000000, PAGE_SIZE, PTE_R | PTE_W);
+
 }
 
 void kernel_page_table_init() {
@@ -103,6 +106,7 @@ void kernel_page_table_init() {
     
     arch_switch_pgtbl(kernel_pgd);
     arch_flush_pgtbl();
+    virtio->queue_notify = 0;
     printk("kernel page init success!\n");
 }
 

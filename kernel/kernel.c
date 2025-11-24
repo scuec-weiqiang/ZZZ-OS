@@ -54,13 +54,16 @@ void init_kernel(void *dtb) {
 
 		printk("a\n");
         kernel_page_table_init();
-        malloc_init();
+        // malloc_init();
         // of_test();
         of_platform_populate();
         irq_init();
 
         virt_disk_init();
         fs_init();
+
+        mkdir("/dir1",S_IFDIR|0644);
+        printk("ok\n");
 
         do_initcalls();
         irq_enable(EXTERN_IRQ);

@@ -85,10 +85,25 @@ struct superblock
 
 #define VFS_PAGE_SIZE PAGE_SIZE
 
+struct page_cache
+{
+    struct lru_node p_lru_cache_node;  // 全局page lru缓存链表节点
+    struct hlist_node self_cache_node; // 哈希表节点，用于快速查找inode私有的page缓存
+    struct spinlock lock;              // page 锁（简化用 pthread_mutex）
+    // pthread_cond_t  wait;          // 等待/唤醒
+    int refcount;   // 引用计数
+    bool under_io;  // 正在读/写磁盘
+    bool uptodate;  // 内容有效
+    bool dirty;     // 脏页标志
+    struct inode *inode; // 所属 inode
+    pgoff_t index;  // page index in file
+    char *data;       // 指向 PAGE_SIZE 内存
+};
+
 struct aops
 {
-    int (*readpage)(struct page*page);
-    int (*writepage)(struct page*page);
+    int (*readpage)(struct page_cache*page);
+    int (*writepage)(struct page_cache*page);
 };
 
 struct address_space

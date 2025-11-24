@@ -16,6 +16,7 @@
 #include <os/mm/symbols.h>
 #include <os/mm.h>
 #include <os/minmax.h>
+#include <os/of.h>
 
 
 #define IS_NOMAP(flags) ((flags) & MEMBLOCK_NOMAP)
@@ -270,44 +271,84 @@ static struct memblock_region* memblock_is_reserved(phys_addr_t base, size_t siz
     return NULL;
 }
 
-void *memblock_alloc(size_t size, int align) {
-    struct memblock_region *pos = NULL;
-    struct memblock_type *type = &memblock.memory;
-    list_for_each_entry(pos, &type->regions, struct memblock_region, node) {
-        if (pos->size >= size && !(IS_NOMAP(pos->flags))) {
-            phys_addr_t aligned_base = ALIGN_UP(pos->base, align);
-            struct memblock_region* res_pos = memblock_is_reserved(pos->base, size);
-            if (res_pos) {
-                phys_addr_t res_base = res_pos->base;
-                size_t res_size = res_pos->size;
+// void *memblock_alloc(size_t size, int align) {
+//     struct memblock_region *pos = NULL;
+//     struct memblock_type *type = &memblock.memory;
+//     list_for_each_entry(pos, &type->regions, struct memblock_region, node) {
+//         if (pos->size >= size && !(IS_NOMAP(pos->flags))) {
+//             phys_addr_t aligned_base = ALIGN_UP(pos->base, align);
+//             struct memblock_region* res_pos = memblock_is_reserved(pos->base, size);
+//             if (res_pos) {
+//                 phys_addr_t res_base = res_pos->base;
+//                 size_t res_size = res_pos->size;
 
-                phys_addr_t pos_end = pos->base + pos->size;
-                phys_addr_t res_end = res_base + res_size;
+//                 phys_addr_t pos_end = pos->base + pos->size;
+//                 phys_addr_t res_end = res_base + res_size;
 
-                phys_addr_t left_base =  min(pos->base , res_base );
-                phys_addr_t left_end = min(res_base, pos_end );
-                size_t left_size = left_end - left_base;            
+//                 phys_addr_t left_base =  min(pos->base , res_base );
+//                 phys_addr_t left_end = min(res_base, pos_end );
+//                 size_t left_size = left_end - left_base;            
 
-                phys_addr_t right_base = min(res_end, pos_end);
-                phys_addr_t right_end = pos_end;
-                size_t right_size = right_end - right_base;
+//                 phys_addr_t right_base = min(res_end, pos_end);
+//                 phys_addr_t right_end = pos_end;
+//                 size_t right_size = right_end - right_base;
                 
-                // 判断分割后哪个区域能满足分配要求
+//                 // 判断分割后哪个区域能满足分配要求
 
-                if (left_size >= size && left_base != res_base) {
-                    aligned_base = ALIGN_UP(pos->base, align);
-                } else if (right_size >= size && right_base != res_base) {
-                    aligned_base = ALIGN_UP(right_base, align);
-                } else {
-                    continue;
-                }
+//                 if (left_size >= size && left_base != res_base) {
+//                     aligned_base = ALIGN_UP(pos->base, align);
+//                 } else if (right_size >= size && right_base != res_base) {
+//                     aligned_base = ALIGN_UP(right_base, align);
+//                 } else {
+//                     continue;
+//                 }
+//             }
+//             memblock_reserve(aligned_base, size);
+//             // memblock_dump();
+//             return (void*)KERNEL_VA(aligned_base);
+//         }
+//     }
+//     return NULL;
+// }
+
+void *memblock_alloc(size_t size, int align) {
+    struct memblock_region *m;
+    list_for_each_entry(m, &memblock.memory.regions, struct memblock_region, node) {
+        phys_addr_t m_start = m->base;
+        phys_addr_t m_end   = m->base + m->size;
+
+        // 生成当前 memory 区间的所有 gap
+        phys_addr_t gap_start = m_start;
+
+        struct memblock_region *r;
+        list_for_each_entry(r, &memblock.reserved.regions, struct memblock_region, node) {
+            phys_addr_t r_start = r->base;
+            phys_addr_t r_end   = r->base + r->size;
+
+            // reserved 不在 memory 区间内部的直接忽略
+            if (r_end <= m_start || r_start >= m_end)
+                continue;
+
+            // 检查 gap_start 到 reserved_start 之间是否可用
+            phys_addr_t gap_end = r_start;
+
+            phys_addr_t aligned = ALIGN_UP(gap_start, align);
+            if (aligned + size <= gap_end) {
+                memblock_reserve(aligned, size);
+                return (void*)KERNEL_VA(aligned);
             }
-            memblock_reserve(aligned_base, size);
-            return (void*)KERNEL_VA(aligned_base);
+            gap_start = r_end;
+        }
+        phys_addr_t aligned = ALIGN_UP(gap_start, align);
+        if (aligned + size <= m_end) {
+            memblock_reserve(aligned, size);
+            return (void*)KERNEL_VA(aligned);
         }
     }
+
     return NULL;
 }
+
 
 void memblock_free(phys_addr_t addr) {
     addr = KERNEL_PA(addr);
@@ -348,7 +389,7 @@ void memblock_dump(void) {
     }
     printk("end\n");
 
-    print_nomap_regions();
+    // print_nomap_regions();
     printk("Reserved Regions:\n");
     list_for_each_entry(region, &memblock.reserved.regions, struct memblock_region, node) {
         printk("  Region %d: Start: %xu, Size: %xu\n", region->__idx,

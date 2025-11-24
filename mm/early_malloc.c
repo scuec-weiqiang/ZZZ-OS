@@ -8,7 +8,7 @@ static uintptr_t alloc_pos;
 static size_t free_size = 0;
 
 void early_malloc_init() {
-    free_size = SIZE_1M;                 // 可分配内存的大小
+    free_size = SIZE_4K;                 // 可分配内存的大小
     alloc_pos = stack_start - free_size; // 可分配内存的起始地址
 }
 

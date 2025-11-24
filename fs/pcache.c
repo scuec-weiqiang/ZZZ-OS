@@ -18,21 +18,21 @@
 
 struct lru_cache *global_page_cache = NULL;
 
-static inline void page_lock(struct page *page)
+static inline void page_lock(struct page_cache *page)
 {
     spin_lock(&(page->lock));
 }
 
-static inline void page_unlock(struct page *page)
+static inline void page_unlock(struct page_cache *page)
 {
     spin_unlock(&(page->lock));
 }
 
-static struct page *create_page(struct inode *inode, pgoff_t index)
+static struct page_cache *create_page(struct inode *inode, pgoff_t index)
 {
-    struct page *p = (struct page*)malloc(sizeof(struct page));
+    struct page_cache *p = (struct page_cache*)malloc(sizeof(struct page_cache));
     CHECK(p != NULL, "Memory allocation for page failed", return NULL;);
-    memset(p, 0, sizeof(struct page));
+    memset(p, 0, sizeof(struct page_cache));
     p->data = malloc(VFS_PAGE_SIZE);
     CHECK(p->data != NULL, "Memory allocation for page data failed", free(p); return NULL;);
 
@@ -52,7 +52,7 @@ static struct page *create_page(struct inode *inode, pgoff_t index)
     return p;
 }
 
-static int destroy_page(struct page *page)
+static int destroy_page(struct page_cache *page)
 {
     if (page->data)
         free(page->data);
@@ -62,7 +62,7 @@ static int destroy_page(struct page *page)
 
 static hval_t vfs_global_page_lru_hash(const struct hlist_node *node)
 {
-    struct page *page = container_of(node, struct page, p_lru_cache_node);
+    struct page_cache *page = container_of(node, struct page_cache, p_lru_cache_node);
     uintptr_t sb_ptr = (uintptr_t)page->inode;
 
     // 使用黄金比例相关的魔数
@@ -79,8 +79,8 @@ static hval_t vfs_global_page_lru_hash(const struct hlist_node *node)
 }
 static int vfs_global_page_lru_compare(const struct hlist_node *a, const struct hlist_node *b)
 {
-    struct page *page_a = container_of(a, struct page, p_lru_cache_node);
-    struct page *page_b = container_of(b, struct page, p_lru_cache_node);
+    struct page_cache *page_a = container_of(a, struct page_cache, p_lru_cache_node);
+    struct page_cache *page_b = container_of(b, struct page_cache, p_lru_cache_node);
 
     if (page_a->inode == page_b->inode && page_a->index == page_b->index)
     {
@@ -92,13 +92,13 @@ static int vfs_global_page_lru_free(struct lru_node *node)
 {
     CHECK(node != NULL, "vfs_lru_free: node is NULL", return -1;);
 
-    struct page *page = container_of(node, struct page, p_lru_cache_node);
+    struct page_cache *page = container_of(node, struct page_cache, p_lru_cache_node);
     return destroy_page(page);
 }
 
 static int vfs_pcache_sync_func(struct lru_node *node)
 {
-    struct page *page = container_of(node, struct page, p_lru_cache_node);
+    struct page_cache *page = container_of(node, struct page_cache, p_lru_cache_node);
     page_lock(page);
     if (page->dirty && page->inode->i_mapping->a_ops->writepage)
     {
@@ -122,19 +122,19 @@ void pcache_destory()
     lru_destroy(global_page_cache);
 }
 
-struct page *pget(struct inode *inode, uint32_t index)
+struct page_cache *pget(struct inode *inode, uint32_t index)
 {
-    struct page page;
+    struct page_cache page;
     page.inode = inode;
     page.index = index;
     page.lock.lock = 0;
 
-    struct page *found_page = NULL;
+    struct page_cache *found_page = NULL;
     // 1. 在 page cache 里查找 (基于 inode + index 的哈希)
     struct hlist_node *node = hashtable_lookup(inode->i_mapping->page_cache, &page.self_cache_node);
     if (node)
     {
-        found_page = container_of(node, struct page, self_cache_node);
+        found_page = container_of(node, struct page_cache, self_cache_node);
         page_lock(found_page);
         found_page->refcount++;
         lru_get(&found_page->p_lru_cache_node); // 从淘汰链表中移除，防止被回收
@@ -160,7 +160,7 @@ struct page *pget(struct inode *inode, uint32_t index)
     return found_page;
 }
 
-int pput(struct page *page)
+int pput(struct page_cache *page)
 {
     CHECK(page != NULL, "pput: page is NULL", return -1;);
     page_lock(page);
@@ -180,7 +180,7 @@ int pput(struct page *page)
 }
 
 
-int pcache_sync(struct page *page)
+int pcache_sync(struct page_cache *page)
 {
     CHECK(page != NULL, "pcache_lru_sync: pointer *page is NULL", return -1;);
     return vfs_pcache_sync_func(&page->p_lru_cache_node);

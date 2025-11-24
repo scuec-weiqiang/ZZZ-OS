@@ -13,7 +13,7 @@
 #include <fs/block_adapter.h>
 #include <os/string.h>
 
-int ext2_readpage(struct page *page) 
+int ext2_readpage(struct page_cache *page) 
 {
     struct inode *inode = page->inode;
     page->under_io = true;  // 表示正在进行IO操作
@@ -48,7 +48,7 @@ int ext2_readpage(struct page *page)
 }
 
 
-int ext2_writepage(struct page *page) 
+int ext2_writepage(struct page_cache *page) 
 {
     struct inode *inode = page->inode;
     page->under_io = true;  // 表示正在进行IO操作

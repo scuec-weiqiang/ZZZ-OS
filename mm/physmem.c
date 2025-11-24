@@ -7,13 +7,43 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
+#include "os/list.h"
+#include "os/pfn.h"
+#include "os/types.h"
 #include <os/mm/physmem.h>
 #include <os/mm/memblock.h>
+#include <os/printk.h>
+#include <os/string.h>
+#include <os/mm/symbols.h>
+
+#define _PAGE_RESERVED_BIT  (1U<<0)
 
 struct page *mem_map;   // base of page array
 pfn_t total_pages;
 pfn_t first_pfn;
 pfn_t last_pfn;
+
+struct page *pfn_to_page(pfn_t pfn)
+{
+    if (pfn < first_pfn || pfn >= last_pfn) return NULL;
+    return &mem_map[pfn - first_pfn];
+}
+
+pfn_t page_to_pfn(struct page *p)
+{
+    return (pfn_t)( (p - mem_map) + first_pfn );
+}
+
+static void mark_reserved_page_by_range(phys_addr_t base, phys_addr_t size) {
+    pfn_t start = phys_to_pfn(base);
+    pfn_t end = phys_to_pfn((base + size + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1));
+    if (start < first_pfn) start = first_pfn;
+    if (end > last_pfn) end = last_pfn;
+    for (pfn_t p = start; p < end; p++) {
+        struct page *pg = pfn_to_page(p);
+        if (pg) pg->flags |= _PAGE_RESERVED_BIT;
+    }
+}
 
 void physmem_init(void) {
     if (memblock.memory.total_size == 0) {
@@ -43,14 +73,18 @@ void physmem_init(void) {
     printk("Total pages: %u\n", total_pages);
 
     size_t sz = total_pages * sizeof(struct page);
-    // mem_map = (struct page *)memblock_alloc_array(total_pages, sizeof(struct page), PAGE_SIZE);
+    mem_map = (struct page *)memblock_alloc(sz, PAGE_SIZE);
+    for (pfn_t i = 0; i < total_pages; i++) {
+        struct page *pg = &mem_map[i];
+        pg->flags = 0;
+        pg->order = 0xFFFF;
+        pg->refcount = 0;
+        pg->next = NULL;
+    }
 
-}
-
-struct page *pfn_to_page(pfn_t pfn) {
-
-}
-
-pfn_t page_to_pfn(struct page *p) {
-
+    list_for_each_entry(pos, &memblock.reserved.regions, struct memblock_region, node) {
+        mark_reserved_page_by_range(pos->base, pos->size);
+    }    
+    mark_reserved_page_by_range(kernel_start, kernel_size);
+    mark_reserved_page_by_range((phys_addr_t)mem_map, sz);
 }

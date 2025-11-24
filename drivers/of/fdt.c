@@ -210,13 +210,11 @@ int fdt_walk_node(const struct device_node *node, int level) {
     return level;
 }
 
-
+static struct device_node *queue[sizeof(struct device_node *) * 512] = {0};
 int fdt_walk(struct device_node *node, struct list_head *list) {
     if (!node && !list)
         return -1;
 
-    // 使用队列进行深度优先搜索
-    struct device_node **queue = malloc(sizeof(struct device_node *) * 512);
     int front = 0, rear = 0;
 
     queue[rear] = node;

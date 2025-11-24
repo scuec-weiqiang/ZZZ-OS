@@ -98,7 +98,7 @@ int _vsprint(char *out_buff, const char *fmt, va_list vl) {
         out_buff[pos] = '\0';
     return pos;
 }
-
+// #define DEBUG
 /**
  * vprintf: 先计算长度，再格式化
  */
@@ -116,9 +116,13 @@ int _vprint(const char *fmt, va_list vl) {
     _vsprint(print_buff, fmt, vl_copy);
     va_end(vl_copy);
 
+#ifdef DEBUG
+    extern void uart_puts(char *s);
+    uart_puts(print_buff);
+#else
     console_puts(print_buff);
     console_flush();
-    // console_puts(print_buff);
+#endif
     return n;
 }
 
@@ -145,10 +149,15 @@ void panic(const char *fmt, ...) {
     va_start(vl, fmt);
     _vsprint(print_buff, fmt, vl);
     va_end(vl);
-
+    
+#ifdef DEBUG
+    extern void uart_puts(char *s);
+    uart_puts(print_buff);
+#else
     console_puts(print_buff);
     console_puts("\n");
     console_flush();
+#endif
 
     while (1) {
     }
