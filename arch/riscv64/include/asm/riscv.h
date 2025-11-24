@@ -129,6 +129,13 @@ static inline void satp_w(reg_t a)
     // asm volatile("sfence.vma zero, zero");
 }
 
+static inline reg_t satp_r()
+{
+    reg_t a;
+    asm volatile("csrr %0,satp" : "=r"(a));
+    return a;
+}
+
 static inline void medeleg_w(reg_t a)
 {
     asm volatile("csrw medeleg,%0" ::"r"(a));
@@ -285,12 +292,6 @@ static inline reg_t stval_r()
     return a;
 }
 
-static inline reg_t satp_r()
-{
-    reg_t a;
-    asm volatile("csrr %0,satp" : "=r"(a));
-    return a;
-}
 
 static inline void pmpcfg0_w(reg_t a)
 {

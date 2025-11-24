@@ -98,7 +98,7 @@ int _vsprint(char *out_buff, const char *fmt, va_list vl) {
         out_buff[pos] = '\0';
     return pos;
 }
-// #define DEBUG
+#define DEBUG
 /**
  * vprintf: 先计算长度，再格式化
  */

@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-23 15:56:44
- * @LastEditTime: 2025-10-31 01:01:34
+ * @LastEditTime: 2025-11-24 22:20:09
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -261,6 +261,7 @@ int virt_disk_init()
     virt_bdev.read = disk_read_sector;
     virt_bdev.write = disk_write_sector;
 
+    printk("virtio = %xu\n", virtio);
     // 注册设备
     if(block_device_register(&virt_bdev) < 0)
     {

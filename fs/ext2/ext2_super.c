@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-12 18:21:56
- * @LastEditTime: 2025-10-29 22:26:24
+ * @LastEditTime: 2025-11-24 22:53:38
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -48,13 +48,13 @@ struct superblock* ext2_fill_super(struct fs_type *fs_type, struct block_device 
     uint64_t group_cnt = (sb->s_blocks_count + sb->s_blocks_per_group -1)/sb->s_blocks_per_group;
     uint64_t gdt_block = (block_size==1024) ? 2:1 ;
     uint64_t gdb_count = (group_cnt*sizeof(struct ext2_groupdesc)+block_size-1)/block_size;
-    struct ext2_groupdesc *gdt = malloc(group_cnt*sizeof(struct ext2_groupdesc));
+    struct ext2_groupdesc *gdt = page_alloc((gdb_count * block_size + PAGE_SIZE - 1) / PAGE_SIZE);
     //读取块描述符
     ret = block_adapter_read(adap,gdt,gdt_block,gdb_count);
     CHECK(ret>=0,"ext2_fill_super error: read group desc failed!",goto clean;);
 
     /*准备文件系统信息*/
-    struct ext2_fs_info *fs_info = malloc(sizeof(struct ext2_fs_info));
+    struct ext2_fs_info *fs_info = page_alloc(1);
     CHECK(fs_info!=NULL,"ext2_fill_super error: alloc fsinfo memory error",goto clean;);
     fs_info->super = sb;
     fs_info->group_desc = gdt;

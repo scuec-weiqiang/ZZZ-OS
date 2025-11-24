@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-30 20:43:47
- * @LastEditTime: 2025-11-11 23:41:35
+ * @LastEditTime: 2025-11-24 22:01:22
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -21,8 +21,10 @@ typedef struct pgtbl pgtbl_t;
 #define PTE_U (1 << 4)      // 用户模式可访问
 
 #define KERNEL_PA_BASE 0x80000000
-#define KERNEL_VA_BASE 0xffffffffc0000000
-#define KERNEL_VA_START 0xffffffffc0200000
+// #define KERNEL_VA_BASE 0xffffffffc0000000
+#define KERNEL_VA_BASE 0x80000000
+// #define KERNEL_VA_START 0xffffffffc0200000
+#define KERNEL_VA_START 0x80200000
 #define KERNEL_VA(pa) (KERNEL_VA_BASE + ((uint64_t)(pa)) - KERNEL_PA_BASE)
 #define KERNEL_PA(va) ((uint64_t)(va) - KERNEL_VA_BASE + KERNEL_PA_BASE)
 

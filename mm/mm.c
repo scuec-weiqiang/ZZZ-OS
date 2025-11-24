@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-11-17 23:25:27
+ * @LastEditTime: 2025-11-24 22:41:34
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -106,8 +106,27 @@ void kernel_page_table_init() {
     
     arch_switch_pgtbl(kernel_pgd);
     arch_flush_pgtbl();
-    virtio->queue_notify = 0;
+    // virtio->queue_notify = 24; // 设置 virtio 的 queue_notify 地址
     printk("kernel page init success!\n");
+    // printk("virtio = %p\n", virtio);
+    
+        uint64_t satp = satp_r();
+printk("SATP raw = %xu\n", satp);
+printk("SATP mode = %xu, asid = %xu, root_ppn = %xu\n",
+       (satp >> 60) & 0xf,
+       (satp >> 44) & 0xffff,
+       satp & ((1ULL<<44)-1));
+    uint64_t a = arch_va_to_pa(kernel_pgd, 0x80200000);
+    printk("va 0x80200000 to pa = %xu\n", a);
+    a = arch_va_to_pa(kernel_pgd, heap_start);
+    printk("va heap_start to pa = %xu\n", a);
+    a = arch_va_to_pa(kernel_pgd, stack_start);
+    printk("va stack_start to pa = %xu\n", a);
+    a = arch_va_to_pa(kernel_pgd, VIRTIO_MMIO_BASE);
+    printk("va VIRTIO_MMIO_BASE to pa = %xu\n", a);
+
+    a = arch_va_to_pa(kernel_pgd, 0x80349438);
+    printk("va 0x80349438 to pa = %xu\n", a);
 }
 
 int copyin(pgtbl_t *pagetable, char *dst, uintptr_t src_va, size_t len) {

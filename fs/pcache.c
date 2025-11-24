@@ -1,9 +1,9 @@
 /**
- * @FilePath: /ZZZ-OS/fs/pcache.c
+ * @FilePath: /vboot/home/wei/os/ZZZ-OS/fs/pcache.c
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-01 16:25:09
- * @LastEditTime: 2025-10-06 18:59:33
+ * @LastEditTime: 2025-11-24 23:05:41
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -33,7 +33,7 @@ static struct page_cache *create_page(struct inode *inode, pgoff_t index)
     struct page_cache *p = (struct page_cache*)malloc(sizeof(struct page_cache));
     CHECK(p != NULL, "Memory allocation for page failed", return NULL;);
     memset(p, 0, sizeof(struct page_cache));
-    p->data = malloc(VFS_PAGE_SIZE);
+    p->data = page_alloc(1);
     CHECK(p->data != NULL, "Memory allocation for page data failed", free(p); return NULL;);
 
     p->lock.lock = 0;
