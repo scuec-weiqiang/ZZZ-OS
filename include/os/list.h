@@ -112,7 +112,7 @@ static inline void list_add_after(struct list_head *pos, struct list_head *node)
 static inline void list_del(struct list_head *node)
 {
     __list_del(node->prev, node->next);
-    node->next = NULL;
+    INIT_LIST_HEAD(node);
 }
 
 /***************************************************************

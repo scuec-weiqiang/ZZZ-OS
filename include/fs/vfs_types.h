@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-13 16:16:30
- * @LastEditTime: 2025-11-21 16:28:53
+ * @LastEditTime: 2025-11-25 15:12:13
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -17,7 +17,6 @@
 #include <drivers/time.h>
 #include <os/types.h>
 #include <os/pfn.h>
-#include <os/mm/physmem.h>
 
 typedef long long loff_t;
 typedef int64_t ino_t;
@@ -84,6 +83,7 @@ struct superblock
 };
 
 #define VFS_PAGE_SIZE PAGE_SIZE
+typedef uintptr_t pgoff_t; // page index
 
 struct page_cache
 {

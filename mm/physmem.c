@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-20 20:57:07
- * @LastEditTime: 2025-11-21 16:44:30
+ * @LastEditTime: 2025-11-25 21:53:53
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -16,22 +16,23 @@
 #include <os/string.h>
 #include <os/mm/symbols.h>
 
-#define _PAGE_RESERVED_BIT  (1U<<0)
-
 struct page *mem_map;   // base of page array
 pfn_t total_pages;
 pfn_t first_pfn;
 pfn_t last_pfn;
 
-struct page *pfn_to_page(pfn_t pfn)
-{
+struct page *pfn_to_page(pfn_t pfn) {
     if (pfn < first_pfn || pfn >= last_pfn) return NULL;
     return &mem_map[pfn - first_pfn];
 }
 
-pfn_t page_to_pfn(struct page *p)
-{
+pfn_t page_to_pfn(struct page *p) {
     return (pfn_t)( (p - mem_map) + first_pfn );
+}
+
+struct page* phys_to_page(phys_addr_t phys_addr) {
+    pfn_t pfn = phys_to_pfn(phys_addr);
+    return pfn_to_page(pfn);
 }
 
 static void mark_reserved_page_by_range(phys_addr_t base, phys_addr_t size) {
@@ -41,7 +42,7 @@ static void mark_reserved_page_by_range(phys_addr_t base, phys_addr_t size) {
     if (end > last_pfn) end = last_pfn;
     for (pfn_t p = start; p < end; p++) {
         struct page *pg = pfn_to_page(p);
-        if (pg) pg->flags |= _PAGE_RESERVED_BIT;
+        if (pg) pg->flags = PAGE_RESERVED;
     }
 }
 
@@ -79,7 +80,7 @@ void physmem_init(void) {
         pg->flags = 0;
         pg->order = 0xFFFF;
         pg->refcount = 0;
-        pg->next = NULL;
+        INIT_LIST_HEAD(&pg->buddy_node);
     }
 
     list_for_each_entry(pos, &memblock.reserved.regions, struct memblock_region, node) {

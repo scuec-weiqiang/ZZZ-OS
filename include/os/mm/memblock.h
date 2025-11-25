@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-14 16:02:51
- * @LastEditTime: 2025-11-21 00:30:29
+ * @LastEditTime: 2025-11-25 16:24:25
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -54,6 +54,7 @@ extern int memblock_reserve(phys_addr_t base, size_t size);
 extern int memblock_remove(phys_addr_t base, size_t size);
 extern void memblock_mark_nomap(phys_addr_t base, size_t size);
 // extern void memblock_mark_reusable(phys_addr_t base, size_t size);
+extern struct memblock_region* memblock_is_reserved(phys_addr_t base, size_t size);
 extern void *memblock_alloc(size_t size, int align);
 extern void memblock_free(phys_addr_t addr);
 extern uint64_t memblock_phys_total(void);

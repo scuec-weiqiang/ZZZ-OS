@@ -3,7 +3,7 @@
  * @Description: 
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-14 16:00:57
- * @LastEditTime: 2025-11-25 00:55:32
+ * @LastEditTime: 2025-11-25 16:40:53
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -260,7 +260,7 @@ void memblock_mark_nomap(phys_addr_t base, size_t size) {
 void memblock_mark_reusable(phys_addr_t base, size_t size) {
 }
 
-static struct memblock_region* memblock_is_reserved(phys_addr_t base, size_t size) {
+struct memblock_region* memblock_is_reserved(phys_addr_t base, size_t size) {
     struct memblock_type *type = &memblock.reserved;
     struct memblock_region *pos = NULL, *n = NULL;
     list_for_each_entry_safe(pos, n, &type->regions, struct memblock_region, node) {
@@ -296,8 +296,8 @@ void *memblock_alloc(size_t size, int align) {
             if (aligned + size <= gap_end) {
                 memblock_reserve(aligned, size);
                 // printk("\nmemblock_alloc: allocated at %xu\n", aligned);
-                extern void memblock_dump();
-                memblock_dump();
+                // extern void memblock_dump();
+                // memblock_dump();
                 return (void*)KERNEL_VA(aligned);
             }
             gap_start = r_end;
@@ -306,15 +306,14 @@ void *memblock_alloc(size_t size, int align) {
         if (aligned + size <= m_end) {
             memblock_reserve(aligned, size);
             // printk("memblock_alloc: allocated at %xu\n", aligned);
-            extern void memblock_dump();
-            memblock_dump();
+            // extern void memblock_dump();
+            // memblock_dump();
             return (void*)KERNEL_VA(aligned);
         }
     }
 
     return NULL;
 }
-
 
 void memblock_free(phys_addr_t addr) {
     addr = KERNEL_PA(addr);
@@ -354,6 +353,7 @@ void print_nomap_regions(void) {
         }
     }
 }
+
 #include <os/color.h>
 void memblock_dump(void) {
     printk("\n\nMemory Regions:\n");
@@ -362,12 +362,13 @@ void memblock_dump(void) {
         printk(GREEN("  Region %d: Start: %xu, Size: %xu Nomap:%xu\n"), region->__idx, region->base, region->size, region->flags & MEMBLOCK_NOMAP);
     }
     // print_nomap_regions();
-    printk("Reserved Regions:\n");
+    printk("Reserved Regions: %xu\n", memblock.reserved.total_size);
     list_for_each_entry(region, &memblock.reserved.regions, struct memblock_region, node) {
         printk(RED("  Region %d: Start: %xu, Size: %xu\n"), region->__idx,
                region->base,
                region->size);
     }
+    
     printk("end\n\n");
 }
 
