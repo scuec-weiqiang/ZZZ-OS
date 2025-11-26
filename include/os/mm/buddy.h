@@ -24,6 +24,8 @@ extern struct free_area free_area[MAX_ORDER];
 extern void buddy_init(void);
 extern struct page* alloc_pages(unsigned int order);
 extern void free_pages(struct page *page);
+extern void* alloc_page_kva(void);
+extern void free_page_kva(void *kaddr);
 extern void buddy_test(void);
 extern void check_free_area(void);
 

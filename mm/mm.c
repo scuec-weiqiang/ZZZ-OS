@@ -18,6 +18,7 @@
 #include <os/printk.h>
 #include <os/string.h>
 #include <os/mm.h>
+#include <os/mm/early_malloc.h>
 
 pgtbl_t *kernel_pgd = NULL; // kernel_page_global_directory 内核页全局目录
 
@@ -93,6 +94,7 @@ void page_table_init(pgtbl_t *pgd) {
     map_range(pgd, (uintptr_t)heap_start, (uintptr_t)KERNEL_PA(heap_start), (size_t)heap_size, PTE_R | PTE_W);
     map_range(pgd, (uintptr_t)stack_start, (uintptr_t)KERNEL_PA(stack_start), (size_t)stack_size * 2, PTE_R | PTE_W);
 
+    map_range(pgd, KERNEL_VA(early_malloc_start), early_stack_start, early_stack_size, PTE_R | PTE_W );
     map_range(pgd, (uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, PTE_R | PTE_W);
     map_range(pgd, (uintptr_t)0x10000000, (uintptr_t)0x10000000, PAGE_SIZE, PTE_R | PTE_W);
 
@@ -106,27 +108,7 @@ void kernel_page_table_init() {
     
     arch_switch_pgtbl(kernel_pgd);
     arch_flush_pgtbl();
-    // virtio->queue_notify = 24; // 设置 virtio 的 queue_notify 地址
     printk("kernel page init success!\n");
-    // printk("virtio = %p\n", virtio);
-    
-        uint64_t satp = satp_r();
-printk("SATP raw = %xu\n", satp);
-printk("SATP mode = %xu, asid = %xu, root_ppn = %xu\n",
-       (satp >> 60) & 0xf,
-       (satp >> 44) & 0xffff,
-       satp & ((1ULL<<44)-1));
-    uint64_t a = arch_va_to_pa(kernel_pgd, 0x80200000);
-    printk("va 0x80200000 to pa = %xu\n", a);
-    a = arch_va_to_pa(kernel_pgd, heap_start);
-    printk("va heap_start to pa = %xu\n", a);
-    a = arch_va_to_pa(kernel_pgd, stack_start);
-    printk("va stack_start to pa = %xu\n", a);
-    a = arch_va_to_pa(kernel_pgd, VIRTIO_MMIO_BASE);
-    printk("va VIRTIO_MMIO_BASE to pa = %xu\n", a);
-
-    a = arch_va_to_pa(kernel_pgd, 0x80349438);
-    printk("va 0x80349438 to pa = %xu\n", a);
 }
 
 int copyin(pgtbl_t *pagetable, char *dst, uintptr_t src_va, size_t len) {

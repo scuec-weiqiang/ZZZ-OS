@@ -17,6 +17,7 @@
 #include <os/mm.h>
 #include <os/minmax.h>
 #include <os/of.h>
+#include <os/mm/early_malloc.h>
 
 
 #define IS_NOMAP(flags) ((flags) & MEMBLOCK_NOMAP)
@@ -384,18 +385,15 @@ void memblock_init(void) {
     } 
     free_idx_top = INIT_MEMBLOCK_REGIONS - 1;
     
-    // memblock.memory.cnt = 0;
-    // memblock.memory.max = INIT_MEMBLOCK_REGIONS;
     memblock.memory.total_size = 0;
     INIT_LIST_HEAD(&memblock.memory.regions);
 
-    // memblock.reserved.cnt = 0;
-    // memblock.reserved.max = INIT_MEMBLOCK_REGIONS;
     memblock.reserved.total_size = 0;
     INIT_LIST_HEAD(&memblock.reserved.regions);
     of_scan_memory();
 	of_scan_reserved_memory();
 	memblock_reserve(KERNEL_PA(kernel_start), kernel_size);
+    memblock_reserve(early_malloc_start, EARLY_MALLOC_SIZE);
     memblock_dump();
 
     extern void update_alloc_state();

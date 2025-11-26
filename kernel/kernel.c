@@ -49,15 +49,12 @@ void init_kernel(void *dtb) {
         symbols_init();
         // zero_bss();
 		early_malloc_init();
-
 		fdt_init(dtb);
         memblock_init();
+        kernel_page_table_init();
         physmem_init();
         buddy_init();
         buddy_test();
-
-		printk("a\n");
-        kernel_page_table_init();
         // malloc_init();
         // of_test();
         of_platform_populate();

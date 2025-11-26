@@ -213,10 +213,8 @@ void *malloc(size_t size) {
     switch (alloc_state) {
     case EARLY_ALLOC:
         return early_malloc(size);
-        break;
     case MEMBLOCK_ALLOC:
         return memblock_alloc(size,8);
-        break;
     case NORMAL_ALLOC:
         goto nomal;
     }

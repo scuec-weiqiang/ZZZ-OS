@@ -1,15 +1,20 @@
+#include "os/mm/early_malloc.h"
 #include <os/mm/symbols.h>
 #include <os/pfn.h>
 #include <os/printk.h>
 #include <os/types.h>
 #include <os/mm/memblock.h>
 
-static uintptr_t alloc_pos;
+
+static phys_addr_t alloc_pos = 0;
 static size_t free_size = 0;
 
+phys_addr_t early_malloc_start = 0;
+
 void early_malloc_init() {
-    free_size = SIZE_4K;                 // 可分配内存的大小
-    alloc_pos = stack_start - free_size; // 可分配内存的起始地址
+    free_size = EARLY_MALLOC_SIZE;                 // 可分配内存的大小
+    early_malloc_start = stack_start - free_size; // 可分配内存的起始地址
+    alloc_pos = early_stack_start;
 }
 
 void *early_malloc(size_t size) {

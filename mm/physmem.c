@@ -35,6 +35,12 @@ struct page* phys_to_page(phys_addr_t phys_addr) {
     return pfn_to_page(pfn);
 }
 
+phys_addr_t page_to_phys(struct page *page) {
+    if (!page) return 0;
+    pfn_t pfn = page_to_pfn(page);
+    return pfn_to_phys(pfn);
+}
+
 static void mark_reserved_page_by_range(phys_addr_t base, phys_addr_t size) {
     pfn_t start = phys_to_pfn(base);
     pfn_t end = phys_to_pfn((base + size + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1));

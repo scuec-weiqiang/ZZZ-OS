@@ -23,5 +23,6 @@ extern void physmem_init(void);
 extern struct page *pfn_to_page(pfn_t pfn);
 extern pfn_t page_to_pfn(struct page *p);
 extern struct page* phys_to_page(phys_addr_t phys_addr);
+extern phys_addr_t page_to_phys(struct page *page);
 
 #endif

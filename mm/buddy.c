@@ -7,11 +7,14 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
+#include "os/mm.h"
+#include "os/types.h"
 #include <os/mm/buddy.h>
 #include <os/mm/physmem.h>
 #include <os/mm/memblock.h>
 #include <os/printk.h>
 #include <os/rand.h>
+#include <os/string.h>
 
 #define list_to_page(ptr)               list_entry((ptr), struct page, buddy_node)
 #define get_first_page(order)           list_to_page(free_area[(order)].free_list.next)
@@ -43,7 +46,6 @@ void try_merge_order(unsigned int order) {
     }
 
     struct list_head *curr_list = &free_area[order].free_list;
-    struct list_head *next_list = &free_area[order + 1].free_list;
 
     struct page *page, *n;
     list_for_each_entry_safe(page, n, curr_list, struct page, buddy_node) {
@@ -116,6 +118,7 @@ struct page* alloc_pages(unsigned int order) {
 }
 
 void free_pages(struct page *page) {
+    if (!page) return;
     unsigned int order = page->order;
     if (order >= MAX_ORDER) {
         return;
@@ -142,6 +145,18 @@ void free_pages(struct page *page) {
     curr_page->order = order;
     curr_page->flags = PAGE_FREE;
     add_to_free_area(curr_page, order);
+}
+
+void* alloc_page_kva(void) {
+    struct page* page = alloc_pages(0);
+    if (!page) return NULL;
+    return (void*)KERNEL_VA(page_to_phys(page));
+}
+
+void free_page_kva(void *kaddr) {
+    phys_addr_t addr = KERNEL_PA(kaddr);
+    struct page* page = phys_to_page(addr);
+    free_pages(page);
 }
 
 void buddy_init(void) {
@@ -202,14 +217,13 @@ void check_free_area(void)
     }
 }
 
-void buddy_test(void)
-{
+void buddy_test(void) {
     printk("=== Buddy Allocator Test START ===\n");
 
     check_free_area();
 
     printk("\n[1] 测试 alloc/free order=0\n");
-    struct page *p0 = alloc_pages(0);
+    struct page *p0 = alloc_pages(0); 
     printk("alloc order0: pfn=%d\n", page_to_pfn(p0));
     check_free_area();
 
@@ -254,7 +268,6 @@ void buddy_test(void)
             rand_pages[idx] = alloc_pages(order);
             // 有可能因为内存不足返回 NULL，这不是错误
         } else {
-            int order = rand_pages[idx]->order;
             free_pages(rand_pages[idx]);
             rand_pages[idx] = NULL;
         }

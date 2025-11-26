@@ -12,6 +12,10 @@
 
 #include <os/types.h>
 
+#define EARLY_MALLOC_SIZE SIZE_4K  // 4KB
+
+extern phys_addr_t early_malloc_start;
+
 extern void early_malloc_init();
 extern void *early_malloc(size_t size);
 extern void *early_page_alloc(size_t npages);
