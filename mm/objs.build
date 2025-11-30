@@ -5,3 +5,4 @@ OBJ_Y += symbols.o
 OBJ_Y += early_malloc.o
 OBJ_Y += physmem.o
 OBJ_Y += buddy.o
+OBJ_Y += slab.o

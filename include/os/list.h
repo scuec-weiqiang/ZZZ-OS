@@ -4,11 +4,7 @@
 #include <os/container_of.h>
 #include <os/types.h>
 
-struct list_head
-{
-    struct list_head *prev;
-    struct list_head *next;
-};
+
 
 #define LIST_HEAD_INIT(name) {&(name), &(name)}
 

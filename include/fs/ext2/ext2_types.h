@@ -217,13 +217,13 @@ struct ext2_fs_info
     // 缓存
     struct
     {
-        struct bitmap *ibm;
+        bitmap_t *ibm;
         int cached_group; // 当前缓存的块组
         bool dirty;      // inode位图是否被修改
     } ibm_cache;
     struct
     {
-        struct bitmap *bbm;
+        bitmap_t *bbm;
         int cached_group; // 当前缓存的块组
         bool dirty;      // 块位图是否被修改
     } bbm_cache;

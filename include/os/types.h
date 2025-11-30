@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 19:42:44
- * @LastEditTime: 2025-11-20 22:13:44
+ * @LastEditTime: 2025-11-28 16:13:22
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -56,5 +56,11 @@
 #define __user
 
 typedef uint32_t dev_t;
+
+struct list_head
+{
+    struct list_head *prev;
+    struct list_head *next;
+};
 
 #endif

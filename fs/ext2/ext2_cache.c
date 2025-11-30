@@ -40,7 +40,7 @@ int ext2_load_inode_bitmap_cache(struct superblock *vfs_sb,uint64_t group)
         CHECK(ret>=0,"",return -1;);
     }
 
-    struct bitmap *bm = bitmap_create(fs_info->s_ibmb_per_group*vfs_sb->s_block_size);
+    bitmap_t *bm = bitmap_create(fs_info->s_ibmb_per_group*vfs_sb->s_block_size);
     CHECK(bm!=NULL,"",return -1;);
     ret = block_adapter_read(vfs_sb->adap,BITMAP_ARR(bm),fs_info->group_desc[group].bg_inode_bitmap,fs_info->s_ibmb_per_group);
     CHECK(ret>=0,"",free(bm);return -1;);
@@ -160,7 +160,7 @@ int ext2_load_block_bitmap_cache(struct superblock *vfs_sb,int group)
         CHECK(ret>=0,"",return -1;);
     }
 
-    struct bitmap *bm = bitmap_create(fs_info->s_bbmb_per_group*vfs_sb->s_block_size);
+    bitmap_t *bm = bitmap_create(fs_info->s_bbmb_per_group*vfs_sb->s_block_size);
     CHECK(bm!=NULL,"",return -1;);
     ret = block_adapter_read(vfs_sb->adap,BITMAP_ARR(bm),fs_info->group_desc[group].bg_block_bitmap,fs_info->s_bbmb_per_group);
     CHECK(ret>=0,"",free(bm);return -1;);

@@ -80,7 +80,7 @@ int ext2_release_bno(struct superblock *vfs_sb, uint64_t bno)
     CHECK(vfs_sb != NULL, "", return -1;);
 
     struct ext2_fs_info *fs_info = (struct ext2_fs_info *)vfs_sb->s_private;
-    struct bitmap *bm = NULL;
+    bitmap_t *bm = NULL;
     uint32_t group = ext2_bno_group(vfs_sb, bno);
     ext2_load_block_bitmap_cache(vfs_sb, group);
     bm = fs_info->bbm_cache.bbm;

@@ -3,21 +3,20 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-30 17:54:37
- * @LastEditTime: 2025-10-28 16:32:09
+ * @LastEditTime: 2025-11-28 16:31:44
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include <os/bitmap.h>
 #include <os/malloc.h>
 #include <os/printk.h>
 #include <os/string.h>
 
-struct bitmap {
+typedef struct bitmap {
     size_t size;    // bitmap大小（位数）
     uint64_t arr[]; // bitmap数组
-};
+} bitmap_t;
 
-struct bitmap *bitmap_create(size_t size) {
+bitmap_t *bitmap_create(size_t size) {
     if (size == 0 || size > UINT64_MAX / 8) {
         printk("bitmap size error\n");
         return NULL;
@@ -25,7 +24,7 @@ struct bitmap *bitmap_create(size_t size) {
 
     uint64_t bytes_num = (size + 7) / 8;
 
-    struct bitmap *bm = (struct bitmap *)malloc(sizeof(struct bitmap) + bytes_num);
+    bitmap_t *bm = (bitmap_t *)malloc(sizeof(bitmap_t) + bytes_num);
     if (bm == NULL) {
         printk("bitmap: bitmap malloc error\n");
         return NULL;
@@ -38,11 +37,11 @@ struct bitmap *bitmap_create(size_t size) {
     return bm;
 }
 
-void bitmap_destory(struct bitmap *bm) {
+void bitmap_destory(bitmap_t *bm) {
     free(bm);
 }
 
-int bitmap_set_bit(struct bitmap *bm, uint64_t index) {
+int bitmap_set_bit(bitmap_t *bm, uint64_t index) {
 
     if (bm == NULL) {
         printk("bitmap: bitmap is not created\n");
@@ -62,7 +61,7 @@ int bitmap_set_bit(struct bitmap *bm, uint64_t index) {
     return 0;
 }
 
-int bitmap_clear_bit(struct bitmap *bm, uint64_t index) {
+int bitmap_clear_bit(bitmap_t *bm, uint64_t index) {
     if (bm == NULL) {
         printk("bitmap: bitmap is not created\n");
         return 0;
@@ -90,7 +89,7 @@ int bitmap_clear_bit(struct bitmap *bm, uint64_t index) {
  *         - 如果位图为空（bm为NULL），返回0，并打印错误信息 "bitmap: bitmap is not created"
  *         - 如果索引超出位图范围，返回-1，并打印错误信息 "bitmap: index out of range"
  */
-int bitmap_test_bit(struct bitmap *bm, uint64_t index) {
+int bitmap_test_bit(bitmap_t *bm, uint64_t index) {
     if (bm == NULL) {
         printk("bitmap: bitmap is not created\n");
         return 0;
@@ -105,7 +104,7 @@ int bitmap_test_bit(struct bitmap *bm, uint64_t index) {
     return (bm->arr[uint64_index] & (1ULL << bit_index)) == 0 ? 0 : 1;
 }
 
-size_t bitmap_get_size(struct bitmap *bm) {
+size_t bitmap_get_size(bitmap_t *bm) {
     if (bm == NULL) {
         printk("bitmap: bitmap is not created\n");
         return 0;
@@ -113,7 +112,7 @@ size_t bitmap_get_size(struct bitmap *bm) {
     return bm->size;
 }
 
-size_t bitmap_update_size(struct bitmap *bm, uint64_t size) {
+size_t bitmap_update_size(bitmap_t *bm, uint64_t size) {
     if (bm == NULL) {
         printk("bitmap: bitmap is not created\n");
         return 0;
@@ -123,7 +122,7 @@ size_t bitmap_update_size(struct bitmap *bm, uint64_t size) {
     return bm->size;
 }
 
-size_t bitmap_get_bytes_num(struct bitmap *bm) {
+size_t bitmap_get_bytes_num(bitmap_t *bm) {
     if (bm == NULL) {
         printk("bitmap: bitmap is not created\n");
         return 0;
@@ -131,15 +130,15 @@ size_t bitmap_get_bytes_num(struct bitmap *bm) {
     return (bm->size + 7) / 8;
 }
 
-size_t bitmap_get_size_in_bytes(struct bitmap *bm) {
+size_t bitmap_get_size_in_bytes(bitmap_t *bm) {
     if (bm == NULL) {
         printk("bitmap: bitmap is not created\n");
         return 0;
     }
-    return sizeof(struct bitmap) + bitmap_get_bytes_num(bm);
+    return sizeof(bitmap_t) + bitmap_get_bytes_num(bm);
 }
 
-int bitmap_scan_0(struct bitmap *bm) {
+int bitmap_scan_0(bitmap_t *bm) {
     if (bm == NULL) {
         printk("bitmap: bitmap is not created\n");
         return -1;
