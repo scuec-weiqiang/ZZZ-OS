@@ -17,26 +17,28 @@
 struct page;
 
 struct kmem_cache {
-    const char *name;
+    char name[32];
     size_t object_size;
-    size_t alloc_size;
+    size_t align;
     unsigned int objects_per_slab;
+    unsigned long total_slabs;
+
     struct list_head full_slabs;
     struct list_head partial_slabs;
     struct list_head free_slabs;
+
     spinlock_t lock;
-    unsigned long total_objects;
-    unsigned long total_slabs;
+};
+
+struct free_obj {
+    void *next;
 };
 
 struct slab {
     struct list_head list;   // 挂在 cache 的 partial/full/free 链表上
     struct kmem_cache *parent;
-    void *addr;              // slab 起始 KVA 地址 (page aligned)
-    bitmap_t *bitmap;        // 或者 freelist pointer
-    unsigned int free_cnt;   // 空闲对象数量
+    struct free_obj free_object; // 指向下一个空闲对象
     unsigned int inuse;      // in-use objects
-    struct page *page;       // 如果 slab 是单页，则存 page 指针（便于回收）
 };
 
 #endif /* __KERNEL_SLAB_H__ */
