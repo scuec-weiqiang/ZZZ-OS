@@ -17,7 +17,7 @@
 #include <os/malloc.h>
 #include <asm/arch_timer.h>
 #include <os/sched.h>
-#include <os/page.h>
+#include <os/mm/page.h>
 #include <asm/pgtbl.h>
 #include <asm/mm.h>
 

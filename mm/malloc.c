@@ -15,7 +15,7 @@
 #include <os/string.h>
 #include <os/mm/symbols.h>
 #include <os/types.h>
-#include <os/page.h>
+#include <os/mm/page.h>
 #include <os/mm/early_malloc.h>
 #include <os/mm/memblock.h>
 

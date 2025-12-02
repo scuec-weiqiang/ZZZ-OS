@@ -14,7 +14,7 @@
 #include <drivers/virtio.h>
 #include <os/check.h>
 #include <os/malloc.h>
-#include <os/page.h>
+#include <os/mm/page.h>
 #include <os/printk.h>
 #include <os/string.h>
 #include <os/mm.h>

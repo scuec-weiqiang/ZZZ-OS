@@ -41,4 +41,6 @@ struct slab {
     unsigned int inuse;      // in-use objects
 };
 
+extern void slab_test();
+
 #endif /* __KERNEL_SLAB_H__ */

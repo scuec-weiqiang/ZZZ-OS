@@ -5,6 +5,8 @@
 #include <os/mm/buddy.h>
 #include <os/string.h>
 #include <os/list.h>
+#include <os/printk.h>
+#include <os/mm/page.h>
 
 #define get_slab(list_node) list_entry(list_node, struct slab, list)
 
@@ -63,10 +65,11 @@ static struct slab* init_slab(struct kmem_cache *cache) {
     void *mem = alloc_page_kva();
     struct slab *slab = (struct slab*)mem;
     slab->parent = cache;
+    slab->inuse = 0;
     INIT_LIST_HEAD(&slab->list);
     list_add(&cache->free_slabs, &slab->list);
 
-    struct free_obj* obj = (struct free_obj*)((phys_addr_t)slab + (phys_addr_t)sizeof(struct slab));
+    struct free_obj* obj = (struct free_obj*)ALIGN_UP((phys_addr_t)slab + (phys_addr_t)sizeof(struct slab),cache->object_size);
     slab->free_object.next = obj;
     struct free_obj* next = (struct free_obj*)((size_t)obj + cache->object_size);
     
@@ -75,7 +78,7 @@ static struct slab* init_slab(struct kmem_cache *cache) {
         obj = next;
         next =  (struct free_obj*)((size_t)obj + cache->object_size);
     }
-    next->next = NULL;
+    // next->next = NULL;
 
     return slab;
 }
@@ -93,7 +96,7 @@ void *kmem_cache_alloc(struct kmem_cache *cache) {
     }
     else {
         slab = init_slab(cache);
-        list_add(&cache->free_slabs, &slab->list);
+        // list_add(&cache->free_slabs, &slab->list);
         cache->total_slabs++;
     }
 
@@ -103,8 +106,9 @@ void *kmem_cache_alloc(struct kmem_cache *cache) {
     list_add(&cache->partial_slabs, node);
 
     alloc_obj:
-    slab = get_slab(&cache->partial_slabs);
+    slab = get_slab(cache->partial_slabs.next);
     slab->inuse++;
+    phys_addr_t ret = (phys_addr_t)slab->free_object.next;
     if (slab->inuse >= cache->objects_per_slab) {
         list_del(&slab->list);
         list_add(&cache->full_slabs, &slab->list);
@@ -112,10 +116,10 @@ void *kmem_cache_alloc(struct kmem_cache *cache) {
         slab->free_object.next = ((struct free_obj*)slab->free_object.next)->next;
     }
   
-    return slab->free_object.next;
+    return (void*)ret;
 }
 
-void keme_cache_free(void *obj) {
+void kmem_cache_free(void *obj) {
     phys_addr_t slab_base = (phys_addr_t)obj & PAGE_MASK;
     struct slab *slab = (struct slab *)slab_base;
     struct free_obj *free_obj = (struct free_obj*)obj;
@@ -137,6 +141,105 @@ void keme_cache_free(void *obj) {
 
 }
 
-void slab_test() {
+void slab_test()
+{
+    printk("\n==== SLAB TEST BEGIN ====\n");
 
+    /* 1. 创建缓存 */
+    struct kmem_cache *cache = kmem_cache_create("test_cache", 32, 8);
+    if (!cache) {
+        printk("[SLAB TEST] cache create failed\n");
+        return;
+    }
+
+    printk("[SLAB TEST] cache created, obj_size=%d, per_slab=%d\n",
+           (int)cache->object_size,
+           (int)cache->objects_per_slab);
+
+    /* 2. 简单分配测试 */
+    void *a = kmem_cache_alloc(cache);
+    void *b = kmem_cache_alloc(cache);
+    void *c = kmem_cache_alloc(cache);
+
+    printk("[SLAB TEST] alloc a=%xu b=%xu c=%xu\n", a, b, c);
+
+    if (!a || !b || !c) {
+        panic("basic alloc failed");
+    }
+
+    memset(a, 0xAA, 32);
+    memset(b, 0xBB, 32);
+    memset(c, 0xCC, 32);
+
+    kmem_cache_free(a);
+    kmem_cache_free(b);
+    kmem_cache_free(c);
+
+    printk("[SLAB TEST] basic free ok\n");
+
+    /* 3. 打满 slab */
+    int n = cache->objects_per_slab;
+    printk("[SLAB TEST] filling one slab: %d objects\n", n);
+
+    void **objs = alloc_page_kva();
+    for (int i = 0; i < n; i++) {
+        objs[i] = kmem_cache_alloc(cache);
+        if (!objs[i]) {
+            panic("fill slab failed");
+        }
+        memset(objs[i], i, 32);
+    }
+
+    printk("[SLAB TEST] slab filled\n");
+
+    /* 4. 再多分配几个，触发新 slab */
+    void *extra1 = kmem_cache_alloc(cache);
+    void *extra2 = kmem_cache_alloc(cache);
+
+    printk("[SLAB TEST] extra slabs: %xu %xu\n", extra1, extra2);
+
+    if (!extra1 || !extra2) {
+        panic("second slab alloc failed");
+    }
+
+    /* 5. 全部释放 */
+    for (int i = 0; i < n; i++) {
+        kmem_cache_free(objs[i]);
+    }
+
+    kmem_cache_free(extra1);
+    kmem_cache_free(extra2);
+
+    printk("[SLAB TEST] full release done\n");
+
+    free_page_kva(objs);
+
+    /* 6. 随机压力测试 */
+    printk("[SLAB TEST] stress test begin\n");
+
+    void *ptrs[256];
+    memset(ptrs, 0, sizeof(ptrs));
+
+    for (int i = 0; i < 10000; i++) {
+        int idx = i % 256;
+
+        if (ptrs[idx] == NULL) {
+            ptrs[idx] = kmem_cache_alloc(cache);
+            if (!ptrs[idx]) {
+                panic("stress alloc failed");
+            }
+            memset(ptrs[idx], 0x5A, 32);
+        } else {
+            kmem_cache_free(ptrs[idx]);
+            ptrs[idx] = NULL;
+        }
+    }
+
+    for (int i = 0; i < 256; i++) {
+        if (ptrs[i]) {
+            kmem_cache_free(ptrs[i]);
+        }
+    }
+    free_page_kva((void*)cache);
+    printk("==== SLAB TEST PASSED ====\n");
 }

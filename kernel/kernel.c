@@ -27,13 +27,14 @@
 #include <os/mm/early_malloc.h>
 #include <os/module.h>
 #include <os/of.h>
-#include <os/page.h>
+#include <os/mm/page.h>
 #include <os/proc.h>
 #include <os/sched.h>
 #include <os/string.h>
 #include <os/mm/physmem.h>
 #include <drivers/virtio.h>
 #include <os/mm/buddy.h>
+#include <os/mm/slab.h>
 
 uint8_t is_init = 0;
 
@@ -55,6 +56,10 @@ void init_kernel(void *dtb) {
         physmem_init();
         buddy_init();
         buddy_test();
+        check_free_area();
+        slab_test();
+        check_free_area();
+
         // malloc_init();
         // of_test();
         of_platform_populate();
