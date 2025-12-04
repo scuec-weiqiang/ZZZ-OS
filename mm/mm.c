@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-11-24 22:41:34
+ * @LastEditTime: 2025-12-04 22:06:56
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -111,12 +111,12 @@ void build_kernel_mapping(pgtbl_t *pgtbl) {
 }
 
 void kernel_page_table_init() {
-    kernel_pgtbl = mm_new_pgtbl();
+    kernel_pgtbl = new_pgtbl();
     if (kernel_pgtbl == NULL)
         return;
     build_kernel_mapping(kernel_pgtbl);
     
-    pgtbl_switch(kernel_pgd);
+    pgtbl_switch(kernel_pgtbl);
     pgtbl_flush();
     printk("kernel page init success!\n");
 }
@@ -124,7 +124,7 @@ void kernel_page_table_init() {
 int copyin(pgtbl_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
     size_t n = 0;
     while (n < len) {
-        uintptr_t src = arch_walk(pagetable, src_va);
+        uintptr_t src = arch_pgtbl_walk(pagetable, src_va);
         if (src == 0) {
             return -1;
         }
@@ -145,7 +145,7 @@ int copyin(pgtbl_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
 int copyout(pgtbl_t *pagetable, uintptr_t dst_va, char *src, size_t len) {
     size_t n = 0;
     while (n < len) {
-        uintptr_t dst = arch_va_to_pa(pagetable, dst_va);
+        uintptr_t dst = arch_pgtbl_walk(pagetable, dst_va);
         if (dst == 0) {
             return -1;
         }

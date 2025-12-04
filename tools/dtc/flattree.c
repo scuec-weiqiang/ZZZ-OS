@@ -2,7 +2,7 @@
  * (C) Copyright David Gibson <dwg@au1.ibm.com>, IBM Corporation.  2005.
  *
  *
- * This program is kfree software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version.
@@ -925,7 +925,7 @@ struct boot_info *dt_from_blob(const char *fname)
 	if (val != FDT_END)
 		die("Device tree blob doesn't end with FDT_END\n");
 
-	kfree(blob);
+	free(blob);
 
 	fclose(f);
 

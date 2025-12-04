@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-16 18:23:57
- * @LastEditTime: 2025-11-14 15:24:51
+ * @LastEditTime: 2025-12-04 22:05:13
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -19,8 +19,6 @@
 #include <os/sched.h>
 #include <os/mm/page.h>
 #include <asm/pgtbl.h>
-#include <asm/mm.h>
-
 
 struct list_head proc_list_head[MAX_HARTS_NUM];
 
@@ -38,8 +36,6 @@ void proc_setup()
     struct proc* p = scheduler[tp_r()].current;
     p->expire_time = systick() + p->time_slice;
     p->status = PROC_RUNNING;
-    // satp_w(make_satp(p->pgd));
-    // asm volatile ("sfence.vma zero, zero"::);
     sstatus_w(sstatus_r() & ~(1<<8));  
     sepc_w((uintptr_t)(p->trapframe->sepc)); 
     sscratch_w(p->kernel_sp);
@@ -47,8 +43,7 @@ void proc_setup()
     asm volatile("sret");
 }
 
-void proc_init()
-{
+void proc_init() {
     for(int hart_id = 0;hart_id < MAX_HARTS_NUM; hart_id++)
     {
         INIT_LIST_HEAD(&proc_list_head[hart_id])
@@ -57,8 +52,7 @@ void proc_init()
 
 }
 
-struct proc* proc_create(char* path)
-{
+struct proc* proc_create(char* path) {
     CHECK(path != NULL, "proc create failed,path is NULL", return NULL;);
 
     struct file* f = open(path,0);
@@ -72,7 +66,7 @@ struct proc* proc_create(char* path)
     struct proc* new_proc = (struct proc*)kmalloc(sizeof(struct proc));
     memset(new_proc,0,sizeof(struct proc));
     
-    pgtbl_t* user_pgd = arch_new_pgtbl();
+    pgtbl_t* user_pgtbl = new_pgtbl();
 
     char *user_stack = (char*)kmalloc(PROC_STACK_SIZE);
     memset(user_stack,0,PROC_STACK_SIZE);
@@ -88,18 +82,18 @@ struct proc* proc_create(char* path)
             char *user_space = (char*)kmalloc(elf_info->segs[i].memsz); //程序加载到内存里需要的空间
             memset(user_space,0,elf_info->segs[i].memsz);
             memcpy(user_space,elf+elf_info->segs[i].offset,elf_info->segs[i].filesz);
-            map_range(user_pgd, elf_info->segs[i].vaddr, (uintptr_t)KERNEL_PA(user_space), elf_info->segs[i].memsz, PTE_W|PTE_R|PTE_X|PTE_U);
+            map_range(user_pgtbl, elf_info->segs[i].vaddr, (uintptr_t)KERNEL_PA(user_space), elf_info->segs[i].memsz, PTE_W|PTE_R|PTE_X|PTE_U);
             new_proc->code[j] = user_space;
             j++;
         }
     }
-    map_range(user_pgd, PROC_USER_STACK_TOP, (uintptr_t)KERNEL_PA(user_stack), PROC_STACK_SIZE,  PTE_W|PTE_R|PTE_U);
-    page_table_init(user_pgd);
+    map_range(user_pgtbl, PROC_USER_STACK_TOP, (uintptr_t)KERNEL_PA(user_stack), PROC_STACK_SIZE,  PTE_W|PTE_R|PTE_U);
+    build_kernel_mapping(user_pgtbl);
 
     new_proc->elf_info = elf_info;
     new_proc->user_sp = PROC_USER_STACK_BOTTOM;
     new_proc->kernel_sp = (uintptr_t)kernel_stack + PROC_STACK_SIZE;
-    new_proc->pgd = user_pgd;
+    new_proc->pgd = user_pgtbl;
     new_proc->trapframe = (struct trap_frame*)((uintptr_t)kernel_stack + PROC_STACK_SIZE - sizeof(struct trap_frame));
     new_proc->trapframe->sepc = elf_info->entry;
     new_proc->trapframe->sp = new_proc->user_sp;
@@ -114,13 +108,11 @@ struct proc* proc_create(char* path)
     return new_proc;
 }
 
-struct proc* current_proc()
-{
+struct proc* current_proc() {
     return scheduler[tp_r()].current;
 }
 
-int alloc_fd(struct proc* p, struct file* f)
-{
+int alloc_fd(struct proc* p, struct file* f) {
     CHECK(p != NULL && f != NULL, "alloc fd failed", return -1;);
     for(int i=0;i<256;i++)
     {
@@ -133,8 +125,7 @@ int alloc_fd(struct proc* p, struct file* f)
     return -1;
 }
 
-void free_fd(struct proc* p, int fd)
-{
+void free_fd(struct proc* p, int fd) {
     CHECK(p != NULL && fd >=0 && fd < 256, "kfree fd failed", return;);
     if(p->fd_table[fd] != NULL)
     {

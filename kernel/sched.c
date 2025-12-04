@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-01 15:16:19
- * @LastEditTime: 2025-10-31 00:17:13
+ * @LastEditTime: 2025-12-04 22:08:25
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -21,20 +21,14 @@ static struct proc* _get_next_task(int hart_id);
 
 extern void swtch(struct context* old, struct context* new);
 
-/*******************************************************************************************
- * @brief: 
- * @return {*}
-*******************************************************************************************/
-void sched_init(int hart_id)
-{
+void sched_init(int hart_id) {
     INIT_LIST_HEAD(&scheduler[hart_id].ready_queue);
     INIT_LIST_HEAD(&scheduler[hart_id].wait_queue);
     list_splice(&proc_list_head[hart_id],&scheduler[hart_id].ready_queue);
     scheduler[hart_id].current = NULL;
 }
 
-void yield()
-{
+void yield() {
     int hart_id = tp_r();
     struct proc* p = scheduler[hart_id].current;
     if(p == NULL)
@@ -45,9 +39,7 @@ void yield()
     swtch(&p->context,&scheduler[hart_id].ctx);
 }
 
-
-void sched()
-{
+void sched() {
     int hart_id = tp_r();
     scheduler[hart_id].current = NULL;
     arch_timer_start();
@@ -57,15 +49,13 @@ void sched()
         if(!next) continue;
         next->expire_time = next->time_slice + systick();
         scheduler[hart_id].current = next;
-        mm_switch_pgtbl(next->pgd);
-        mm_flush_pgtbl();
+        pgtbl_switch(next->pgd);
+        pgtbl_flush();
         swtch(&scheduler[hart_id].ctx,&next->context);
     }
 } 
 
-
-static struct proc* _get_next_task(int hart_id)
-{
+static struct proc* _get_next_task(int hart_id) {
     if(list_empty(&scheduler[hart_id].ready_queue))//如果就绪队列为空
     { 
         return NULL;
@@ -88,10 +78,6 @@ static struct proc* _get_next_task(int hart_id)
     }
 }
 
-
-static inline uint64_t _check_expire(uint64_t now_time,uint64_t expire_time)
-{
+static inline uint64_t _check_expire(uint64_t now_time,uint64_t expire_time) {
     return now_time >= expire_time?1:0;
 }
-
-

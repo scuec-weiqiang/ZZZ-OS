@@ -5,7 +5,7 @@
  * util_is_printable_string contributed by
  *	Pantelis Antoniou <pantelis.antoniou AT gmail.com>
  *
- * This program is kfree software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version.
@@ -236,7 +236,7 @@ int utilfdt_read_err_len(const char *filename, char **buffp, off_t *len)
 	/* Clean up, including closing stdin; return errno on error */
 	close(fd);
 	if (ret)
-		kfree(buf);
+		free(buf);
 	else
 		*buffp = buf;
 	*len = bufsize;

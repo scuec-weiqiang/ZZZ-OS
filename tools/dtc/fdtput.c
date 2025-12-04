@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
  *
- * This program is kfree software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 2 of
  * the License, or (at your option) any later version.
@@ -268,7 +268,7 @@ static int do_fdtput(struct display_info *disp, const char *filename,
 	if (ret >= 0)
 		ret = utilfdt_write(filename, blob);
 
-	kfree(blob);
+	free(blob);
 	return ret;
 }
 
@@ -316,7 +316,7 @@ int main(int argc, char *argv[])
 		 * - delete node (optionally recursively)
 		 * - rename node
 		 * - pack fdt before writing
-		 * - set amount of kfree space when writing
+		 * - set amount of free space when writing
 		 * - expand fdt if value doesn't fit
 		 */
 		switch (c) {

@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-09-17 19:42:44
- * @LastEditTime: 2025-11-28 16:13:22
+ * @LastEditTime: 2025-12-04 21:17:00
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -39,6 +39,7 @@
     typedef uintptr_t     reg_t;
     typedef uintptr_t     phys_addr_t;
     typedef uintptr_t     virt_addr_t;
+    typedef uintptr_t     addr_t;
 
     typedef enum { false, true } bool;
 

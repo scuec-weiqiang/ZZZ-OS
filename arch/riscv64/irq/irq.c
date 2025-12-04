@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-10 20:21:56
- * @LastEditTime: 2025-11-14 02:19:33
+ * @LastEditTime: 2025-12-04 21:57:34
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -11,7 +11,6 @@
 #include <asm/trap_handler.h>
 #include <asm/interrupt.h>
 #include <asm/clint.h>
-#include <asm/plic.h>
 #include <os/list.h>
 #include <os/printk.h>
 #include <os/kmalloc.h>

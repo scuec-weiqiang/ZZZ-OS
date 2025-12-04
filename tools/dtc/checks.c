@@ -2,7 +2,7 @@
  * (C) Copyright David Gibson <dwg@au1.ibm.com>, IBM Corporation.  2007.
  *
  *
- * This program is kfree software; you can redistribute it and/or
+ * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version.
@@ -441,9 +441,9 @@ static void check_name_properties(struct check *c, struct node *root,
 		/* The name property is correct, and therefore redundant.
 		 * Delete it */
 		*pp = prop->next;
-		kfree(prop->name);
+		free(prop->name);
 		data_free(prop->val);
-		kfree(prop);
+		free(prop);
 	}
 }
 ERROR_IF_NOT_STRING(name_is_string, "name");

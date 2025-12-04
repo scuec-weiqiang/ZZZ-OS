@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-30 20:43:47
- * @LastEditTime: 2025-11-24 22:01:22
+ * @LastEditTime: 2025-12-04 22:04:52
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -40,20 +40,20 @@ struct mm_struct {
     // struct vm_area_struct *vma_list;
 };
 
-extern pgtbl_t *kernel_pgd; // 内核页全局目录
+extern pgtbl_t *kernel_pgtbl; // 内核页全局目录
 
 extern void mm_init();
-extern int map_range(pgtbl_t *pgd, uintptr_t vaddr, uintptr_t paddr, size_t size, uint64_t flags);
-extern int unmap_range(pgtbl_t *pgd, uintptr_t vaddr);
-extern pgtbl_t* mm_new_pgtbl();
-extern void mm_switch_pgtbl(pgtbl_t *pgd);
-extern void mm_flush_pgtbl();
-extern uintptr_t va_to_pa(pgtbl_t *pgd, uintptr_t va);
+extern int map_range(pgtbl_t *pgtbl, uintptr_t vaddr, uintptr_t paddr, size_t size, uint64_t flags);
+extern int unmap_range(pgtbl_t *pgtbl, uintptr_t vaddr);
+extern pgtbl_t* new_pgtbl();
+extern void pgtbl_switch(pgtbl_t *pgtbl);
+extern void pgtbl_flush();
+// extern uintptr_t va_to_pa(pgtbl_t *pgtbl, uintptr_t va);
 
 extern void kernel_page_table_init();
-extern void page_table_init(pgtbl_t *pgd);
+extern void build_kernel_mapping(pgtbl_t *pgtbl);
 
-#define ioremap(pa, size)   map_range(kernel_pgd, (uintptr_t)(pa), (uintptr_t)(pa), (size_t)(size), PTE_R | PTE_W )
-#define iounmap(va)         unmap_range(kernel_pgd, (uintptr_t)(va))
+#define ioremap(pa, size)   map_range(kernel_pgtbl, (uintptr_t)(pa), (uintptr_t)(pa), (size_t)(size), PTE_R | PTE_W )
+#define iounmap(va)         unmap_range(kernel_pgtbl, (uintptr_t)(va))
 
 #endif

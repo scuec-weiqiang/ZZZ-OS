@@ -1,1 +1,1 @@
-OBJ_Y += mm.o
+OBJ_Y += pgtbl.o

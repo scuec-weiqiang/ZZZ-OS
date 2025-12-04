@@ -1,3 +1,12 @@
+/**
+ * @FilePath: /ZZZ-OS/include/os/pgtbl_types.h
+ * @Description:  
+ * @Author: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Date: 2025-12-04 19:04:15
+ * @LastEditTime: 2025-12-04 23:28:08
+ * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
+ * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
+*/
 #ifndef __KERNEL_PGTBL_H
 #define __KERNEL_PGTBL_H
 
@@ -37,8 +46,8 @@ enum big_page {
     BIG_PAGE_1G = 1UL << 30,
 };
 
-typedef struct pgtable {
-    void *root;           // 根页表地址（物理 or 虚拟由架构决定）
+typedef struct pgtbl{
+    void* root;           // 根页表地址（物理 or 虚拟由架构决定）
     uint16_t levels;       // 页表级数（3,4,5...)
     uint16_t page_shift;   // 12 for 4K
     uint32_t asid;          // 地址空间 id
