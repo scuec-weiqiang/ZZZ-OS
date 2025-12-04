@@ -10,7 +10,7 @@
 #include <os/types.h>
 #include <os/printk.h>
 #include <os/elf.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <os/check.h>
 #include <os/string.h>
 
@@ -41,7 +41,7 @@ struct elf_info* elf_parse(const char *elf)
     
     CHECK(elf_check(elf) == 0, "Invalid ELF file", return NULL;);
 
-    struct elf_info *info = malloc(sizeof(struct elf_info));
+    struct elf_info *info = kmalloc(sizeof(struct elf_info));
     CHECK(info != NULL, "Failed to allocate memory for ELF info", return NULL;);
     memset(info, 0, sizeof(struct elf_info));
     info->data = (char *)elf;

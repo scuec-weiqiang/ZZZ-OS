@@ -14,7 +14,7 @@
 #include <asm/plic.h>
 #include <os/list.h>
 #include <os/printk.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <os/irq_domain.h>
 #include <os/irq.h>
 

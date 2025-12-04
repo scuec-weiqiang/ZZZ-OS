@@ -10,7 +10,7 @@
 #include <fs/block_adapter.h>
 #include <os/string.h>
 #include <os/types.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 
 #define ADAP_INVALID_ARG    -1
 #define ADAP_BDEV_NULL      -2
@@ -68,7 +68,7 @@ int block_adapter_register(const char* adap_name,const char* bdev_name, uint32_t
 
 void block_adapter_destory(struct block_adapter *adap)
 {
-    free(adap);
+    kfree(adap);
 }
 
 struct block_adapter* block_adapter_open(const char* name)

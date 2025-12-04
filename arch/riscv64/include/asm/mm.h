@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-30 20:43:47
- * @LastEditTime: 2025-11-11 00:35:05
+ * @LastEditTime: 2025-12-04 13:45:07
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -12,7 +12,7 @@
 
 #include <os/types.h>
 
-typedef struct pgtbl pgtbl_t; // 这个是默认声明，它可能在各架构实现中被重定义
+typedef struct pgtbl pgtbl_t;
 
 enum page_size {
     PAGE_SIZE_4K = 1UL << 12,

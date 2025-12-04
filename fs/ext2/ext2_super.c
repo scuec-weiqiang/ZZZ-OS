@@ -9,7 +9,7 @@
  */
 #include <fs/ext2/ext2_types.h>
 #include <fs/vfs_types.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <fs/ext2/ext2_erros.h>
 #include <os/check.h>
 #include <fs/ext2/ext2_inode.h>
@@ -22,8 +22,8 @@ struct superblock* ext2_fill_super(struct fs_type *fs_type, struct block_device 
     CHECK(fs_type!=NULL && bdev!=NULL,"ext2_fill_super error!",goto clean;);
 
     int ret = 0;
-    struct ext2_superblock *sb = malloc(EXT2_SUPERBLOCK_SIZE);
-    CHECK(sb!=NULL,"ext2_fill_super error: malloc memory failed!",goto clean;);
+    struct ext2_superblock *sb = kmalloc(EXT2_SUPERBLOCK_SIZE);
+    CHECK(sb!=NULL,"ext2_fill_super error: kmalloc memory failed!",goto clean;);
     
     uint64_t read_cnt = (EXT2_SUPERBLOCK_SIZE + bdev->sector_size -1)/bdev->sector_size;
     uint64_t read_pos = EXT2_SUPERBLOCK_OFFSET / bdev->sector_size; 
@@ -81,7 +81,7 @@ struct superblock* ext2_fill_super(struct fs_type *fs_type, struct block_device 
     fs_info->it_cache.dirty = false; // 初始化为false，表示位图未修改
 
     
-    struct superblock *vfs_sb = malloc(sizeof(struct superblock));
+    struct superblock *vfs_sb = kmalloc(sizeof(struct superblock));
     CHECK(vfs_sb!=NULL,"ext2_fill_super error!",goto clean;);
     vfs_sb->s_magic = sb->s_magic;
     vfs_sb->s_block_size =  block_size;
@@ -107,17 +107,17 @@ struct superblock* ext2_fill_super(struct fs_type *fs_type, struct block_device 
     return vfs_sb;
 
 clean:
-    if(sb) free(sb);
-    if(gdt) free(gdt);
-    if(fs_info) free(fs_info);
-    if(vfs_sb) free(vfs_sb);
+    if(sb) kfree(sb);
+    if(gdt) kfree(gdt);
+    if(fs_info) kfree(fs_info);
+    if(vfs_sb) kfree(vfs_sb);
     return NULL;
 }
 
 void ext2_kill_super(struct superblock *vfs_sb)
 {
     struct ext2_fs_info *fs_info = (struct ext2_fs_info*)vfs_sb->s_private;
-    free(fs_info);
+    kfree(fs_info);
     block_adapter_destory(vfs_sb->adap);
 }
 
@@ -133,14 +133,14 @@ int ext2_sync_super(struct superblock *sb)
     uint64_t write_offset = EXT2_SUPERBLOCK_OFFSET % block_size; 
     uint64_t write_pos = EXT2_SUPERBLOCK_OFFSET / block_size; 
     uint64_t write_cnt = EXT2_SUPERBLOCK_SIZE / block_size; 
-    uint8_t *super_buf = malloc(block_size);
+    uint8_t *super_buf = kmalloc(block_size);
     //先读
     ret = block_adapter_read(sb->adap,super_buf,write_pos,write_cnt);
     CHECK(ret>=0,"ext2_sync_super error: read super block failed!",return -1;);
     //再写
     memcpy(super_buf+write_offset,fs_info->super,EXT2_SUPERBLOCK_SIZE);
     ret = block_adapter_write(sb->adap,super_buf,write_pos,write_cnt);
-    free(super_buf);
+    kfree(super_buf);
     CHECK(ret>=0,"ext2_sync_super error: write super block failed!",return -1;);
 
 

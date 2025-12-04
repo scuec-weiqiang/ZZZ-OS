@@ -9,7 +9,7 @@
  */
 #include <fs/vfs_types.h>
 #include <fs/ext2/ext2_types.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <os/check.h>
 #include <asm/spinlock.h>
 #include <fs/ext2/ext2_cache.h>
@@ -101,12 +101,12 @@ static int find_sub(struct block_adapter *adap, uint32_t block_index, uint32_t i
 {
     CHECK(adap != NULL, "", return -1;);
     uint32_t block_size = block_adapter_get_block_size(adap);
-    uint32_t *buf = malloc(block_size);
+    uint32_t *buf = kmalloc(block_size);
     CHECK(buf != NULL, "", return -1;);
     int ret = block_adapter_read(adap, buf, block_index, 1);
     CHECK(ret >= 0, "", return -1;);
     ret = (int)buf[index];
-    free(buf);
+    kfree(buf);
     return ret;
 }
 

@@ -8,7 +8,7 @@
  * Copyright 2011 The Chromium Authors, All Rights Reserved.
  * Copyright 2008 Jon Loeliger, Freescale Semiconductor, Inc.
  *
- * This program is free software; you can redistribute it and/or
+ * This program is kfree software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version.
@@ -38,10 +38,10 @@ static inline void __attribute__((noreturn)) die(const char *str, ...)
 
 static inline void *xmalloc(size_t len)
 {
-	void *new = malloc(len);
+	void *new = kmalloc(len);
 
 	if (!new)
-		die("malloc() failed\n");
+		die("kmalloc() failed\n");
 
 	return new;
 }

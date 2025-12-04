@@ -7,7 +7,7 @@
  * libfdt is dual licensed: you can use it either under the terms of
  * the GPL, or the BSD license, at your option.
  *
- *  a) This library is free software; you can redistribute it and/or
+ *  a) This library is kfree software; you can redistribute it and/or
  *     modify it under the terms of the GNU General Public License as
  *     published by the Free Software Foundation; either version 2 of the
  *     License, or (at your option) any later version.

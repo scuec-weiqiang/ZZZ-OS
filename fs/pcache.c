@@ -14,7 +14,7 @@
 #include <fs/vfs_types.h>
 #include <os/check.h>
 #include <os/string.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 
 struct lru_cache *global_page_cache = NULL;
 
@@ -30,11 +30,11 @@ static inline void page_unlock(struct page_cache *page)
 
 static struct page_cache *create_page(struct inode *inode, pgoff_t index)
 {
-    struct page_cache *p = (struct page_cache*)malloc(sizeof(struct page_cache));
+    struct page_cache *p = (struct page_cache*)kmalloc(sizeof(struct page_cache));
     CHECK(p != NULL, "Memory allocation for page failed", return NULL;);
     memset(p, 0, sizeof(struct page_cache));
     p->data = page_alloc(1);
-    CHECK(p->data != NULL, "Memory allocation for page data failed", free(p); return NULL;);
+    CHECK(p->data != NULL, "Memory allocation for page data failed", kfree(p); return NULL;);
 
     p->lock.lock = 0;
 
@@ -55,8 +55,8 @@ static struct page_cache *create_page(struct inode *inode, pgoff_t index)
 static int destroy_page(struct page_cache *page)
 {
     if (page->data)
-        free(page->data);
-    free(page);
+        kfree(page->data);
+    kfree(page);
     return 0;
 }
 

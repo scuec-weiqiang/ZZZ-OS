@@ -9,7 +9,7 @@
  */
 
 #include <os/string.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 
 /**
  * @brief 将内存区域填充为指定值
@@ -119,7 +119,7 @@ char *strdup(const char *s)
         return NULL;
 
     size_t len = strlen(s) + 1; // 计算长度（含结束符）
-    char *dup = malloc(len);    // 分配内存
+    char *dup = kmalloc(len);    // 分配内存
 
     if (dup != NULL)
     {

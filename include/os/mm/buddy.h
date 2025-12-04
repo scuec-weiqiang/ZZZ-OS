@@ -3,7 +3,7 @@
  * @Description:    
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-25 15:14:10
- * @LastEditTime: 2025-11-25 22:40:35
+ * @LastEditTime: 2025-12-03 16:59:44
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -24,9 +24,10 @@ extern struct free_area free_area[MAX_ORDER];
 extern void buddy_init(void);
 extern struct page* alloc_pages(unsigned int order);
 extern void free_pages(struct page *page);
-extern void* alloc_page_kva(void);
-extern void free_page_kva(void *kaddr);
+extern void* alloc_pages_kva(size_t npages);
+extern void free_pages_kva(void *kaddr);
 extern void buddy_test(void);
 extern void check_free_area(void);
+extern void buddy_dump(void);
 
 #endif /* __KERNEL_BUDDY_H__ */

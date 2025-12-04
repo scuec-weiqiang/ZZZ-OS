@@ -11,7 +11,7 @@
 #include <os/hlist.h>
 #include <os/check.h>
 #include <os/utils.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 
 typedef uint64_t hval_t;
 
@@ -35,10 +35,10 @@ struct hashtable* hashtable_init(size_t num_buckets, hash_func_t hash_func, hash
     CHECK(hash_func != NULL, "Hash function must not be NULL", return NULL;);
     CHECK(hash_compare != NULL, "Key compare function must not be NULL", return NULL;);
 
-    struct hashtable *ht = (struct hashtable *)malloc(sizeof(*ht));
+    struct hashtable *ht = (struct hashtable *)kmalloc(sizeof(*ht));
     CHECK(ht != NULL, "Memory allocation for hashtable failed", return NULL;);
 
-    ht->buckets = (struct hlist_head *)malloc(sizeof(struct hlist_head) * num_buckets);
+    ht->buckets = (struct hlist_head *)kmalloc(sizeof(struct hlist_head) * num_buckets);
     CHECK(ht->buckets != NULL, "Memory allocation for buckets failed", return NULL;);
     for (size_t i = 0; i < num_buckets; i++) {
         hlist_head_init(&ht->buckets[i]);
@@ -55,9 +55,9 @@ struct hashtable* hashtable_init(size_t num_buckets, hash_func_t hash_func, hash
 void hashtable_destroy(struct hashtable *ht)
 {
     CHECK(ht != NULL, "Hashtable must not be NULL", return;);
-    free(ht->buckets);
+    kfree(ht->buckets);
     ht->buckets = NULL;
-    free(ht);
+    kfree(ht);
     ht = NULL;
 }
 

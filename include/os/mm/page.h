@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-25 16:38:00
- * @LastEditTime: 2025-11-28 16:43:38
+ * @LastEditTime: 2025-12-03 16:17:04
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -15,10 +15,8 @@
 #include <asm/spinlock.h>
 #include <os/pfn.h>
 
-#define PAGE_FREE      (0U<<0)
-#define PAGE_RESERVED  (1U<<0)
-
-struct slab;
+#define PAGE_FREE        (0U<<0)
+#define PAGE_RESERVED    (1U<<0)
 
 struct page {
     uint32_t flags;
@@ -31,7 +29,9 @@ struct page {
             struct page *next;
         };
     };
-    struct slab *slab;  // 如果该页被 slab allocator 使用，则指向所属 slab
+    union {
+        struct slab *slab;  // 如果该页被 slab allocator 使用，则指向所属 slab
+    };
 };
 
 #endif /* __KERNEL_PAGE_H__ */

@@ -11,7 +11,7 @@
 #include <fs/fs_type.h>
 #include <fs/dcache.h>
 #include <os/check.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 
 /* 挂载点链表 */
 struct list_head vfs_mount_points = LIST_HEAD_INIT(vfs_mount_points);
@@ -33,7 +33,7 @@ int mount(const char *type_name, const char *bdev_name, int flags)
 
     struct superblock *sb = fs_type->mount(fs_type, bdev, flags);
 
-    struct mount_point *mnt = (struct mount_point *)malloc(sizeof(struct mount_point));
+    struct mount_point *mnt = (struct mount_point *)kmalloc(sizeof(struct mount_point));
     CHECK(mnt != NULL, "Failed to allocate memory for mount point", return -1;);
     mnt->mnt_sb = sb;
     mnt->mnt_root = sb->s_root;

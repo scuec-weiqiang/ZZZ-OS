@@ -9,7 +9,7 @@
 */
 #include <os/irq_chip.h>
 #include <os/string.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 
 struct list_head irq_chip_list = LIST_HEAD_INIT(irq_chip_list);
 
@@ -17,7 +17,7 @@ struct irq_chip* irq_chip_register(char *name, struct irq_chip_ops *ops, int har
     if (!name || !ops) {
         return NULL;
     }
-    struct irq_chip *chip = (struct irq_chip *)malloc(sizeof(struct irq_chip));
+    struct irq_chip *chip = (struct irq_chip *)kmalloc(sizeof(struct irq_chip));
     strcpy(chip->name, name);
     chip->hart = hart;
     chip->ops = ops;

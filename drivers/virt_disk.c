@@ -13,14 +13,14 @@
 #include <os/string.h>
 #include <fs/block_device.h>
 #include <os/printk.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <asm/pgtbl.h>
 #include <os/mm.h>
 
 struct virt_disk
 {
     struct virtq disk_queue;
-    char free[QUEUE_NUM];  
+    char kfree[QUEUE_NUM];  
     int last_used_idx; 
     struct virtio_blk_req req[QUEUE_NUM];
     char status[QUEUE_NUM];
@@ -42,9 +42,9 @@ static int alloc_disk_desc(void)
 {
     for (int i = 0; i < QUEUE_NUM; i++)
     {
-        if (virt_disk.free[i]==1) //找一个没被使用的描述符
+        if (virt_disk.kfree[i]==1) //找一个没被使用的描述符
         {
-            virt_disk.free[i] = 0;
+            virt_disk.kfree[i] = 0;
             return i;
         }
     }
@@ -55,7 +55,7 @@ static void free_disk_desc(int index)
 {
     if (index >= 0 && index < QUEUE_NUM)
     {
-        virt_disk.free[index] = 1;
+        virt_disk.kfree[index] = 1;
 
         // virt_disk.disk_queue.desc[index].addr = 0;
         // virt_disk.disk_queue.desc[index].len = 0;
@@ -244,7 +244,7 @@ int virt_disk_init()
 
     for(uint32_t i = 0;i < QUEUE_NUM;i++)
     {
-        virt_disk.free[i] = 1;// 1表示空闲，0表示正在使用
+        virt_disk.kfree[i] = 1;// 1表示空闲，0表示正在使用
     }
 
     struct virtio_blk_config* info = (struct virtio_blk_config*)&virtio->config[0];

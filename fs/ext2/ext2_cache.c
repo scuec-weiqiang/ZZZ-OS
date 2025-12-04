@@ -1,6 +1,6 @@
 #include <fs/vfs_types.h>
 #include <fs/ext2/ext2_types.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <os/check.h>
 #include <os/string.h>
 #include <fs/block_adapter.h>
@@ -43,7 +43,7 @@ int ext2_load_inode_bitmap_cache(struct superblock *vfs_sb,uint64_t group)
     bitmap_t *bm = bitmap_create(fs_info->s_ibmb_per_group*vfs_sb->s_block_size);
     CHECK(bm!=NULL,"",return -1;);
     ret = block_adapter_read(vfs_sb->adap,BITMAP_ARR(bm),fs_info->group_desc[group].bg_inode_bitmap,fs_info->s_ibmb_per_group);
-    CHECK(ret>=0,"",free(bm);return -1;);
+    CHECK(ret>=0,"",kfree(bm);return -1;);
     fs_info->ibm_cache.dirty = false;
     fs_info->ibm_cache.ibm = bm;
     fs_info->ibm_cache.cached_group = group;
@@ -86,10 +86,10 @@ int ext2_load_inode_table_cache(struct superblock *vfs_sb,uint64_t group)
         CHECK(ret>=0,"",return -1;);
     }
 
-    struct ext2_inode* it = malloc(fs_info->s_itb_per_group*vfs_sb->s_block_size);
+    struct ext2_inode* it = kmalloc(fs_info->s_itb_per_group*vfs_sb->s_block_size);
     CHECK(it!=NULL,"",return -1;);
     ret = block_adapter_read(vfs_sb->adap,it,fs_info->group_desc[group].bg_inode_table,fs_info->s_itb_per_group);
-    CHECK(ret>=0,"",free(it);return -1;);
+    CHECK(ret>=0,"",kfree(it);return -1;);
     fs_info->it_cache.dirty = false;
     fs_info->it_cache.it = it;
     fs_info->it_cache.cached_group = group;
@@ -163,7 +163,7 @@ int ext2_load_block_bitmap_cache(struct superblock *vfs_sb,int group)
     bitmap_t *bm = bitmap_create(fs_info->s_bbmb_per_group*vfs_sb->s_block_size);
     CHECK(bm!=NULL,"",return -1;);
     ret = block_adapter_read(vfs_sb->adap,BITMAP_ARR(bm),fs_info->group_desc[group].bg_block_bitmap,fs_info->s_bbmb_per_group);
-    CHECK(ret>=0,"",free(bm);return -1;);
+    CHECK(ret>=0,"",kfree(bm);return -1;);
     fs_info->bbm_cache.dirty = false;
     fs_info->bbm_cache.bbm = bm;
     fs_info->bbm_cache.cached_group = group;

@@ -8,7 +8,7 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
 #include <os/irq_domain.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 
 struct list_head irq_domains = LIST_HEAD_INIT(irq_domains);
 static unsigned int next_virq_base = 0;
@@ -23,7 +23,7 @@ struct irq_domain *irq_domain_create(struct irq_chip *chip, unsigned int virq_ba
     struct irq_domain *domain;
     unsigned int i;
 
-    domain = (struct irq_domain *)malloc(sizeof(struct irq_domain));
+    domain = (struct irq_domain *)kmalloc(sizeof(struct irq_domain));
     if (!domain)
         return NULL;
 
@@ -31,9 +31,9 @@ struct irq_domain *irq_domain_create(struct irq_chip *chip, unsigned int virq_ba
     domain->virq_base = virq_base;
     domain->hw_irq_count = hw_irq_count;
 
-    domain->hw_to_virq = (int *)malloc(sizeof(unsigned int) * hw_irq_count);
+    domain->hw_to_virq = (int *)kmalloc(sizeof(unsigned int) * hw_irq_count);
     if (!domain->hw_to_virq) {
-        free(domain);
+        kfree(domain);
         return NULL;
     }
 
@@ -52,8 +52,8 @@ void irq_domain_destroy(struct irq_domain *domain) {
         return;
 
     list_del(&domain->link);
-    free(domain->hw_to_virq);
-    free(domain);
+    kfree(domain->hw_to_virq);
+    kfree(domain);
 }
 
 int irq_domain_add_mapping(struct irq_domain *domain, unsigned int hwirq) {

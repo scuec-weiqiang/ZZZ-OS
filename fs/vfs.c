@@ -18,7 +18,7 @@
 #include <os/string.h>
 
 #include <fs/icache.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <fs/chrdev.h>
 
 struct dentry* current = NULL;
@@ -47,13 +47,13 @@ struct dentry* lookup(const char* path)
         d_child = dget(d_parent, token);
         if(d_child->d_inode == NULL) // 目录项不存在
         {
-            free(path_copy);
+            kfree(path_copy);
             return NULL;
         }
         token = path_split(NULL, "/");
         d_parent = d_child;
     }
-    free(path_copy);
+    kfree(path_copy);
     return d_parent;
 }
 
@@ -66,8 +66,8 @@ struct dentry* mkdir(const char* path,uint16_t mode)
 
     char* path_copy = strdup(path); // 复制路径字符串，因为path_split会修改原字符串
 
-    char* basename = (char*)malloc(strlen(path_copy) + 1);
-    char* dirname = (char*)malloc(VFS_NAME_MAX + 1);
+    char* basename = (char*)kmalloc(strlen(path_copy) + 1);
+    char* dirname = (char*)kmalloc(VFS_NAME_MAX + 1);
 
     base_dir_split(path_copy, dirname, basename);
 
@@ -83,9 +83,9 @@ struct dentry* mkdir(const char* path,uint16_t mode)
     d_parent->d_inode->i_ops->mkdir(d_parent->d_inode, d_child, mode);
 
 exit:
-    free(basename);
-    free(dirname);
-    free(path_copy);
+    kfree(basename);
+    kfree(dirname);
+    kfree(path_copy);
     return d_child; 
 
 }
@@ -99,8 +99,8 @@ struct dentry* rmdir(const char* path)
 
 //     char* path_copy = strdup(path); // 复制路径字符串，因为path_split会修改原字符串
 
-//     char* basename = malloc(strlen(path_copy) + 1);
-//     char* dirname = malloc(VFS_NAME_MAX + 1);
+//     char* basename = kmalloc(strlen(path_copy) + 1);
+//     char* dirname = kmalloc(VFS_NAME_MAX + 1);
 
 //     base_dir_split(path_copy, dirname, basename);
 
@@ -116,9 +116,9 @@ struct dentry* rmdir(const char* path)
 //     d_parent->d_inode->i_ops->rmdir(d_parent->d_inode, d_child);
 
 // exit:
-//     free(basename);
-//     free(dirname);
-//     free(path_copy);
+//     kfree(basename);
+//     kfree(dirname);
+//     kfree(path_copy);
 //     return d_child; 
 return NULL;
 }
@@ -132,8 +132,8 @@ struct dentry* mknod(const char* path,uint16_t mode,dev_t devnr)
 
     char* path_copy = strdup(path); // 复制路径字符串，因为path_split会修改原字符串
 
-    char* basename = (char*)malloc(strlen(path_copy) + 1);
-    char* dirname = (char*)malloc(VFS_NAME_MAX + 1);
+    char* basename = (char*)kmalloc(strlen(path_copy) + 1);
+    char* dirname = (char*)kmalloc(VFS_NAME_MAX + 1);
 
     base_dir_split(path_copy, dirname, basename);
 
@@ -149,9 +149,9 @@ struct dentry* mknod(const char* path,uint16_t mode,dev_t devnr)
     d_parent->d_inode->i_ops->mknod(d_parent->d_inode, d_child, mode, devnr);
 
 exit:
-    free(basename);
-    free(dirname);
-    free(path_copy);
+    kfree(basename);
+    kfree(dirname);
+    kfree(path_copy);
     return d_child; 
 
 }
@@ -165,8 +165,8 @@ struct dentry* creat(const char* path,uint16_t mode)
 
     char* path_copy = strdup(path); // 复制路径字符串，因为path_split会修改原字符串
 
-    char* basename = (char*)malloc(strlen(path_copy) + 1);
-    char* dirname = (char*)malloc(VFS_NAME_MAX + 1);
+    char* basename = (char*)kmalloc(strlen(path_copy) + 1);
+    char* dirname = (char*)kmalloc(VFS_NAME_MAX + 1);
 
     base_dir_split(path_copy, dirname, basename);
 
@@ -181,16 +181,16 @@ struct dentry* creat(const char* path,uint16_t mode)
     d_parent->d_inode->i_ops->creat(d_parent->d_inode, d_child, mode);
 
 exit:
-    free(basename);
-    free(dirname);
-    free(path_copy);
+    kfree(basename);
+    kfree(dirname);
+    kfree(path_copy);
     return d_child; 
 }
 
 struct file* open(const char *path, uint32_t flags)
 {
     struct dentry *dentry = lookup(path);
-    struct file *file = (struct file*)malloc(sizeof(struct file));
+    struct file *file = (struct file*)kmalloc(sizeof(struct file));
     file->f_dentry = dentry;
     file->f_inode = dentry->d_inode;
     if(S_ISCHR(file->f_inode->i_mode))
@@ -199,7 +199,7 @@ struct file* open(const char *path, uint32_t flags)
     }
     if(file->f_inode->f_ops == NULL)
     {
-        free(file);
+        kfree(file);
         return NULL;
     }
     if (file->f_inode->f_ops->open != NULL)
@@ -226,7 +226,7 @@ void close(struct file *file)
     dput(file->f_dentry);
     iput(file->f_inode);
     // pput(file->f_inode->i_mapping->cached_pages);
-    free(file);
+    kfree(file);
 }
 
 ssize_t read(struct file *file, char *buf, size_t read_size) 

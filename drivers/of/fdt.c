@@ -9,7 +9,7 @@
  */
 #include <drivers/of/fdt.h>
 #include <os/bswap.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <fs/path.h>
 #include <os/printk.h>
 #include <os/string.h>
@@ -28,7 +28,7 @@ struct device_node *phandle_table[PHANDLE_MAX] = {NULL};
 const struct device_node *fdt_root_node;
 
 struct device_node *fdt_new_node(const char *name, struct device_node *parent) {
-    struct device_node *node = (struct device_node *)malloc(sizeof(struct device_node));
+    struct device_node *node = (struct device_node *)kmalloc(sizeof(struct device_node));
     node->name = strdup(name);
     node->full_path = NULL;
     node->parent = parent;
@@ -41,7 +41,7 @@ struct device_node *fdt_new_node(const char *name, struct device_node *parent) {
         int parent_path_len = parent ? strlen(parent->full_path) : 0;
         int path_len = parent_path_len + 1 + name_len + 1;
 
-        node->full_path = (char *)malloc(path_len);
+        node->full_path = (char *)kmalloc(path_len);
         memcpy(node->full_path, parent->full_path, parent_path_len);
         memcpy(node->full_path + parent_path_len, "/", 1);
         memcpy(node->full_path + parent_path_len + 1, name, name_len + 1);
@@ -62,24 +62,24 @@ void fdt_free_node(struct device_node *node) {
             child = next;
         }
     }
-    free(node->name);
+    kfree(node->name);
     struct device_prop *prop = node->properties;
     while (prop) {
         struct device_prop *next = prop->next;
-        free(prop->name);
-        free(prop);
+        kfree(prop->name);
+        kfree(prop);
         prop = next;
     }
-    free(node);
+    kfree(node);
 }
 
 struct device_prop *fdt_new_prop(const char *name, uint32_t len, const void *value) {
     if (!name || !value)
         return NULL;
-    struct device_prop *prop = (struct device_prop *)malloc(sizeof(struct device_prop));
+    struct device_prop *prop = (struct device_prop *)kmalloc(sizeof(struct device_prop));
     prop->name = strdup(name);
     prop->length = len;
-    prop->value = malloc(len);
+    prop->value = kmalloc(len);
     memcpy(prop->value, value, len);
     prop->next = NULL;
     return prop;
@@ -88,9 +88,9 @@ struct device_prop *fdt_new_prop(const char *name, uint32_t len, const void *val
 void fdt_free_prop(struct device_prop *prop) {
     if (!prop)
         return;
-    free(prop->name);
-    free(prop->value);
-    free(prop);
+    kfree(prop->name);
+    kfree(prop->value);
+    kfree(prop);
 }
 
 int fdt_add_prop(struct device_node *node, struct device_prop *prop) {

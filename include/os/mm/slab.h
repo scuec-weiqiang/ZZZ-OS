@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-28 16:10:33
- * @LastEditTime: 2025-11-28 17:12:49
+ * @LastEditTime: 2025-12-04 14:36:49
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -34,13 +34,19 @@ struct free_obj {
     void *next;
 };
 
+#define SLAB_MAGIC 0x5A5A5A5A
+
 struct slab {
-    struct list_head list;   // 挂在 cache 的 partial/full/free 链表上
+    uint32_t magic;
+    struct list_head list;   // 挂在 cache 的 partial/full/kfree 链表上
     struct kmem_cache *parent;
     struct free_obj free_object; // 指向下一个空闲对象
     unsigned int inuse;      // in-use objects
 };
 
-extern void slab_test();
+extern void slab_init();
+extern struct kmem_cache* kmem_cache_create(const char *name, size_t size, size_t align);
+extern void* __kmalloc(size_t size);
+extern void __kfree(void *obj);
 
 #endif /* __KERNEL_SLAB_H__ */

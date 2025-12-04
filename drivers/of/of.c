@@ -3,7 +3,7 @@
 #include <os/printk.h>
 #include <os/string.h>
 #include <fs/path.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <os/bswap.h>
 
 struct device_node *of_find_node_by_path(const char *path) {
@@ -28,7 +28,7 @@ struct device_node *of_find_node_by_compatible(const char *compatible_prop) {
         return NULL;
 
     // 使用队列进行深度优先搜索
-    struct device_node **queue = (struct device_node **)malloc(sizeof(struct device_node *) * 512);
+    struct device_node **queue = (struct device_node **)kmalloc(sizeof(struct device_node *) * 512);
     int front = 0, rear = 0;
 
     queue[rear] = (struct device_node *)fdt_root_node;
@@ -43,7 +43,7 @@ struct device_node *of_find_node_by_compatible(const char *compatible_prop) {
         while (prop) {
             if (strcmp(prop->name, "compatible") == 0) {
                 if (strncmp((const char *)prop->value, compatible_prop, prop->length) == 0) {
-                    free(queue);
+                    kfree(queue);
                     return current_node;
                 }
             }
@@ -59,7 +59,7 @@ struct device_node *of_find_node_by_compatible(const char *compatible_prop) {
         }
     }
 
-    free(queue);
+    kfree(queue);
     return NULL;
 }
 
@@ -105,7 +105,7 @@ uint32_t *of_read_u32_array(const struct device_node *node, const char *prop_nam
     if (!prop || prop->length < count * sizeof(uint32_t))
         return NULL;
 
-    uint32_t *array = (uint32_t *)malloc(count * sizeof(uint32_t));
+    uint32_t *array = (uint32_t *)kmalloc(count * sizeof(uint32_t));
     for (int i = 0; i < count; i++) {
         array[i] = be32_to_cpu(((uint32_t *)prop->value)[i]);
     }
@@ -120,7 +120,7 @@ uint64_t *of_read_u64_array(const struct device_node *node, const char *prop_nam
     if (!prop || prop->length < count * sizeof(uint64_t))
         return NULL;
 
-    uint64_t *array = (uint64_t *)malloc(count * sizeof(uint64_t));
+    uint64_t *array = (uint64_t *)kmalloc(count * sizeof(uint64_t));
     for (int i = 0; i < count; i++) {
         array[i] = be64_to_cpu(((uint64_t *)prop->value)[i]);
     }
@@ -137,7 +137,7 @@ struct device_node *of_find_node_by_phandle(uint32_t phandle) {
 
     int front = 0;
     int rear = 0;
-    struct device_node **queue = (struct device_node **)malloc(sizeof(struct device_node*)*512);
+    struct device_node **queue = (struct device_node **)kmalloc(sizeof(struct device_node*)*512);
     queue[rear] = (struct device_node *)fdt_root_node;
     rear++;
 
@@ -157,7 +157,7 @@ struct device_node *of_find_node_by_phandle(uint32_t phandle) {
             child = child->sibling;
         }
     }
-    free(queue);
+    kfree(queue);
     return NULL;
 }
 

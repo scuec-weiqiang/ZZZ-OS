@@ -16,14 +16,14 @@
 #include <os/proc.h>
 #include <os/sched.h>
 #include <fs/vfs.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 
 int sys_printf(struct trap_frame *ctx)
 {
-    char *s = malloc(ctx->a1); // 获取字符串指针
+    char *s = kmalloc(ctx->a1); // 获取字符串指针
     copyin(current_proc()->pgd, s, (uintptr_t)ctx->a0, (uintptr_t)ctx->a1);
     int n = printk("%s", s);
-    free(s);
+    kfree(s);
     return n;
 }
 
@@ -74,13 +74,13 @@ int sys_read(struct trap_frame *ctx)
     {
         return -1;
     }
-    char *kbuf = (char*)malloc(count);
+    char *kbuf = (char*)kmalloc(count);
     ssize_t ret = read(p->fd_table[fd], kbuf, count);
     if(ret >= 0)
     {
         copyout(p->pgd, (uintptr_t)buf, kbuf, ret);
     }
-    free(kbuf);
+    kfree(kbuf);
     return ret;
 }
 
@@ -94,10 +94,10 @@ int sys_write(struct trap_frame *ctx)
     {
         return -1;
     }
-    char *kbuf = (char*)malloc(count);
+    char *kbuf = (char*)kmalloc(count);
     copyin(p->pgd, kbuf, (uintptr_t)buf, count);
     ssize_t ret = write(p->fd_table[fd], kbuf, count);
-    free(kbuf);
+    kfree(kbuf);
     return ret;
 }
 

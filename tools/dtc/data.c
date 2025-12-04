@@ -2,7 +2,7 @@
  * (C) Copyright David Gibson <dwg@au1.ibm.com>, IBM Corporation.  2005.
  *
  *
- * This program is free software; you can redistribute it and/or
+ * This program is kfree software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version.
@@ -27,13 +27,13 @@ void data_free(struct data d)
 	m = d.markers;
 	while (m) {
 		nm = m->next;
-		free(m->ref);
-		free(m);
+		kfree(m->ref);
+		kfree(m);
 		m = nm;
 	}
 
 	if (d.val)
-		free(d.val);
+		kfree(d.val);
 }
 
 struct data data_grow_for(struct data d, int xlen)

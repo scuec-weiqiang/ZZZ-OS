@@ -13,7 +13,7 @@
 #include <os/mm/symbols.h>
 #include <drivers/virtio.h>
 #include <os/check.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <os/mm/page.h>
 #include <os/printk.h>
 #include <os/string.h>

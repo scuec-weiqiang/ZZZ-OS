@@ -31,7 +31,7 @@ struct lru_cache
     size_t node_count;    // 当前缓存数量
     struct hashtable *ht; // 哈希表，用于快速查找
     struct list_head lhead;    // 双向链表，用于维护访问顺序
-    lru_free_func_t free; // 释放节点的回调函数
+    lru_free_func_t kfree; // 释放节点的回调函数
     lru_sync_func_t sync; // 同步节点的回调函数
 };
 

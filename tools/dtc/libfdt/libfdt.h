@@ -7,7 +7,7 @@
  * libfdt is dual licensed: you can use it either under the terms of
  * the GPL, or the BSD license, at your option.
  *
- *  a) This library is free software; you can redistribute it and/or
+ *  a) This library is kfree software; you can redistribute it and/or
  *     modify it under the terms of the GNU General Public License as
  *     published by the Free Software Foundation; either version 2 of the
  *     License, or (at your option) any later version.
@@ -1031,7 +1031,7 @@ int fdt_pack(void *fdt);
  *
  * returns:
  *	0, on success
- *	-FDT_ERR_NOSPACE, there is insufficient free space in the blob to
+ *	-FDT_ERR_NOSPACE, there is insufficient kfree space in the blob to
  *		contain the new reservation entry
  *	-FDT_ERR_BADMAGIC,
  *	-FDT_ERR_BADVERSION,
@@ -1083,7 +1083,7 @@ int fdt_del_mem_rsv(void *fdt, int n);
  *
  * returns:
  *	0, on success
- *	-FDT_ERR_NOSPACE, there is insufficient free space in the blob
+ *	-FDT_ERR_NOSPACE, there is insufficient kfree space in the blob
  *		to contain the new name
  *	-FDT_ERR_BADOFFSET, nodeoffset did not point to FDT_BEGIN_NODE tag
  *	-FDT_ERR_BADMAGIC,
@@ -1109,7 +1109,7 @@ int fdt_set_name(void *fdt, int nodeoffset, const char *name);
  *
  * returns:
  *	0, on success
- *	-FDT_ERR_NOSPACE, there is insufficient free space in the blob to
+ *	-FDT_ERR_NOSPACE, there is insufficient kfree space in the blob to
  *		contain the new property value
  *	-FDT_ERR_BADOFFSET, nodeoffset did not point to FDT_BEGIN_NODE tag
  *	-FDT_ERR_BADLAYOUT,
@@ -1140,7 +1140,7 @@ int fdt_setprop(void *fdt, int nodeoffset, const char *name,
  *
  * returns:
  *	0, on success
- *	-FDT_ERR_NOSPACE, there is insufficient free space in the blob to
+ *	-FDT_ERR_NOSPACE, there is insufficient kfree space in the blob to
  *		contain the new property value
  *	-FDT_ERR_BADOFFSET, nodeoffset did not point to FDT_BEGIN_NODE tag
  *	-FDT_ERR_BADLAYOUT,
@@ -1175,7 +1175,7 @@ static inline int fdt_setprop_u32(void *fdt, int nodeoffset, const char *name,
  *
  * returns:
  *	0, on success
- *	-FDT_ERR_NOSPACE, there is insufficient free space in the blob to
+ *	-FDT_ERR_NOSPACE, there is insufficient kfree space in the blob to
  *		contain the new property value
  *	-FDT_ERR_BADOFFSET, nodeoffset did not point to FDT_BEGIN_NODE tag
  *	-FDT_ERR_BADLAYOUT,
@@ -1221,7 +1221,7 @@ static inline int fdt_setprop_cell(void *fdt, int nodeoffset, const char *name,
  *
  * returns:
  *	0, on success
- *	-FDT_ERR_NOSPACE, there is insufficient free space in the blob to
+ *	-FDT_ERR_NOSPACE, there is insufficient kfree space in the blob to
  *		contain the new property value
  *	-FDT_ERR_BADOFFSET, nodeoffset did not point to FDT_BEGIN_NODE tag
  *	-FDT_ERR_BADLAYOUT,
@@ -1251,7 +1251,7 @@ static inline int fdt_setprop_cell(void *fdt, int nodeoffset, const char *name,
  *
  * returns:
  *	0, on success
- *	-FDT_ERR_NOSPACE, there is insufficient free space in the blob to
+ *	-FDT_ERR_NOSPACE, there is insufficient kfree space in the blob to
  *		contain the new property value
  *	-FDT_ERR_BADOFFSET, nodeoffset did not point to FDT_BEGIN_NODE tag
  *	-FDT_ERR_BADLAYOUT,
@@ -1282,7 +1282,7 @@ int fdt_appendprop(void *fdt, int nodeoffset, const char *name,
  *
  * returns:
  *	0, on success
- *	-FDT_ERR_NOSPACE, there is insufficient free space in the blob to
+ *	-FDT_ERR_NOSPACE, there is insufficient kfree space in the blob to
  *		contain the new property value
  *	-FDT_ERR_BADOFFSET, nodeoffset did not point to FDT_BEGIN_NODE tag
  *	-FDT_ERR_BADLAYOUT,
@@ -1317,7 +1317,7 @@ static inline int fdt_appendprop_u32(void *fdt, int nodeoffset,
  *
  * returns:
  *	0, on success
- *	-FDT_ERR_NOSPACE, there is insufficient free space in the blob to
+ *	-FDT_ERR_NOSPACE, there is insufficient kfree space in the blob to
  *		contain the new property value
  *	-FDT_ERR_BADOFFSET, nodeoffset did not point to FDT_BEGIN_NODE tag
  *	-FDT_ERR_BADLAYOUT,
@@ -1362,7 +1362,7 @@ static inline int fdt_appendprop_cell(void *fdt, int nodeoffset,
  *
  * returns:
  *	0, on success
- *	-FDT_ERR_NOSPACE, there is insufficient free space in the blob to
+ *	-FDT_ERR_NOSPACE, there is insufficient kfree space in the blob to
  *		contain the new property value
  *	-FDT_ERR_BADOFFSET, nodeoffset did not point to FDT_BEGIN_NODE tag
  *	-FDT_ERR_BADLAYOUT,
@@ -1434,7 +1434,7 @@ int fdt_add_subnode_namelen(void *fdt, int parentoffset,
  *	-FDT_ERR_BADOFFSET, if parentoffset did not point to an FDT_BEGIN_NODE tag
  *	-FDT_ERR_EXISTS, if the node at parentoffset already has a subnode of
  *		the given name
- *	-FDT_ERR_NOSPACE, if there is insufficient free space in the
+ *	-FDT_ERR_NOSPACE, if there is insufficient kfree space in the
  *		blob to contain the new node
  *	-FDT_ERR_NOSPACE
  *	-FDT_ERR_BADLAYOUT

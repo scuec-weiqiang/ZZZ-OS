@@ -20,7 +20,7 @@
 #include <os/check.h>
 #include <os/string.h>
 #include <fs/ext2/ext2_types.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <os/printk.h>
 
 
@@ -33,7 +33,7 @@ struct superblock *alloc_super(struct fs_type *fs_type)
     struct superblock *sb;
     
     // 1. 分配内存
-    sb = malloc(sizeof(struct superblock));
+    sb = kmalloc(sizeof(struct superblock));
     CHECK(sb != NULL, "vfs_alloc_super: Cannot allocate memory for superblock", return NULL;);
     
     // 2. 清零初始化
@@ -63,7 +63,7 @@ void free_super(struct superblock *sb)
     
     // sb->s_ops
     // 释放内存
-    free(sb);
+    kfree(sb);
 
     printk("VFS: Freed superblock %p\n", sb);
 }

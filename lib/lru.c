@@ -11,7 +11,7 @@
 #include <os/list.h>
 #include <os/check.h>
 #include <os/utils.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <os/lru.h>
 
 /**
@@ -20,7 +20,7 @@
 * 初始化一个LRU缓存对象。
 *
 * @param capacity 缓存容量
-* @param free 释放缓存节点的回调函数
+* @param kfree 释放缓存节点的回调函数
 * @param hash_func 哈希函数
 * @param hash_compare 哈希比较函数
 *
@@ -34,17 +34,17 @@ struct lru_cache* lru_init(size_t capacity, lru_free_func_t free_func, lru_sync_
     CHECK(hash_compare != NULL, "Key compare function must not be NULL", return NULL;);
     // CHECK(sync_func != NULL, "Sync function must not be NULL", return NULL;);
 
-    struct lru_cache *cache = (struct lru_cache *)malloc(sizeof(struct lru_cache));
+    struct lru_cache *cache = (struct lru_cache *)kmalloc(sizeof(struct lru_cache));
     CHECK(cache != NULL, "Memory allocation for LRU cache failed", return NULL;);
 
     cache->ht = hashtable_init(next_power_of_two(capacity), hash_func, hash_compare);
-    CHECK(cache->ht != NULL, "Initialization of hashtable failed", free(cache);return NULL;);
+    CHECK(cache->ht != NULL, "Initialization of hashtable failed", kfree(cache);return NULL;);
 
     cache->capacity = capacity;
     INIT_LIST_HEAD(&cache->lhead); // 初始化双向链表头
     if(free_func != NULL)
     {
-        cache->free = free_func; // 设置释放节点的回调函数
+        cache->kfree = free_func; // 设置释放节点的回调函数
     }
     if(sync_func != NULL)
     {
@@ -79,10 +79,10 @@ void lru_destroy(struct lru_cache *cache)
     list_for_each_safe(pos,n,&cache->lhead) 
     {
         struct lru_node *node = container_of(pos, struct lru_node, lnode);
-        cache->free(node); // 释放每个节点
+        cache->kfree(node); // 释放每个节点
     }
     hashtable_destroy(cache->ht);
-    free(cache);
+    kfree(cache);
 }
 
 int lru_update(struct lru_cache *cache,struct lru_node *node)
@@ -137,9 +137,9 @@ int lru_evict(struct lru_cache *cache)
         cache->sync(container_of(cache->lhead.prev,struct lru_node,lnode)); // 同步节点
     }
 
-    if(cache->free != NULL) 
+    if(cache->kfree != NULL) 
     {
-        cache->free(container_of(cache->lhead.prev,struct lru_node,lnode));
+        cache->kfree(container_of(cache->lhead.prev,struct lru_node,lnode));
     }
     cache->node_count--;
 

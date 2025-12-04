@@ -8,7 +8,7 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include <fs/vfs_types.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <os/check.h>
 #include <os/lru.h>
 #include <asm/spinlock.h>
@@ -51,9 +51,9 @@ int destroy_inode(struct inode *inode)
     }
 
     hashtable_destroy(inode->i_mapping->page_cache);
-    free(inode->i_mapping);
-    free(inode);
-    free(inode->i_private);
+    kfree(inode->i_mapping);
+    kfree(inode);
+    kfree(inode->i_private);
     return 0;
 }
 
@@ -61,7 +61,7 @@ struct inode* create_inode(struct superblock *sb)
 {
     CHECK(sb != NULL, "vfs_alloc_inode: sb is NULL", return NULL;);
 
-    struct inode *new_inode_ret = malloc(sizeof(struct inode));
+    struct inode *new_inode_ret = kmalloc(sizeof(struct inode));
     CHECK(new_inode_ret != NULL, "Memory allocation for inode failed", return NULL;);
 
     memset(new_inode_ret, 0, sizeof(struct inode));
@@ -80,7 +80,7 @@ struct inode* create_inode(struct superblock *sb)
 
     lru_node_init(&new_inode_ret->i_lru_cache_node);
 
-    new_inode_ret->i_mapping = malloc(sizeof(struct address_space));
+    new_inode_ret->i_mapping = kmalloc(sizeof(struct address_space));
     new_inode_ret->i_mapping->host = new_inode_ret;
     new_inode_ret->i_mapping->page_cache = hashtable_init(64, inode_self_page_cache_hash, inode_self_page_cache_compare);
 

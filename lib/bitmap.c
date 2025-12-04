@@ -7,7 +7,7 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <os/printk.h>
 #include <os/string.h>
 
@@ -24,9 +24,9 @@ bitmap_t *bitmap_create(size_t size) {
 
     uint64_t bytes_num = (size + 7) / 8;
 
-    bitmap_t *bm = (bitmap_t *)malloc(sizeof(bitmap_t) + bytes_num);
+    bitmap_t *bm = (bitmap_t *)kmalloc(sizeof(bitmap_t) + bytes_num);
     if (bm == NULL) {
-        printk("bitmap: bitmap malloc error\n");
+        printk("bitmap: bitmap kmalloc error\n");
         return NULL;
     }
 
@@ -38,7 +38,7 @@ bitmap_t *bitmap_create(size_t size) {
 }
 
 void bitmap_destory(bitmap_t *bm) {
-    free(bm);
+    kfree(bm);
 }
 
 int bitmap_set_bit(bitmap_t *bm, uint64_t index) {

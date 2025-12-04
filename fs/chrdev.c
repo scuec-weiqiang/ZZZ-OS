@@ -10,7 +10,7 @@
 #include <fs/vfs_types.h>
 #include <os/string.h>
 #include <fs/chrdev.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 
 #define MAX_CHRDEV 256
 static struct chrdev chrdevs[MAX_CHRDEV] = {0};
@@ -33,7 +33,7 @@ int unregister_chrdev(dev_t major, const char *name) {
     for (int i = 0; i < MAX_CHRDEV; i++) {
         if (chrdevs[i].major == major || (strcmp(chrdevs[i].name, name) == 0) ) {
             chrdevs[i].major = 0;
-            free((void*)chrdevs[i].name);
+            kfree((void*)chrdevs[i].name);
             chrdevs[i].fops = NULL;
             return 0;
         }

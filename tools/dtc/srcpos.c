@@ -1,7 +1,7 @@
 /*
  * Copyright 2007 Jon Loeliger, Freescale Semiconductor, Inc.
  *
- * This program is free software; you can redistribute it and/or
+ * This program is kfree software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version.
@@ -66,7 +66,7 @@ static int srcfile_depth; /* = 0 */
  * @param dirname	Directory to look in, or NULL for none
  * @param fname		Filename to look for
  * @param fp		Set to NULL if file did not open
- * @return allocated filename on success (caller must free), NULL on failure
+ * @return allocated filename on success (caller must kfree), NULL on failure
  */
 static char *try_open(const char *dirname, const char *fname, FILE **fp)
 {
@@ -79,7 +79,7 @@ static char *try_open(const char *dirname, const char *fname, FILE **fp)
 
 	*fp = fopen(fullname, "r");
 	if (!*fp) {
-		free(fullname);
+		kfree(fullname);
 		fullname = NULL;
 	}
 
@@ -93,7 +93,7 @@ static char *try_open(const char *dirname, const char *fname, FILE **fp)
  *
  * @param fname	Filename to open
  * @param fp	Returns pointer to opened FILE, or NULL on failure
- * @return pointer to allocated filename, which caller must free
+ * @return pointer to allocated filename, which caller must kfree
  */
 static char *fopen_any_on_path(const char *fname, FILE **fp)
 {
@@ -135,7 +135,7 @@ FILE *srcfile_relative_open(const char *fname, char **fullnamep)
 	if (fullnamep)
 		*fullnamep = fullname;
 	else
-		free(fullname);
+		kfree(fullname);
 
 	return f;
 }

@@ -9,7 +9,7 @@
  * @Copyright (c) 2024 by  weiqiang scuec_weiqiang@qq.com , All Rights Reserved. 
 ***************************************************************/
 #include <os/types.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <os/list.h>
 #include <asm/arch_timer.h>
 #include <os/printk.h>
@@ -41,7 +41,7 @@ struct swtimer *swtimer_head = NULL;
 void swtimer_distory(struct swtimer *swtimer_d)
 {
     list_del(&swtimer_d->swtimer_node);
-    free(swtimer_d);
+    kfree(swtimer_d);
 }
 
 /***************************************************************

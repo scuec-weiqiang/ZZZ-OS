@@ -14,7 +14,7 @@
 #include <os/check.h>
 #include <os/string.h>
 #include <asm/platform.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <asm/arch_timer.h>
 #include <os/sched.h>
 #include <os/mm/page.h>
@@ -62,22 +62,22 @@ struct proc* proc_create(char* path)
     CHECK(path != NULL, "proc create failed,path is NULL", return NULL;);
 
     struct file* f = open(path,0);
-    char* elf = malloc(f->f_inode->i_size);
+    char* elf = kmalloc(f->f_inode->i_size);
     ssize_t ret =  read(f,elf,f->f_inode->i_size);
-    CHECK(ret >= 0, "vfs read failed", free(elf); return NULL;);
+    CHECK(ret >= 0, "vfs read failed", kfree(elf); return NULL;);
 
     struct elf_info *elf_info = elf_parse(elf);
-    CHECK(elf_info != NULL, "elf parse failed", free(elf); return NULL;);
+    CHECK(elf_info != NULL, "elf parse failed", kfree(elf); return NULL;);
 
-    struct proc* new_proc = (struct proc*)malloc(sizeof(struct proc));
+    struct proc* new_proc = (struct proc*)kmalloc(sizeof(struct proc));
     memset(new_proc,0,sizeof(struct proc));
     
     pgtbl_t* user_pgd = arch_new_pgtbl();
 
-    char *user_stack = (char*)malloc(PROC_STACK_SIZE);
+    char *user_stack = (char*)kmalloc(PROC_STACK_SIZE);
     memset(user_stack,0,PROC_STACK_SIZE);
 
-    char *kernel_stack = (char*)malloc(PROC_STACK_SIZE);
+    char *kernel_stack = (char*)kmalloc(PROC_STACK_SIZE);
     memset(kernel_stack,0,PROC_STACK_SIZE);
 
     for(int i=0,j=0;i<elf_info->phnum;i++)
@@ -85,7 +85,7 @@ struct proc* proc_create(char* path)
         if(elf_info->segs[i].type== PT_LOAD)
         {
             // printk("phdr %d: vaddr:%x, memsz:%x, filesz:%x, offset:%x, flags:%x\n",i,elf_info->segs[i].vaddr,elf_info->segs[i].memsz,elf_info->segs[i].filesz,elf_info->segs[i].offset,elf_info->segs[i].flags);
-            char *user_space = (char*)malloc(elf_info->segs[i].memsz); //程序加载到内存里需要的空间
+            char *user_space = (char*)kmalloc(elf_info->segs[i].memsz); //程序加载到内存里需要的空间
             memset(user_space,0,elf_info->segs[i].memsz);
             memcpy(user_space,elf+elf_info->segs[i].offset,elf_info->segs[i].filesz);
             map_range(user_pgd, elf_info->segs[i].vaddr, (uintptr_t)KERNEL_PA(user_space), elf_info->segs[i].memsz, PTE_W|PTE_R|PTE_X|PTE_U);
@@ -135,7 +135,7 @@ int alloc_fd(struct proc* p, struct file* f)
 
 void free_fd(struct proc* p, int fd)
 {
-    CHECK(p != NULL && fd >=0 && fd < 256, "free fd failed", return;);
+    CHECK(p != NULL && fd >=0 && fd < 256, "kfree fd failed", return;);
     if(p->fd_table[fd] != NULL)
     {
         // close(p->fd_table[fd]);

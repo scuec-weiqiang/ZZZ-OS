@@ -1,9 +1,9 @@
 /**
- * @FilePath: /vboot/home/wei/os/ZZZ-OS/mm/buddy.c
+ * @FilePath: /ZZZ-OS/mm/buddy.c
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-25 15:14:03
- * @LastEditTime: 2025-11-25 23:14:36
+ * @LastEditTime: 2025-12-04 13:30:01
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -15,10 +15,11 @@
 #include <os/printk.h>
 #include <os/rand.h>
 #include <os/string.h>
+#include <os/utils.h>
 
 #define list_to_page(ptr)               list_entry((ptr), struct page, buddy_node)
 #define get_first_page(order)           list_to_page(free_area[(order)].free_list.next)
-#define get_buddy_page(page, order)     pfn_to_page( page_to_pfn((page)) ^ (1 << (order)) )
+#define get_buddy_page(page, order)     pfn_to_page(page_to_pfn((page)) ^ (1 << (order)))
 
 /*  
     这两个宏只涉及free链表的添加、删除以及计数更新
@@ -37,6 +38,15 @@
         free_area[order].nr_free--; \
     )
 
+static n_to_order(uint32_t n) {
+    unsigned int order = 0;
+    unsigned int size = 1;
+    while (size < n) {
+        size <<= 1;
+        order++;
+    }
+    return order;
+}
 
 struct free_area free_area[MAX_ORDER]= {0};
 
@@ -144,20 +154,24 @@ void free_pages(struct page *page) {
 
     curr_page->order = order;
     curr_page->flags = PAGE_FREE;
+    curr_page->slab = NULL;
     add_to_free_area(curr_page, order);
 }
 
-void* alloc_page_kva(void) {
-    struct page* page = alloc_pages(0);
+void* alloc_pages_kva(size_t npages) {
+    uint32_t n = next_power_of_two(npages);
+    n = n_to_order(n);
+    struct page* page = alloc_pages(n);
     if (!page) return NULL;
     return (void*)KERNEL_VA(page_to_phys(page));
 }
 
-void free_page_kva(void *kaddr) {
+void free_pages_kva(void *kaddr) {
     phys_addr_t addr = KERNEL_PA(kaddr);
     struct page* page = phys_to_page(addr);
     free_pages(page);
 }
+
 
 void buddy_init(void) {
     for (unsigned int order = 0; order < MAX_ORDER; order++) {
@@ -191,13 +205,12 @@ void buddy_init(void) {
 void buddy_dump(void) {
     printk("Buddy Allocator State:\n");
     for (unsigned int order = 0; order < MAX_ORDER; order++) {
-        printk("Order %u: Free blocks: %lu\n", order, free_area[order].nr_free);
+        printk("Order %xu: Free blocks: %xu\n", order, free_area[order].nr_free);
     }
     printk("End of Buddy Allocator State.\n");
 }
 
-void check_free_area(void)
-{
+void check_free_area(void) {
     printk("=== free_area 状态 ===\n");
 
     for (int order = 0; order < MAX_ORDER; order++) {
@@ -217,71 +230,71 @@ void check_free_area(void)
     }
 }
 
-void buddy_test(void) {
-    printk("=== Buddy Allocator Test START ===\n");
+// void buddy_test(void) {
+//     printk("=== Buddy Allocator Test START ===\n");
 
-    check_free_area();
+//     check_free_area();
 
-    printk("\n[1] 测试 alloc/free order=0\n");
-    struct page *p0 = alloc_pages(0); 
-    printk("alloc order0: pfn=%d\n", page_to_pfn(p0));
-    check_free_area();
+//     printk("\n[1] 测试 alloc/kfree order=0\n");
+//     struct page *p0 = alloc_pages(0); 
+//     printk("alloc order0: pfn=%d\n", page_to_pfn(p0));
+//     check_free_area();
 
-    free_pages(p0);
-    printk("free order0\n");
-    check_free_area();
+//     free_pages(p0);
+//     printk("kfree order0\n");
+//     check_free_area();
 
-    printk("\n[2] 测试拆分 split（alloc order1）\n");
-    struct page *p1 = alloc_pages(1);
-    printk("alloc order1: pfn=%d\n", page_to_pfn(p1));
-    check_free_area();
+//     printk("\n[2] 测试拆分 split（alloc order1）\n");
+//     struct page *p1 = alloc_pages(1);
+//     printk("alloc order1: pfn=%d\n", page_to_pfn(p1));
+//     check_free_area();
 
-    free_pages(p1);
-    printk("free order1\n");
-    check_free_area();
+//     free_pages(p1);
+//     printk("kfree order1\n");
+//     check_free_area();
 
-    printk("\n[3] 测试连续申请多个 order0\n");
+//     printk("\n[3] 测试连续申请多个 order0\n");
 
-    struct page *arr[10];
-    for (int i = 0; i < 10; i++) {
-        arr[i] = alloc_pages(0);
-        printk("alloc0[%d] = pfn %d\n", i, page_to_pfn(arr[i]));
-    }
-    check_free_area();
+//     struct page *arr[10];
+//     for (int i = 0; i < 10; i++) {
+//         arr[i] = alloc_pages(0);
+//         printk("alloc0[%d] = pfn %d\n", i, page_to_pfn(arr[i]));
+//     }
+//     check_free_area();
 
-    for (int i = 0; i < 10; i++) {
-        free_pages(arr[i]);
-    }
-    printk("释放所有 order0\n");
-    check_free_area();
+//     for (int i = 0; i < 10; i++) {
+//         free_pages(arr[i]);
+//     }
+//     printk("释放所有 order0\n");
+//     check_free_area();
 
-    printk("\n[4] 随机压力测试 1000 次\n");
-    #define TSIZE 256
-    struct page *rand_pages[TSIZE];
-    memset(rand_pages, 0, sizeof(rand_pages));
+//     printk("\n[4] 随机压力测试 1000 次\n");
+//     #define TSIZE 256
+//     struct page *rand_pages[TSIZE];
+//     memset(rand_pages, 0, sizeof(rand_pages));
 
-    for (int i = 0; i < 1000; i++) {
-        int idx = rand() % TSIZE;
+//     for (int i = 0; i < 1000; i++) {
+//         int idx = rand() % TSIZE;
 
-        if (rand_pages[idx] == NULL) {
-            int order = rand() % 4;  // 随机 order 0~3
-            rand_pages[idx] = alloc_pages(order);
-            // 有可能因为内存不足返回 NULL，这不是错误
-        } else {
-            free_pages(rand_pages[idx]);
-            rand_pages[idx] = NULL;
-        }
-    }
+//         if (rand_pages[idx] == NULL) {
+//             int order = rand() % 4;  // 随机 order 0~3
+//             rand_pages[idx] = alloc_pages(order);
+//             // 有可能因为内存不足返回 NULL，这不是错误
+//         } else {
+//             free_pages(rand_pages[idx]);
+//             rand_pages[idx] = NULL;
+//         }
+//     }
 
-    // 把剩下的全部释放
-    for (int i = 0; i < TSIZE; i++) {
-        if (rand_pages[i]) {
-            free_pages(rand_pages[i]);
-        }
-    }
+//     // 把剩下的全部释放
+//     for (int i = 0; i < TSIZE; i++) {
+//         if (rand_pages[i]) {
+//             free_pages(rand_pages[i]);
+//         }
+//     }
 
-    check_free_area();
+//     check_free_area();
 
-    printk("=== Buddy Allocator Test END ===\n");
-}
+//     printk("=== Buddy Allocator Test END ===\n");
+// }
 

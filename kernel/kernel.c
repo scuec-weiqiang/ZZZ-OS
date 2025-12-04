@@ -3,12 +3,12 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-07 19:18:08
- * @LastEditTime: 2025-11-25 22:49:38
+ * @LastEditTime: 2025-12-03 18:26:55
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
 #include "os/pfn.h"
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <os/printk.h>
 
 #include <drivers/time.h>
@@ -53,15 +53,7 @@ void init_kernel(void *dtb) {
 		fdt_init(dtb);
         memblock_init();
         kernel_page_table_init();
-        physmem_init();
-        buddy_init();
-        buddy_test();
-        check_free_area();
-        slab_test();
-        check_free_area();
-
-        // malloc_init();
-        // of_test();
+        kmalloc_init();
         of_platform_populate();
         irq_init();
 

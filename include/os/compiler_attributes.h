@@ -165,8 +165,8 @@
 #define __gnu_inline                    __attribute__((__gnu_inline__))
 
 /*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-malloc-function-attribute
- * clang: https://clang.llvm.org/docs/AttributeReference.html#malloc
+ *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-kmalloc-function-attribute
+ * clang: https://clang.llvm.org/docs/AttributeReference.html#kmalloc
  */
 #define __malloc                        __attribute__((__malloc__))
 

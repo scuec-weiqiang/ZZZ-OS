@@ -4,22 +4,22 @@
 #include <fs/vfs_types.h>
 #include <os/check.h>
 #include <os/string.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <os/list.h>
 
 struct dentry *create_dentry(const char *name)
 {
     CHECK(name != NULL, "vfs_dentry_create: Invalid name", return NULL;);
 
-    struct dentry *dentry = malloc(sizeof(struct dentry));
+    struct dentry *dentry = kmalloc(sizeof(struct dentry));
     CHECK(dentry != NULL, "vfs_dentry_create: Memory allocation failed", return NULL;);
 
     memset(dentry, 0, sizeof(struct dentry));
 
     uint32_t name_len = strlen(name);
-    dentry->name.name = malloc(name_len + 1);
+    dentry->name.name = kmalloc(name_len + 1);
     CHECK(dentry->name.name != NULL, "vfs_dentry_create: Memory allocation for name failed",
-          free(dentry);
+          kfree(dentry);
           return NULL;);
 
     memcpy(dentry->name.name, name, name_len);
@@ -42,8 +42,8 @@ int vfs_destroy_dentry(struct dentry *dentry)
     {
         list_del(&dentry->d_childs);
     }
-    free(dentry->name.name);
-    free(dentry);
+    kfree(dentry->name.name);
+    kfree(dentry);
     return 0;
 }
 

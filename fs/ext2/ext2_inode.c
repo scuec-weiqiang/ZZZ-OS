@@ -11,7 +11,7 @@
 #include <fs/vfs_types.h>
 #include <fs/ext2/ext2_types.h>
 #include <fs/icache.h>
-#include <os/malloc.h>
+#include <os/kmalloc.h>
 #include <os/check.h>
 #include <os/string.h>
 #include <asm/spinlock.h>
@@ -87,7 +87,7 @@ void* ext2_create_inode(struct inode *inode)
 {
     CHECK(inode != NULL && inode->i_sb != NULL,"",return NULL;);
 
-    struct ext2_inode *new_private_inode = malloc(sizeof(struct ext2_inode));
+    struct ext2_inode *new_private_inode = kmalloc(sizeof(struct ext2_inode));
     memset(new_private_inode,0,sizeof(struct ext2_inode));
     
     // 同步公共字段
@@ -115,7 +115,7 @@ int ext2_new_inode(struct inode *inode)
     inode->i_private = ext2_create_inode(inode);
     CHECK(inode->i_private != NULL,"",return -1;);
     int ino = ext2_alloc_ino(vfs_sb);
-    CHECK(ino > 0,"",free(inode->i_private);return -1;);
+    CHECK(ino > 0,"",kfree(inode->i_private);return -1;);
     inode->i_ino = ino;
     return ino;
 }

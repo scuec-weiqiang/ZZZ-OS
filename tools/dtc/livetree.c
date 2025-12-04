@@ -2,7 +2,7 @@
  * (C) Copyright David Gibson <dwg@au1.ibm.com>, IBM Corporation.  2005.
  *
  *
- * This program is free software; you can redistribute it and/or
+ * This program is kfree software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version.
@@ -156,7 +156,7 @@ struct node *merge_nodes(struct node *old_node, struct node *new_node)
 
 		if (new_prop->deleted) {
 			delete_property_by_name(old_node, new_prop->name);
-			free(new_prop);
+			kfree(new_prop);
 			continue;
 		}
 
@@ -169,7 +169,7 @@ struct node *merge_nodes(struct node *old_node, struct node *new_node)
 
 				old_prop->val = new_prop->val;
 				old_prop->deleted = 0;
-				free(new_prop);
+				kfree(new_prop);
 				new_prop = NULL;
 				break;
 			}
@@ -191,7 +191,7 @@ struct node *merge_nodes(struct node *old_node, struct node *new_node)
 
 		if (new_child->deleted) {
 			delete_node_by_name(old_node, new_child->name);
-			free(new_child);
+			kfree(new_child);
 			continue;
 		}
 
@@ -211,7 +211,7 @@ struct node *merge_nodes(struct node *old_node, struct node *new_node)
 
 	/* The new node contents are now merged into the old node.  Free
 	 * the new node. */
-	free(new_node);
+	kfree(new_node);
 
 	return old_node;
 }
@@ -617,7 +617,7 @@ static void sort_reserve_entries(struct boot_info *bi)
 		tbl[i]->next = tbl[i+1];
 	tbl[n-1]->next = NULL;
 
-	free(tbl);
+	kfree(tbl);
 }
 
 static int cmp_prop(const void *ax, const void *bx)
@@ -653,7 +653,7 @@ static void sort_properties(struct node *node)
 		tbl[i]->next = tbl[i+1];
 	tbl[n-1]->next = NULL;
 
-	free(tbl);
+	kfree(tbl);
 }
 
 static int cmp_subnode(const void *ax, const void *bx)
@@ -689,7 +689,7 @@ static void sort_subnodes(struct node *node)
 		tbl[i]->next_sibling = tbl[i+1];
 	tbl[n-1]->next_sibling = NULL;
 
-	free(tbl);
+	kfree(tbl);
 }
 
 static void sort_node(struct node *node)

@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-11-20 20:57:29
- * @LastEditTime: 2025-11-25 21:54:24
+ * @LastEditTime: 2025-12-03 16:14:15
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -11,7 +11,6 @@
 #define __KERNEL_PHYSMEM_H_
 
 #include <os/types.h>
-#include <os/pfn.h>
 #include <os/mm/page.h>
 
 extern struct page* mem_map;   // base of page array
