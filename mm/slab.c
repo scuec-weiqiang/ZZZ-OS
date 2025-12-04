@@ -1,6 +1,7 @@
 #include <os/list.h>
 #include <os/pfn.h>
 #include <os/types.h>
+#include <os/mm/physmem.h>
 #include <os/mm/slab.h>
 #include <os/mm/buddy.h>
 #include <os/string.h>
@@ -94,7 +95,7 @@ static struct slab* init_slab(struct kmem_cache *cache) {
     }
     // next->next = NULL;
 
-    struct page *pg = phys_to_page(mem);
+    struct page *pg = phys_to_page((phys_addr_t)mem);
     pg->slab = slab;
     slab->magic = SLAB_MAGIC;
 

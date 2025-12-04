@@ -10,7 +10,7 @@
 #include <os/irq.h>
 #include <os/irq_chip.h>
 #include <os/irq_domain.h>
-#include <asm/irq.h>
+#include <arch/irq.h>
 
 #define IRQ_COUNT 128
 struct irq_desc irq_desc[IRQ_COUNT];

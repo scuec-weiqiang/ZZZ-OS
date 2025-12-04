@@ -12,20 +12,7 @@
 
 #include <os/types.h>
 #include <os/list.h>
-
-struct irq_chip;
-
-struct irq_chip_ops {
-    int  (*ack)(struct irq_chip* self);
-    void (*eoi)(struct irq_chip* self, int hwirq);
-    void (*enable)(struct irq_chip* self, int hwirq);             // 使能中断
-    void (*disable)(struct irq_chip* self, int hwirq);            // 禁用中断
-    int  (*get_pending)(struct irq_chip* self, int hwirq);            // 获取并清除中断挂起状态
-    void (*set_pending)(struct irq_chip* self, int hwirq);            // 设置中断为挂起状态
-    void (*clear_pending)(struct irq_chip* self, int hwirq);         // 清除中断挂起状态
-    void (*set_priority)(struct irq_chip* self, int hwirq, int priority); // 设置中断优先级
-    int  (*get_priority)(struct irq_chip* self, int hwirq);       // 获取中断优先级
-};
+#include <arch/irq_chip_ops.h>
 
 struct irq_chip {
     char name[32];                       // 中断控制器名称
@@ -39,4 +26,4 @@ extern struct list_head irq_chip_list;
 extern struct irq_chip* irq_chip_register(char *name, struct irq_chip_ops *ops, int hart, void *priv);
 extern struct irq_chip* irq_chip_lookup(char *name,int hart);
 
-#endif // __ARCH_IRQ_H__
+#endif // __KERNEL_IRQ_H__

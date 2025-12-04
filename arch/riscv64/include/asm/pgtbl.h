@@ -27,10 +27,5 @@
 
 
 
-// #define KERNEL_MMIO_BASE 0xFFFFFFBFC00000
-// #define KERNEL_MMIO_VA(pa) (KERNEL_MMIO_BASE + ((uint64_t)(pa)))
-
-
-
 
 #endif

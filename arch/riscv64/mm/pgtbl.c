@@ -1,18 +1,36 @@
-#include <os/check.h>
-#include <os/kmalloc.h>
+#include <arch/pgtbl.h>
 #include <os/string.h>
-#include <asm/barrier.h>
-#include <asm/riscv.h>
-#include <asm/pgtbl.h>
-#include <os/pfn.h>
+#include <os/kmalloc.h>
+#include <os/mm/page.h>
+#include <os/check.h>
 
-typedef uintptr_t pte_t;
-typedef uintptr_t pgd_t;
+#define KERNEL_PA_BASE 0x80000000
+// #define KERNEL_VA_BASE 0xffffffffc0000000
+#define KERNEL_VA_BASE 0x80000000
+// #define KERNEL_VA_START 0xffffffffc0200000
+#define KERNEL_VA_START 0x80400000
+#define KERNEL_VA(pa) (KERNEL_VA_BASE + ((uint64_t)(pa)) - KERNEL_PA_BASE)
+#define KERNEL_PA(va) ((uint64_t)(va) - KERNEL_VA_BASE + KERNEL_PA_BASE)
 
-typedef struct pgtbl {
-    pgd_t *root;
-}pgtbl_t;
+#define PTE_V (1 << 0)      // 有效位
+#define PTE_R (1 << 1)      // 可读
+#define PTE_W (1 << 2)      // 可写
+#define PTE_X (1 << 3)      // 可执行
+#define PTE_U (1 << 4)      // 用户模式可访问
 
+#define PA2PTE(pa) ()
+#define PTE2PA(pte) (((pte&0xffffffffffffffff) >> 10) << 12)
+
+#define SATP_SV39 (8L << 60)
+#define SATP_MODE SATP_SV39 
+
+static inline pteval_t pa_to_pteval(uintptr_t pa) {
+    return (pteval_t)(((pa) >> 12) << 10);
+}
+
+static inline uintptr_t pteval_to_pa(pteval_t val) {
+    return (((val&0xffffffffffffffff) >> 10) << 12);
+}
 
 static inline uintptr_t make_satp(uintptr_t va_or_pa) {
     uintptr_t pa;
@@ -28,31 +46,26 @@ static inline uintptr_t make_satp(uintptr_t va_or_pa) {
     return SATP_MODE | (pa >> 12);
 }
 
-static pgd_t *new_pgd() {
-    pgd_t *pgd = (pgd_t*)page_alloc(1);
-    memset(pgd, 0, PAGE_SIZE);
-    return pgd;
+static uint32_t alloc_asid() {
+    return 0;
 }
 
-static void free_pgd(pgd_t *pgd) {
-    if (pgd) {
-        kfree((void*)pgd);
-    }
+static inline int level_index(pgtbl_t *tbl, int level, uintptr_t va) {
+    int shift = tbl->page_shift + (level * 9);
+    return (va >> shift) & 0x1FF;
 }
 
-pgtbl_t *arch_new_pgtbl() {
-    pgtbl_t *pgtbl = (pgtbl_t *)kmalloc(sizeof(pgtbl_t));
-    pgtbl->root = new_pgd();
-    return pgtbl;
-}
+int arch_pgtbl_init(pgtbl_t *tbl) {
+    tbl->levels = 3;           // Sv39
+    tbl->page_shift = 12;
+    tbl->asid = alloc_asid();   // 先可以默认 0
+    tbl->flags = 0;
 
-void arch_destroy_pgtbl(pgtbl_t *pgtbl) {
-    if (pgtbl) {
-        if (pgtbl->root) {
-            kfree((void*)pgtbl->root);
-        }
-        kfree(pgtbl);
-    }
+    tbl->root = (void *)page_alloc(1); // 4KB
+    if (!tbl->root) return -1;
+
+    memset(tbl->root, 0, PAGE_SIZE);
+    return 0;
 }
 
 static void create_pte(pte_t *pte, uintptr_t pa, uint32_t flags) {
@@ -89,7 +102,7 @@ static int is_pte_leaf(pte_t pte) {
     return (pte & (PTE_R | PTE_W | PTE_X)) != 0;
 }
 
-uintptr_t arch_va_to_pa(pgtbl_t *pgtbl, uintptr_t va) {
+uintptr_t arch_walk(pgtbl_t *pgtbl, uintptr_t va) {
     CHECK(pgtbl != NULL && pgtbl->root != NULL, "pgtbl is NULL", return 0;);
 
     uint64_t vpn[3];
@@ -115,16 +128,16 @@ void arch_mmu_init() {
 
 }
 
-int arch_map(pgtbl_t *pgtbl, uintptr_t va, uintptr_t pa, enum big_page page_size, uint32_t flags) {
+int arch_map(pgtbl_t *pgtbl, uintptr_t va, uintptr_t pa, enum big_page big_page_size, uint32_t flags) {
     CHECK(pgtbl != NULL, "pgtbl is NULL", return -1;);
-    CHECK(va % page_size == 0, "vaddr is not page aligned", return -1;);
-    CHECK(pa % page_size == 0, "paddr is not page aligned", return -1;);
+    CHECK(va % big_page_size == 0, "vaddr is not page aligned", return -1;);
+    CHECK(pa % big_page_size == 0, "paddr is not page aligned", return -1;);
 
     uint64_t vpn2 = (va >> 30) & 0x1ff;
     uint64_t vpn1 = (va >> 21) & 0x1ff;
     uint64_t vpn0 = (va >> 12) & 0x1ff;
 
-    switch (page_size) {
+    switch (big_page_size) {
     case BIG_PAGE_4K: {
         pgd_t *l1 = get_child_pgd(pgtbl->root, vpn2, true);
         pgd_t *l0 = get_child_pgd(l1, vpn1, true);
@@ -176,59 +189,13 @@ int arch_unmap(pgtbl_t *pgtbl, uintptr_t va) {
     return -1;
 }
 
-void arch_flush_pgtbl() {
+void arch_pgtbl_flush() {
     sfence_vma();
 }
 
-void arch_switch_pgtbl(pgtbl_t *pgtbl) {
+void arch_pgtbl_switch(pgtbl_t *pgtbl) {
     uintptr_t satp_val = make_satp((uintptr_t)pgtbl->root);
     satp_w((reg_t)satp_val);
 }
 
-void arch_pgtbl_test () {
-    printk("\n==== PAGETABLE TEST BEGIN ====\n");
 
-    pgtbl_t *pgtbl = arch_new_pgtbl();
-    if (!pgtbl) {
-        panic("new pgtbl failed");
-    }
-
-    uintptr_t va1 = 0x40000000; // 1GB 对齐
-    uintptr_t pa1 = 0x20000000; // 1GB 对齐
-
-    uintptr_t va2 = 0x40400000; // 2MB 对齐
-    uintptr_t pa2 = 0x20400000; // 2MB 对齐
-
-    uintptr_t va3 = 0x40401000; // 4KB 对齐
-    uintptr_t pa3 = 0x20401000; // 4KB 对齐
-
-    // 映射 1GB 大页
-    if (arch_map(pgtbl, va1, pa1, BIG_PAGE_1G, PTE_R | PTE_W) < 0) {
-        panic("map 1G page failed");
-    }
-    // 映射 2MB 大页
-    if (arch_map(pgtbl, va2, pa2, BIG_PAGE_2M, PTE_R | PTE_W) < 0) {
-        panic("map 2M page failed");
-    }
-    // 映射 4KB 页
-    if (arch_map(pgtbl, va3, pa3, BIG_PAGE_4K, PTE_R | PTE_W) < 0) {
-        panic("map 4K page failed");
-    }
-
-    // 测试地址转换
-    if (arch_va_to_pa(pgtbl, va1) != pa1) {
-        panic("va to pa translation failed for 1G page");
-    }
-    if (arch_va_to_pa(pgtbl, va2) != pa2) {
-        panic("va to pa translation failed for 2M page");
-    }
-    if (arch_va_to_pa(pgtbl, va3) != pa3) {
-        panic("va to pa translation failed for 4K page");
-    }
-
-    printk("Page table test passed!\n");
-
-    arch_destroy_pgtbl(pgtbl);
-
-    printk("==== PAGETABLE TEST END ====\n\n");
-}
