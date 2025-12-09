@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-12-04 19:04:15
- * @LastEditTime: 2025-12-04 23:28:08
+ * @LastEditTime: 2025-12-05 16:21:39
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -40,10 +40,10 @@ enum {
     PGTBL_X  = 1 << 2,
 };
 
-enum big_page {
-    BIG_PAGE_4K = 1UL << 12,
-    BIG_PAGE_2M = 1UL << 21,
-    BIG_PAGE_1G = 1UL << 30,
+enum huge_page {
+    HUGE_PAGE_4K = 1UL << 12,
+    HUGE_PAGE_2M = 1UL << 21,
+    HUGE_PAGE_1G = 1UL << 30,
 };
 
 typedef struct pgtbl{

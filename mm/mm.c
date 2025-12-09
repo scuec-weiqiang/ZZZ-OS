@@ -3,7 +3,7 @@
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-08 22:00:50
- * @LastEditTime: 2025-12-04 22:06:56
+ * @LastEditTime: 2025-12-05 18:26:29
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
@@ -19,6 +19,7 @@
 #include <os/mm/early_malloc.h>
 
 pgtbl_t *kernel_pgtbl = NULL; // kernel_page_global_directory 内核页全局目录
+
 
 pgtbl_t *new_pgtbl() {
     pgtbl_t *tbl = kmalloc(sizeof(pgtbl_t));
@@ -36,10 +37,10 @@ pgtbl_t *new_pgtbl() {
     return tbl;
 }
 
-int map_range(pgtbl_t *pgtbl, uintptr_t vaddr, uintptr_t paddr, size_t size, uint64_t flags) {
+int map_range(pgtbl_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, uint64_t flags) {
     CHECK(pgtbl != NULL, "pgtbl is NULL", return -1;);
-    CHECK(vaddr % BIG_PAGE_4K == 0, "vaddr is not page aligned", return -1;);
-    CHECK(paddr % BIG_PAGE_4K == 0, "paddr is not page aligned", return -1;);
+    CHECK(vaddr % HUGE_PAGE_4K == 0, "vaddr is not page aligned", return -1;);
+    CHECK(paddr % HUGE_PAGE_4K == 0, "paddr is not page aligned", return -1;);
     size = ALIGN_UP(size, PAGE_SIZE);
 
     uintptr_t va = vaddr;
@@ -47,19 +48,19 @@ int map_range(pgtbl_t *pgtbl, uintptr_t vaddr, uintptr_t paddr, size_t size, uin
     uintptr_t end = vaddr + size;
 
     while (va < end) {
-        enum big_page chunk_size;
+        enum huge_page chunk_size;
 
         // 能否用 1GB 大页
-        if ((va % BIG_PAGE_1G == 0) && (pa % BIG_PAGE_1G == 0) && (end - va) >= BIG_PAGE_1G) {
-            chunk_size = BIG_PAGE_1G;
+        if ((va % HUGE_PAGE_1G == 0) && (pa % HUGE_PAGE_1G == 0) && (end - va) >= HUGE_PAGE_1G) {
+            chunk_size = HUGE_PAGE_1G;
         }
         // 能否用 2MB 大页
-        else if ((va % BIG_PAGE_2M == 0) && (pa % BIG_PAGE_2M == 0) && (end - va) >= BIG_PAGE_2M) {
-            chunk_size = BIG_PAGE_2M;
+        else if ((va % HUGE_PAGE_2M == 0) && (pa % HUGE_PAGE_2M == 0) && (end - va) >= HUGE_PAGE_2M) {
+            chunk_size = HUGE_PAGE_2M;
         }
         // 否则用 4KB
         else {
-            chunk_size = BIG_PAGE_4K;
+            chunk_size = HUGE_PAGE_4K;
         }
 
         if (arch_map(pgtbl, va, pa, chunk_size, flags) < 0) {
@@ -74,8 +75,7 @@ int map_range(pgtbl_t *pgtbl, uintptr_t vaddr, uintptr_t paddr, size_t size, uin
     return 0;
 }
 
-int unmap_range(pgtbl_t *pgtbl, uintptr_t va) {
-    
+int unmap_range(pgtbl_t *pgtbl, virt_addr_t va, size_t size) {
     return arch_unmap(pgtbl, va);
 }
 
@@ -111,6 +111,7 @@ void build_kernel_mapping(pgtbl_t *pgtbl) {
 }
 
 void kernel_page_table_init() {
+    arch_pgtbl_test();
     kernel_pgtbl = new_pgtbl();
     if (kernel_pgtbl == NULL)
         return;

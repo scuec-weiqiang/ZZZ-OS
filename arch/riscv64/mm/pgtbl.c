@@ -26,11 +26,11 @@
 #define SATP_SV39 (8L << 60)
 #define SATP_MODE SATP_SV39 
 
-static inline pteval_t pa_to_pteval(phys_addr_t pa) {
+inline pteval_t pa_to_pteval(phys_addr_t pa) {
     return (pteval_t)(((pa) >> 12) << 10);
 }
 
-static inline phys_addr_t pteval_to_pa(pteval_t val) {
+inline phys_addr_t pteval_to_pa(pteval_t val) {
     return (((val&0xffffffffffffffff) >> 10) << 12);
 }
 
@@ -57,7 +57,7 @@ static inline uint32_t level_index(pgtbl_t *tbl, uint32_t level, virt_addr_t va)
     return (va >> shift) & 0x1FF;
 }
 
-static inline void set_pte(pte_t* pte, phys_addr_t pa, uint32_t flags) {
+inline void set_pte(pte_t* pte, phys_addr_t pa, uint32_t flags) {
     pteval_t val = pa_to_pteval(pa);
     pte->val = val | flags | PTE_V;
 }
@@ -73,6 +73,10 @@ int arch_pgtbl_init(pgtbl_t *tbl) {
 
     memset(tbl->root, 0, PAGE_SIZE);
     return 0;
+}
+
+int is_pte_leaf(pte_t *pte) {
+    return (pte->val & (PTE_R | PTE_W | PTE_X)) != 0;
 }
 
 static void* lookup_child_table(void* parent_table, uint32_t index, bool create) {
@@ -92,15 +96,20 @@ static void* lookup_child_table(void* parent_table, uint32_t index, bool create)
             return child_table;
         }
     } else {
-        return (void*)KERNEL_VA(pteval_to_pa(pte->val));
+        if (is_pte_leaf(pte))
+        {   
+            return NULL; // 叶子节点没有子表
+        } else {
+            return (void*)KERNEL_VA(pteval_to_pa(pte->val));
+        }
     }
 }
 
-static int is_pte_leaf(pte_t *pte) {
-    return (pte->val & (PTE_R | PTE_W | PTE_X)) != 0;
+void arch_pgtbl_flush() {
+    sfence_vma();
 }
 
-void* arch_pgtbl_walk(pgtbl_t *pgtbl, virt_addr_t va) {
+phys_addr_t arch_pgtbl_walk(pgtbl_t *pgtbl, virt_addr_t va) {
     CHECK(pgtbl != NULL && pgtbl->root != NULL, "pgtbl is NULL", return 0;);
 
     va = ALIGN_DOWN(va, PAGE_SIZE);
@@ -109,16 +118,17 @@ void* arch_pgtbl_walk(pgtbl_t *pgtbl, virt_addr_t va) {
     unsigned long index = 0;
     for (int i = 0; i < pgtbl->levels; i++) {
         index = level_index(pgtbl, i, va);
-        table = lookup_child_table(table, index, false);
-        if (is_pte_leaf(&((pte_t*)table)[index]))
+        pte_t *pte = &((pte_t*)table)[index];
+        if (is_pte_leaf(pte))
         {
-            return pteval_to_pa((((pte_t*)table)[index]).val);
+            return pteval_to_pa(pte->val);
         }
+        table = lookup_child_table(table, index, false);
     }
     return 0;
 }
 
-int arch_map(pgtbl_t *pgtbl, virt_addr_t va, phys_addr_t pa, enum big_page big_page_size, uint32_t flags) {
+int arch_map(pgtbl_t *pgtbl, virt_addr_t va, phys_addr_t pa, enum huge_page big_page_size, uint32_t flags) {
     CHECK(pgtbl != NULL, "pgtbl is NULL", return -1;);
     CHECK(va % big_page_size == 0, "vaddr is not page aligned", return -1;);
     CHECK(pa % big_page_size == 0, "paddr is not page aligned", return -1;);
@@ -126,11 +136,11 @@ int arch_map(pgtbl_t *pgtbl, virt_addr_t va, phys_addr_t pa, enum big_page big_p
     int level,index;
 
     switch (big_page_size) {
-    case BIG_PAGE_4K: 
+    case HUGE_PAGE_4K: 
     level = 3;break;
-    case BIG_PAGE_2M:
+    case HUGE_PAGE_2M:
     level = 2;break;
-    case BIG_PAGE_1G:
+    case HUGE_PAGE_1G:
     level = 1;break;
     default:
         printk("Unsupported page size\n");
@@ -141,9 +151,6 @@ int arch_map(pgtbl_t *pgtbl, virt_addr_t va, phys_addr_t pa, enum big_page big_p
     for (int i = 0;i < level - 1; i++) {
         index = level_index(pgtbl, i, va);
         table = lookup_child_table(table, index, true);
-        if (!table) {
-            return -1;
-        }
     }
     index = level_index(pgtbl, level-1, va);
     pte_t *pte = &((pte_t*)table)[index];
@@ -152,18 +159,49 @@ int arch_map(pgtbl_t *pgtbl, virt_addr_t va, phys_addr_t pa, enum big_page big_p
 }
 
 int arch_unmap(pgtbl_t *pgtbl, uintptr_t va) {
-    CHECK(pgtbl != NULL && pgtbl->root != NULL, "pgtbl is NULL", return -1;);
+    CHECK(pgtbl != NULL && pgtbl->root != NULL, "pgtbl is NULL", return 0;);
 
+    va = ALIGN_DOWN(va, PAGE_SIZE);
+
+    void *table = pgtbl->root;
+    unsigned long index = 0;
+    for (int i = 0; i < pgtbl->levels; i++) {
+        index = level_index(pgtbl, i, va);
+        
+        pte_t *pte = &((pte_t*)table)[index];
+        if (is_pte_leaf(pte))
+        {
+            pte->val = 0;
+            return 0; 
+        }
+        table = lookup_child_table(table, index, false);
+    }
     return -1;
-}
-
-void arch_pgtbl_flush() {
-    sfence_vma();
 }
 
 void arch_pgtbl_switch(pgtbl_t *pgtbl) {
     uintptr_t satp_val = make_satp((uintptr_t)pgtbl->root);
     satp_w((reg_t)satp_val);
 }
+
+// void arch_pgtbl_test() {
+//     pgtbl_t test_pgtbl;
+//     arch_pgtbl_init(&test_pgtbl);
+
+//     virt_addr_t test_va = 0x85000000UL; // KERNEL_VA_START
+//     phys_addr_t test_pa = 0xffffffffc5000000UL; // KERNEL_PA_BASE
+
+//     arch_map(&test_pgtbl, test_va, test_pa, HUGE_PAGE_4K, PTE_R | PTE_W | PTE_X);
+//     phys_addr_t resolved_pa = arch_pgtbl_walk(&test_pgtbl, test_va);
+//     printk("pa = %xu,resolved_pa = %xu\n", test_pa, resolved_pa);
+//     CHECK(resolved_pa == test_pa, "Page table walk failed", return;);
+
+//     arch_unmap(&test_pgtbl, test_va);
+//     resolved_pa = arch_pgtbl_walk(&test_pgtbl, test_va);
+//     printk("after umap,resolved_pa = %xu\n", resolved_pa);
+//     CHECK(resolved_pa == 0, "Page unmap failed", return;);
+
+//     printk("Page table test passed\n");
+// }
 
 

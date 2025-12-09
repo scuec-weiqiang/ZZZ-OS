@@ -3,7 +3,7 @@
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-10-30 20:43:47
- * @LastEditTime: 2025-12-04 22:04:52
+ * @LastEditTime: 2025-12-05 16:28:52
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
@@ -43,8 +43,8 @@ struct mm_struct {
 extern pgtbl_t *kernel_pgtbl; // 内核页全局目录
 
 extern void mm_init();
-extern int map_range(pgtbl_t *pgtbl, uintptr_t vaddr, uintptr_t paddr, size_t size, uint64_t flags);
-extern int unmap_range(pgtbl_t *pgtbl, uintptr_t vaddr);
+extern int map_range(pgtbl_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, uint64_t flags);
+extern int unmap_range(pgtbl_t *pgtbl, virt_addr_t vaddr, size_t size);
 extern pgtbl_t* new_pgtbl();
 extern void pgtbl_switch(pgtbl_t *pgtbl);
 extern void pgtbl_flush();
