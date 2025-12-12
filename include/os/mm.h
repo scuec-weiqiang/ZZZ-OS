@@ -12,7 +12,7 @@
 
 #include <os/types.h>
 
-typedef struct pgtbl pgtbl_t;
+typedef struct pgtbl pgtable_t;
 
 #define PTE_V (1 << 0)      // 有效位
 #define PTE_R (1 << 1)      // 可读
@@ -32,7 +32,7 @@ typedef struct pgtbl pgtbl_t;
  * 用户虚拟地址空间描述
  */
 struct mm_struct {
-    pgtbl_t *pgtbl;  // 页表指针
+    pgtable_t *pgtbl;  // 页表指针
     uintptr_t start_brk;
     uintptr_t brk;
     uintptr_t start_stack;
@@ -40,18 +40,18 @@ struct mm_struct {
     // struct vm_area_struct *vma_list;
 };
 
-extern pgtbl_t *kernel_pgtbl; // 内核页全局目录
+extern pgtable_t *kernel_pgtbl; // 内核页全局目录
 
 extern void mm_init();
-extern int map_range(pgtbl_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, uint64_t flags);
-extern int unmap_range(pgtbl_t *pgtbl, virt_addr_t vaddr, size_t size);
-extern pgtbl_t* new_pgtbl();
-extern void pgtbl_switch(pgtbl_t *pgtbl);
+extern int map_range(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, uint64_t flags);
+extern int unmap_range(pgtable_t *pgtbl, virt_addr_t vaddr, size_t size);
+extern pgtable_t* new_pgtbl();
+extern void pgtbl_switch(pgtable_t *pgtbl);
 extern void pgtbl_flush();
-// extern uintptr_t va_to_pa(pgtbl_t *pgtbl, uintptr_t va);
+// extern uintptr_t va_to_pa(pgtable_t *pgtbl, uintptr_t va);
 
 extern void kernel_page_table_init();
-extern void build_kernel_mapping(pgtbl_t *pgtbl);
+extern void build_kernel_mapping(pgtable_t *pgtbl);
 
 #define ioremap(pa, size)   map_range(kernel_pgtbl, (uintptr_t)(pa), (uintptr_t)(pa), (size_t)(size), PTE_R | PTE_W )
 #define iounmap(va)         unmap_range(kernel_pgtbl, (uintptr_t)(va))

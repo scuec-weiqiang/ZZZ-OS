@@ -66,7 +66,7 @@ struct proc* proc_create(char* path) {
     struct proc* new_proc = (struct proc*)kmalloc(sizeof(struct proc));
     memset(new_proc,0,sizeof(struct proc));
     
-    pgtbl_t* user_pgtbl = new_pgtbl();
+    pgtable_t* user_pgtbl = new_pgtbl();
 
     char *user_stack = (char*)kmalloc(PROC_STACK_SIZE);
     memset(user_stack,0,PROC_STACK_SIZE);

@@ -1,3 +1,4 @@
+#include <os/pgtbl_types.h>
 #include <arch/pgtbl.h>
 #include <os/string.h>
 #include <os/kmalloc.h>
@@ -26,13 +27,33 @@
 #define SATP_SV39 (8L << 60)
 #define SATP_MODE SATP_SV39 
 
-inline pteval_t pa_to_pteval(phys_addr_t pa) {
-    return (pteval_t)(((pa) >> 12) << 10);
-}
+/* RISC-V页表特性 */
+static const struct pgtable_features riscv_features = {
+    .va_bits = 39,          // Sv39
+    .pa_bits = 56,
+    .levels = 3,
+    .page_shift = 12,
+    .page_size = PAGE_SIZE,
+    
+    .supported_page_sizes = {
+        PAGE_SIZE,          // 4KB
+        PAGE_SIZE * 512,    // 2MB
+        PAGE_SIZE * 512 * 512, // 1GB
+    },
+    .num_supported_sizes = 3,
+    
+    .features = PGTABLE_FEATURE_HUGE_PAGES |
+                PGTABLE_FEATURE_GLOBAL_PAGES |
+                PGTABLE_FEATURE_USER_PAGES |
+                PGTABLE_FEATURE_ACCESSED_DIRTY,
+    
+    .level = (struct pgtable_level[]) {
+        {0, 9, PAGE_SIZE * 512 * 512, "PGD"},  // 1GB
+        {1, 9, PAGE_SIZE * 512, "PMD"},        // 2MB  
+        {2, 9, PAGE_SIZE, "PTE"},              // 4KB
+    },
+};
 
-inline phys_addr_t pteval_to_pa(pteval_t val) {
-    return (((val&0xffffffffffffffff) >> 10) << 12);
-}
 
 static inline reg_t make_satp(addr_t va_or_pa) {
     uintptr_t pa;
@@ -48,13 +69,18 @@ static inline reg_t make_satp(addr_t va_or_pa) {
     return SATP_MODE | (pa >> 12);
 }
 
-static uint32_t alloc_asid() {
-    return 0;
+
+inline pteval_t pa_to_pteval(phys_addr_t pa) {
+    return (pteval_t)(((pa) >> 12) << 10);
 }
 
-static inline uint32_t level_index(pgtbl_t *tbl, uint32_t level, virt_addr_t va) {
-    int shift = tbl->page_shift + ((tbl->levels -1 - level) * 9);
-    return (va >> shift) & 0x1FF;
+inline phys_addr_t pteval_to_pa(pteval_t val) {
+    return (((val&0xffffffffffffffff) >> 10) << 12);
+}
+
+static inline uint32_t level_index(pgtable_t *tbl, uint32_t level, virt_addr_t va) {
+    int shift = tbl->features->page_shift+ ((tbl->features->levels -1 - level) * tbl->features->level[level].bits);
+    return (va >> shift) & (1<<tbl->features->level[level].bits);
 }
 
 inline void set_pte(pte_t* pte, phys_addr_t pa, uint32_t flags) {
@@ -62,21 +88,24 @@ inline void set_pte(pte_t* pte, phys_addr_t pa, uint32_t flags) {
     pte->val = val | flags | PTE_V;
 }
 
-int arch_pgtbl_init(pgtbl_t *tbl) {
-    tbl->levels = 3;           // Sv39
-    tbl->page_shift = 12;
-    tbl->asid = alloc_asid();   // 先可以默认 0
-    tbl->flags = 0;
-
-    tbl->root = (phys_addr_t)page_alloc(1); // 4KB
-    if (!tbl->root) return -1;
-
-    memset(tbl->root, 0, PAGE_SIZE);
-    return 0;
+inline void clear_pte(pte_t* pte) {
+    pte->val = 0;
 }
 
-int is_pte_leaf(pte_t *pte) {
+inline int pte_valid(pte_t *pte) {
+    return (pte->val & PTE_V);
+}
+
+int pte_is_leaf(pte_t *pte) {
     return (pte->val & (PTE_R | PTE_W | PTE_X)) != 0;
+}
+
+void *alloc_table() {
+    return page_alloc(1);   // 一页
+}
+
+void free_table(void*p) {
+    kfree(p);
 }
 
 static void* lookup_child_table(void* parent_table, uint32_t index, bool create) {
@@ -96,7 +125,7 @@ static void* lookup_child_table(void* parent_table, uint32_t index, bool create)
             return child_table;
         }
     } else {
-        if (is_pte_leaf(pte))
+        if (pte_is_leaf(pte))
         {   
             return NULL; // 叶子节点没有子表
         } else {
@@ -105,11 +134,11 @@ static void* lookup_child_table(void* parent_table, uint32_t index, bool create)
     }
 }
 
-void arch_pgtbl_flush() {
+void pgtbl_flush() {
     sfence_vma();
 }
 
-phys_addr_t arch_pgtbl_walk(pgtbl_t *pgtbl, virt_addr_t va) {
+phys_addr_t arch_pgtbl_walk(pgtable_t *pgtbl, virt_addr_t va) {
     CHECK(pgtbl != NULL && pgtbl->root != NULL, "pgtbl is NULL", return 0;);
 
     va = ALIGN_DOWN(va, PAGE_SIZE);
@@ -119,16 +148,16 @@ phys_addr_t arch_pgtbl_walk(pgtbl_t *pgtbl, virt_addr_t va) {
     for (int i = 0; i < pgtbl->levels; i++) {
         index = level_index(pgtbl, i, va);
         pte_t *pte = &((pte_t*)table)[index];
-        if (is_pte_leaf(pte))
+        if (pte_is_leaf(pte))
         {
             return pteval_to_pa(pte->val);
-        }
+        }  
         table = lookup_child_table(table, index, false);
     }
     return 0;
 }
 
-int arch_map(pgtbl_t *pgtbl, virt_addr_t va, phys_addr_t pa, enum huge_page big_page_size, uint32_t flags) {
+int arch_map(pgtable_t *pgtbl, virt_addr_t va, phys_addr_t pa, enum huge_page big_page_size, uint32_t flags) {
     CHECK(pgtbl != NULL, "pgtbl is NULL", return -1;);
     CHECK(va % big_page_size == 0, "vaddr is not page aligned", return -1;);
     CHECK(pa % big_page_size == 0, "paddr is not page aligned", return -1;);
@@ -147,7 +176,7 @@ int arch_map(pgtbl_t *pgtbl, virt_addr_t va, phys_addr_t pa, enum huge_page big_
         return -1;
     }
 
-    phys_addr_t table = pgtbl->root;
+    void *table = pgtbl->root;
     for (int i = 0;i < level - 1; i++) {
         index = level_index(pgtbl, i, va);
         table = lookup_child_table(table, index, true);
@@ -158,7 +187,7 @@ int arch_map(pgtbl_t *pgtbl, virt_addr_t va, phys_addr_t pa, enum huge_page big_
     return 0;
 }
 
-int arch_unmap(pgtbl_t *pgtbl, uintptr_t va) {
+int arch_unmap(pgtable_t *pgtbl, uintptr_t va) {
     CHECK(pgtbl != NULL && pgtbl->root != NULL, "pgtbl is NULL", return 0;);
 
     va = ALIGN_DOWN(va, PAGE_SIZE);
@@ -169,7 +198,7 @@ int arch_unmap(pgtbl_t *pgtbl, uintptr_t va) {
         index = level_index(pgtbl, i, va);
         
         pte_t *pte = &((pte_t*)table)[index];
-        if (is_pte_leaf(pte))
+        if (pte_is_leaf(pte))
         {
             pte->val = 0;
             return 0; 
@@ -179,13 +208,41 @@ int arch_unmap(pgtbl_t *pgtbl, uintptr_t va) {
     return -1;
 }
 
-void arch_pgtbl_switch(pgtbl_t *pgtbl) {
+void pgtbl_switch_to(pgtable_t *pgtbl) {
     uintptr_t satp_val = make_satp((uintptr_t)pgtbl->root);
     satp_w((reg_t)satp_val);
 }
 
+int pgtbl_init(pgtable_t *tbl) {
+    tbl->features = &riscv_features;
+    tbl->root = page_alloc(1); 
+    if (!tbl->root) return -1;
+    memset(tbl->root, 0, PAGE_SIZE);
+    return 0;
+}
+
+void pgtbl_deinit(pgtable_t *tbl) {
+    tbl->features = NULL;
+    
+}
+
+struct pgtable_operations riscv_pgtbl_ops = {
+    .init = pgtbl_init,
+    .pa_to_pteval = pa_to_pteval,
+    .pteval_to_pa = pteval_to_pa,
+    .level_index = level_index,
+    .set_pte = set_pte,
+    .clear_pte = clear_pte,
+    .pte_valid = pte_valid,
+    .pte_is_leaf = pte_is_leaf,
+    .alloc_table = alloc_table,
+    .free_table = free_table,
+    .flush = pgtbl_flush,
+    .switch_to = pgtbl_switch_to,
+};
+
 // void arch_pgtbl_test() {
-//     pgtbl_t test_pgtbl;
+//     pgtable_t test_pgtbl;
 //     arch_pgtbl_init(&test_pgtbl);
 
 //     virt_addr_t test_va = 0x85000000UL; // KERNEL_VA_START

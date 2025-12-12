@@ -18,16 +18,16 @@
 #include <os/mm.h>
 #include <os/mm/early_malloc.h>
 
-pgtbl_t *kernel_pgtbl = NULL; // kernel_page_global_directory 内核页全局目录
+pgtable_t *kernel_pgtbl = NULL; // kernel_page_global_directory 内核页全局目录
 
 
-pgtbl_t *new_pgtbl() {
-    pgtbl_t *tbl = kmalloc(sizeof(pgtbl_t));
+pgtable_t *new_pgtbl() {
+    pgtable_t *tbl = kmalloc(sizeof(pgtable_t));
     if (!tbl) {
         return NULL;
     }
 
-    memset(tbl, 0, sizeof(pgtbl_t));
+    memset(tbl, 0, sizeof(pgtable_t));
 
     if (arch_pgtbl_init(tbl) < 0) {
         kfree(tbl);
@@ -37,7 +37,7 @@ pgtbl_t *new_pgtbl() {
     return tbl;
 }
 
-int map_range(pgtbl_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, uint64_t flags) {
+int map_range(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, uint64_t flags) {
     CHECK(pgtbl != NULL, "pgtbl is NULL", return -1;);
     CHECK(vaddr % HUGE_PAGE_4K == 0, "vaddr is not page aligned", return -1;);
     CHECK(paddr % HUGE_PAGE_4K == 0, "paddr is not page aligned", return -1;);
@@ -75,11 +75,11 @@ int map_range(pgtbl_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size,
     return 0;
 }
 
-int unmap_range(pgtbl_t *pgtbl, virt_addr_t va, size_t size) {
+int unmap_range(pgtable_t *pgtbl, virt_addr_t va, size_t size) {
     return arch_unmap(pgtbl, va);
 }
 
-void pgtbl_switch(pgtbl_t *pgtbl) {
+void pgtbl_switch(pgtable_t *pgtbl) {
     arch_pgtbl_switch(pgtbl);
 }
 
@@ -87,7 +87,7 @@ void pgtbl_flush() {
     arch_pgtbl_flush();
 }
 
-void build_kernel_mapping(pgtbl_t *pgtbl) {
+void build_kernel_mapping(pgtable_t *pgtbl) {
     // 映射内核代码段，数据段，栈以及堆的保留页到虚拟地址空间
     map_range(pgtbl, (uintptr_t)text_start, (uintptr_t)KERNEL_PA(text_start), (size_t)text_size, PTE_R | PTE_X);
     map_range(pgtbl, (uintptr_t)rodata_start, (uintptr_t)KERNEL_PA(rodata_start), (size_t)rodata_size, PTE_R);
@@ -111,7 +111,6 @@ void build_kernel_mapping(pgtbl_t *pgtbl) {
 }
 
 void kernel_page_table_init() {
-    arch_pgtbl_test();
     kernel_pgtbl = new_pgtbl();
     if (kernel_pgtbl == NULL)
         return;
@@ -122,7 +121,7 @@ void kernel_page_table_init() {
     printk("kernel page init success!\n");
 }
 
-int copyin(pgtbl_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
+int copyin(pgtable_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
     size_t n = 0;
     while (n < len) {
         uintptr_t src = arch_pgtbl_walk(pagetable, src_va);
@@ -143,7 +142,7 @@ int copyin(pgtbl_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
     return n;
 }
 
-int copyout(pgtbl_t *pagetable, uintptr_t dst_va, char *src, size_t len) {
+int copyout(pgtable_t *pagetable, uintptr_t dst_va, char *src, size_t len) {
     size_t n = 0;
     while (n < len) {
         uintptr_t dst = arch_pgtbl_walk(pagetable, dst_va);

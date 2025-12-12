@@ -59,7 +59,7 @@ struct proc
     struct file *fd_table[256];
     uintptr_t kernel_sp; //内核态栈顶
     uintptr_t user_sp;   //用户态栈顶
-    pgtbl_t* pgd;       //页表
+    pgtable_t* pgd;       //页表
     struct trap_frame *trapframe; //寄存器上下文
     struct context context; //内核上下文
     struct elf_info* elf_info; //程序信息
