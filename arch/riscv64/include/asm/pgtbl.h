@@ -12,20 +12,19 @@
 #define _MM_H
 
 #include <os/types.h>
+#include <os/mm/pgtbl_types.h>
 
-#define PTE_V (1 << 0)      // 有效位
-#define PTE_R (1 << 1)      // 可读
-#define PTE_W (1 << 2)      // 可写
-#define PTE_X (1 << 3)      // 可执行
-#define PTE_U (1 << 4)      // 用户模式可访问
-
-#define PA2PTE(pa) (((uint64_t)(pa) >> 12) << 10)
-#define PTE2PA(pte) (((pte&0xffffffffffffffff) >> 10) << 12)
-
-#define SATP_SV39 (8L << 60)
-#define SATP_MODE SATP_SV39 
-
-
-
+int arch_pgtbl_init(pgtable_t *tbl); // 初始化页表
+pteval_t arch_pgtbl_pa_to_pteval(phys_addr_t pa); // 物理地址转 pte 值
+phys_addr_t arch_pgtbl_pteval_to_pa(pteval_t val); // pte 值转物理地址
+uint32_t arch_pgtbl_level_index(pgtable_t *tbl, uint32_t level, virt_addr_t va); // 计算某层级索引
+void arch_pgtbl_set_pte(pte_t* pte, phys_addr_t pa, uint32_t flags); // 设置 PTE 条目
+void arch_pgtbl_clear_pte(pte_t* pte); // 清除 PTE 条目
+int arch_pgtbl_pte_valid(pte_t *pte); // 检查 PTE 是否有效
+int arch_pgtbl_pte_is_leaf(pte_t *pte); // 检查 PTE 是否为叶子节点
+void* arch_pgtbl_alloc_table();
+void  arch_pgtbl_free_table(void *p);
+void arch_pgtbl_flush(void); // 刷新页表缓存（如 TLB）
+void arch_pgtbl_switch_to(pgtable_t *pgtbl); // 切换到指定页表
 
 #endif

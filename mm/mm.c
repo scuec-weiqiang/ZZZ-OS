@@ -7,7 +7,7 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include <arch/pgtbl.h>
+#include <os/mm/pgtbl_types.h>
 #include <os/mm/symbols.h>
 #include <drivers/virtio.h>
 #include <os/check.h>
@@ -20,6 +20,9 @@
 
 pgtable_t *kernel_pgtbl = NULL; // kernel_page_global_directory 内核页全局目录
 
+void pgtable_register_ops(const struct pgtable_operations *ops) {
+    kernel_pgtbl->ops = (struct pgtable_operations *)ops;
+}
 
 pgtable_t *new_pgtbl() {
     pgtable_t *tbl = kmalloc(sizeof(pgtable_t));

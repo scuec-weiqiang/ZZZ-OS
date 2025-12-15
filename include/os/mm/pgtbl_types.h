@@ -77,30 +77,6 @@ struct pgtable_features {
     struct pgtable_level *level;
 };
 
-enum huge_page {
-    HUGE_PAGE_4K = 1UL << 12,
-    HUGE_PAGE_2M = 1UL << 21,
-    HUGE_PAGE_1G = 1UL << 30,
-};
-
-typedef struct pgtable pgtable_t;
-
-/* 页表操作函数表 - 架构必须实现 */
-struct pgtable_operations {
-    int (*init)(pgtable_t *tbl); // 初始化页表
-    pteval_t (*pa_to_pteval)(phys_addr_t pa); // 物理地址转 pte 值
-    phys_addr_t (*pteval_to_pa)(pteval_t val); // pte 值转物理地址
-    uint32_t (*level_index)(pgtable_t *tbl, uint32_t level, virt_addr_t va); // 计算某层级索引
-    void (*set_pte)(pte_t* pte, phys_addr_t pa, uint32_t flags); // 设置 PTE 条目
-    void (*clear_pte)(pte_t* pte); // 清除 PTE 条目
-    int (*pte_valid)(pte_t *pte); // 检查 PTE 是否有效
-    int (*pte_is_leaf)(pte_t *pte); // 检查 PTE 是否为叶子节点
-    void* (*alloc_table)();
-    void  (*free_table)(void *p);
-    void (*flush)(void); // 刷新页表缓存（如 TLB）
-    void (*switch_to)(pgtable_t *pgtbl); // 切换到指定页表
-};
-
 typedef struct pgtable{
     const char name[32]; // 页表名称
     uint32_t asid;          // 地址空间 id 
@@ -108,11 +84,5 @@ typedef struct pgtable{
     const struct pgtable_features *features;
     struct pgtable_operations *ops;
 }pgtable_t;
-
-/* 注册架构特定的页表操作 */
-void pgtable_register_ops(const struct pgtable_operations *ops);
-
-/* 获取当前架构的操作 */
-const struct pgtable_operations *pgtable_get_ops(void);
 
 #endif // __KERNEL_PGTBL_H
