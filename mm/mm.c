@@ -7,6 +7,7 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
+#include "os/pfn.h"
 #include <os/mm/pgtbl_types.h>
 #include <os/mm/symbols.h>
 #include <drivers/virtio.h>
@@ -15,35 +16,27 @@
 #include <os/mm/page.h>
 #include <os/printk.h>
 #include <os/string.h>
-#include <os/mm.h>
+#include <os/kva.h>
 #include <os/mm/early_malloc.h>
+#include <os/mm/vma_flags.h>
+#include <os/mm/pgtbl.h>
 
-pgtable_t *kernel_pgtbl = NULL; // kernel_page_global_directory 内核页全局目录
-
-void pgtable_register_ops(const struct pgtable_operations *ops) {
-    kernel_pgtbl->ops = (struct pgtable_operations *)ops;
+static int highest_possible_level(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size) {
+    int level = pgtbl->features->levels - 1; // 默认使用最小页大小
+    for (int i = pgtbl->features->levels - 1; i >= 0; i--) {
+        size_t page_size = pgtbl->features->level[i].page_size;
+        if ((vaddr % page_size == 0) && (paddr % page_size == 0) && (size >= page_size)) {
+            level = i;
+            break;
+        }
+    }
+    return level;
 }
 
-pgtable_t *new_pgtbl() {
-    pgtable_t *tbl = kmalloc(sizeof(pgtable_t));
-    if (!tbl) {
-        return NULL;
-    }
-
-    memset(tbl, 0, sizeof(pgtable_t));
-
-    if (arch_pgtbl_init(tbl) < 0) {
-        kfree(tbl);
-        return NULL;
-    }
-
-    return tbl;
-}
-
-int map_range(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, uint64_t flags) {
+int map_range(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, vma_flags_t flags) {
     CHECK(pgtbl != NULL, "pgtbl is NULL", return -1;);
-    CHECK(vaddr % HUGE_PAGE_4K == 0, "vaddr is not page aligned", return -1;);
-    CHECK(paddr % HUGE_PAGE_4K == 0, "paddr is not page aligned", return -1;);
+    CHECK(vaddr % PAGE_SIZE == 0, "vaddr is not page aligned", return -1;);
+    CHECK(paddr % PAGE_SIZE == 0, "paddr is not page aligned", return -1;);
     size = ALIGN_UP(size, PAGE_SIZE);
 
     uintptr_t va = vaddr;
@@ -51,75 +44,54 @@ int map_range(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t siz
     uintptr_t end = vaddr + size;
 
     while (va < end) {
-        enum huge_page chunk_size;
-
-        // 能否用 1GB 大页
-        if ((va % HUGE_PAGE_1G == 0) && (pa % HUGE_PAGE_1G == 0) && (end - va) >= HUGE_PAGE_1G) {
-            chunk_size = HUGE_PAGE_1G;
-        }
-        // 能否用 2MB 大页
-        else if ((va % HUGE_PAGE_2M == 0) && (pa % HUGE_PAGE_2M == 0) && (end - va) >= HUGE_PAGE_2M) {
-            chunk_size = HUGE_PAGE_2M;
-        }
-        // 否则用 4KB
-        else {
-            chunk_size = HUGE_PAGE_4K;
-        }
-
-        if (arch_map(pgtbl, va, pa, chunk_size, flags) < 0) {
+        int level = highest_possible_level(pgtbl, va, pa, end - va);
+        int map_size = pgtbl_level_page_size(pgtbl, level);
+        if (map_one(pgtbl, va, pa, level, flags) < 0) {
             return -1;
         }
 
-        va += chunk_size;
-        pa += chunk_size;
+        va += map_size;
+        pa += map_size;
     }
 
-    arch_pgtbl_flush();
+    pgtbl_flush();
     return 0;
 }
 
 int unmap_range(pgtable_t *pgtbl, virt_addr_t va, size_t size) {
-    return arch_unmap(pgtbl, va);
-}
-
-void pgtbl_switch(pgtable_t *pgtbl) {
-    arch_pgtbl_switch(pgtbl);
-}
-
-void pgtbl_flush() {
-    arch_pgtbl_flush();
+    return unmap_one(pgtbl, va);
 }
 
 void build_kernel_mapping(pgtable_t *pgtbl) {
     // 映射内核代码段，数据段，栈以及堆的保留页到虚拟地址空间
-    map_range(pgtbl, (uintptr_t)text_start, (uintptr_t)KERNEL_PA(text_start), (size_t)text_size, PTE_R | PTE_X);
-    map_range(pgtbl, (uintptr_t)rodata_start, (uintptr_t)KERNEL_PA(rodata_start), (size_t)rodata_size, PTE_R);
-    map_range(pgtbl, (uintptr_t)data_start, (uintptr_t)KERNEL_PA(data_start), (size_t)data_size, PTE_R | PTE_W);
-    map_range(pgtbl, (uintptr_t)bss_start, (uintptr_t)KERNEL_PA(bss_start), (size_t)bss_size, PTE_R | PTE_W);
+    map_range(pgtbl, (uintptr_t)text_start, (uintptr_t)KERNEL_PA(text_start), (size_t)text_size, VMA_R | VMA_X);
+    map_range(pgtbl, (uintptr_t)rodata_start, (uintptr_t)KERNEL_PA(rodata_start), (size_t)rodata_size, VMA_R);
+    map_range(pgtbl, (uintptr_t)data_start, (uintptr_t)KERNEL_PA(data_start), (size_t)data_size, VMA_R | VMA_W);
+    map_range(pgtbl, (uintptr_t)bss_start, (uintptr_t)KERNEL_PA(bss_start), (size_t)bss_size, VMA_R | VMA_W);
     
-    map_range(pgtbl, (uintptr_t)initcall_start, (uintptr_t)KERNEL_PA(initcall_start), (size_t)initcall_size, PTE_R | PTE_W | PTE_X);
-    map_range(pgtbl, (uintptr_t)exitcall_start, (uintptr_t)KERNEL_PA(exitcall_start), (size_t)exitcall_size , PTE_R | PTE_W | PTE_X);
-    map_range(pgtbl, (uintptr_t)irqinitcall_start, (uintptr_t)KERNEL_PA(irqinitcall_start), (size_t)irqinitcall_size, PTE_R | PTE_W | PTE_X);
-    map_range(pgtbl, (uintptr_t)irqexitcall_start, (uintptr_t)KERNEL_PA(irqexitcall_start), (size_t)irqexitcall_size , PTE_R | PTE_W | PTE_X);
-    map_range(pgtbl, (uintptr_t)early_stack_start, (uintptr_t)KERNEL_PA(early_stack_start), (size_t)early_stack_size, PTE_R | PTE_W);
+    map_range(pgtbl, (uintptr_t)initcall_start, (uintptr_t)KERNEL_PA(initcall_start), (size_t)initcall_size, VMA_R | VMA_W | VMA_X);
+    map_range(pgtbl, (uintptr_t)exitcall_start, (uintptr_t)KERNEL_PA(exitcall_start), (size_t)exitcall_size , VMA_R | VMA_W | VMA_X);
+    map_range(pgtbl, (uintptr_t)irqinitcall_start, (uintptr_t)KERNEL_PA(irqinitcall_start), (size_t)irqinitcall_size, VMA_R | VMA_W | VMA_X);
+    map_range(pgtbl, (uintptr_t)irqexitcall_start, (uintptr_t)KERNEL_PA(irqexitcall_start), (size_t)irqexitcall_size , VMA_R | VMA_W | VMA_X);
+    map_range(pgtbl, (uintptr_t)early_stack_start, (uintptr_t)KERNEL_PA(early_stack_start), (size_t)early_stack_size, VMA_R | VMA_W);
 
-    // map_range(pgtbl, kernel_start, KERNEL_PA(kernel_start), kernel_size, PTE_R | PTE_W | PTE_X);
-    map_range(pgtbl, (uintptr_t)heap_start, (uintptr_t)KERNEL_PA(heap_start), (size_t)heap_size, PTE_R | PTE_W);
-    map_range(pgtbl, (uintptr_t)stack_start, (uintptr_t)KERNEL_PA(stack_start), (size_t)stack_size * 2, PTE_R | PTE_W);
+    // map_range(pgtbl, kernel_start, KERNEL_PA(kernel_start), kernel_size, VMA_R | VMA_W | VMA_X);
+    map_range(pgtbl, (uintptr_t)heap_start, (uintptr_t)KERNEL_PA(heap_start), (size_t)heap_size, VMA_R | VMA_W);
+    map_range(pgtbl, (uintptr_t)stack_start, (uintptr_t)KERNEL_PA(stack_start), (size_t)stack_size * 2, VMA_R | VMA_W);
 
-    map_range(pgtbl, KERNEL_VA(early_malloc_start), early_stack_start, early_stack_size, PTE_R | PTE_W );
-    map_range(pgtbl, (uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, PTE_R | PTE_W);
-    map_range(pgtbl, (uintptr_t)0x10000000, (uintptr_t)0x10000000, PAGE_SIZE, PTE_R | PTE_W);
+    map_range(pgtbl, KERNEL_VA(early_malloc_start), early_stack_start, early_stack_size, VMA_R | VMA_W );
+    map_range(pgtbl, (uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, VMA_R | VMA_W);
+    map_range(pgtbl, (uintptr_t)0x10000000, (uintptr_t)0x10000000, PAGE_SIZE, VMA_R | VMA_W);
 
 }
 
 void kernel_page_table_init() {
-    kernel_pgtbl = new_pgtbl();
+    kernel_pgtbl = new_pgtbl("kernel_pgtbl");
     if (kernel_pgtbl == NULL)
         return;
     build_kernel_mapping(kernel_pgtbl);
-    
-    pgtbl_switch(kernel_pgtbl);
+
+    pgtbl_switch_to(kernel_pgtbl);
     pgtbl_flush();
     printk("kernel page init success!\n");
 }
@@ -127,7 +99,7 @@ void kernel_page_table_init() {
 int copyin(pgtable_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
     size_t n = 0;
     while (n < len) {
-        uintptr_t src = arch_pgtbl_walk(pagetable, src_va);
+        uintptr_t src = pgtbl_walk(pagetable, src_va);
         if (src == 0) {
             return -1;
         }
@@ -148,7 +120,7 @@ int copyin(pgtable_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
 int copyout(pgtable_t *pagetable, uintptr_t dst_va, char *src, size_t len) {
     size_t n = 0;
     while (n < len) {
-        uintptr_t dst = arch_pgtbl_walk(pagetable, dst_va);
+        uintptr_t dst = pgtbl_walk(pagetable, dst_va);
         if (dst == 0) {
             return -1;
         }

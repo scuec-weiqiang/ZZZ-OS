@@ -7,7 +7,7 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include <arch/irq_chip_ops.h>
+#include <os/irq_chip.h>
 #include <asm/trap_handler.h>
 #include <asm/interrupt.h>
 

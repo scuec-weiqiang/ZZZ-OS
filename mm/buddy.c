@@ -7,7 +7,7 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "os/mm.h"
+#include "os/kva.h"
 #include "os/types.h"
 #include <os/mm/buddy.h>
 #include <os/mm/physmem.h>
@@ -38,7 +38,7 @@
         free_area[order].nr_free--; \
     )
 
-static n_to_order(uint32_t n) {
+static int n_to_order(uint32_t n) {
     unsigned int order = 0;
     unsigned int size = 1;
     while (size < n) {

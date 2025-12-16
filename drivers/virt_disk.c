@@ -16,6 +16,7 @@
 #include <os/kmalloc.h>
 #include <asm/pgtbl.h>
 #include <os/mm.h>
+#include <os/kva.h>
 
 struct virt_disk
 {

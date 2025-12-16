@@ -19,6 +19,9 @@
 #include <os/sched.h>
 #include <os/mm/page.h>
 #include <asm/pgtbl.h>
+#include <os/kva.h>
+#include <os/mm/vma_flags.h>
+#include <os/mm/pgtbl.h>
 
 struct list_head proc_list_head[MAX_HARTS_NUM];
 
@@ -65,8 +68,8 @@ struct proc* proc_create(char* path) {
 
     struct proc* new_proc = (struct proc*)kmalloc(sizeof(struct proc));
     memset(new_proc,0,sizeof(struct proc));
-    
-    pgtable_t* user_pgtbl = new_pgtbl();
+
+    pgtable_t* user_pgtbl = new_pgtbl("user_pgtbl");
 
     char *user_stack = (char*)kmalloc(PROC_STACK_SIZE);
     memset(user_stack,0,PROC_STACK_SIZE);
@@ -82,12 +85,12 @@ struct proc* proc_create(char* path) {
             char *user_space = (char*)kmalloc(elf_info->segs[i].memsz); //程序加载到内存里需要的空间
             memset(user_space,0,elf_info->segs[i].memsz);
             memcpy(user_space,elf+elf_info->segs[i].offset,elf_info->segs[i].filesz);
-            map_range(user_pgtbl, elf_info->segs[i].vaddr, (uintptr_t)KERNEL_PA(user_space), elf_info->segs[i].memsz, PTE_W|PTE_R|PTE_X|PTE_U);
+            map_range(user_pgtbl, elf_info->segs[i].vaddr, (uintptr_t)KERNEL_PA(user_space), elf_info->segs[i].memsz,VMA_W|VMA_R|VMA_X|VMA_USER);
             new_proc->code[j] = user_space;
             j++;
         }
     }
-    map_range(user_pgtbl, PROC_USER_STACK_TOP, (uintptr_t)KERNEL_PA(user_stack), PROC_STACK_SIZE,  PTE_W|PTE_R|PTE_U);
+    map_range(user_pgtbl, PROC_USER_STACK_TOP, (uintptr_t)KERNEL_PA(user_stack), PROC_STACK_SIZE, VMA_W|VMA_R|VMA_USER);
     build_kernel_mapping(user_pgtbl);
 
     new_proc->elf_info = elf_info;

@@ -13,6 +13,7 @@
 #include <asm/platform.h>
 #include <os/list.h>
 #include <asm/arch_timer.h>
+#include <os/mm/pgtbl.h>
 
 struct scheduler scheduler[MAX_HARTS_NUM];
 
@@ -49,7 +50,7 @@ void sched() {
         if(!next) continue;
         next->expire_time = next->time_slice + systick();
         scheduler[hart_id].current = next;
-        pgtbl_switch(next->pgd);
+        pgtbl_switch_to(next->pgd);
         pgtbl_flush();
         swtch(&scheduler[hart_id].ctx,&next->context);
     }

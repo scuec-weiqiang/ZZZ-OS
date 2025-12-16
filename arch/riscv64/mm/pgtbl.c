@@ -1,18 +1,14 @@
+#include "os/mm/vma_flags.h"
+#include "os/types.h"
 #include <os/mm/pgtbl_types.h>
 #include <os/string.h>
-#include <os/kmalloc.h>
+#include <os/mm/buddy.h>
 #include <os/mm/page.h>
 #include <os/check.h>
 #include <asm/barrier.h>
-#include <asm/riscv.h>  
-
-#define KERNEL_PA_BASE 0x80000000
-// #define KERNEL_VA_BASE 0xffffffffc0000000
-#define KERNEL_VA_BASE 0x80000000
-// #define KERNEL_VA_START 0xffffffffc0200000
-#define KERNEL_VA_START 0x80400000
-#define KERNEL_VA(pa) (KERNEL_VA_BASE + ((uint64_t)(pa)) - KERNEL_PA_BASE)
-#define KERNEL_PA(va) ((uint64_t)(va) - KERNEL_VA_BASE + KERNEL_PA_BASE)
+#include <asm/riscv.h> 
+#include <os/kva.h>
+#include <os/mm/vma_flags.h>
 
 #define PTE_V (1 << 0)      // 有效位
 #define PTE_R (1 << 1)      // 可读
@@ -54,17 +50,7 @@ static const struct pgtable_features riscv_features = {
 };
 
 
-static inline reg_t make_satp(addr_t va_or_pa) {
-    uintptr_t pa;
-
-    // 如果地址在内核高地址空间，就转成物理地址
-    if (va_or_pa >= KERNEL_VA_BASE) {
-        pa = KERNEL_PA(va_or_pa);
-    } else {
-        // 否则默认就是物理地址
-        pa = va_or_pa;
-    }
-
+static inline reg_t make_satp(phys_addr_t pa) {
     return SATP_MODE | (pa >> 12);
 }
 
@@ -73,7 +59,7 @@ pteval_t arch_pgtbl_pa_to_pteval(phys_addr_t pa) {
     return (pteval_t)(((pa) >> 12) << 10);
 }
 
-phys_addr_t arch_pteval_to_pa(pteval_t val) {
+phys_addr_t arch_pgtbl_pteval_to_pa(pteval_t  val) {
     return (((val&0xffffffffffffffff) >> 10) << 12);
 }
 
@@ -82,29 +68,37 @@ uint32_t arch_pgtbl_level_index(pgtable_t *tbl, uint32_t level, virt_addr_t va) 
     return (va >> shift) & (1<<tbl->features->level[level].bits);
 }
 
-void arch_pgtbl_set_pte(pte_t* pte, phys_addr_t pa, uint32_t flags) {
+void arch_pgtbl_set_pte(pte_t* pte, phys_addr_t pa, vma_flags_t flags) {
     pteval_t val = arch_pgtbl_pa_to_pteval(pa);
-    pte->val = val | flags | PTE_V;
+    uint32_t _flags = 0;
+
+    if (flags & VMA_R) _flags |= PTE_R;
+    if (flags & VMA_W) _flags |= PTE_W;
+    if (flags & VMA_X) _flags |= PTE_X;
+    if (flags & VMA_USER) _flags |= PTE_U;
+
+    pte->val = val | _flags | PTE_V;
 }
 
 void arch_pgtbl_clear_pte(pte_t* pte) {
     pte->val = 0;
 }
 
-int arch_pgtbl_pte_valid(pte_t *pte) {
+bool arch_pgtbl_pte_valid(pte_t *pte) {
     return (pte->val & PTE_V);
 }
 
-int arch_pgtbl_pte_is_leaf(pte_t *pte) {
+bool arch_pgtbl_pte_is_leaf(pte_t *pte) {
     return (pte->val & (PTE_R | PTE_W | PTE_X)) != 0;
 }
 
-void *arch_pgtbl_alloc_table() {
-    return page_alloc(1);   // 一页
-}
-
-void arch_pgtbl_free_table(void*p) {
-    kfree(p);
+bool arch_pgtbl_table_is_empty(pte_t *table) {
+    for (int i = 0; i < 512; i++) {
+        if (arch_pgtbl_pte_valid(&table[i])==true) {
+            return false;
+        }
+    }
+    return true;
 }
 
 void arch_pgtbl_flush() {
@@ -118,7 +112,8 @@ void arch_pgtbl_switch_to(pgtable_t *pgtbl) {
 
 int arch_pgtbl_init(pgtable_t *tbl) {
     tbl->features = &riscv_features;
-    tbl->root = page_alloc(1); 
+    tbl->root = alloc_pages_kva(1); 
+    tbl->root_pa = KERNEL_PA(tbl->root);
     if (!tbl->root) return -1;
     memset(tbl->root, 0, PAGE_SIZE);
     return 0;
@@ -126,26 +121,12 @@ int arch_pgtbl_init(pgtable_t *tbl) {
 
 void arch_pgtbl_deinit(pgtable_t *tbl) {
     tbl->features = NULL;
+    if (tbl->root) {
+        free_pages_kva(tbl->root);
+        tbl->root = NULL;
+    }
 }
 
-// void arch_pgtbl_test() {
-//     pgtable_t test_pgtbl;
-//     arch_pgtbl_init(&test_pgtbl);
 
-//     virt_addr_t test_va = 0x85000000UL; // KERNEL_VA_START
-//     phys_addr_t test_pa = 0xffffffffc5000000UL; // KERNEL_PA_BASE
-
-//     arch_map(&test_pgtbl, test_va, test_pa, HUGE_PAGE_4K, PTE_R | PTE_W | PTE_X);
-//     phys_addr_t resolved_pa = arch_pgtbl_walk(&test_pgtbl, test_va);
-//     printk("pa = %xu,resolved_pa = %xu\n", test_pa, resolved_pa);
-//     CHECK(resolved_pa == test_pa, "Page table walk failed", return;);
-
-//     arch_unmap(&test_pgtbl, test_va);
-//     resolved_pa = arch_pgtbl_walk(&test_pgtbl, test_va);
-//     printk("after umap,resolved_pa = %xu\n", resolved_pa);
-//     CHECK(resolved_pa == 0, "Page unmap failed", return;);
-
-//     printk("Page table test passed\n");
-// }
 
 

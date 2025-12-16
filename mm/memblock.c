@@ -18,6 +18,7 @@
 #include <os/minmax.h>
 #include <os/of.h>
 #include <os/mm/early_malloc.h>
+#include <os/kva.h>
 
 
 #define IS_NOMAP(flags) ((flags) & MEMBLOCK_NOMAP)
