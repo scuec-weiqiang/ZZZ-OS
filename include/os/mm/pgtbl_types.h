@@ -42,14 +42,12 @@ struct pgtable_level {
 struct pgtable_features {
     int va_bits;            // 虚拟地址位数（如39、48）
     int pa_bits;            // 物理地址位数
-    int levels;             // 页表层级数
+    int support_levels;     // 页表层级数
+
+    // 层级信息
+    struct pgtable_level *level;
     int page_shift;         // 基础页面移位（通常12）
-    size_t page_size;       // 基础页面大小（通常4KB）
-    
-    // 支持的页面大小
-    size_t supported_page_sizes[8];
-    int num_supported_sizes;
-    
+
     // 特性标志
     unsigned int features;
 #define PGTABLE_FEATURE_HUGE_PAGES   (1 << 0)
@@ -58,9 +56,6 @@ struct pgtable_features {
 #define PGTABLE_FEATURE_NO_EXEC      (1 << 3)
 #define PGTABLE_FEATURE_USER_PAGES   (1 << 4)
 #define PGTABLE_FEATURE_ACCESSED_DIRTY (1 << 5)
-    
-    // 层级信息
-    struct pgtable_level *level;
 };
 
 typedef struct pgtable{

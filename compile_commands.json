@@ -1,6 +1,20 @@
 [
   {
     "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Wall",
+      "-g",
+      "-o",
+      "kbuild",
+      "kbuild.c"
+    ],
+    "directory": "/home/wei/os/ZZZ-OS/tools/kbuild",
+    "file": "/home/wei/os/ZZZ-OS/tools/kbuild/kbuild.c",
+    "output": "/home/wei/os/ZZZ-OS/tools/kbuild/kbuild"
+  },
+  {
+    "arguments": [
       "/usr/bin/riscv64-unknown-elf-gcc",
       "-g",
       "-Wall",
@@ -1252,5 +1266,25 @@
     "directory": "/home/wei/os/ZZZ-OS",
     "file": "/home/wei/os/ZZZ-OS/mm/slab.c",
     "output": "/home/wei/os/ZZZ-OS/build/mm/slab.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-g",
+      "-Wall",
+      "-fno-builtin",
+      "-mcmodel=medany",
+      "-Iinclude",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-Imm/",
+      "-c",
+      "-o",
+      "build/./mm/pgtbl.o",
+      "mm/pgtbl.c"
+    ],
+    "directory": "/home/wei/os/ZZZ-OS",
+    "file": "/home/wei/os/ZZZ-OS/mm/pgtbl.c",
+    "output": "/home/wei/os/ZZZ-OS/build/mm/pgtbl.o"
   }
 ]

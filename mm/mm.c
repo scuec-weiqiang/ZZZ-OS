@@ -22,8 +22,16 @@
 #include <os/mm/pgtbl.h>
 
 static int highest_possible_level(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size) {
-    int level = pgtbl->features->levels - 1; // 默认使用最小页大小
-    for (int i = pgtbl->features->levels - 1; i >= 0; i--) {
+    if (pgtbl == NULL||pgtbl->features == NULL) {
+        return -1;
+    }
+
+    if ((pgtbl->features->features & PGTABLE_FEATURE_HUGE_PAGES) == 0) {
+        return pgtbl->features->support_levels - 1; // 不支持大页，返回最低层级
+    }
+    
+    int level = pgtbl->features->support_levels - 1; // 默认使用最小页大小
+    for (int i = 0; i < pgtbl->features->support_levels ; i++) {
         size_t page_size = pgtbl->features->level[i].page_size;
         if ((vaddr % page_size == 0) && (paddr % page_size == 0) && (size >= page_size)) {
             level = i;

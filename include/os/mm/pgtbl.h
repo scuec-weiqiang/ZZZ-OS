@@ -12,6 +12,8 @@ int map_one(pgtable_t *pgtbl, virt_addr_t va, phys_addr_t pa, int target_level, 
 int unmap_one(pgtable_t *pgtbl, uintptr_t va);
 phys_addr_t pgtbl_walk(pgtable_t *pgtbl, virt_addr_t va);
 void pgtbl_flush();
+bool pgtbl_table_is_empty(pgtable_t *pgtbl, pte_t *table, int level); // 检查页表是否为空
 void pgtbl_switch_to(pgtable_t *pgtbl);
+void pgtbl_test();
 
 #endif

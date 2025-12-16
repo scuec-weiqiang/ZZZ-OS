@@ -23,9 +23,17 @@ static void free_table_va(void*p) {
     kfree(p);
 }
 
+bool papgtbl_table_is_empty(pgtable_t *pgtbl, pte_t *table, int level) {
+    for (int i = 0; i < (PAGE_SIZE/sizeof(pte_t)); i++) {
+        if (arch_pgtbl_pte_valid(&table[i])==true) {
+            return false;
+        }
+    }
+    return true;
+}
 
 int pgtbl_level_page_size(pgtable_t *tbl, unsigned int level) {
-    if (!tbl || !tbl->features || level >= tbl->features->levels) {
+    if (!tbl || !tbl->features || level >= tbl->features->support_levels) {
         return 0;
     }
     return tbl->features->level[level].page_size;
@@ -40,10 +48,11 @@ pgtable_t *new_pgtbl(const char* name) {
     memset(tbl, 0, sizeof(pgtable_t));
     strncpy(tbl->name, name, sizeof(tbl->name) - 1);
     tbl->asid = 0; // TODO: 分配 ASID
-    if (arch_pgtbl_init(tbl) < 0) {
-        kfree(tbl);
-        return NULL;
-    }
+    arch_pgtbl_init(tbl);
+    tbl->root = page_alloc(1); 
+    if (!tbl->root) return NULL;
+    tbl->root_pa = KERNEL_PA(tbl->root);
+    memset(tbl->root, 0, PAGE_SIZE);
 
     return tbl;
 }
@@ -54,7 +63,7 @@ int map_one(pgtable_t *pgtbl, virt_addr_t va, phys_addr_t pa, int target_level, 
     int index;
     pte_t *table = pgtbl->root;
     pte_t *pte = NULL;
-    for (int i = 0;i < target_level-1; i++) {
+    for (int i = 0;i < target_level; i++) {
         index = arch_pgtbl_level_index(pgtbl, i, va);
         pte = &table[index];
 
@@ -88,7 +97,7 @@ int unmap_one(pgtable_t *pgtbl, uintptr_t va) {
 
     pte_t *table = pgtbl->root;
     unsigned long index = 0;
-    for (int i = 0; i < pgtbl->features->levels; i++) {
+    for (int i = 0; i < pgtbl->features->support_levels; i++) {
         index = arch_pgtbl_level_index(pgtbl, i, va);
         pte_t *pte = &(table)[index];
         if (arch_pgtbl_pte_valid(pte)==true) {
@@ -108,10 +117,9 @@ phys_addr_t pgtbl_walk(pgtable_t *pgtbl, virt_addr_t va) {
     CHECK(pgtbl != NULL && pgtbl->root != NULL, "pgtbl is NULL", return 0;);
 
     va = ALIGN_DOWN(va, PAGE_SIZE);
-
     pte_t *table = pgtbl->root;
     unsigned long index = 0;
-    for (int i = 0; i < pgtbl->features->levels; i++) {
+    for (int i = 0; i < pgtbl->features->support_levels; i++) {
         index = arch_pgtbl_level_index(pgtbl, i, va);
         pte_t *pte = &table[index];
         if (arch_pgtbl_pte_valid(pte)==true) {
@@ -144,10 +152,10 @@ void pgtbl_test() {
     };
     arch_pgtbl_init(&test_pgtbl);
  
-    virt_addr_t test_va = 0x85000000UL; // KERNEL_VA_START
-    phys_addr_t test_pa = 0xffffffffc5000000UL; // KERNEL_PA_BASE
+    virt_addr_t test_pa = 0x85000000UL; // KERNEL_VA_START
+    phys_addr_t test_va = 0xffffffffc5000000UL; // KERNEL_PA_BASE
 
-    map_one(&test_pgtbl, test_va, test_pa, 3, VMA_R | VMA_W | VMA_X);
+    map_one(&test_pgtbl, test_va, test_pa, 2, VMA_R | VMA_W | VMA_X);
     phys_addr_t resolved_pa = pgtbl_walk(&test_pgtbl, test_va);
     printk("pa = %xu,resolved_pa = %xu\n", test_pa, resolved_pa);
     CHECK(resolved_pa == test_pa, "Page table walk failed", return;);
@@ -158,4 +166,5 @@ void pgtbl_test() {
     CHECK(resolved_pa == 0, "Page unmap failed", return;);
 
     printk("Page table test passed\n");
+    while(1);
 }
