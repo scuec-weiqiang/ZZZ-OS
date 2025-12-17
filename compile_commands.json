@@ -1,20 +1,6 @@
 [
   {
     "arguments": [
-      "/usr/bin/gcc",
-      "-c",
-      "-Wall",
-      "-g",
-      "-o",
-      "kbuild",
-      "kbuild.c"
-    ],
-    "directory": "/home/wei/os/ZZZ-OS/tools/kbuild",
-    "file": "/home/wei/os/ZZZ-OS/tools/kbuild/kbuild.c",
-    "output": "/home/wei/os/ZZZ-OS/tools/kbuild/kbuild"
-  },
-  {
-    "arguments": [
       "/usr/bin/riscv64-unknown-elf-gcc",
       "-g",
       "-Wall",

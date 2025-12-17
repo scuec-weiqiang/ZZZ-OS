@@ -54,7 +54,12 @@ int map_range(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t siz
     while (va < end) {
         int level = highest_possible_level(pgtbl, va, pa, end - va);
         int map_size = pgtbl_level_page_size(pgtbl, level);
-        if (map_one(pgtbl, va, pa, level, flags) < 0) {
+        struct map_ctx ctx = {
+            .pa = pa,
+            .flags = flags,
+            .target_level = level,
+        };
+        if (pgtbl_walk(pgtbl, va, level, map_cb, &ctx) < 0) {
             return -1;
         }
 
@@ -67,7 +72,7 @@ int map_range(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t siz
 }
 
 int unmap_range(pgtable_t *pgtbl, virt_addr_t va, size_t size) {
-    return unmap_one(pgtbl, va);
+    return 0;
 }
 
 void build_kernel_mapping(pgtable_t *pgtbl) {
@@ -93,7 +98,9 @@ void build_kernel_mapping(pgtable_t *pgtbl) {
 
 }
 
+
 void kernel_page_table_init() {
+    // pgtbl_test();
     kernel_pgtbl = new_pgtbl("kernel_pgtbl");
     if (kernel_pgtbl == NULL)
         return;
@@ -107,7 +114,9 @@ void kernel_page_table_init() {
 int copyin(pgtable_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
     size_t n = 0;
     while (n < len) {
-        uintptr_t src = pgtbl_walk(pagetable, src_va);
+        struct look_ctx resolved_pa = {0};
+        pgtbl_walk(pagetable, src_va, 2, look_cb, &resolved_pa);
+        uintptr_t src = KERNEL_VA(resolved_pa.pa);
         if (src == 0) {
             return -1;
         }
@@ -128,7 +137,9 @@ int copyin(pgtable_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
 int copyout(pgtable_t *pagetable, uintptr_t dst_va, char *src, size_t len) {
     size_t n = 0;
     while (n < len) {
-        uintptr_t dst = pgtbl_walk(pagetable, dst_va);
+        struct look_ctx resolved_pa = {0};
+        pgtbl_walk(pagetable, dst_va, 2, look_cb, &resolved_pa);
+        uintptr_t dst = KERNEL_VA(resolved_pa.pa);
         if (dst == 0) {
             return -1;
         }
