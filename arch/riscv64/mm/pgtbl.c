@@ -44,7 +44,6 @@ struct satp {
         uint32_t val;
         #endif
     };
-    
 };
 #ifdef RISCV64
 /* RISC-V页表特性 */
@@ -97,6 +96,29 @@ phys_addr_t arch_pgtbl_pteval_to_pa(pteval_t  val) {
 uint32_t arch_pgtbl_level_index(pgtable_t *tbl, uint32_t level, virt_addr_t va) {
     int shift = tbl->features->page_shift+ ((tbl->features->support_levels -1 - level) * tbl->features->level[level].bits);
     return (va >> shift) & ((1<<tbl->features->level[level].bits)-1);
+}
+
+void arch_pgtbl_pte_set_flags(pte_t* pte, vma_flags_t flags) {
+    uint32_t _flags = 0;
+
+    if (flags & VMA_R) _flags |= PTE_R;
+    if (flags & VMA_W) _flags |= PTE_W;
+    if (flags & VMA_X) _flags |= PTE_X;
+    if (flags & VMA_USER) _flags |= PTE_U;
+
+    // 清除原有权限位
+    pte->val &= ~(PTE_R | PTE_W | PTE_X | PTE_U);
+    // 设置新的权限位
+    pte->val |= _flags;
+}
+
+vma_flags_t arch_pgtbl_pte_get_flags(pte_t* pte) {
+    vma_flags_t flags = 0;
+    if (pte->val & PTE_R) flags |= VMA_R;
+    if (pte->val & PTE_W) flags |= VMA_W;
+    if (pte->val & PTE_X) flags |= VMA_X;
+    if (pte->val & PTE_U) flags |= VMA_USER;
+    return flags;
 }
 
 void arch_pgtbl_set_pte(pte_t* pte, phys_addr_t pa, vma_flags_t flags) {

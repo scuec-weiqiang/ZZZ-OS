@@ -29,7 +29,7 @@ typedef struct { pteval_t val; } pmd_t;
 typedef struct { pteval_t val; } pud_t;
 typedef struct { pteval_t val; } pgd_t;
 
-
+#define MAX_PGTBL_LEVELS 4
 /* 页表层级描述 */
 struct pgtable_level {
     int level;              // 层级号（从0开始）
