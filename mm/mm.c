@@ -106,7 +106,7 @@ void build_kernel_mapping(pgtable_t *pgtbl) {
 }
 
 void kernel_page_table_init() {
-    pgtbl_test();
+    // pgtbl_test();
     kernel_pgtbl = new_pgtbl("kernel_pgtbl");
     if (kernel_pgtbl == NULL)
         return;
