@@ -72,7 +72,6 @@ os: $(TARGET)
 
 $(TARGET): $(BUILD_OBJS)
 	$(CC) $(LDFLAGS) $^ -o $@
-	rm $(KBUILD_FILE)
 	@echo "$@ is ready"
 
 $(BUILD_DIR)/%.o: %.c $(ASM_LINK) $(KBUILD_FILE)

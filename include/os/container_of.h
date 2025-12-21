@@ -26,7 +26,7 @@
  * @param struct_member:结构体的成员名
 **/   
 #define container_of(member_ptr,struct_type,struct_member) \
-    ((struct_type*)(((size_t)member_ptr)-offsetof(struct_type,struct_member))) \
+    ((struct_type*)(((size_t)(member_ptr)) - offsetof(struct_type, struct_member))) \
 
 
 #endif // CONTAINER_OF_H
