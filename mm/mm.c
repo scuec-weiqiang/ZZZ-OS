@@ -7,6 +7,7 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
+#include "os/mm/mm_types.h"
 #include "os/pfn.h"
 #include <os/mm/pgtbl_types.h>
 #include <os/mm/symbols.h>
@@ -20,6 +21,11 @@
 #include <os/mm/early_malloc.h>
 #include <os/mm/vma_flags.h>
 #include <os/mm/pgtbl.h>
+#include <os/mm/vma.h>
+#include <os/mm.h>
+
+struct mm_struct *kernel_mm_struct = NULL;
+struct mm_struct *current_mm_struct = NULL;
 
 static int highest_possible_level(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size) {
     if (pgtbl == NULL||pgtbl->features == NULL) {
@@ -39,6 +45,22 @@ static int highest_possible_level(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr
         }
     }
     return level;
+}
+
+struct mm_struct *mm_create() {
+    struct mm_struct *mm = kmalloc(sizeof(struct mm_struct));
+    if (!mm) {
+        return NULL;
+    }
+    mm->pgdir = new_pgtbl("process_pgtbl");
+    if (!mm->pgdir) {
+        kfree(mm);
+        return NULL;
+    }
+    INIT_LIST_HEAD(&mm->vma_list);
+    mm->vma_count = 0;
+    vma_add(mm, 0, 1, 0); // 添加哨兵节点
+    return mm;
 }
 
 int map_range(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, vma_flags_t flags) {
@@ -64,7 +86,7 @@ int map_range(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t siz
 }
 
 int unmap_range(pgtable_t *pgtbl, virt_addr_t va, size_t size) {
-    CHECK(pgtbl != NULL, "pgtbl is NULL", return -1;);
+    CHECK(pgtbl != NULL, "mm is NULL", return -1;);
     size = ALIGN_UP(size, PAGE_SIZE);
     va = ALIGN_DOWN(va, PAGE_SIZE);
     uintptr_t start = va;
@@ -82,40 +104,90 @@ int unmap_range(pgtable_t *pgtbl, virt_addr_t va, size_t size) {
     return 0;
 }
 
-void build_kernel_mapping(pgtable_t *pgtbl) {
-    // 映射内核代码段，数据段，栈以及堆的保留页到虚拟地址空间
-    map_range(pgtbl, (uintptr_t)text_start, (uintptr_t)KERNEL_PA(text_start), (size_t)text_size, VMA_R | VMA_X);
-    map_range(pgtbl, (uintptr_t)rodata_start, (uintptr_t)KERNEL_PA(rodata_start), (size_t)rodata_size, VMA_R);
-    map_range(pgtbl, (uintptr_t)data_start, (uintptr_t)KERNEL_PA(data_start), (size_t)data_size, VMA_R | VMA_W);
-    map_range(pgtbl, (uintptr_t)bss_start, (uintptr_t)KERNEL_PA(bss_start), (size_t)bss_size, VMA_R | VMA_W);
+int do_map(struct mm_struct * mm, virt_addr_t vaddr, phys_addr_t paddr, size_t size, vma_flags_t flags, int lazy_or_eager) {
+    CHECK(mm != NULL, "mm is NULL", return -1;);
+
+    pgtable_t *pgtbl = mm->pgdir;
+    size = ALIGN_UP(size, PAGE_SIZE);
+    uintptr_t va = ALIGN_DOWN(vaddr, PAGE_SIZE);
+    uintptr_t pa = ALIGN_DOWN(paddr, PAGE_SIZE);
+    uintptr_t end = va + size;
+
+    vma_add(mm, va, size, flags);
+
+    // 如果是惰性映射，则只添加VMA，不进行实际映射
+    if (lazy_or_eager == LAZY_MAP) {
+        return 0;
+    }
+
+    while (va < end) {
+        int target_level = highest_possible_level(pgtbl, va, pa, end - va);
+        int map_size = pgtbl_level_page_size(pgtbl, target_level);
+
+        if (pgtbl_map(pgtbl, va, pa, target_level, flags) < 0) {
+            return -1;
+        }
     
-    map_range(pgtbl, (uintptr_t)initcall_start, (uintptr_t)KERNEL_PA(initcall_start), (size_t)initcall_size, VMA_R | VMA_W | VMA_X);
-    map_range(pgtbl, (uintptr_t)exitcall_start, (uintptr_t)KERNEL_PA(exitcall_start), (size_t)exitcall_size , VMA_R | VMA_W | VMA_X);
-    map_range(pgtbl, (uintptr_t)irqinitcall_start, (uintptr_t)KERNEL_PA(irqinitcall_start), (size_t)irqinitcall_size, VMA_R | VMA_W | VMA_X);
-    map_range(pgtbl, (uintptr_t)irqexitcall_start, (uintptr_t)KERNEL_PA(irqexitcall_start), (size_t)irqexitcall_size , VMA_R | VMA_W | VMA_X);
-    map_range(pgtbl, (uintptr_t)early_stack_start, (uintptr_t)KERNEL_PA(early_stack_start), (size_t)early_stack_size, VMA_R | VMA_W);
+        va += map_size;
+        pa += map_size;
+    }
 
-    // map_range(pgtbl, kernel_start, KERNEL_PA(kernel_start), kernel_size, VMA_R | VMA_W | VMA_X);
-    map_range(pgtbl, (uintptr_t)heap_start, (uintptr_t)KERNEL_PA(heap_start), (size_t)heap_size, VMA_R | VMA_W);
-    map_range(pgtbl, (uintptr_t)stack_start, (uintptr_t)KERNEL_PA(stack_start), (size_t)stack_size * 2, VMA_R | VMA_W);
+    pgtbl_flush();
+    return 0;
+}
 
-    map_range(pgtbl, KERNEL_VA(early_malloc_start), early_stack_start, early_stack_size, VMA_R | VMA_W );
-    map_range(pgtbl, (uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, VMA_R | VMA_W);
-    map_range(pgtbl, (uintptr_t)0x10000000, (uintptr_t)0x10000000, PAGE_SIZE, VMA_R | VMA_W);
+int do_unmap(struct mm_struct *mm, virt_addr_t va, size_t size) {
+    CHECK(mm != NULL, "mm is NULL", return -1;);
 
+    pgtable_t *pgtbl = mm->pgdir;
+    size = ALIGN_UP(size, PAGE_SIZE);
+    va = ALIGN_DOWN(va, PAGE_SIZE);
+    uintptr_t start = va;
+    uintptr_t end = start + size;
+
+    while (va < end) {
+        int target_level = highest_possible_level(pgtbl, va, 0, end - va);
+        int unmap_size = pgtbl_level_page_size(pgtbl, target_level);
+        
+        vma_delete(mm, va, unmap_size);
+        pgtbl_unmap(pgtbl, va, target_level);
+
+        va += unmap_size;
+    }
+
+    pgtbl_flush();
+    return 0;
+}
+
+void build_kernel_mapping(struct mm_struct *mm) {
+    // 映射内核代码段，数据段，栈以及堆的保留页到虚拟地址空间
+    do_map(mm, (uintptr_t)text_start, (uintptr_t)KERNEL_PA(text_start), (size_t)text_size, VMA_R | VMA_X, EAGER_MAP);
+    do_map(mm, (uintptr_t)rodata_start, (uintptr_t)KERNEL_PA(rodata_start), (size_t)rodata_size, VMA_R, EAGER_MAP);
+    do_map(mm, (uintptr_t)data_start, (uintptr_t)KERNEL_PA(data_start), (size_t)data_size, VMA_R | VMA_W, EAGER_MAP);
+    do_map(mm, (uintptr_t)bss_start, (uintptr_t)KERNEL_PA(bss_start), (size_t)bss_size, VMA_R | VMA_W, EAGER_MAP);
+
+    do_map(mm, (uintptr_t)initcall_start, (uintptr_t)KERNEL_PA(initcall_start), (size_t)initcall_size, VMA_R | VMA_W | VMA_X, EAGER_MAP);
+    do_map(mm, (uintptr_t)exitcall_start, (uintptr_t)KERNEL_PA(exitcall_start), (size_t)exitcall_size , VMA_R | VMA_W | VMA_X, EAGER_MAP);
+    do_map(mm, (uintptr_t)irqinitcall_start, (uintptr_t)KERNEL_PA(irqinitcall_start), (size_t)irqinitcall_size, VMA_R | VMA_W | VMA_X, EAGER_MAP);
+    do_map(mm, (uintptr_t)irqexitcall_start, (uintptr_t)KERNEL_PA(irqexitcall_start), (size_t)irqexitcall_size , VMA_R | VMA_W | VMA_X, EAGER_MAP);
+    do_map(mm, (uintptr_t)early_stack_start, (uintptr_t)KERNEL_PA(early_stack_start), (size_t)early_stack_size, VMA_R | VMA_W, EAGER_MAP);
+
+    do_map(mm, (uintptr_t)heap_start, (uintptr_t)KERNEL_PA(heap_start), (size_t)heap_size, VMA_R | VMA_W, EAGER_MAP);
+    do_map(mm, (uintptr_t)stack_start, (uintptr_t)KERNEL_PA(stack_start), (size_t)stack_size * 2, VMA_R | VMA_W, EAGER_MAP);
+
+    do_map(mm, KERNEL_VA(early_malloc_start), early_stack_start, early_stack_size, VMA_R | VMA_W , EAGER_MAP);
+    do_map(mm, (uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, VMA_R | VMA_W, EAGER_MAP);
+    do_map(mm, (uintptr_t)0x10000000, (uintptr_t)0x10000000, PAGE_SIZE, VMA_R | VMA_W, EAGER_MAP);
+}
+
+void mm_init() {
+    kernel_mm_struct = mm_create();
+    build_kernel_mapping(kernel_mm_struct);
+    pgtbl_switch_to(kernel_mm_struct->pgdir);
+    pgtbl_flush();
 }
 
 void kernel_page_table_init() {
-    // pgtbl_test();
-    extern vma_test();
-    vma_test();
-    kernel_pgtbl = new_pgtbl("kernel_pgtbl");
-    if (kernel_pgtbl == NULL)
-        return;
-    build_kernel_mapping(kernel_pgtbl);
-
-    pgtbl_switch_to(kernel_pgtbl);
-    pgtbl_flush();
     printk("kernel page init success!\n");
 }
 

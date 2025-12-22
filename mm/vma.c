@@ -29,7 +29,7 @@ void vma_destroy(struct vma *vma) {
 struct vma *vma_find(struct mm_struct *mm, virt_addr_t va) {
     struct vma *vma;
     list_for_each_entry(vma, &mm->vma_list, struct vma, node) {
-        if (vma->start <= va && vma->end > va) {
+        if (vma->start <= va && vma->end > va && vma->flags) {
             return vma;
         }
     }
@@ -75,15 +75,6 @@ static int vma_insert(struct mm_struct *mm, struct vma *new) {
     if (!mm || !new) {
         return -1;
     }
-
-    /* 如果直接在遍历时插入，我们需要考虑在哪里插入的问题
-     但是这样会导致插入时需要考虑前后关系，代码复杂度增加。
-     例如：链表为空，直接插入即可；如果只有一个节点，我们要插入的节点可能在这个节点之后，也可能在这个节点之前，
-     我们需要单独处理这些情况，就多了许多if判断，难以套用通用逻辑
-     
-     这里我们先简单地在头部插入，也就是假设插入的地址是最小的，如果实际它大于其他节点的起始地址，我们只需要把他移到这个节点之后即可
-     这样可以简化插入逻辑
-    */
 
     if (list_empty(&mm->vma_list)) {
         list_add_after(&mm->vma_list, &new->node);
@@ -159,6 +150,7 @@ int vma_delete(struct mm_struct *mm, virt_addr_t start, size_t len) {
         {
             addr += len;
         }
+
         if (vma_split(mm, vma, addr) < 0) {
             return -1;
         }

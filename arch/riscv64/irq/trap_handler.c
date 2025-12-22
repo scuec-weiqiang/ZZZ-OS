@@ -11,6 +11,7 @@
 #include <os/syscall.h>
 #include <os/types.h>
 
+
 extern void kernel_trap_entry();
 
 void trap_init() {
@@ -80,7 +81,6 @@ reg_t trap_handler(reg_t _ctx) {
             panic("Store/AMO address misaligned\n");
             break;
         case 7:
-            // panic("\033[32mStore/AMO access fault\n\033[0m");
             panic("Store/AMO access fault\n");
             break;
         case 8:
