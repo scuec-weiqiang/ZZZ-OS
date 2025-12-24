@@ -71,15 +71,14 @@ void init_kernel(void *dtb) {
     arch_timer_init(SYS_HZ_1);
     // arch_timer_start();
     irq_enable(GLOBAL_IRQ);
-    // memblock_reserve(KERNEL_PA(kernel_start), kernel_size);
 
     // creat("/a.txt",S_IFREG|0644);
     // mkdir("/dir1",S_IFDIR|0644);
 
-    // proc_init();
+    proc_init();
 
-    // proc_create("/proc2.elf");
-    // proc_create("/proc1.elf");
+    proc_create("/proc2.elf");
+    proc_create("/proc1.elf");
     printk("init success\n");
     while (1) {
     }

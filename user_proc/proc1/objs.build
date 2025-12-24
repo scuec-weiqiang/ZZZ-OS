@@ -1,0 +1,2 @@
+OBJ_Y += proc1.o
+OBJ_Y += ../../user/
