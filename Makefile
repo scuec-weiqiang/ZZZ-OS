@@ -169,3 +169,8 @@ move:
 	sudo mount -o loop ../disk.img ../mount && echo "挂载成功!" || dmesg | tail -n 20
 	sudo cp $(TARGET) ../mount/
 	sudo umount ../mount
+
+.PHONY: u
+u:
+	$(MAKE) -C user_proc/proc1 all
+	$(MAKE) -C user_proc/proc2 all

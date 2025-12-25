@@ -19,6 +19,8 @@
 #include <os/irq.h>
 #include <os/of.h>
 
+virt_addr_t plic_base = 0;
+
 static void riscv64_plic_enable(struct irq_chip* self, int hwirq) {
     __plic_interrupt_enable(self->hart, hwirq);
 }
@@ -100,7 +102,7 @@ static int riscv_plic_probe(struct platform_device *pdev) {
     int irq_count = (int)reg[0];
 
     reg = of_read_u32_array(node, "reg", 2);
-    ioremap(reg[0], reg[1]);
+    plic_base = (virt_addr_t)ioremap(reg[0], reg[1]);
 
     reg = of_read_u32_array(node, "interrupts-extended", 2);
     int hwirq = (int)reg[1]; 

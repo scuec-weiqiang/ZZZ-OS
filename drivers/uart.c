@@ -30,7 +30,7 @@ struct uart_reg {
     uint8_t SPR;
 };
 
-uintptr_t uart_base = 0x10000000;
+uintptr_t uart_base = 0;
 #define UART0 (*(volatile struct uart_reg *)(uart_base))
 
 #define UART_TX_IDLE (1 << 5)
@@ -117,8 +117,7 @@ static int uart_prob(struct platform_device *pdev) {
     }
 
     uint32_t *reg = of_read_u32_array(node, "reg", 2);
-    ioremap(reg[0], reg[1]);
-    uart_base = (uintptr_t)reg[0];
+    uart_base = (virt_addr_t)ioremap(reg[0], reg[1]);
     uart_reg_init();
 
     dev_t devnr = 2;

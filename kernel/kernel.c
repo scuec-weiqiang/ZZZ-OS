@@ -60,8 +60,6 @@ void init_kernel(void *dtb) {
         virt_disk_init();
         fs_init();
 
-        printk("ok\n");
-
         do_initcalls();
         irq_enable(EXTERN_IRQ);
 
@@ -69,17 +67,12 @@ void init_kernel(void *dtb) {
     }
     set_hart_stack();
     arch_timer_init(SYS_HZ_1);
-    // arch_timer_start();
     irq_enable(GLOBAL_IRQ);
-
-    // creat("/a.txt",S_IFREG|0644);
-    // mkdir("/dir1",S_IFDIR|0644);
 
     proc_init();
 
     proc_create("/proc2.elf");
     proc_create("/proc1.elf");
-    printk("init success\n");
 
     sched_init(hart);
     sched();

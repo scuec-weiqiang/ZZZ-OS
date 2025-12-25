@@ -10,8 +10,9 @@
 #define PLIC_H
 
 #include <os/types.h>
+extern virt_addr_t plic_base;
 
-#define PLIC_BASE                     0x0c000000
+#define PLIC_BASE                     (plic_base)  // PLIC 基地址，由驱动程序初始化时映射
 #define PLIC_PRIORITY_BASE            (PLIC_BASE + (0x0000))
 #define PLIC_PENDING_BASE             (PLIC_BASE + (0x1000))
 #define PLIC_INT_EN_BASE              (PLIC_BASE + (0x2000))

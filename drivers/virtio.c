@@ -8,11 +8,17 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include <drivers/virtio.h>
+#include <os/mm.h>
 
-volatile struct virtio_mmio_regs *virtio = (volatile struct virtio_mmio_regs *)VIRTIO_MMIO_BASE;
+volatile struct virtio_mmio_regs *virtio = NULL;
 
 int virtio_blk_init()
 {
+    virtio = ioremap(VIRTIO_MMIO_BASE, sizeof(struct virtio_mmio_regs));
+    if(virtio == NULL)
+    {
+        return -1;
+    }
     if(virtio->magic != VIRTIO_MMIO_MAGIC_VALUE ||
        virtio->version != VIRTIO_MMIO_VERSION ||
        virtio->vendor_id != VIRTIO_MMIO_VENDOR_ID)

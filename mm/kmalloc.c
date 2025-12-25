@@ -13,6 +13,7 @@
 #include <os/mm/physmem.h>
 #include <os/mm/buddy.h>
 #include <os/mm/slab.h>
+#include <os/kva.h>
 
 enum alloc_state {
     EARLY_ALLOC,
@@ -47,7 +48,8 @@ void kmalloc_init() {
 void *page_alloc(size_t npages) {
     switch (alloc_state) {
     case EARLY_ALLOC:
-        return early_page_alloc(npages);
+        printk("page_alloc: early alloc no support page alloc\n");
+        return NULL;
 
     case MEMBLOCK_ALLOC:
         return memblock_alloc(npages * PAGE_SIZE, PAGE_SIZE);
@@ -66,10 +68,9 @@ void *page_alloc(size_t npages) {
 void kfree(void *p) {
     switch (alloc_state) {
     case EARLY_ALLOC:
-        early_free(p);
         return;
     case MEMBLOCK_ALLOC:
-        memblock_free((phys_addr_t)p);
+        memblock_free(KERNEL_PA(p));
         return;
     case NORMAL_ALLOC:
         __kfree(p);

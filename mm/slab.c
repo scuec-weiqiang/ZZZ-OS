@@ -8,6 +8,7 @@
 #include <os/list.h>
 #include <os/printk.h>
 #include <os/mm/page.h>
+#include <os/kva.h>
 
 
 #define get_slab(list_node) list_entry(list_node, struct slab, list)
@@ -95,7 +96,7 @@ static struct slab* init_slab(struct kmem_cache *cache) {
     }
     // next->next = NULL;
 
-    struct page *pg = phys_to_page((phys_addr_t)mem);
+    struct page *pg = phys_to_page(KERNEL_PA(mem));
     pg->slab = slab;
     slab->magic = SLAB_MAGIC;
 
@@ -185,7 +186,7 @@ void __kfree(void *ptr) {
 
     // 只有按页对齐且对应的page有slab信息，才是从slab分配的，否则是从buddy分配的
     if (IS_ALIGNED((uintptr_t)ptr, PAGE_SIZE)) {
-        pfn_t pfn = phys_to_pfn((phys_addr_t)ptr);
+        pfn_t pfn = phys_to_pfn(KERNEL_PA(ptr));
         struct page *pg = pfn_to_page(pfn);
         if (!pg->slab) {
             free_pages_kva(ptr);

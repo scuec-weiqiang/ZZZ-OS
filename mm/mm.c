@@ -14,11 +14,11 @@
 #include <drivers/virtio.h>
 #include <os/check.h>
 #include <os/kmalloc.h>
+#include <os/mm/memblock.h>
 #include <os/mm/page.h>
 #include <os/printk.h>
 #include <os/string.h>
 #include <os/kva.h>
-#include <os/mm/early_malloc.h>
 #include <os/mm/vma_flags.h>
 #include <os/mm/pgtbl.h>
 #include <os/mm/vma.h>
@@ -159,25 +159,34 @@ int do_unmap(struct mm_struct *mm, virt_addr_t va, size_t size) {
     return 0;
 }
 
+static virt_addr_t alloc_mmio_va(size_t size) {
+    static virt_addr_t current_mmio_va = KERNEL_MMIO_BASE;
+    for (int i = 0; i < kernel_mm_struct->pgdir->features->support_levels; i++) {
+        size_t page_size = kernel_mm_struct->pgdir->features->level[i].page_size;
+        if (size >= page_size) {
+            current_mmio_va = ALIGN_UP(current_mmio_va, page_size);
+            break;
+        }
+    }
+    virt_addr_t va = current_mmio_va;
+    current_mmio_va += ALIGN_UP(size, PAGE_SIZE);
+    return va;
+}
+
+void *ioremap(phys_addr_t pa, size_t size) {
+    uintptr_t va = alloc_mmio_va(size);
+    do_map(kernel_mm_struct, va, pa, size, VMA_R | VMA_W, EAGER_MAP);
+    return (void *)va;
+}
+
+void iounmap(virt_addr_t va, size_t size) {
+    do_unmap(kernel_mm_struct, va, size);
+}
+
 void build_kernel_mapping(struct mm_struct *mm) {
     // 映射内核代码段，数据段，栈以及堆的保留页到虚拟地址空间
-    do_map(mm, KERNEL_VA(text_start), text_start, (size_t)text_size, VMA_R | VMA_X, EAGER_MAP);
-    do_map(mm, KERNEL_VA(rodata_start), rodata_start, (size_t)rodata_size, VMA_R, EAGER_MAP);
-    do_map(mm, KERNEL_VA(data_start), data_start, (size_t)data_size, VMA_R | VMA_W, EAGER_MAP);
-    do_map(mm, KERNEL_VA(bss_start), bss_start, (size_t)bss_size, VMA_R | VMA_W, EAGER_MAP);
-
-    do_map(mm, KERNEL_VA(initcall_start), initcall_start, (size_t)initcall_size, VMA_R | VMA_W | VMA_X, EAGER_MAP);
-    do_map(mm, KERNEL_VA(exitcall_start), exitcall_start, (size_t)exitcall_size , VMA_R | VMA_W | VMA_X, EAGER_MAP);
-    do_map(mm, KERNEL_VA(irqinitcall_start), irqinitcall_start, (size_t)irqinitcall_size, VMA_R | VMA_W | VMA_X, EAGER_MAP);
-    do_map(mm, KERNEL_VA(irqexitcall_start), irqexitcall_start, (size_t)irqexitcall_size , VMA_R | VMA_W | VMA_X, EAGER_MAP);
-    do_map(mm, KERNEL_VA(early_stack_start), early_stack_start, (size_t)early_stack_size, VMA_R | VMA_W, EAGER_MAP);
-
-    do_map(mm, KERNEL_VA(heap_start), heap_start, (size_t)heap_size, VMA_R | VMA_W, EAGER_MAP);
-    do_map(mm, KERNEL_VA(stack_start), stack_start, (size_t)stack_size * 2, VMA_R | VMA_W, EAGER_MAP);
-
-    do_map(mm, KERNEL_VA(early_malloc_start), early_stack_start, early_stack_size, VMA_R | VMA_W , EAGER_MAP);
+    do_map(mm,kernel_start, KERNEL_PA(kernel_start), kernel_size, VMA_R|VMA_W|VMA_X, EAGER_MAP);
     do_map(mm, (uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, VMA_R | VMA_W, EAGER_MAP);
-    // do_map(mm, (uintptr_t)0x10000000, (uintptr_t)0x10000000, PAGE_SIZE, VMA_R | VMA_W, EAGER_MAP);
 }
 
 void copy_kernel_mapping(struct mm_struct *dest_mm) {
@@ -188,7 +197,11 @@ void copy_kernel_mapping(struct mm_struct *dest_mm) {
 
 void mm_init() {
     kernel_mm_struct = mm_create("kernel_mm");
-    build_kernel_mapping(kernel_mm_struct);
+    struct memblock_region *region = NULL;
+    list_for_each_entry(region, &memblock.memory.regions, struct memblock_region, node) {
+        do_map(kernel_mm_struct, KERNEL_VA(region->base), region->base, region->size, VMA_R|VMA_W|VMA_X, EAGER_MAP);
+    }
+    do_map(kernel_mm_struct, (uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, VMA_R | VMA_W, EAGER_MAP);
     pgtbl_switch_to(kernel_mm_struct->pgdir);
     pgtbl_flush();
     current_mm_struct = kernel_mm_struct;

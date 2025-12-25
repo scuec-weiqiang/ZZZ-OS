@@ -168,7 +168,7 @@ void* alloc_pages_kva(size_t npages) {
 
 void free_pages_kva(void *kaddr) {
     phys_addr_t addr = KERNEL_PA(kaddr);
-    struct page* page = phys_to_page(addr);
+    struct page* page = phys_to_page(KERNEL_PA(addr));
     free_pages(page);
 }
 

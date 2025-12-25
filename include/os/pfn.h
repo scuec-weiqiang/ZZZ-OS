@@ -25,8 +25,12 @@ typedef unsigned long pfn_t;
 #define phys_to_pfn(pa)  ((pa) >> PAGE_SHIFT)
 #define pfn_to_phys(pfn) ((pfn) << PAGE_SHIFT)
 
+// 向上对齐，例如： ALIGN_UP(13, 4) = 16
 #define ALIGN_UP(x, align) (((x) + (align) - 1) & ~((align) - 1))
+
+// 向下对齐，例如： ALIGN_DOWN(13, 4) = 12
 #define ALIGN_DOWN(x, align) ((x) & ~((align) - 1))
+
 #define IS_ALIGNED(x, align) (((x) & ((align) - 1)) == 0)
 
 #define PAGE_ALIGN(addr)  ALIGN_UP(addr, PAGE_SIZE)

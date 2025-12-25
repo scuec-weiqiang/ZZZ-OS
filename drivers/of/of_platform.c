@@ -44,11 +44,9 @@ void of_platform_populate() {
     int front=0,rear=0;
     struct device_node *node=NULL ,*child=NULL;
     struct platform_device *pdev=NULL;
-    // struct device_prop *prop=NULL;
 
     queue[rear] = (struct device_node *)fdt_root_node;
     rear++;    
-
 
     while(front < rear) {
         node = queue[front];

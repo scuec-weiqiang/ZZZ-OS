@@ -10,17 +10,15 @@
 #include <os/types.h>
 #include <os/printk.h>
 
-extern char __text_start[], __text_end[];
-extern char __rodata_start[], __rodata_end[];
-extern char __data_start[], __data_end[];
-extern char __bss_start[], __bss_end[];
-extern char __stack_start[], __stack_end[];
-extern char __heap_start[], __heap_end[];
-extern char __initcall_start[],__initcall_end[];
-extern char __exitcall_start[],__exitcall_end[];
-extern char __irqinitcall_start[],__irqinitcall_end[];
-extern char __irqexitcall_start[],__irqexitcall_end[];
-extern char __kernel_start[],__kernel_end[];
+extern char _text_start[], _text_end[];
+extern char _rodata_start[], _rodata_end[];
+extern char _data_start[], _data_end[];
+extern char _bss_start[], _bss_end[];
+extern char _initcall_start[],_initcall_end[];
+extern char _exitcall_start[],_exitcall_end[];
+extern char _irqinitcall_start[],_irqinitcall_end[];
+extern char _irqexitcall_start[],_irqexitcall_end[];
+extern char _kernel_start[],_kernel_end[];
 extern char _early_stack_start[], _early_stack_end[];
 
 phys_addr_t text_start;
@@ -35,12 +33,6 @@ phys_addr_t data_size;
 phys_addr_t bss_start;
 phys_addr_t bss_end;
 phys_addr_t bss_size;
-phys_addr_t stack_start;
-phys_addr_t stack_end;
-phys_addr_t stack_size;
-phys_addr_t heap_start;
-phys_addr_t heap_end;
-phys_addr_t heap_size;
 phys_addr_t initcall_start;
 phys_addr_t initcall_end;
 phys_addr_t initcall_size;
@@ -65,57 +57,48 @@ phys_addr_t early_stack_size;
 
 void symbols_init()
 {
-    text_start = (phys_addr_t)&__text_start;
-    text_end = (phys_addr_t)&__text_end;
+    text_start = (phys_addr_t)&_text_start;
+    text_end = (phys_addr_t)&_text_end;
     text_size = (text_end - text_start);
-    rodata_start = (phys_addr_t)&__rodata_start;
-    rodata_end = (phys_addr_t)&__rodata_end;
+    rodata_start = (phys_addr_t)&_rodata_start;
+    rodata_end = (phys_addr_t)&_rodata_end;
     rodata_size = (rodata_end - rodata_start);
-    data_start = (phys_addr_t)&__data_start;
-    data_end = (phys_addr_t)&__data_end;
+    data_start = (phys_addr_t)&_data_start;
+    data_end = (phys_addr_t)&_data_end;
     data_size = (data_end - data_start);
-    bss_start = (phys_addr_t)&__bss_start;
-    bss_end = (phys_addr_t)&__bss_end;
+    bss_start = (phys_addr_t)&_bss_start;
+    bss_end = (phys_addr_t)&_bss_end;
     bss_size = (bss_end - bss_start);
-    stack_start = (phys_addr_t)&__stack_start;
-    stack_end = (phys_addr_t)&__stack_end;
-    stack_size = (stack_end - stack_start);
-    heap_start = (phys_addr_t)&__heap_start;
-    heap_end = (phys_addr_t)&__heap_end;
-    heap_size = (heap_end - heap_start);
 
-    initcall_start = (phys_addr_t)&__initcall_start;
-    initcall_end = (phys_addr_t)&__initcall_end;
+    initcall_start = (phys_addr_t)&_initcall_start;
+    initcall_end = (phys_addr_t)&_initcall_end;
     initcall_size = (initcall_end - initcall_start);
 
     
-    irqinitcall_start = (phys_addr_t)&__irqinitcall_start;
-    irqinitcall_end = (phys_addr_t)&__irqinitcall_end;
+    irqinitcall_start = (phys_addr_t)&_irqinitcall_start;
+    irqinitcall_end = (phys_addr_t)&_irqinitcall_end;
     irqinitcall_size = (irqinitcall_end - irqinitcall_start);
 
-    exitcall_start = (phys_addr_t)&__exitcall_start;
-    exitcall_end = (phys_addr_t)&__exitcall_end;
+    exitcall_start = (phys_addr_t)&_exitcall_start;
+    exitcall_end = (phys_addr_t)&_exitcall_end;
     exitcall_size = (exitcall_end - exitcall_start);
     
-    irqexitcall_start = (phys_addr_t)&__irqexitcall_start;
-    irqexitcall_end = (phys_addr_t)&__irqexitcall_end;
+    irqexitcall_start = (phys_addr_t)&_irqexitcall_start;
+    irqexitcall_end = (phys_addr_t)&_irqexitcall_end;
     irqexitcall_size = (irqexitcall_end - irqexitcall_start);
 
-    kernel_start = (phys_addr_t)&__kernel_start;
-    kernel_end = (phys_addr_t)&__kernel_end;
+    kernel_start = (phys_addr_t)&_kernel_start;
+    kernel_end = (phys_addr_t)&_kernel_end;
     kernel_size = kernel_end - kernel_start;
 
     early_stack_start = (phys_addr_t)&_early_stack_start;
     early_stack_end = (phys_addr_t)&_early_stack_end;
     early_stack_size = early_stack_end - early_stack_start;
 
-
     printk("text:        start= %xu, end=  %xu, size=  %xu\n", text_start, text_end, text_size);
     printk("rodata:      start= %xu, end=  %xu, size=  %xu\n", rodata_start, rodata_end, rodata_size);
     printk("data:        start= %xu, end=  %xu, size=  %xu\n", data_start, data_end, data_size);
     printk("bss:         start= %xu, end=  %xu, size=  %xu\n", bss_start, bss_end, bss_size);
-    printk("stack:       start= %xu, end=  %xu, size=  %xu\n", stack_start, stack_end, stack_size);
-    printk("heap:        start= %xu, end=  %xu, size=  %xu\n", heap_start, heap_end, heap_size);
     printk("initcall:    start= %xu, end=  %xu, size=  %xu\n", initcall_start, initcall_end, initcall_size);
     printk("irqinitcall: start= %xu, end=  %xu, size=  %xu\n", irqinitcall_start, irqinitcall_end, irqinitcall_size);
     printk("exitcall:    start= %xu, end=  %xu, size=  %xu\n", exitcall_start, exitcall_end, exitcall_size);

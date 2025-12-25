@@ -104,7 +104,7 @@ SECTIONS
     PROVIDE_HIDDEN(_data_end = __data_end);
 
     PROVIDE_HIDDEN(_bss_start = __bss_start);
-    PROVIDE_HIDDEN(__bss_end = __bss_end);
+    PROVIDE_HIDDEN(_bss_end = __bss_end);
 
     PROVIDE_HIDDEN(_kernel_start = __kernel_start);
     PROVIDE_HIDDEN(_kernel_end = __kernel_end);

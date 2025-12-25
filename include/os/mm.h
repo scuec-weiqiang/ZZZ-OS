@@ -31,8 +31,9 @@ void build_kernel_mapping(struct mm_struct *mm);
 void copy_kernel_mapping(struct mm_struct *dest_mm);
 
 #define mmap(va, size, flags)   do_map(current_mm_struct, (va), 0, (size), (flags), LAZY_MAP)
-#define ioremap(pa, size)   do_map(kernel_mm_struct, (uintptr_t)(pa), (uintptr_t)(pa), (size), VMA_R | VMA_W, EAGER_MAP)
-#define iounmap(va)         do_unmap(kernel_mm_struct, (uintptr_t)(va), PAGE_SIZE)
+
+void *ioremap(phys_addr_t pa, size_t size);
+void iounmap(virt_addr_t va, size_t size);
 
 int copyin(pgtable_t *pagetable, char *dst, uintptr_t src_va, size_t len);
 int copyout(pgtable_t *pagetable, uintptr_t dst_va, char *src, size_t len);

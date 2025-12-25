@@ -18,7 +18,5 @@ extern phys_addr_t early_malloc_start;
 
 extern void early_malloc_init();
 extern void *early_malloc(size_t size);
-extern void *early_page_alloc(size_t npages);
-extern void early_free(void *ptr);
 
 #endif

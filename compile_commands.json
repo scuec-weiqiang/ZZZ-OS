@@ -1,6 +1,20 @@
 [
   {
     "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Wall",
+      "-g",
+      "-o",
+      "kbuild",
+      "kbuild.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS/tools/kbuild",
+    "file": "/home/wqqqq/os/ZZZ-OS/tools/kbuild/kbuild.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/tools/kbuild/kbuild"
+  },
+  {
+    "arguments": [
       "/usr/bin/riscv64-unknown-elf-gcc",
       "-g",
       "-Wall",
@@ -13,9 +27,9 @@
       "build/./arch/riscv64/boot/boot.o",
       "arch/riscv64/boot/boot.S"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/arch/riscv64/boot/boot.S",
-    "output": "/home/wei/os/ZZZ-OS/build/arch/riscv64/boot/boot.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/arch/riscv64/boot/boot.S",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/arch/riscv64/boot/boot.o"
   },
   {
     "arguments": [
@@ -33,9 +47,9 @@
       "build/./arch/riscv64/mm/pgtbl.o",
       "arch/riscv64/mm/pgtbl.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/arch/riscv64/mm/pgtbl.c",
-    "output": "/home/wei/os/ZZZ-OS/build/arch/riscv64/mm/pgtbl.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/arch/riscv64/mm/pgtbl.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/arch/riscv64/mm/pgtbl.o"
   },
   {
     "arguments": [
@@ -53,9 +67,9 @@
       "build/./arch/riscv64/timer/arch_timer.o",
       "arch/riscv64/timer/arch_timer.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/arch/riscv64/timer/arch_timer.c",
-    "output": "/home/wei/os/ZZZ-OS/build/arch/riscv64/timer/arch_timer.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/arch/riscv64/timer/arch_timer.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/arch/riscv64/timer/arch_timer.o"
   },
   {
     "arguments": [
@@ -73,9 +87,9 @@
       "build/./arch/riscv64/irq/clint.o",
       "arch/riscv64/irq/clint.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/arch/riscv64/irq/clint.c",
-    "output": "/home/wei/os/ZZZ-OS/build/arch/riscv64/irq/clint.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/arch/riscv64/irq/clint.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/arch/riscv64/irq/clint.o"
   },
   {
     "arguments": [
@@ -93,9 +107,9 @@
       "build/./arch/riscv64/irq/irq.o",
       "arch/riscv64/irq/irq.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/arch/riscv64/irq/irq.c",
-    "output": "/home/wei/os/ZZZ-OS/build/arch/riscv64/irq/irq.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/arch/riscv64/irq/irq.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/arch/riscv64/irq/irq.o"
   },
   {
     "arguments": [
@@ -113,9 +127,9 @@
       "build/./arch/riscv64/irq/trap_handler.o",
       "arch/riscv64/irq/trap_handler.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/arch/riscv64/irq/trap_handler.c",
-    "output": "/home/wei/os/ZZZ-OS/build/arch/riscv64/irq/trap_handler.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/arch/riscv64/irq/trap_handler.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/arch/riscv64/irq/trap_handler.o"
   },
   {
     "arguments": [
@@ -131,9 +145,9 @@
       "build/./arch/riscv64/irq/trap.o",
       "arch/riscv64/irq/trap.S"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/arch/riscv64/irq/trap.S",
-    "output": "/home/wei/os/ZZZ-OS/build/arch/riscv64/irq/trap.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/arch/riscv64/irq/trap.S",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/arch/riscv64/irq/trap.o"
   },
   {
     "arguments": [
@@ -149,9 +163,9 @@
       "build/./arch/riscv64/swtch.o",
       "arch/riscv64/swtch.S"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/arch/riscv64/swtch.S",
-    "output": "/home/wei/os/ZZZ-OS/build/arch/riscv64/swtch.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/arch/riscv64/swtch.S",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/arch/riscv64/swtch.o"
   },
   {
     "arguments": [
@@ -169,9 +183,9 @@
       "build/./drivers/of/fdt.o",
       "drivers/of/fdt.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/drivers/of/fdt.c",
-    "output": "/home/wei/os/ZZZ-OS/build/drivers/of/fdt.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/drivers/of/fdt.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/drivers/of/fdt.o"
   },
   {
     "arguments": [
@@ -189,9 +203,9 @@
       "build/./drivers/of/of_platform.o",
       "drivers/of/of_platform.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/drivers/of/of_platform.c",
-    "output": "/home/wei/os/ZZZ-OS/build/drivers/of/of_platform.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/drivers/of/of_platform.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/drivers/of/of_platform.o"
   },
   {
     "arguments": [
@@ -209,9 +223,9 @@
       "build/./drivers/of/of.o",
       "drivers/of/of.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/drivers/of/of.c",
-    "output": "/home/wei/os/ZZZ-OS/build/drivers/of/of.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/drivers/of/of.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/drivers/of/of.o"
   },
   {
     "arguments": [
@@ -229,9 +243,9 @@
       "build/./drivers/of/of_memory.o",
       "drivers/of/of_memory.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/drivers/of/of_memory.c",
-    "output": "/home/wei/os/ZZZ-OS/build/drivers/of/of_memory.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/drivers/of/of_memory.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/drivers/of/of_memory.o"
   },
   {
     "arguments": [
@@ -249,9 +263,9 @@
       "build/./drivers/core/driver.o",
       "drivers/core/driver.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/drivers/core/driver.c",
-    "output": "/home/wei/os/ZZZ-OS/build/drivers/core/driver.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/drivers/core/driver.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/drivers/core/driver.o"
   },
   {
     "arguments": [
@@ -269,9 +283,9 @@
       "build/./drivers/plic/plic.o",
       "drivers/plic/plic.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/drivers/plic/plic.c",
-    "output": "/home/wei/os/ZZZ-OS/build/drivers/plic/plic.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/drivers/plic/plic.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/drivers/plic/plic.o"
   },
   {
     "arguments": [
@@ -289,9 +303,9 @@
       "build/./drivers/time.o",
       "drivers/time.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/drivers/time.c",
-    "output": "/home/wei/os/ZZZ-OS/build/drivers/time.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/drivers/time.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/drivers/time.o"
   },
   {
     "arguments": [
@@ -309,9 +323,9 @@
       "build/./drivers/uart.o",
       "drivers/uart.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/drivers/uart.c",
-    "output": "/home/wei/os/ZZZ-OS/build/drivers/uart.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/drivers/uart.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/drivers/uart.o"
   },
   {
     "arguments": [
@@ -329,9 +343,9 @@
       "build/./drivers/virtio.o",
       "drivers/virtio.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/drivers/virtio.c",
-    "output": "/home/wei/os/ZZZ-OS/build/drivers/virtio.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/drivers/virtio.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/drivers/virtio.o"
   },
   {
     "arguments": [
@@ -349,9 +363,9 @@
       "build/./drivers/virt_disk.o",
       "drivers/virt_disk.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/drivers/virt_disk.c",
-    "output": "/home/wei/os/ZZZ-OS/build/drivers/virt_disk.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/drivers/virt_disk.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/drivers/virt_disk.o"
   },
   {
     "arguments": [
@@ -369,9 +383,9 @@
       "build/./fs/ext2/ext2_block.o",
       "fs/ext2/ext2_block.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/ext2/ext2_block.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/ext2/ext2_block.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/ext2/ext2_block.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/ext2/ext2_block.o"
   },
   {
     "arguments": [
@@ -389,9 +403,9 @@
       "build/./fs/ext2/ext2_cache.o",
       "fs/ext2/ext2_cache.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/ext2/ext2_cache.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/ext2/ext2_cache.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/ext2/ext2_cache.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/ext2/ext2_cache.o"
   },
   {
     "arguments": [
@@ -409,9 +423,9 @@
       "build/./fs/ext2/ext2_dir.o",
       "fs/ext2/ext2_dir.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/ext2/ext2_dir.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/ext2/ext2_dir.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/ext2/ext2_dir.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/ext2/ext2_dir.o"
   },
   {
     "arguments": [
@@ -429,9 +443,9 @@
       "build/./fs/ext2/ext2_file.o",
       "fs/ext2/ext2_file.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/ext2/ext2_file.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/ext2/ext2_file.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/ext2/ext2_file.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/ext2/ext2_file.o"
   },
   {
     "arguments": [
@@ -449,9 +463,9 @@
       "build/./fs/ext2/ext2_inode.o",
       "fs/ext2/ext2_inode.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/ext2/ext2_inode.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/ext2/ext2_inode.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/ext2/ext2_inode.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/ext2/ext2_inode.o"
   },
   {
     "arguments": [
@@ -469,9 +483,9 @@
       "build/./fs/ext2/ext2_namei.o",
       "fs/ext2/ext2_namei.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/ext2/ext2_namei.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/ext2/ext2_namei.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/ext2/ext2_namei.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/ext2/ext2_namei.o"
   },
   {
     "arguments": [
@@ -489,9 +503,9 @@
       "build/./fs/ext2/ext2_page.o",
       "fs/ext2/ext2_page.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/ext2/ext2_page.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/ext2/ext2_page.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/ext2/ext2_page.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/ext2/ext2_page.o"
   },
   {
     "arguments": [
@@ -509,9 +523,9 @@
       "build/./fs/ext2/ext2_super.o",
       "fs/ext2/ext2_super.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/ext2/ext2_super.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/ext2/ext2_super.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/ext2/ext2_super.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/ext2/ext2_super.o"
   },
   {
     "arguments": [
@@ -529,9 +543,9 @@
       "build/./fs/block_adapter.o",
       "fs/block_adapter.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/block_adapter.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/block_adapter.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/block_adapter.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/block_adapter.o"
   },
   {
     "arguments": [
@@ -549,9 +563,9 @@
       "build/./fs/block_device.o",
       "fs/block_device.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/block_device.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/block_device.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/block_device.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/block_device.o"
   },
   {
     "arguments": [
@@ -569,9 +583,9 @@
       "build/./fs/chrdev.o",
       "fs/chrdev.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/chrdev.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/chrdev.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/chrdev.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/chrdev.o"
   },
   {
     "arguments": [
@@ -589,9 +603,9 @@
       "build/./fs/dcache.o",
       "fs/dcache.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/dcache.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/dcache.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/dcache.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/dcache.o"
   },
   {
     "arguments": [
@@ -609,9 +623,9 @@
       "build/./fs/fs_init.o",
       "fs/fs_init.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/fs_init.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/fs_init.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/fs_init.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/fs_init.o"
   },
   {
     "arguments": [
@@ -629,9 +643,9 @@
       "build/./fs/fs_type.o",
       "fs/fs_type.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/fs_type.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/fs_type.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/fs_type.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/fs_type.o"
   },
   {
     "arguments": [
@@ -649,9 +663,9 @@
       "build/./fs/icache.o",
       "fs/icache.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/icache.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/icache.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/icache.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/icache.o"
   },
   {
     "arguments": [
@@ -669,9 +683,9 @@
       "build/./fs/mount.o",
       "fs/mount.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/mount.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/mount.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/mount.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/mount.o"
   },
   {
     "arguments": [
@@ -689,9 +703,9 @@
       "build/./fs/path.o",
       "fs/path.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/path.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/path.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/path.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/path.o"
   },
   {
     "arguments": [
@@ -709,9 +723,9 @@
       "build/./fs/pcache.o",
       "fs/pcache.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/pcache.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/pcache.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/pcache.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/pcache.o"
   },
   {
     "arguments": [
@@ -729,9 +743,9 @@
       "build/./fs/super.o",
       "fs/super.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/super.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/super.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/super.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/super.o"
   },
   {
     "arguments": [
@@ -749,9 +763,9 @@
       "build/./fs/vfs.o",
       "fs/vfs.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/fs/vfs.c",
-    "output": "/home/wei/os/ZZZ-OS/build/fs/vfs.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/fs/vfs.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/fs/vfs.o"
   },
   {
     "arguments": [
@@ -769,9 +783,9 @@
       "build/./kernel/elf.o",
       "kernel/elf.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/kernel/elf.c",
-    "output": "/home/wei/os/ZZZ-OS/build/kernel/elf.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/kernel/elf.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/kernel/elf.o"
   },
   {
     "arguments": [
@@ -789,9 +803,9 @@
       "build/./kernel/kernel.o",
       "kernel/kernel.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/kernel/kernel.c",
-    "output": "/home/wei/os/ZZZ-OS/build/kernel/kernel.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/kernel/kernel.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/kernel/kernel.o"
   },
   {
     "arguments": [
@@ -809,9 +823,9 @@
       "build/./kernel/printk.o",
       "kernel/printk.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/kernel/printk.c",
-    "output": "/home/wei/os/ZZZ-OS/build/kernel/printk.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/kernel/printk.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/kernel/printk.o"
   },
   {
     "arguments": [
@@ -829,9 +843,9 @@
       "build/./kernel/proc.o",
       "kernel/proc.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/kernel/proc.c",
-    "output": "/home/wei/os/ZZZ-OS/build/kernel/proc.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/kernel/proc.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/kernel/proc.o"
   },
   {
     "arguments": [
@@ -849,9 +863,9 @@
       "build/./kernel/sched.o",
       "kernel/sched.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/kernel/sched.c",
-    "output": "/home/wei/os/ZZZ-OS/build/kernel/sched.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/kernel/sched.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/kernel/sched.o"
   },
   {
     "arguments": [
@@ -869,9 +883,9 @@
       "build/./kernel/swtimer.o",
       "kernel/swtimer.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/kernel/swtimer.c",
-    "output": "/home/wei/os/ZZZ-OS/build/kernel/swtimer.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/kernel/swtimer.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/kernel/swtimer.o"
   },
   {
     "arguments": [
@@ -889,9 +903,9 @@
       "build/./kernel/syscall.o",
       "kernel/syscall.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/kernel/syscall.c",
-    "output": "/home/wei/os/ZZZ-OS/build/kernel/syscall.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/kernel/syscall.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/kernel/syscall.o"
   },
   {
     "arguments": [
@@ -909,9 +923,9 @@
       "build/./kernel/console.o",
       "kernel/console.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/kernel/console.c",
-    "output": "/home/wei/os/ZZZ-OS/build/kernel/console.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/kernel/console.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/kernel/console.o"
   },
   {
     "arguments": [
@@ -929,9 +943,9 @@
       "build/./kernel/irq/irq.o",
       "kernel/irq/irq.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/kernel/irq/irq.c",
-    "output": "/home/wei/os/ZZZ-OS/build/kernel/irq/irq.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/kernel/irq/irq.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/kernel/irq/irq.o"
   },
   {
     "arguments": [
@@ -949,9 +963,9 @@
       "build/./kernel/irq/irq_domain.o",
       "kernel/irq/irq_domain.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/kernel/irq/irq_domain.c",
-    "output": "/home/wei/os/ZZZ-OS/build/kernel/irq/irq_domain.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/kernel/irq/irq_domain.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/kernel/irq/irq_domain.o"
   },
   {
     "arguments": [
@@ -969,9 +983,9 @@
       "build/./kernel/irq/irq_chip.o",
       "kernel/irq/irq_chip.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/kernel/irq/irq_chip.c",
-    "output": "/home/wei/os/ZZZ-OS/build/kernel/irq/irq_chip.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/kernel/irq/irq_chip.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/kernel/irq/irq_chip.o"
   },
   {
     "arguments": [
@@ -989,9 +1003,9 @@
       "build/./lib/bitmap.o",
       "lib/bitmap.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/lib/bitmap.c",
-    "output": "/home/wei/os/ZZZ-OS/build/lib/bitmap.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/lib/bitmap.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/lib/bitmap.o"
   },
   {
     "arguments": [
@@ -1009,9 +1023,9 @@
       "build/./lib/hashtable.o",
       "lib/hashtable.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/lib/hashtable.c",
-    "output": "/home/wei/os/ZZZ-OS/build/lib/hashtable.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/lib/hashtable.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/lib/hashtable.o"
   },
   {
     "arguments": [
@@ -1029,9 +1043,9 @@
       "build/./lib/lru.o",
       "lib/lru.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/lib/lru.c",
-    "output": "/home/wei/os/ZZZ-OS/build/lib/lru.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/lib/lru.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/lib/lru.o"
   },
   {
     "arguments": [
@@ -1049,9 +1063,9 @@
       "build/./lib/string.o",
       "lib/string.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/lib/string.c",
-    "output": "/home/wei/os/ZZZ-OS/build/lib/string.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/lib/string.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/lib/string.o"
   },
   {
     "arguments": [
@@ -1069,9 +1083,9 @@
       "build/./lib/utils.o",
       "lib/utils.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/lib/utils.c",
-    "output": "/home/wei/os/ZZZ-OS/build/lib/utils.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/lib/utils.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/lib/utils.o"
   },
   {
     "arguments": [
@@ -1089,9 +1103,9 @@
       "build/./lib/rand.o",
       "lib/rand.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/lib/rand.c",
-    "output": "/home/wei/os/ZZZ-OS/build/lib/rand.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/lib/rand.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/lib/rand.o"
   },
   {
     "arguments": [
@@ -1109,9 +1123,9 @@
       "build/./mm/kmalloc.o",
       "mm/kmalloc.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/mm/kmalloc.c",
-    "output": "/home/wei/os/ZZZ-OS/build/mm/kmalloc.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/mm/kmalloc.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/mm/kmalloc.o"
   },
   {
     "arguments": [
@@ -1129,9 +1143,9 @@
       "build/./mm/mm.o",
       "mm/mm.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/mm/mm.c",
-    "output": "/home/wei/os/ZZZ-OS/build/mm/mm.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/mm/mm.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/mm/mm.o"
   },
   {
     "arguments": [
@@ -1149,9 +1163,9 @@
       "build/./mm/memblock.o",
       "mm/memblock.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/mm/memblock.c",
-    "output": "/home/wei/os/ZZZ-OS/build/mm/memblock.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/mm/memblock.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/mm/memblock.o"
   },
   {
     "arguments": [
@@ -1169,9 +1183,9 @@
       "build/./mm/symbols.o",
       "mm/symbols.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/mm/symbols.c",
-    "output": "/home/wei/os/ZZZ-OS/build/mm/symbols.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/mm/symbols.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/mm/symbols.o"
   },
   {
     "arguments": [
@@ -1189,9 +1203,9 @@
       "build/./mm/early_malloc.o",
       "mm/early_malloc.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/mm/early_malloc.c",
-    "output": "/home/wei/os/ZZZ-OS/build/mm/early_malloc.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/mm/early_malloc.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/mm/early_malloc.o"
   },
   {
     "arguments": [
@@ -1209,9 +1223,9 @@
       "build/./mm/physmem.o",
       "mm/physmem.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/mm/physmem.c",
-    "output": "/home/wei/os/ZZZ-OS/build/mm/physmem.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/mm/physmem.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/mm/physmem.o"
   },
   {
     "arguments": [
@@ -1229,9 +1243,9 @@
       "build/./mm/buddy.o",
       "mm/buddy.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/mm/buddy.c",
-    "output": "/home/wei/os/ZZZ-OS/build/mm/buddy.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/mm/buddy.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/mm/buddy.o"
   },
   {
     "arguments": [
@@ -1249,9 +1263,9 @@
       "build/./mm/slab.o",
       "mm/slab.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/mm/slab.c",
-    "output": "/home/wei/os/ZZZ-OS/build/mm/slab.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/mm/slab.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/mm/slab.o"
   },
   {
     "arguments": [
@@ -1269,8 +1283,213 @@
       "build/./mm/pgtbl.o",
       "mm/pgtbl.c"
     ],
-    "directory": "/home/wei/os/ZZZ-OS",
-    "file": "/home/wei/os/ZZZ-OS/mm/pgtbl.c",
-    "output": "/home/wei/os/ZZZ-OS/build/mm/pgtbl.o"
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/mm/pgtbl.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/mm/pgtbl.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-g",
+      "-Wall",
+      "-fno-builtin",
+      "-mcmodel=medany",
+      "-Iinclude",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-Imm/",
+      "-c",
+      "-o",
+      "build/./mm/vma.o",
+      "mm/vma.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/mm/vma.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/mm/vma.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-g",
+      "-Wall",
+      "-fno-builtin",
+      "-mcmodel=medany",
+      "-Iinclude",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-Imm/",
+      "-c",
+      "-o",
+      "build/./mm/page_fault.o",
+      "mm/page_fault.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/mm/page_fault.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/mm/page_fault.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-O2",
+      "-I.",
+      "-c",
+      "-o",
+      "dtc.o",
+      "dtc.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS/tools/dtc",
+    "file": "/home/wqqqq/os/ZZZ-OS/tools/dtc/dtc.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/tools/dtc/dtc.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-O2",
+      "-I.",
+      "-c",
+      "-o",
+      "flattree.o",
+      "flattree.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS/tools/dtc",
+    "file": "/home/wqqqq/os/ZZZ-OS/tools/dtc/flattree.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/tools/dtc/flattree.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-O2",
+      "-I.",
+      "-c",
+      "-o",
+      "fstree.o",
+      "fstree.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS/tools/dtc",
+    "file": "/home/wqqqq/os/ZZZ-OS/tools/dtc/fstree.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/tools/dtc/fstree.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-O2",
+      "-I.",
+      "-c",
+      "-o",
+      "livetree.o",
+      "livetree.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS/tools/dtc",
+    "file": "/home/wqqqq/os/ZZZ-OS/tools/dtc/livetree.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/tools/dtc/livetree.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-O2",
+      "-I.",
+      "-c",
+      "-o",
+      "srcpos.o",
+      "srcpos.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS/tools/dtc",
+    "file": "/home/wqqqq/os/ZZZ-OS/tools/dtc/srcpos.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/tools/dtc/srcpos.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-O2",
+      "-I.",
+      "-c",
+      "-o",
+      "treesource.o",
+      "treesource.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS/tools/dtc",
+    "file": "/home/wqqqq/os/ZZZ-OS/tools/dtc/treesource.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/tools/dtc/treesource.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-O2",
+      "-I.",
+      "-c",
+      "-o",
+      "util.o",
+      "util.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS/tools/dtc",
+    "file": "/home/wqqqq/os/ZZZ-OS/tools/dtc/util.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/tools/dtc/util.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-O2",
+      "-I.",
+      "-c",
+      "-o",
+      "dtc-lexer.o",
+      "dtc-lexer.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS/tools/dtc",
+    "file": "/home/wqqqq/os/ZZZ-OS/tools/dtc/dtc-lexer.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/tools/dtc/dtc-lexer.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-O2",
+      "-I.",
+      "-c",
+      "-o",
+      "dtc-parser.tab.o",
+      "dtc-parser.tab.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS/tools/dtc",
+    "file": "/home/wqqqq/os/ZZZ-OS/tools/dtc/dtc-parser.tab.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/tools/dtc/dtc-parser.tab.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-O2",
+      "-I.",
+      "-c",
+      "-o",
+      "checks.o",
+      "checks.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS/tools/dtc",
+    "file": "/home/wqqqq/os/ZZZ-OS/tools/dtc/checks.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/tools/dtc/checks.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-O2",
+      "-I.",
+      "-c",
+      "-o",
+      "data.o",
+      "data.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS/tools/dtc",
+    "file": "/home/wqqqq/os/ZZZ-OS/tools/dtc/data.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/tools/dtc/data.o"
   }
 ]

@@ -394,7 +394,6 @@ void memblock_init(void) {
     of_scan_memory();
 	of_scan_reserved_memory();
 	memblock_reserve(KERNEL_PA(kernel_start), kernel_size);
-    memblock_reserve(early_malloc_start, EARLY_MALLOC_SIZE);
     memblock_dump();
 
     extern void update_alloc_state();

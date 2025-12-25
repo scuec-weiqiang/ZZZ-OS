@@ -15,6 +15,7 @@
 #include <os/printk.h>
 #include <os/string.h>
 #include <os/mm/symbols.h>
+#include <os/kva.h>
 
 struct page *mem_map;   // base of page array
 pfn_t total_pages;
@@ -92,6 +93,7 @@ void physmem_init(void) {
     list_for_each_entry(pos, &memblock.reserved.regions, struct memblock_region, node) {
         mark_reserved_page_by_range(pos->base, pos->size);
     }    
-    mark_reserved_page_by_range(kernel_start, kernel_size);
-    mark_reserved_page_by_range((phys_addr_t)mem_map, sz);
+    // 内核链接到高地址，导出的符号是虚拟地址，要转换一下
+    mark_reserved_page_by_range(KERNEL_PA(kernel_start), kernel_size);
+    mark_reserved_page_by_range(KERNEL_PA(mem_map), sz);
 }
