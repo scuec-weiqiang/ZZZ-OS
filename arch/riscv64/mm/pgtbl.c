@@ -33,14 +33,18 @@
 struct satp {
     union {
         #ifdef RISCV64
-        uint64_t mode : 4;        // 模式
-        uint64_t asid : 16;       // 地址空间标识符
-        uint64_t ppn : 44;        // 根页表物理页号
+        struct {
+            uint64_t ppn : 44;        // 根页表物理页号
+            uint64_t asid : 16;       // 地址空间标识符
+            uint64_t mode : 4;        // 模式
+        };
         uint64_t val;
         #else
-        uint32_t mode : 4;
-        uint32_t asid : 16;
-        uint32_t ppn : 12;
+        struct {
+            uint32_t mode : 4;
+            uint32_t asid : 16;
+            uint32_t ppn : 12;
+        };
         uint32_t val;
         #endif
     };
@@ -154,6 +158,7 @@ void arch_pgtbl_switch_to(pgtable_t *pgtbl) {
     satp.mode = SATP_MODE; // SV39
     satp.asid = 0;
     satp.ppn = (phys_addr_t)pgtbl->root_pa >> 12;
+    uint64_t a = (8L<<60) | (pgtbl->root_pa >> 12);
     satp_w((reg_t)satp.val);
 }
 

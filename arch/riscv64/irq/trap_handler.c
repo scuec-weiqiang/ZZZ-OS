@@ -1,3 +1,4 @@
+#include "os/mm/vma_flags.h"
 #include <asm/arch_timer.h>
 #include <asm/interrupt.h>
 #include <asm/riscv.h>
@@ -10,6 +11,7 @@
 #include <os/sched.h>
 #include <os/syscall.h>
 #include <os/types.h>
+#include <os/mm/page_fault.h>
 
 
 extern void kernel_trap_entry();
@@ -56,8 +58,8 @@ reg_t trap_handler(reg_t _ctx) {
             printk("IRQ chip not found!\n");
         }
     } else {
-        printk("\nstval is %xu\n", stval_r());
-        printk("occour in %xu\n", ctx->sepc);
+        // printk("\nstval is %xu\n", stval_r());
+        // printk("occour in %xu\n", ctx->sepc);
         switch (cause_code) {
         case 0:
             panic("Instruction address misaligned!\n");
@@ -104,8 +106,8 @@ reg_t trap_handler(reg_t _ctx) {
             // page_fault_handler(stval_r());
             break;
         case 15:
-            panic("Store/AMO page fault\n");
-            // page_fault_handler(stval_r());
+            // panic("Store/AMO page fault\n");
+            do_page_fault(current_mm_struct, stval_r(), VMA_R|VMA_W|VMA_USER);
             break;
         default:
             panic("unknown sync exception!\ntrap!\n");

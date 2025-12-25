@@ -17,11 +17,12 @@
 #include <os/sched.h>
 #include <fs/vfs.h>
 #include <os/kmalloc.h>
+#include <os/mm.h>
 
 int sys_printf(struct trap_frame *ctx)
 {
     char *s = kmalloc(ctx->a1); // 获取字符串指针
-    copyin(current_proc()->pgd, s, (uintptr_t)ctx->a0, (uintptr_t)ctx->a1);
+    copyin(current_proc()->mm->pgdir, s, (uintptr_t)ctx->a0, (uintptr_t)ctx->a1);
     int n = printk("%s", s);
     kfree(s);
     return n;
@@ -42,7 +43,7 @@ int sys_open(struct trap_frame *ctx)
     struct proc *p = current_proc();
     for(;;)
     {
-        copyin(p->pgd, s, (uintptr_t)d, 1);
+        copyin(p->mm->pgdir, s, (uintptr_t)d, 1);
         if(*s == '\0' || s - path >= 127)
         {
             break;
@@ -78,7 +79,7 @@ int sys_read(struct trap_frame *ctx)
     ssize_t ret = read(p->fd_table[fd], kbuf, count);
     if(ret >= 0)
     {
-        copyout(p->pgd, (uintptr_t)buf, kbuf, ret);
+        copyout(p->mm->pgdir, (uintptr_t)buf, kbuf, ret);
     }
     kfree(kbuf);
     return ret;
@@ -95,7 +96,7 @@ int sys_write(struct trap_frame *ctx)
         return -1;
     }
     char *kbuf = (char*)kmalloc(count);
-    copyin(p->pgd, kbuf, (uintptr_t)buf, count);
+    copyin(p->mm->pgdir, kbuf, (uintptr_t)buf, count);
     ssize_t ret = write(p->fd_table[fd], kbuf, count);
     kfree(kbuf);
     return ret;
@@ -109,7 +110,7 @@ int sys_creat(struct trap_frame *ctx)
     struct proc *p = current_proc();
     for(;;)
     {
-        copyin(p->pgd, s, (uintptr_t)d, 1);
+        copyin(p->mm->pgdir, s, (uintptr_t)d, 1);
         if(*s == '\0' || s - path >= 127)
         {
             break;
@@ -135,7 +136,7 @@ int sys_mkdir(struct trap_frame *ctx)
     struct proc *p = current_proc();
     for(;;)
     {
-        copyin(p->pgd, s, (uintptr_t)d, 1);
+        copyin(p->mm->pgdir, s, (uintptr_t)d, 1);
         if(*s == '\0' || s - path >= 127)
         {
             break;

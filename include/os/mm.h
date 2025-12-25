@@ -15,23 +15,26 @@
 #include <os/mm/vma_flags.h>
 #include <os/mm/mm_types.h>
 
+extern struct mm_struct *kernel_mm_struct;
+extern struct mm_struct *current_mm_struct;
 
-extern pgtable_t *kernel_pgtbl; // 内核页全局目录
-
-// extern void mm_init();
-extern int map_range(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, vma_flags_t flags);
-extern int unmap_range(pgtable_t *pgtbl, virt_addr_t vaddr, size_t size);
+void mm_init();
+struct mm_struct *mm_create(char *name);
 
 #define LAZY_MAP 1
 #define EAGER_MAP 0
 
-extern int do_map(struct mm_struct *mm, virt_addr_t vaddr, phys_addr_t paddr, size_t size, vma_flags_t flags, int lazy_or_eager);
-extern int do_unmap(struct mm_struct *mm, virt_addr_t vaddr, size_t size);
+int do_map(struct mm_struct *mm, virt_addr_t vaddr, phys_addr_t paddr, size_t size, vma_flags_t flags, int lazy_or_eager);
+int do_unmap(struct mm_struct *mm, virt_addr_t vaddr, size_t size);
 
-extern void kernel_page_table_init();
-extern void build_kernel_mapping(struct mm_struct *mm);
+void build_kernel_mapping(struct mm_struct *mm);
+void copy_kernel_mapping(struct mm_struct *dest_mm);
 
-#define ioremap(pa, size)   map_range(kernel_pgtbl, (uintptr_t)(pa), (uintptr_t)(pa), (size_t)(size), VMA_R | VMA_W )
-#define iounmap(va)         unmap_range(kernel_pgtbl, (uintptr_t)(va))
+#define mmap(va, size, flags)   do_map(current_mm_struct, (va), 0, (size), (flags), LAZY_MAP)
+#define ioremap(pa, size)   do_map(kernel_mm_struct, (uintptr_t)(pa), (uintptr_t)(pa), (size), VMA_R | VMA_W, EAGER_MAP)
+#define iounmap(va)         do_unmap(kernel_mm_struct, (uintptr_t)(va), PAGE_SIZE)
+
+int copyin(pgtable_t *pagetable, char *dst, uintptr_t src_va, size_t len);
+int copyout(pgtable_t *pagetable, uintptr_t dst_va, char *src, size_t len);
 
 #endif

@@ -23,90 +23,90 @@ extern char __irqexitcall_start[],__irqexitcall_end[];
 extern char __kernel_start[],__kernel_end[];
 extern char _early_stack_start[], _early_stack_end[];
 
-uintptr_t text_start;
-uintptr_t text_end;
-uintptr_t text_size;
-uintptr_t rodata_start;
-uintptr_t rodata_end;
-uintptr_t rodata_size;
-uintptr_t data_start;
-uintptr_t data_end;
-uintptr_t data_size;
-uintptr_t bss_start;
-uintptr_t bss_end;
-uintptr_t bss_size;
-uintptr_t stack_start;
-uintptr_t stack_end;
-uintptr_t stack_size;
-uintptr_t heap_start;
-uintptr_t heap_end;
-uintptr_t heap_size;
-uintptr_t initcall_start;
-uintptr_t initcall_end;
-uintptr_t initcall_size;
-uintptr_t exitcall_start;
-uintptr_t exitcall_end;
-uintptr_t exitcall_size;
+phys_addr_t text_start;
+phys_addr_t text_end;
+phys_addr_t text_size;
+phys_addr_t rodata_start;
+phys_addr_t rodata_end;
+phys_addr_t rodata_size;
+phys_addr_t data_start;
+phys_addr_t data_end;
+phys_addr_t data_size;
+phys_addr_t bss_start;
+phys_addr_t bss_end;
+phys_addr_t bss_size;
+phys_addr_t stack_start;
+phys_addr_t stack_end;
+phys_addr_t stack_size;
+phys_addr_t heap_start;
+phys_addr_t heap_end;
+phys_addr_t heap_size;
+phys_addr_t initcall_start;
+phys_addr_t initcall_end;
+phys_addr_t initcall_size;
+phys_addr_t exitcall_start;
+phys_addr_t exitcall_end;
+phys_addr_t exitcall_size;
 
-uintptr_t irqinitcall_start;
-uintptr_t irqinitcall_end;
-uintptr_t irqinitcall_size;
-uintptr_t irqexitcall_start;
-uintptr_t irqexitcall_end;
-uintptr_t irqexitcall_size;
+phys_addr_t irqinitcall_start;
+phys_addr_t irqinitcall_end;
+phys_addr_t irqinitcall_size;
+phys_addr_t irqexitcall_start;
+phys_addr_t irqexitcall_end;
+phys_addr_t irqexitcall_size;
 
-uintptr_t kernel_start;
-uintptr_t kernel_end;
-uintptr_t kernel_size;
+phys_addr_t kernel_start;
+phys_addr_t kernel_end;
+phys_addr_t kernel_size;
 
-uintptr_t early_stack_start;
-uintptr_t early_stack_end;
-uintptr_t early_stack_size;
+phys_addr_t early_stack_start;
+phys_addr_t early_stack_end;
+phys_addr_t early_stack_size;
 
 void symbols_init()
 {
-    text_start = (uintptr_t)&__text_start;
-    text_end = (uintptr_t)&__text_end;
+    text_start = (phys_addr_t)&__text_start;
+    text_end = (phys_addr_t)&__text_end;
     text_size = (text_end - text_start);
-    rodata_start = (uintptr_t)&__rodata_start;
-    rodata_end = (uintptr_t)&__rodata_end;
+    rodata_start = (phys_addr_t)&__rodata_start;
+    rodata_end = (phys_addr_t)&__rodata_end;
     rodata_size = (rodata_end - rodata_start);
-    data_start = (uintptr_t)&__data_start;
-    data_end = (uintptr_t)&__data_end;
+    data_start = (phys_addr_t)&__data_start;
+    data_end = (phys_addr_t)&__data_end;
     data_size = (data_end - data_start);
-    bss_start = (uintptr_t)&__bss_start;
-    bss_end = (uintptr_t)&__bss_end;
+    bss_start = (phys_addr_t)&__bss_start;
+    bss_end = (phys_addr_t)&__bss_end;
     bss_size = (bss_end - bss_start);
-    stack_start = (uintptr_t)&__stack_start;
-    stack_end = (uintptr_t)&__stack_end;
+    stack_start = (phys_addr_t)&__stack_start;
+    stack_end = (phys_addr_t)&__stack_end;
     stack_size = (stack_end - stack_start);
-    heap_start = (uintptr_t)&__heap_start;
-    heap_end = (uintptr_t)&__heap_end;
+    heap_start = (phys_addr_t)&__heap_start;
+    heap_end = (phys_addr_t)&__heap_end;
     heap_size = (heap_end - heap_start);
 
-    initcall_start = (uintptr_t)&__initcall_start;
-    initcall_end = (uintptr_t)&__initcall_end;
+    initcall_start = (phys_addr_t)&__initcall_start;
+    initcall_end = (phys_addr_t)&__initcall_end;
     initcall_size = (initcall_end - initcall_start);
 
     
-    irqinitcall_start = (uintptr_t)&__irqinitcall_start;
-    irqinitcall_end = (uintptr_t)&__irqinitcall_end;
+    irqinitcall_start = (phys_addr_t)&__irqinitcall_start;
+    irqinitcall_end = (phys_addr_t)&__irqinitcall_end;
     irqinitcall_size = (irqinitcall_end - irqinitcall_start);
 
-    exitcall_start = (uintptr_t)&__exitcall_start;
-    exitcall_end = (uintptr_t)&__exitcall_end;
+    exitcall_start = (phys_addr_t)&__exitcall_start;
+    exitcall_end = (phys_addr_t)&__exitcall_end;
     exitcall_size = (exitcall_end - exitcall_start);
     
-    irqexitcall_start = (uintptr_t)&__irqexitcall_start;
-    irqexitcall_end = (uintptr_t)&__irqexitcall_end;
+    irqexitcall_start = (phys_addr_t)&__irqexitcall_start;
+    irqexitcall_end = (phys_addr_t)&__irqexitcall_end;
     irqexitcall_size = (irqexitcall_end - irqexitcall_start);
 
-    kernel_start = (uintptr_t)&__kernel_start;
-    kernel_end = (uintptr_t)&__kernel_end;
+    kernel_start = (phys_addr_t)&__kernel_start;
+    kernel_end = (phys_addr_t)&__kernel_end;
     kernel_size = kernel_end - kernel_start;
 
-    early_stack_start = (uintptr_t)&_early_stack_start;
-    early_stack_end = (uintptr_t)&_early_stack_end;
+    early_stack_start = (phys_addr_t)&_early_stack_start;
+    early_stack_end = (phys_addr_t)&_early_stack_end;
     early_stack_size = early_stack_end - early_stack_start;
 
 

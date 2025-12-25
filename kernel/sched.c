@@ -48,9 +48,10 @@ void sched() {
     {
         struct proc* next = _get_next_task(hart_id);
         if(!next) continue;
+        current_mm_struct = next->mm;
         next->expire_time = next->time_slice + systick();
         scheduler[hart_id].current = next;
-        pgtbl_switch_to(next->pgd);
+        pgtbl_switch_to(next->mm->pgdir);
         pgtbl_flush();
         swtch(&scheduler[hart_id].ctx,&next->context);
     }

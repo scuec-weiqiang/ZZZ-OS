@@ -9,8 +9,6 @@
 #include <os/string.h>
 #include <os/mm/pgtbl.h>
 
-pgtable_t *kernel_pgtbl = NULL; // kernel_page_global_directory 内核页全局目录
-
 static pte_t *pte_to_table(pte_t *pte) {
     phys_addr_t pa = arch_pgtbl_pteval_to_pa(pte->val);
     return (void *)KERNEL_VA(pa);
@@ -315,6 +313,38 @@ void pgtbl_flush() {
 
 void pgtbl_switch_to(pgtable_t *pgtbl) {
     arch_pgtbl_switch_to(pgtbl);
+}
+
+int pgtbl_level_index(pgtable_t *pgtbl, int level, virt_addr_t va) {
+    CHECK(pgtbl != NULL, "pgtbl is NULL", return -1;);
+    return arch_pgtbl_level_index(pgtbl, level, va);
+}
+
+int pgtbl_copy(pgtable_t *dest, pgtable_t *src, int level, int index_start, int index_num) {
+    if (!dest || !src) {
+        return -1;
+    }
+
+    pte_t *src_table = src->root;
+    pte_t *dest_table = dest->root;
+
+    int index = 0;
+    for (int i = 0; i < level; i++) {
+        index = arch_pgtbl_level_index(src, i, index_start);
+        src_table = pte_to_table(&src_table[index]);
+
+        index = arch_pgtbl_level_index(dest, i, index_start);
+        dest_table = pte_to_table(&dest_table[index]);
+    }
+    
+    for (int i = index_start; i < index_start + index_num; i++) {
+        pte_t *pte = &src_table[i];
+        if (arch_pgtbl_pte_valid(pte)) {
+            dest_table[i] = *pte;
+        }
+    }
+    
+    return 0;
 }
 
 void pgtbl_split_merge_unmap_test() {

@@ -52,7 +52,7 @@ void init_kernel(void *dtb) {
 		early_malloc_init();
 		fdt_init(dtb);
         memblock_init();
-        kernel_page_table_init();
+        mm_init();
         kmalloc_init();
         of_platform_populate();
         irq_init();
@@ -80,8 +80,7 @@ void init_kernel(void *dtb) {
     proc_create("/proc2.elf");
     proc_create("/proc1.elf");
     printk("init success\n");
-    while (1) {
-    }
+
     sched_init(hart);
     sched();
 }

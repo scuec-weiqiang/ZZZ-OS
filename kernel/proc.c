@@ -7,6 +7,7 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
+#include "os/mm/mm_types.h"
 #include <os/proc.h>
 #include <fs/vfs.h>
 #include <os/elf.h>
@@ -69,7 +70,7 @@ struct proc* proc_create(char* path) {
     struct proc* new_proc = (struct proc*)kmalloc(sizeof(struct proc));
     memset(new_proc,0,sizeof(struct proc));
 
-    pgtable_t* user_pgtbl = new_pgtbl("user_pgtbl");
+    struct mm_struct *mm = mm_create("user_pgtbl");
 
     char *user_stack = (char*)kmalloc(PROC_STACK_SIZE);
     memset(user_stack,0,PROC_STACK_SIZE);
@@ -85,18 +86,18 @@ struct proc* proc_create(char* path) {
             char *user_space = (char*)kmalloc(elf_info->segs[i].memsz); //程序加载到内存里需要的空间
             memset(user_space,0,elf_info->segs[i].memsz);
             memcpy(user_space,elf+elf_info->segs[i].offset,elf_info->segs[i].filesz);
-            map_range(user_pgtbl, elf_info->segs[i].vaddr, (uintptr_t)KERNEL_PA(user_space), elf_info->segs[i].memsz,VMA_W|VMA_R|VMA_X|VMA_USER);
+            do_map(mm, elf_info->segs[i].vaddr, (uintptr_t)KERNEL_PA(user_space), elf_info->segs[i].memsz,VMA_W|VMA_R|VMA_X|VMA_USER,EAGER_MAP);
             new_proc->code[j] = user_space;
             j++;
         }
     }
-    map_range(user_pgtbl, PROC_USER_STACK_TOP, (uintptr_t)KERNEL_PA(user_stack), PROC_STACK_SIZE, VMA_W|VMA_R|VMA_USER);
-    build_kernel_mapping(user_pgtbl);
+    do_map(mm, PROC_USER_STACK_TOP, (uintptr_t)KERNEL_PA(user_stack), PROC_STACK_SIZE, VMA_W|VMA_R|VMA_USER, EAGER_MAP);
+    copy_kernel_mapping(mm);
 
     new_proc->elf_info = elf_info;
     new_proc->user_sp = PROC_USER_STACK_BOTTOM;
     new_proc->kernel_sp = (uintptr_t)kernel_stack + PROC_STACK_SIZE;
-    new_proc->pgd = user_pgtbl;
+    new_proc->mm = mm;
     new_proc->trapframe = (struct trap_frame*)((uintptr_t)kernel_stack + PROC_STACK_SIZE - sizeof(struct trap_frame));
     new_proc->trapframe->sepc = elf_info->entry;
     new_proc->trapframe->sp = new_proc->user_sp;

@@ -63,3 +63,4 @@ OBJ_Y += ./mm/buddy.o
 OBJ_Y += ./mm/slab.o
 OBJ_Y += ./mm/pgtbl.o
 OBJ_Y += ./mm/vma.o
+OBJ_Y += ./mm/page_fault.o

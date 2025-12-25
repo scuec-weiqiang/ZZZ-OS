@@ -47,12 +47,12 @@ static int highest_possible_level(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr
     return level;
 }
 
-struct mm_struct *mm_create() {
+struct mm_struct *mm_create(char *name) {
     struct mm_struct *mm = kmalloc(sizeof(struct mm_struct));
     if (!mm) {
         return NULL;
     }
-    mm->pgdir = new_pgtbl("process_pgtbl");
+    mm->pgdir = new_pgtbl(name);
     if (!mm->pgdir) {
         kfree(mm);
         return NULL;
@@ -161,74 +161,58 @@ int do_unmap(struct mm_struct *mm, virt_addr_t va, size_t size) {
 
 void build_kernel_mapping(struct mm_struct *mm) {
     // 映射内核代码段，数据段，栈以及堆的保留页到虚拟地址空间
-    do_map(mm, (uintptr_t)text_start, (uintptr_t)KERNEL_PA(text_start), (size_t)text_size, VMA_R | VMA_X, EAGER_MAP);
-    do_map(mm, (uintptr_t)rodata_start, (uintptr_t)KERNEL_PA(rodata_start), (size_t)rodata_size, VMA_R, EAGER_MAP);
-    do_map(mm, (uintptr_t)data_start, (uintptr_t)KERNEL_PA(data_start), (size_t)data_size, VMA_R | VMA_W, EAGER_MAP);
-    do_map(mm, (uintptr_t)bss_start, (uintptr_t)KERNEL_PA(bss_start), (size_t)bss_size, VMA_R | VMA_W, EAGER_MAP);
+    do_map(mm, KERNEL_VA(text_start), text_start, (size_t)text_size, VMA_R | VMA_X, EAGER_MAP);
+    do_map(mm, KERNEL_VA(rodata_start), rodata_start, (size_t)rodata_size, VMA_R, EAGER_MAP);
+    do_map(mm, KERNEL_VA(data_start), data_start, (size_t)data_size, VMA_R | VMA_W, EAGER_MAP);
+    do_map(mm, KERNEL_VA(bss_start), bss_start, (size_t)bss_size, VMA_R | VMA_W, EAGER_MAP);
 
-    do_map(mm, (uintptr_t)initcall_start, (uintptr_t)KERNEL_PA(initcall_start), (size_t)initcall_size, VMA_R | VMA_W | VMA_X, EAGER_MAP);
-    do_map(mm, (uintptr_t)exitcall_start, (uintptr_t)KERNEL_PA(exitcall_start), (size_t)exitcall_size , VMA_R | VMA_W | VMA_X, EAGER_MAP);
-    do_map(mm, (uintptr_t)irqinitcall_start, (uintptr_t)KERNEL_PA(irqinitcall_start), (size_t)irqinitcall_size, VMA_R | VMA_W | VMA_X, EAGER_MAP);
-    do_map(mm, (uintptr_t)irqexitcall_start, (uintptr_t)KERNEL_PA(irqexitcall_start), (size_t)irqexitcall_size , VMA_R | VMA_W | VMA_X, EAGER_MAP);
-    do_map(mm, (uintptr_t)early_stack_start, (uintptr_t)KERNEL_PA(early_stack_start), (size_t)early_stack_size, VMA_R | VMA_W, EAGER_MAP);
+    do_map(mm, KERNEL_VA(initcall_start), initcall_start, (size_t)initcall_size, VMA_R | VMA_W | VMA_X, EAGER_MAP);
+    do_map(mm, KERNEL_VA(exitcall_start), exitcall_start, (size_t)exitcall_size , VMA_R | VMA_W | VMA_X, EAGER_MAP);
+    do_map(mm, KERNEL_VA(irqinitcall_start), irqinitcall_start, (size_t)irqinitcall_size, VMA_R | VMA_W | VMA_X, EAGER_MAP);
+    do_map(mm, KERNEL_VA(irqexitcall_start), irqexitcall_start, (size_t)irqexitcall_size , VMA_R | VMA_W | VMA_X, EAGER_MAP);
+    do_map(mm, KERNEL_VA(early_stack_start), early_stack_start, (size_t)early_stack_size, VMA_R | VMA_W, EAGER_MAP);
 
-    do_map(mm, (uintptr_t)heap_start, (uintptr_t)KERNEL_PA(heap_start), (size_t)heap_size, VMA_R | VMA_W, EAGER_MAP);
-    do_map(mm, (uintptr_t)stack_start, (uintptr_t)KERNEL_PA(stack_start), (size_t)stack_size * 2, VMA_R | VMA_W, EAGER_MAP);
+    do_map(mm, KERNEL_VA(heap_start), heap_start, (size_t)heap_size, VMA_R | VMA_W, EAGER_MAP);
+    do_map(mm, KERNEL_VA(stack_start), stack_start, (size_t)stack_size * 2, VMA_R | VMA_W, EAGER_MAP);
 
     do_map(mm, KERNEL_VA(early_malloc_start), early_stack_start, early_stack_size, VMA_R | VMA_W , EAGER_MAP);
     do_map(mm, (uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, VMA_R | VMA_W, EAGER_MAP);
-    do_map(mm, (uintptr_t)0x10000000, (uintptr_t)0x10000000, PAGE_SIZE, VMA_R | VMA_W, EAGER_MAP);
+    // do_map(mm, (uintptr_t)0x10000000, (uintptr_t)0x10000000, PAGE_SIZE, VMA_R | VMA_W, EAGER_MAP);
+}
+
+void copy_kernel_mapping(struct mm_struct *dest_mm) {
+    int kernel_start_index = pgtbl_level_index(kernel_mm_struct->pgdir, 0, KERNEL_VA_BASE);
+    int kernel_end_index = PAGE_SIZE - sizeof(pte_t);
+    pgtbl_copy(dest_mm->pgdir, kernel_mm_struct->pgdir, 0, kernel_start_index, kernel_end_index - kernel_start_index);
 }
 
 void mm_init() {
-    kernel_mm_struct = mm_create();
+    kernel_mm_struct = mm_create("kernel_mm");
     build_kernel_mapping(kernel_mm_struct);
     pgtbl_switch_to(kernel_mm_struct->pgdir);
     pgtbl_flush();
+    current_mm_struct = kernel_mm_struct;
 }
 
-void kernel_page_table_init() {
-    printk("kernel page init success!\n");
-}
 
 int copyin(pgtable_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
     size_t n = 0;
-    while (n < len) {
-        uintptr_t src = KERNEL_VA(pgtbl_lookup(pagetable, src_va));
-        if (src == 0) {
-            return -1;
-        }
-        size_t offset = src_va % PAGE_SIZE;
-        size_t to_copy = PAGE_SIZE - offset;
-        if (to_copy > len - n) {
-            to_copy = len - n;
-        }
 
-        memcpy(dst + n, (char *)(src + offset), to_copy);
-
-        n += to_copy;
-        src_va += to_copy;
+    uintptr_t src = KERNEL_VA(pgtbl_lookup(pagetable, src_va));
+    if (src == 0) {
+        return -1;
     }
+
+    memcpy(dst + n, (char *)src, len);
     return n;
 }
 
 int copyout(pgtable_t *pagetable, uintptr_t dst_va, char *src, size_t len) {
     size_t n = 0;
-    while (n < len) {
-        uintptr_t dst = KERNEL_VA(pgtbl_lookup(pagetable, dst_va));
-        if (dst == 0) {
-            return -1;
-        }
-        size_t offset = dst_va % PAGE_SIZE;
-        size_t to_copy = PAGE_SIZE - offset;
-        if (to_copy > len - n) {
-            to_copy = len - n;
-        }
-
-        memcpy((char *)(dst + offset), src + n, to_copy);
-
-        n += to_copy;
-        dst_va += to_copy;
+    uintptr_t dst = KERNEL_VA(pgtbl_lookup(pagetable, dst_va));
+    if (dst == 0) {
+        return -1;
     }
+    memcpy((char *)dst, src + n, len);
     return n;
 }
