@@ -24,9 +24,6 @@
 #include <os/mm/vma.h>
 #include <os/mm.h>
 
-struct mm_struct *kernel_mm_struct = NULL;
-struct mm_struct *current_mm_struct = NULL;
-
 static int highest_possible_level(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size) {
     if (pgtbl == NULL||pgtbl->features == NULL) {
         return -1;
@@ -47,23 +44,7 @@ static int highest_possible_level(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr
     return level;
 }
 
-struct mm_struct *mm_create(char *name) {
-    struct mm_struct *mm = kmalloc(sizeof(struct mm_struct));
-    if (!mm) {
-        return NULL;
-    }
-    mm->pgdir = new_pgtbl(name);
-    if (!mm->pgdir) {
-        kfree(mm);
-        return NULL;
-    }
-    INIT_LIST_HEAD(&mm->vma_list);
-    mm->vma_count = 0;
-    vma_add(mm, 0, 1, 0); // 添加哨兵节点
-    return mm;
-}
-
-int map_range(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, vma_flags_t flags) {
+int map(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, vma_flags_t flags) {
     CHECK(pgtbl != NULL, "pgtbl is NULL", return -1;);
     size = ALIGN_UP(size, PAGE_SIZE);
     uintptr_t va = ALIGN_DOWN(vaddr, PAGE_SIZE);
@@ -85,7 +66,7 @@ int map_range(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t siz
     return 0;
 }
 
-int unmap_range(pgtable_t *pgtbl, virt_addr_t va, size_t size) {
+int unmap(pgtable_t *pgtbl, virt_addr_t va, size_t size) {
     CHECK(pgtbl != NULL, "mm is NULL", return -1;);
     size = ALIGN_UP(size, PAGE_SIZE);
     va = ALIGN_DOWN(va, PAGE_SIZE);
@@ -104,58 +85,55 @@ int unmap_range(pgtable_t *pgtbl, virt_addr_t va, size_t size) {
     return 0;
 }
 
-int do_map(struct mm_struct * mm, virt_addr_t vaddr, phys_addr_t paddr, size_t size, vma_flags_t flags, int lazy_or_eager) {
+
+
+struct mm_struct init_mm = {
+    .pgdir = NULL,
+    .vma_list = {NULL, NULL},
+    .vma_count = 0,
+};
+
+struct mm_struct *kernel_mm_struct = NULL;
+struct mm_struct *current_mm_struct = NULL;
+
+struct mm_struct *mm_create(char *name) {
+    struct mm_struct *mm = kmalloc(sizeof(struct mm_struct));
+    if (!mm) {
+        return NULL;
+    }
+    mm->pgdir = new_pgtbl(name);
+    if (!mm->pgdir) {
+        kfree(mm);
+        return NULL;
+    }
+    INIT_LIST_HEAD(&mm->vma_list);
+    mm->vma_count = 0;
+    vma_add(mm, 0, 1, 0); // 添加哨兵节点
+    return mm;
+}
+
+int do_mmap(struct mm_struct * mm, virt_addr_t vaddr, size_t size, vma_flags_t flags) {
     CHECK(mm != NULL, "mm is NULL", return -1;);
 
     pgtable_t *pgtbl = mm->pgdir;
     size = ALIGN_UP(size, PAGE_SIZE);
     uintptr_t va = ALIGN_DOWN(vaddr, PAGE_SIZE);
-    uintptr_t pa = ALIGN_DOWN(paddr, PAGE_SIZE);
     uintptr_t end = va + size;
 
     vma_add(mm, va, size, flags);
-
-    // 如果是惰性映射，则只添加VMA，不进行实际映射
-    if (lazy_or_eager == LAZY_MAP) {
-        return 0;
-    }
-
-    while (va < end) {
-        int target_level = highest_possible_level(pgtbl, va, pa, end - va);
-        int map_size = pgtbl_level_page_size(pgtbl, target_level);
-
-        if (pgtbl_map(pgtbl, va, pa, target_level, flags) < 0) {
-            return -1;
-        }
-    
-        va += map_size;
-        pa += map_size;
-    }
 
     pgtbl_flush();
     return 0;
 }
 
-int do_unmap(struct mm_struct *mm, virt_addr_t va, size_t size) {
+int do_munmap(struct mm_struct *mm, virt_addr_t va, size_t size) {
     CHECK(mm != NULL, "mm is NULL", return -1;);
 
-    pgtable_t *pgtbl = mm->pgdir;
     size = ALIGN_UP(size, PAGE_SIZE);
     va = ALIGN_DOWN(va, PAGE_SIZE);
-    uintptr_t start = va;
-    uintptr_t end = start + size;
 
-    while (va < end) {
-        int target_level = highest_possible_level(pgtbl, va, 0, end - va);
-        int unmap_size = pgtbl_level_page_size(pgtbl, target_level);
-        
-        vma_delete(mm, va, unmap_size);
-        pgtbl_unmap(pgtbl, va, target_level);
-
-        va += unmap_size;
-    }
-
-    pgtbl_flush();
+    vma_delete(mm, va, size);
+   
     return 0;
 }
 
@@ -175,18 +153,12 @@ static virt_addr_t alloc_mmio_va(size_t size) {
 
 void *ioremap(phys_addr_t pa, size_t size) {
     uintptr_t va = alloc_mmio_va(size);
-    do_map(kernel_mm_struct, va, pa, size, VMA_R | VMA_W, EAGER_MAP);
+    map(kernel_mm_struct->pgdir, va, pa, size, VMA_R | VMA_W);
     return (void *)va;
 }
 
 void iounmap(virt_addr_t va, size_t size) {
-    do_unmap(kernel_mm_struct, va, size);
-}
-
-void build_kernel_mapping(struct mm_struct *mm) {
-    // 映射内核代码段，数据段，栈以及堆的保留页到虚拟地址空间
-    do_map(mm,kernel_start, KERNEL_PA(kernel_start), kernel_size, VMA_R|VMA_W|VMA_X, EAGER_MAP);
-    do_map(mm, (uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, VMA_R | VMA_W, EAGER_MAP);
+    unmap(kernel_mm_struct->pgdir, va, size);
 }
 
 void copy_kernel_mapping(struct mm_struct *dest_mm) {
@@ -196,15 +168,17 @@ void copy_kernel_mapping(struct mm_struct *dest_mm) {
 }
 
 void mm_init() {
-    kernel_mm_struct = mm_create("kernel_mm");
+    kernel_mm_struct = &init_mm;
+    kernel_mm_struct->pgdir = new_pgtbl("kernel_pgtbl");
+    
     struct memblock_region *region = NULL;
     list_for_each_entry(region, &memblock.memory.regions, struct memblock_region, node) {
-        do_map(kernel_mm_struct, KERNEL_VA(region->base), region->base, region->size, VMA_R|VMA_W|VMA_X, EAGER_MAP);
+        map(kernel_mm_struct->pgdir, KERNEL_VA(region->base), region->base, region->size, VMA_R|VMA_W|VMA_X);
     }
-    do_map(kernel_mm_struct, (uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, VMA_R | VMA_W, EAGER_MAP);
+    map(kernel_mm_struct->pgdir, (uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, VMA_R | VMA_W);
     pgtbl_switch_to(kernel_mm_struct->pgdir);
     pgtbl_flush();
-    current_mm_struct = kernel_mm_struct;
+    current_mm_struct = NULL;
 }
 
 

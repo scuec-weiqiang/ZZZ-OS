@@ -86,12 +86,12 @@ struct proc* proc_create(char* path) {
             char *user_space = (char*)kmalloc(elf_info->segs[i].memsz); //程序加载到内存里需要的空间
             memset(user_space,0,elf_info->segs[i].memsz);
             memcpy(user_space,elf+elf_info->segs[i].offset,elf_info->segs[i].filesz);
-            do_map(mm, elf_info->segs[i].vaddr, (uintptr_t)KERNEL_PA(user_space), elf_info->segs[i].memsz,VMA_W|VMA_R|VMA_X|VMA_USER,EAGER_MAP);
+            map(mm->pgdir, elf_info->segs[i].vaddr, (uintptr_t)KERNEL_PA(user_space), elf_info->segs[i].memsz,VMA_W|VMA_R|VMA_X|VMA_USER);
             new_proc->code[j] = user_space;
             j++;
         }
     }
-    do_map(mm, PROC_USER_STACK_TOP, (uintptr_t)KERNEL_PA(user_stack), PROC_STACK_SIZE, VMA_W|VMA_R|VMA_USER, EAGER_MAP);
+    map(mm->pgdir, PROC_USER_STACK_TOP, (uintptr_t)KERNEL_PA(user_stack), PROC_STACK_SIZE, VMA_W|VMA_R|VMA_USER);
     copy_kernel_mapping(mm);
 
     new_proc->elf_info = elf_info;

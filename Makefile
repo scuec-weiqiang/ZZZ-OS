@@ -174,3 +174,9 @@ move:
 u:
 	$(MAKE) -C user_proc/proc1 all
 	$(MAKE) -C user_proc/proc2 all
+
+.PHONY: uc
+uc:
+	$(MAKE) -C user_proc/proc1 clean
+	$(MAKE) -C user_proc/proc2 clean
+	rm -rf user_proc/user/

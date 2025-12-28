@@ -158,7 +158,6 @@ void arch_pgtbl_switch_to(pgtable_t *pgtbl) {
     satp.mode = SATP_MODE; // SV39
     satp.asid = 0;
     satp.ppn = (phys_addr_t)pgtbl->root_pa >> 12;
-    uint64_t a = (8L<<60) | (pgtbl->root_pa >> 12);
     satp_w((reg_t)satp.val);
 }
 

@@ -3,11 +3,11 @@
 int main () {
     int a = 0;
     while (1) {
-        for (int i = 0; i < 100000000; i++) {
+        for (int i = 0; i < 10000000; i++) {
         }
         printf("proc1 :Hello, World! %d\r",a);
         a++;
-        if (a == 10) {
+        if (a == 1000000000) {
             a = 0;
         }
     }
