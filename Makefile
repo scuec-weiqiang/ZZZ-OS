@@ -3,6 +3,10 @@ ARCH ?= riscv64
 CROSS_COMPILE ?= riscv64-unknown-elf-
 BOARD ?= qemu_virt
 
+DISK = ./disk.img
+DISK_DEV = /dev/loop0p1
+MOUNT_PATH = ./mount
+
 #--------------输出目录---------------#
 BUILD_DIR := build
 TARGET := $(BUILD_DIR)/kernel.bin
@@ -60,21 +64,23 @@ $(DTC):
 	$(MAKE) -C ./tools/dtc
 
 #--------------通用编译---------------#
-all: $(TARGET) $(DTB)
-	sudo mount -o loop ../disk.img  ../mount && echo "挂载成功!" 
-	sudo cp $(TARGET) ../mount/
-	sudo cp $(DTB) ../mount/
-	sudo umount ../mount
+all: disk $(TARGET) $(DTB) 
+	sudo losetup -D
+	sudo losetup -Pf --show disk.img
+	sudo mount  $(DISK_DEV) $(MOUNT_PATH) && echo "挂载成功!" 
+	sudo cp $(TARGET) $(MOUNT_PATH)
+	sudo cp $(DTB) $(MOUNT_PATH)
+	sudo umount $(MOUNT_PATH)
 
-$(TARGET): $(ELF)
+$(TARGET): $(ELF) 
 	$(OBJCOPY) -O binary $< $@
 	@echo "$@ is ready"
 	
-$(ELF): $(BUILD_OBJS)
+$(ELF): $(BUILD_OBJS) 
 	$(CC) $(LDFLAGS) $^ -o $@
 	@echo "$@ is ready"
 
-$(BUILD_DIR)/%.o: %.c $(ASM_LINK) $(KBUILD_FILE)
+$(BUILD_DIR)/%.o: %.c $(ASM_LINK) $(KBUILD_FILE) 
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -I$(dir $<) -c $< -o $@
 
@@ -96,6 +102,7 @@ clean:
 -include $(BUILD_OBJS:.o=.d)
 
 
+
 #--------------kbuild工具编译---------------#
 kbuild: $(KBUILD)
 
@@ -105,9 +112,9 @@ clean_kbuild:
 
 #--------------设备树编译---------------#
 dtbs: $(DTB)
-	sudo mount -o loop ../disk.img  ../mount && echo "挂载成功!" 
-	sudo cp $(DTB) ../mount/
-	sudo umount ../mount
+	sudo mount $(DISK_DEV)  $(MOUNT_PATH) && echo "挂载成功!" 
+	sudo cp $(DTB) $(MOUNT_PATH)/
+	sudo umount $(MOUNT_PATH)
 clean_dtbs:
 	rm -f *.dtb
 	
@@ -127,6 +134,9 @@ distclean:
 	-rm -rf $(BUILD_DIR)
 	-$(MAKE) -C $(DTC_PATH) clean
 	-$(MAKE) -C $(KBUILD_PATH) clean
+	-rm -f disk.img
+	-sudo losetup -D
+	-rm -rf $(MOUNT_PATH)
 	-rm -rf $(ASM_LINK)
 	@echo "清理完成"
 
@@ -136,40 +146,32 @@ distclean:
 .PHONY:dump
 dump:
 	$(OBJDUMP) -D -m riscv $(ELF) > $(BUILD_DIR)/disassembly.asm
-	$(OBJDUMP) -D -m riscv ./build/kernel_low.elf > $(BUILD_DIR)/low_disassembly.asm
-
 
 .PHONY:disk
 disk:
-	dd if=/dev/urandom of=../disk.img bs=1M count=16
-
-.PHONY:disk_clean
-disk_clean:
-	rm ../disk.img
+	mkdir -p $(MOUNT_PATH)
+	chmod +x tools/mkdisk.sh
+	sudo ./tools/mkdisk.sh $(DISK)
 
 .PHONY:umount
 umount:
-	sudo umount ../mount
+	@ sudo umount $(MOUNT_PATH)
 
 .PHONY:mount
 mount:
-	sudo mount -o loop ../disk.img ../mount && echo "挂载成功!" 
-
-.PHONY:format
-format: 
-	mkfs.ext2 -I 128 -F ../disk.img
+	@ sudo mount $(DISK_DEV) $(MOUNT_PATH) && echo "挂载成功!" 
 
 .PHONY:show
 show:
-	sudo mount -o loop ../disk.img ../mount && echo "挂载成功!" || dmesg | tail -n 20
-	ls -la ../mount/
-	sudo umount ../mount
+	sudo mount $(DISK_DEV) $(MOUNT_PATH) && echo "挂载成功!"
+	ls -la $(MOUNT_PATH)/
+	sudo umount $(MOUNT_PATH)
 
 .PHONY: move
 move:
-	sudo mount -o loop ../disk.img ../mount && echo "挂载成功!" || dmesg | tail -n 20
-	sudo cp $(TARGET) ../mount/
-	sudo umount ../mount
+	sudo mount $(DISK_DEV) $(MOUNT_PATH) && echo "挂载成功!" 
+	sudo cp $(TARGET) $(MOUNT_PATH)/
+	sudo umount $(MOUNT_PATH)
 
 .PHONY: u
 u:
@@ -184,10 +186,8 @@ uc:
 
 #********************************************************************************
 #qemu模拟器
-DISK = ../disk.img
-
 QEMU = qemu-system-riscv64
-QFLAGS = -nographic -smp 1 -machine virt -bios ./build/kernel.elf -cpu rv64,sstc=on
+QFLAGS = -nographic -smp 1 -machine virt -bios arch/$(ARCH)/boot/u-boot.bin -cpu rv64,sstc=on
 QFLAGS += -drive file=$(DISK),if=virtio,format=raw,id=hd0
 #gdb
 GDB = gdb-multiarch
@@ -200,11 +200,7 @@ run: build
 	@echo "------------------------------------\033[0m"
 	${QEMU} ${QFLAGS}
 
-# parted disk.img
-# mklabel gpt
-# mkpart primary ext4 1MiB 15MiB
-# sudo losetup -Pf disk.img    sudo losetup -D
-# sudo mkfs.ext4 /dev/loop0p1
-# ext4ls virtio 0:1 /
-# ext4load virtio 0:1 0x80200000 /kernel.elf
-# booti 0x80200000
+
+
+# ext2load virtio 0:1 0x80200000 /kernel.bin
+# go 0x80200000

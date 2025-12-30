@@ -1,6 +1,46 @@
 .section .text.entry
 .globl  _start
 _start:
+    csrw mie, zero  # 禁用所有中断
+    csrw satp, zero
+
+    // 将所有异常委托给S模式处理
+    li t0, 0xffff
+    csrw medeleg, t0
+    li t0, 0xffff
+    csrw mideleg, t0
+
+    // 开启sstc拓展
+    csrr t0, mie
+    li t1, 1 << 5
+    or t0, t0, t1
+    csrr t0,menvcfg
+    li t1, 1 << 63
+    or t0, t0, t1
+    csrw menvcfg, t0
+    // 允许s模式使用stimecmp
+    csrr t0, mcounteren
+    li t1, 2
+    or t0, t0, t1
+    csrw mcounteren, t0
+
+    // 整个用户空间设置保护
+    li t0, 0x3fffffffffffff
+    csrw pmpaddr0, t0
+    li t0, 0xf
+    csrw pmpcfg0, t0
+
+    csrr t0, mstatus
+    li t1, ~(3 << 11)      # 清零MPP位的掩码
+    and t0, t0, t1         # 先清零
+    li t1, 1 << 11
+    or t0, t0, t1 
+    csrw mstatus, t0
+    la t0, smode
+    csrw mepc, t0 
+    mret
+
+smode:
     csrw sie, zero  # 禁用所有中断
     csrw satp, zero
     sfence.vma x0, x0
@@ -13,6 +53,7 @@ _start:
     li t1, 0xffffffff40000000
     add t0, t0, t1  # 转换为虚拟地址
     csrw stvec, t0
+
 
     // 页表映射从内核开始的1G内存区域
     li t0, 1<<0 | 1<<1 | 1<<2 | 1<<3  # PTE_V | PTE_R | PTE_W | PTE_X 
@@ -71,6 +112,23 @@ _start:
     li t1, 0xffffffff40000000
     add t0, t0, t1  # 转换为虚拟地址
     jr t0
+
+
+    # li a0, 0x10000000
+    # // 输出 "START" 表示内核已启动
+    # li t6, 'S'
+    # sb t6, 0(a0)
+    # li t6, 'T'
+    # sb t6, 0(a0)
+    # li t6, 'A'
+    # sb t6, 0(a0)
+    # li t6, 'R'
+    # sb t6, 0(a0)
+    # li t6, 'T'
+    # sb t6, 0(a0)
+    # li t6, '\n'
+    # sb t6, 0(a0)
+
 
 #     csrw mie, zero  # 禁用所有中断
 #     csrw satp, zero  # 禁用分页

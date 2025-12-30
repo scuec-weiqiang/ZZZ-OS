@@ -37,12 +37,12 @@ include $(KBUILD_FILE)
 # 生成 .o 文件路径
 BUILD_OBJS := $(patsubst %.o, $(BUILD_DIR)/%.o, $(OBJ_Y))
 
-MOUNT_PATH = ../../../mount/
-DISK_PATH = ../../../disk.img
+MOUNT_PATH = ../../mount/
+DISK_DEV =  /dev/loop0p1
 
 #--------------通用编译---------------#
 all: $(TARGET) 
-	sudo mount -o loop $(DISK_PATH) $(MOUNT_PATH) && echo "挂载成功!" 
+	sudo mount $(DISK_DEV) $(MOUNT_PATH) && echo "挂载成功!" 
 	sudo cp $(TARGET) $(MOUNT_PATH)
 	sudo umount $(MOUNT_PATH)
 
