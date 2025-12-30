@@ -2,7 +2,7 @@ OUTPUT_ARCH("riscv")
 ENTRY(_start)
 
 STACK_SIZE = 8192;          /* 单个核心栈大小（字节） */
-RAM_BASE = 0xffffffffc0400000;      /* RAM起始地址 */
+RAM_BASE = 0xffffffffc0200000;      /* RAM起始地址 */
 
 SECTIONS
 {
@@ -77,7 +77,14 @@ SECTIONS
         /* 为主核心分配独立的栈空间，用来做基本的初始化，其他核心等操作系统初始化完毕后再分配 */
         . = . + STACK_SIZE;
         __early_stack_end = .;  /* 记录早期栈的结束地址 */
-        __kernel_end = .;
+    }
+
+    .early_pgtbl : ALIGN(4096) {
+        . = ALIGN(4096);
+        __early_pgtbl_start = .;
+        . = . + 4096;
+        __early_pgtbl_end = .;
+        __kernel_end = .;  /* 记录内核结束地址 */
     }
     
     PROVIDE_HIDDEN(_text_start = __text_start);
@@ -111,5 +118,8 @@ SECTIONS
 
     PROVIDE_HIDDEN(_early_stack_start = __early_stack_start);
     PROVIDE_HIDDEN(_early_stack_end = __early_stack_end); 
+
+    PROVIDE_HIDDEN(_early_pgtbl_start = __early_pgtbl_start);
+    PROVIDE_HIDDEN(_early_pgtbl_end = __early_pgtbl_end);
 }
 

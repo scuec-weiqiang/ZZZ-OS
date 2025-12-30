@@ -2,8 +2,8 @@
 #define __KERNEL_KVA_H
 
 
-#define KERNEL_PA_BASE      0x80000000
-#define KERNEL_VA_BASE      0xffffffffc0000000
+#define KERNEL_PA_BASE      0x80200000
+#define KERNEL_VA_BASE      0xffffffffc0200000
 #define KERNEL_MMIO_BASE    0xfffffffff0000000
 
 #define KERNEL_VA(pa) ((virt_addr_t)(KERNEL_VA_BASE + ((uint64_t)(pa)) - KERNEL_PA_BASE))

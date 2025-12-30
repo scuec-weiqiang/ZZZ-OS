@@ -5,12 +5,14 @@ BOARD ?= qemu_virt
 
 #--------------输出目录---------------#
 BUILD_DIR := build
-TARGET := $(BUILD_DIR)/kernel.img
+TARGET := $(BUILD_DIR)/kernel.bin
+ELF := $(BUILD_DIR)/kernel.elf
 
 #--------------编译器---------------#
 CC := $(CROSS_COMPILE)gcc
 LD := $(CROSS_COMPILE)ld
 OBJDUMP :=$(CROSS_COMPILE)objdump
+OBJCOPY := $(CROSS_COMPILE)objcopy
 
 CFLAGS = -g -Wall -fno-builtin -mcmodel=medany 
 CFLAGS += -Iinclude 
@@ -59,18 +61,16 @@ $(DTC):
 
 #--------------通用编译---------------#
 all: $(TARGET) $(DTB)
-	sudo mount -o loop ../disk.img ../mount && echo "挂载成功!" || dmesg | tail -n 20
+	sudo mount -o loop ../disk.img  ../mount && echo "挂载成功!" 
 	sudo cp $(TARGET) ../mount/
 	sudo cp $(DTB) ../mount/
 	sudo umount ../mount
+
+$(TARGET): $(ELF)
+	$(OBJCOPY) -O binary $< $@
+	@echo "$@ is ready"
 	
-
-os: $(TARGET)
-	sudo mount -o loop ../disk.img ../mount && echo "挂载成功!" || dmesg | tail -n 20
-	sudo cp $(TARGET) ../mount/
-	sudo umount ../mount
-
-$(TARGET): $(BUILD_OBJS)
+$(ELF): $(BUILD_OBJS)
 	$(CC) $(LDFLAGS) $^ -o $@
 	@echo "$@ is ready"
 
@@ -105,7 +105,7 @@ clean_kbuild:
 
 #--------------设备树编译---------------#
 dtbs: $(DTB)
-	sudo mount -o loop ../disk.img ../mount && echo "挂载成功!" || dmesg | tail -n 20
+	sudo mount -o loop ../disk.img  ../mount && echo "挂载成功!" 
 	sudo cp $(DTB) ../mount/
 	sudo umount ../mount
 clean_dtbs:
@@ -135,7 +135,9 @@ distclean:
 #********************************************************************************
 .PHONY:dump
 dump:
-	$(OBJDUMP) -D -m riscv $(TARGET) > $(BUILD_DIR)/disassembly.asm
+	$(OBJDUMP) -D -m riscv $(ELF) > $(BUILD_DIR)/disassembly.asm
+	$(OBJDUMP) -D -m riscv ./build/kernel_low.elf > $(BUILD_DIR)/low_disassembly.asm
+
 
 .PHONY:disk
 disk:
@@ -151,12 +153,11 @@ umount:
 
 .PHONY:mount
 mount:
-	sudo mount -o loop ../disk.img ../mount && echo "挂载成功!" || dmesg | tail -n 20
+	sudo mount -o loop ../disk.img ../mount && echo "挂载成功!" 
 
 .PHONY:format
 format: 
 	mkfs.ext2 -I 128 -F ../disk.img
-
 
 .PHONY:show
 show:
@@ -180,3 +181,30 @@ uc:
 	$(MAKE) -C user_proc/proc1 clean
 	$(MAKE) -C user_proc/proc2 clean
 	rm -rf user_proc/user/
+
+#********************************************************************************
+#qemu模拟器
+DISK = ../disk.img
+
+QEMU = qemu-system-riscv64
+QFLAGS = -nographic -smp 1 -machine virt -bios ./build/kernel.elf -cpu rv64,sstc=on
+QFLAGS += -drive file=$(DISK),if=virtio,format=raw,id=hd0
+#gdb
+GDB = gdb-multiarch
+GFLAGS = -tui -q -x gdbinit
+
+.PHONY:run
+run: build 
+	@${QEMU} -M ? | grep virt >/dev/null || exit
+	@echo "\033[32m先按 Ctrl+A 再按 X 退出 QEMU"
+	@echo "------------------------------------\033[0m"
+	${QEMU} ${QFLAGS}
+
+# parted disk.img
+# mklabel gpt
+# mkpart primary ext4 1MiB 15MiB
+# sudo losetup -Pf disk.img    sudo losetup -D
+# sudo mkfs.ext4 /dev/loop0p1
+# ext4ls virtio 0:1 /
+# ext4load virtio 0:1 0x80200000 /kernel.elf
+# booti 0x80200000

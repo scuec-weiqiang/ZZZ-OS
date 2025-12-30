@@ -42,7 +42,7 @@ DISK_PATH = ../../../disk.img
 
 #--------------通用编译---------------#
 all: $(TARGET) 
-	sudo mount -o loop $(DISK_PATH) $(MOUNT_PATH) && echo "挂载成功!" || dmesg | tail -n 20
+	sudo mount -o loop $(DISK_PATH) $(MOUNT_PATH) && echo "挂载成功!" 
 	sudo cp $(TARGET) $(MOUNT_PATH)
 	sudo umount $(MOUNT_PATH)
 

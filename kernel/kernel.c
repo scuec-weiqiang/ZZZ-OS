@@ -44,11 +44,10 @@ void set_hart_stack() {
     asm volatile("csrw sscratch,%0" ::"r"(hart_stack + PAGE_SIZE));
 }
 
-void init_kernel(void *dtb) {
-    int hart = 0;
-    if (hart == 0) {
+void init_kernel(int hartid,void *dtb) {
+    if (hartid == 0) {
         symbols_init();
-        // zero_bss();
+        zero_bss();
 		early_malloc_init();
 		fdt_init(dtb);
         memblock_init();
@@ -74,6 +73,6 @@ void init_kernel(void *dtb) {
     proc_create("/proc2.elf");
     proc_create("/proc1.elf");
 
-    sched_init(hart);
+    sched_init(hartid);
     sched();
 }

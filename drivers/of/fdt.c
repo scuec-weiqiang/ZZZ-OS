@@ -14,6 +14,7 @@
 #include <os/printk.h>
 #include <os/string.h>
 #include <stdint.h>
+#include <os/kva.h>
 
 #define ALIGN_UP(x, align) (((x) + (align) - 1) & ~((align) - 1))
 #define ALIGN_DOWN(x, align) ((x) & ~((align) - 1))
@@ -239,6 +240,13 @@ int fdt_walk(struct device_node *node, struct list_head *list) {
 
 
 int fdt_init(void *dtb) {
+    if (!dtb) {
+        printk("FDT init failed: dtb is NULL\n");
+        return -1;
+    }
+    if ((addr_t)dtb <= KERNEL_VA_BASE) {
+        dtb = (void *)KERNEL_VA((phys_addr_t)(addr_t)dtb);
+    }
     fdt = (struct fdt_header *)dtb;
     if (be32_to_cpu(fdt->magic) != FDT_MAGIC) {
         printk("Bad FDT magic!\n");
