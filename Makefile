@@ -151,7 +151,7 @@ dump:
 disk:
 	mkdir -p $(MOUNT_PATH)
 	chmod +x tools/mkdisk.sh
-	sudo ./tools/mkdisk.sh $(DISK)
+	tools/mkdisk.sh $(DISK)
 
 .PHONY:umount
 umount:
@@ -188,7 +188,9 @@ uc:
 #qemu模拟器
 QEMU = qemu-system-riscv64
 QFLAGS = -nographic -smp 1 -machine virt -bios arch/$(ARCH)/boot/u-boot.bin -cpu rv64,sstc=on
-QFLAGS += -drive file=$(DISK),if=virtio,format=raw,id=hd0
+QFLAGS += -drive file=$(DISK),if=none,format=raw,id=disk0
+QFLAGS += -device virtio-blk-device,drive=disk0,bus=virtio-mmio-bus.0 
+QFLAGS += -global virtio-mmio.force-legacy=false
 #gdb
 GDB = gdb-multiarch
 GFLAGS = -tui -q -x gdbinit
@@ -203,4 +205,5 @@ run: build
 
 
 # ext2load virtio 0:1 0x80200000 /kernel.bin
+# ext2load virtio 0:1 0x80400000 /qemu_virt.dtb
 # go 0x80200000

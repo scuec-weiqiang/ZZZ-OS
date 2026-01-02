@@ -15,18 +15,28 @@
 #include <fs/ext2/ext2_inode.h>
 #include <fs/icache.h>
 #include <os/string.h>
+#include <fs/gpt.h>
 
 
 struct superblock* ext2_fill_super(struct fs_type *fs_type, struct block_device *bdev, int flags)
 {
-    CHECK(fs_type!=NULL && bdev!=NULL,"ext2_fill_super error!",goto clean;);
+    CHECK(fs_type!=NULL && bdev!=NULL,"ext2_fill_super error!",return NULL;);
 
+    struct superblock *vfs_sb = NULL;
+    struct ext2_fs_info *fs_info = NULL;
+    struct ext2_groupdesc *gdt = NULL;
+    struct gpt_header *gpt_hdr = kmalloc(512);
+    CHECK(gpt_hdr!=NULL,"ext2_fill_super error: kmalloc memory failed!",return NULL;);
+    struct gpt_part_entry *gpt_part = kmalloc(512);
+    bdev->read((uint8_t*)gpt_hdr, 1); 
+    bdev->read((uint8_t*)gpt_part, gpt_hdr->part_entry_lba);
+    
     int ret = 0;
     struct ext2_superblock *sb = kmalloc(EXT2_SUPERBLOCK_SIZE);
     CHECK(sb!=NULL,"ext2_fill_super error: kmalloc memory failed!",goto clean;);
     
     uint64_t read_cnt = (EXT2_SUPERBLOCK_SIZE + bdev->sector_size -1)/bdev->sector_size;
-    uint64_t read_pos = EXT2_SUPERBLOCK_OFFSET / bdev->sector_size; 
+    uint64_t read_pos = EXT2_SUPERBLOCK_OFFSET / bdev->sector_size + gpt_part->first_lba; 
     for(uint64_t i=0;i<read_cnt;i++)
     {
         ret =  bdev->read((uint8_t*)sb+bdev->sector_size*i,read_pos+i); 
@@ -39,22 +49,25 @@ struct superblock* ext2_fill_super(struct fs_type *fs_type, struct block_device 
     uint32_t block_size = 1024<<sb->s_log_block_size;
 
     // 注册该文件系统对应的块适配器
-    ret = block_adapter_register(fs_type->name,bdev->name,block_size);
+    ret = block_adapter_register(fs_type->name,bdev->name,block_size, gpt_part->first_lba);
     CHECK(ret>=0,"ext2_fill_super error: block_adapter_register failed!",goto clean;);
+
+    uint64_t group_cnt = (sb->s_blocks_count + sb->s_blocks_per_group -1)/sb->s_blocks_per_group;
+    uint64_t gdt_block = ((block_size==1024) ? 2:1); //块描述符表起始块号
+    uint64_t gdt_lba = gpt_part->first_lba + (gdt_block * block_size) / bdev->sector_size;
+    uint64_t gdb_count = (group_cnt*sizeof(struct ext2_groupdesc)+block_size-1)/bdev->sector_size;
+    gdt = page_alloc((gdb_count * block_size + PAGE_SIZE - 1) / PAGE_SIZE);
+    //读取块描述符
+    for (int i = 0; i < gdb_count; i++)
+    {
+        ret = bdev->read((uint8_t*)gdt + i * bdev->sector_size, gdt_lba + i);
+        CHECK(ret >= 0, "ext2_fill_super error: read group desc failed!", goto clean;);
+    }
 
     // 打开块适配器，后面可以按文件系统块为单位读写磁盘
     struct block_adapter *adap = block_adapter_open(fs_type->name);
-
-    uint64_t group_cnt = (sb->s_blocks_count + sb->s_blocks_per_group -1)/sb->s_blocks_per_group;
-    uint64_t gdt_block = (block_size==1024) ? 2:1 ;
-    uint64_t gdb_count = (group_cnt*sizeof(struct ext2_groupdesc)+block_size-1)/block_size;
-    struct ext2_groupdesc *gdt = page_alloc((gdb_count * block_size + PAGE_SIZE - 1) / PAGE_SIZE);
-    //读取块描述符
-    ret = block_adapter_read(adap,gdt,gdt_block,gdb_count);
-    CHECK(ret>=0,"ext2_fill_super error: read group desc failed!",goto clean;);
-
     /*准备文件系统信息*/
-    struct ext2_fs_info *fs_info = page_alloc(1);
+    fs_info = page_alloc(1);
     CHECK(fs_info!=NULL,"ext2_fill_super error: alloc fsinfo memory error",goto clean;);
     fs_info->super = sb;
     fs_info->group_desc = gdt;
@@ -81,7 +94,7 @@ struct superblock* ext2_fill_super(struct fs_type *fs_type, struct block_device 
     fs_info->it_cache.dirty = false; // 初始化为false，表示位图未修改
 
     
-    struct superblock *vfs_sb = kmalloc(sizeof(struct superblock));
+    vfs_sb = kmalloc(sizeof(struct superblock));
     CHECK(vfs_sb!=NULL,"ext2_fill_super error!",goto clean;);
     vfs_sb->s_magic = sb->s_magic;
     vfs_sb->s_block_size =  block_size;
@@ -102,15 +115,17 @@ struct superblock* ext2_fill_super(struct fs_type *fs_type, struct block_device 
     CHECK(ret>=0,"ext2_fill_super error!",goto clean;);
     lru_insert(global_inode_cache,&root_inode->i_lru_cache_node);
     vfs_sb->s_root = root_inode;
-    
-
-    return vfs_sb;
+    kfree(gpt_hdr);
+    kfree(gpt_part);
+    return vfs_sb; 
 
 clean:
     if(sb) kfree(sb);
     if(gdt) kfree(gdt);
     if(fs_info) kfree(fs_info);
     if(vfs_sb) kfree(vfs_sb);
+    if(gpt_hdr) kfree(gpt_hdr);
+    if(gpt_part) kfree(gpt_part);
     return NULL;
 }
 

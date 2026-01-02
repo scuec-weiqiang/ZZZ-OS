@@ -45,7 +45,7 @@ struct fs_type
 
 struct super_ops
 {
-    void *(*create_private_inode)();
+    void *(*create_private_inode)(struct inode *);
     int (*new_private_inode)(struct inode *);
 
     int (*read_inode)(struct inode *);

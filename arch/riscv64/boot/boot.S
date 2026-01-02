@@ -45,9 +45,6 @@ smode:
     csrw satp, zero
     sfence.vma x0, x0
 
-    mv s0, a0        /* hartid */
-    mv s1, a1        /* dtb phys addr */
-
     /* 设置 S-mode trap */
     la t0, kernel_trap_entry
     li t1, 0xffffffff40000000
@@ -105,8 +102,8 @@ smode:
     mv sp, t0  # 设置早期栈指针
     csrw sscratch, sp  # sscratch存放内核栈指针
 
-    mv a0, s0        /* hartid */
-    mv a1, s1        /* dtb phys addr */
+    li a0, 0        /* hartid */
+    li a1, 0xffffffffc0400000        /* dtb phys addr */
 
     la t0, init_kernel
     li t1, 0xffffffff40000000

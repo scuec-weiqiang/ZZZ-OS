@@ -25,12 +25,13 @@ struct block_adapter
     struct block_device *bdev;
     int fs_block_size;
     int sectors_per_block;
+    int gpt_offset;
 };
 
 #define MAX_BLOCK_ADAPTER_NUM 8
 struct block_adapter block_adapter_registry[MAX_BLOCK_ADAPTER_NUM];
 
-int block_adapter_register(const char* adap_name,const char* bdev_name, uint32_t fs_block_size)
+int block_adapter_register(const char* adap_name,const char* bdev_name, uint32_t fs_block_size, int gpt_offset)
 {
     // 检查文件系统块大小是否为磁盘扇区大小的整数倍
     if (adap_name == NULL || bdev_name == NULL || fs_block_size%512!=0)
@@ -54,7 +55,7 @@ int block_adapter_register(const char* adap_name,const char* bdev_name, uint32_t
     adap.bdev = bdev;
     adap.fs_block_size = fs_block_size;
     adap.sectors_per_block = fs_block_size / bdev->sector_size;
-
+    adap.gpt_offset = gpt_offset;
     for(int i=0;i<MAX_BLOCK_ADAPTER_NUM;i++)
     {
         if(block_adapter_registry[i].name[0] == 0)
@@ -91,7 +92,7 @@ int block_adapter_read(struct block_adapter *adap, void *buf, int logic_block_st
     }
 
     // 计算出从磁盘上的哪个扇区开始读，以及读多少个扇区
-    int phy_sector_start = logic_block_start * adap->sectors_per_block;
+    int phy_sector_start = logic_block_start * adap->sectors_per_block + adap->gpt_offset;
     int phy_sector_size = adap->fs_block_size / adap->sectors_per_block;
     int phy_sector_n = n * adap->sectors_per_block;
 
@@ -117,7 +118,7 @@ int block_adapter_write(struct block_adapter *adap, void *buf, int logic_block_s
     }
 
     // 计算出从磁盘上的哪个扇区开始写，以及写多少个扇区
-    int phy_sector_start = logic_block_start * adap->sectors_per_block;
+    int phy_sector_start = logic_block_start * adap->sectors_per_block + adap->gpt_offset;
     int phy_sector_size = adap->fs_block_size / adap->sectors_per_block;
     int phy_sector_n = n * adap->sectors_per_block;
 

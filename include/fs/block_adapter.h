@@ -15,7 +15,7 @@
 
 struct block_adapter;
 
-extern int block_adapter_register(const char* adap_name,const char* bdev_name, uint32_t fs_block_size);
+extern int block_adapter_register(const char* adap_name,const char* bdev_name, uint32_t fs_block_size, int gpt_offset);
 extern void block_adapter_destory(struct block_adapter* adap);
 
 extern struct block_adapter* block_adapter_open(const char *name);

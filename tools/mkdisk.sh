@@ -9,12 +9,6 @@ PART_END=15MiB
 FS=ext2
 INODE_SIZE=128
 
-# ========= 检查 =========
-if [ "$EUID" -ne 0 ]; then
-    echo "[ERROR] Please run as root (required for losetup)"
-    exit 1
-fi
-
 echo "[*] Creating disk image: $IMG"
 
 # ========= 创建镜像 =========
@@ -33,11 +27,11 @@ echo "[*] Loop device: $LOOPDEV"
 
 cleanup() {
     echo "[*] Cleaning up loop device"
-    losetup -d "$LOOPDEV"
+    sudo losetup -d "$LOOPDEV"
 }
 trap cleanup EXIT
 
 # ========= 格式化 =========
-mkfs.$FS -I $INODE_SIZE "${LOOPDEV}p1"
+sudo mkfs.$FS -I $INODE_SIZE "${LOOPDEV}p1"
 
 echo "[✓] Disk image ready: $IMG"

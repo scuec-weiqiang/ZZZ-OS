@@ -175,7 +175,6 @@ void mm_init() {
     list_for_each_entry(region, &memblock.memory.regions, struct memblock_region, node) {
         map(kernel_mm_struct->pgdir, KERNEL_VA(region->base), region->base, region->size, VMA_R|VMA_W|VMA_X);
     }
-    map(kernel_mm_struct->pgdir, (uintptr_t)VIRTIO_MMIO_BASE, (uintptr_t)VIRTIO_MMIO_BASE, PAGE_SIZE, VMA_R | VMA_W);
     pgtbl_switch_to(kernel_mm_struct->pgdir);
     pgtbl_flush();
     current_mm_struct = NULL;

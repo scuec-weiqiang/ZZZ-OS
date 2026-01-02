@@ -1,7 +1,7 @@
 OUTPUT_ARCH("riscv")
 ENTRY(_start)
 
-STACK_SIZE = 8192;          /* 单个核心栈大小（字节） */
+STACK_SIZE = 1024*16;          /* 单个核心栈大小（字节） */
 RAM_BASE = 0xffffffffc0200000;      /* RAM起始地址 */
 
 SECTIONS
