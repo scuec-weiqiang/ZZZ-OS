@@ -84,7 +84,7 @@ void pgtbl_merge(pgtable_t *pgtbl, pte_t *table, pte_t *table_pte)
 
 ## 2.3 映射管理层
 ### 2.3.1 VMA设计与不重叠约束
-仅仅使用页表对某个区域进行映射是不够的，在映射完毕后，操作系统或程序并不知道映射了哪些区域，因此需要VMA用于**记录与管理映射的虚拟地址**。
+仅仅使用页表对某个区域进行映射是不够的，在映射完毕后，内核并不知道程序映射了哪些区域，因此需要VMA用于**记录与管理映射的虚拟地址**。
 
 这里VMA实现较为简单，本质是一些包含地址信息的结构体所串成的链表。链表每个节点代表一个地址区域，链表中的区域不会有重叠。
 
@@ -101,7 +101,7 @@ void pgtbl_merge(pgtable_t *pgtbl, pte_t *table, pte_t *table_pte)
 - 映射失败不可恢复
 - 不允许在关键路径中触发缺页异常
 
-因此对于内核而言，会采用***eager map***策略。
+对于内核而言，会采用***eager map***策略。
 
 同时，对于设备内存映射MMIO,有：
 - 不对应可分配的普通物理内存
@@ -110,7 +110,9 @@ void pgtbl_merge(pgtable_t *pgtbl, pte_t *table, pte_t *table_pte)
 
 设备地址空间无法通过缺页异常“按需生成”，因此 MMIO 映射也必须是 eager 的。
 
-此外，对于明确要求物理连续性的映射（如：do_map(mm, vaddr, paddr, ...)），通常意味着映射对象已经存在，且不可延迟生成，因此也采用eager map。
+此外，对于明确要求物理连续性的映射（如：map(mm, vaddr, paddr, ...)），通常意味着映射对象已经存在，且不可延迟生成，因此也采用eager map。
+
+***因此，内核地址空间不需要通过vma管理，因为内核的页表映射都是有明确对象的，并且需要立即生效。***
 
 总之，lazy map 与 eager map 的划分遵循以下原则：
 - 是否允许缺页中断
@@ -118,14 +120,14 @@ void pgtbl_merge(pgtable_t *pgtbl, pte_t *table, pte_t *table_pte)
 - 错误是否可回复
 
 ### 2.3.3 本系统中的实现划分
-接口层面，通过参数区分映射策略：
+接口层面，通过函数区分映射策略：
 ```c
-int do_mmap(struct mm_struct *mm,
-           virt_addr_t vaddr,
-           phys_addr_t paddr,
-           size_t size,
-           vma_flags_t flags,
-           int lazy_or_eager);
+int map(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, vma_flags_t flags);
+int do_mmap(struct mm_struct *mm, virt_addr_t vaddr, size_t size, vma_flags_t flags);
 ```
-`lazy_or_eager`用于指明是否立即写入页表
+函数参数中没有物理地址pa的通常为lazy map。
+
+
+
+
 [riscv64_pgtbl.c]:../arch/riscv64/mm/pgtbl.c

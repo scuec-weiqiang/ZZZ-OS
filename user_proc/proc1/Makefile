@@ -42,7 +42,7 @@ DISK_DEV =  /dev/loop0p1
 
 #--------------通用编译---------------#
 all: $(TARGET) 
-	sudo mount $(DISK_DEV) $(MOUNT_PATH) && echo "挂载成功!" 
+	- sudo mount $(DISK_DEV) $(MOUNT_PATH) && echo "挂载成功!" 
 	sudo cp $(TARGET) $(MOUNT_PATH)
 	sudo umount $(MOUNT_PATH)
 

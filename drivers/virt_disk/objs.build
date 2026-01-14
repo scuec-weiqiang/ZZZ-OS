@@ -1,0 +1,2 @@
+OBJ_Y += virtio.o
+OBJ_Y += virt_disk.o

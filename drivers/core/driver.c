@@ -73,7 +73,7 @@ int platform_get_irq(struct platform_device *pdev, int index) {
     prop = of_get_prop_by_name(intc, "compatible");
     struct irq_chip *chip = irq_chip_lookup(prop->value, 0);
     struct irq_domain *domain = (struct irq_domain *)chip->priv;
-    int virq = domain->virq_base + hwirq;
+    // int virq = domain->virq_base + hwirq;
     return irq_domain_add_mapping(domain, hwirq);
     
 }

@@ -1,32 +1,41 @@
 /**
  * @FilePath: /ZZZ-OS/drivers/virt_disk.c
- * @Description:  
+ * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-05-23 15:56:44
  * @LastEditTime: 2025-11-24 22:20:09
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
-*/
-#include <os/types.h>
-#include <drivers/virtio.h>
-#include <drivers/virt_disk.h>
-#include <os/string.h>
-#include <fs/block_device.h>
-#include <os/printk.h>
-#include <os/kmalloc.h>
+ */
 #include <asm/pgtbl.h>
-#include <os/mm.h>
+#include <fs/block_device.h>
+#include <os/driver_model.h>
+#include <os/kmalloc.h>
 #include <os/kva.h>
+#include <os/mm.h>
+#include <os/of.h>
+#include <os/printk.h>
+#include <os/string.h>
+#include <os/types.h>
+#include <virtio.h>
+#include <drivers/core/driver.h>
 
-struct virt_disk
-{
+#define VIRT_DISK_QUEUE 0
+#define SECTOR_SIZE 512 
+
+enum virt_disk_rw{
+    VIRT_DISK_READ = 0,
+    VIRT_DISK_WRITE,
+};
+
+struct virt_disk {
     struct virtq disk_queue;
-    char kfree[QUEUE_NUM];  
-    int last_used_idx; 
+    char kfree[QUEUE_NUM];
+    int last_used_idx;
     struct virtio_blk_req req[QUEUE_NUM];
     char status[QUEUE_NUM];
 
-    struct disk_info{
+    struct disk_info {
         int capacity;
         int blk_size;
         int blk_num;
@@ -39,11 +48,9 @@ char desc[] = {0};
 char avail[sizeof(struct virtq_avail)] = {0};
 char used[sizeof(struct virtq_used)] = {0};
 
-static int alloc_disk_desc(void)
-{
-    for (int i = 0; i < QUEUE_NUM; i++)
-    {
-        if (virt_disk.kfree[i]==1) //找一个没被使用的描述符
+static int alloc_disk_desc(void) {
+    for (int i = 0; i < QUEUE_NUM; i++) {
+        if (virt_disk.kfree[i] == 1) // 找一个没被使用的描述符
         {
             virt_disk.kfree[i] = 0;
             return i;
@@ -52,19 +59,15 @@ static int alloc_disk_desc(void)
     return -1;
 }
 
-static void free_disk_desc(int index)
-{
-    if (index >= 0 && index < QUEUE_NUM)
-    {
+static void free_disk_desc(int index) {
+    if (index >= 0 && index < QUEUE_NUM) {
         virt_disk.kfree[index] = 1;
 
         // virt_disk.disk_queue.desc[index].addr = 0;
         // virt_disk.disk_queue.desc[index].len = 0;
         // virt_disk.disk_queue.desc[index].flags = 0;
         // virt_disk.disk_queue.desc[index].next = 0;
-    }
-    else
-    {
+    } else {
         printk("free_disk_desc: index out of range!\n");
     }
 }
@@ -76,18 +79,13 @@ static void free_disk_desc(int index)
  *
  * @param index 要释放的第一个描述符的索引
  */
-static void free_disk_chain(int index)
-{
-    while (1)
-    {
+static void free_disk_chain(int index) {
+    while (1) {
         free_disk_desc(index);
         uint16_t next = virt_disk.disk_queue.desc[index].next;
-        if(virt_disk.disk_queue.desc[index].flags & VIRTQ_DESC_F_NEXT)
-        {
+        if (virt_disk.disk_queue.desc[index].flags & VIRTQ_DESC_F_NEXT) {
             index = next;
-        }
-        else
-        {
+        } else {
             break;
         }
     }
@@ -106,25 +104,23 @@ static void free_disk_chain(int index)
  * @param rwflag 读写标志（VIRT_DISK_READ为读取，VIRT_DISK_WRITE为写入）
  * @return 操作成功返回0，失败返回-1
  */
-int virt_disk_rw(void *buffer, int sector, enum virt_disk_rw rwflag)
-{
+static int virt_disk_rw(void *buffer, int sector, enum virt_disk_rw rwflag) {
     // 一次读写需要3个描述符，分别是：
     // 1. 请求头
     // 2. 数据缓冲区
     // 3. 状态码
     int index[3];
-    for(int i = 0;i < 3;i++)
-    {
+    for (int i = 0; i < 3; i++) {
         index[i] = alloc_disk_desc();
-        if(index[i] < 0) return -1;
+        if (index[i] < 0)
+            return -1;
     }
 
-    //配置请求头
-    if(rwflag == VIRT_DISK_READ) // 从磁盘读取数据
+    // 配置请求头
+    if (rwflag == VIRT_DISK_READ) // 从磁盘读取数据
     {
-        virt_disk.req[index[0]].type = VIRTIO_BLK_T_IN; 
-    }
-    else // 向磁盘写入数据
+        virt_disk.req[index[0]].type = VIRTIO_BLK_T_IN;
+    } else // 向磁盘写入数据
     {
         virt_disk.req[index[0]].type = VIRTIO_BLK_T_OUT; // 写操作
     }
@@ -140,13 +136,12 @@ int virt_disk_rw(void *buffer, int sector, enum virt_disk_rw rwflag)
     // 配置数据缓冲区
     virt_disk.disk_queue.desc[index[1]].addr = KERNEL_PA((uint64_t)buffer);
     virt_disk.disk_queue.desc[index[1]].len = SECTOR_SIZE;
-    if (rwflag == VIRT_DISK_READ)// 如果是从磁盘读数据 
+    if (rwflag == VIRT_DISK_READ) // 如果是从磁盘读数据
     {
-        virt_disk.disk_queue.desc[index[1]].flags = VIRTQ_DESC_F_NEXT|VIRTQ_DESC_F_WRITE; // 那就要告诉设备，表明设备需要往这里写数据
-    }
-    else // 如果是向磁盘写数据
+        virt_disk.disk_queue.desc[index[1]].flags = VIRTQ_DESC_F_NEXT | VIRTQ_DESC_F_WRITE; // 那就要告诉设备，表明设备需要往这里写数据
+    } else                                                                                  // 如果是向磁盘写数据
     {
-        virt_disk.disk_queue.desc[index[1]].flags =  VIRTQ_DESC_F_NEXT|0; // 则不需要指明
+        virt_disk.disk_queue.desc[index[1]].flags = VIRTQ_DESC_F_NEXT | 0; // 则不需要指明
     }
     virt_disk.disk_queue.desc[index[1]].next = index[2];
 
@@ -156,7 +151,6 @@ int virt_disk_rw(void *buffer, int sector, enum virt_disk_rw rwflag)
     virt_disk.disk_queue.desc[index[2]].flags = VIRTQ_DESC_F_WRITE;
     virt_disk.disk_queue.desc[index[2]].next = 0;
 
-    
     virt_disk.disk_queue.avail->ring[virt_disk.disk_queue.avail->idx % QUEUE_NUM] = index[0];
     __sync_synchronize();
     virt_disk.disk_queue.avail->idx += 1;
@@ -165,77 +159,62 @@ int virt_disk_rw(void *buffer, int sector, enum virt_disk_rw rwflag)
     // 通知设备处理队列0中的请求
     virtio->queue_notify = 0;
 
-    while(virt_disk.last_used_idx == virt_disk.disk_queue.used->idx){
+    while (virt_disk.last_used_idx == virt_disk.disk_queue.used->idx) {
         // printk(YELLOW("virt_disk_rw: waiting for disk operation to complete..."));
     }
     virt_disk.last_used_idx = virt_disk.disk_queue.used->idx;
     free_disk_chain(index[0]);
-    if (virt_disk.status[index[0]] != 0)
-    {
+    if (virt_disk.status[index[0]] != 0) {
         return -1;
-    }
-    else
-    {
+    } else {
         return 0;
     }
-
 }
 
-int virt_disk_get_capacity(void)
-{
-    if(virt_disk.disk_info.capacity == 0)
-    {
-        return -1;
-    }
-    return virt_disk.disk_info.capacity;
-}
+// static int virt_disk_get_capacity(void) {
+//     if (virt_disk.disk_info.capacity == 0) {
+//         return -1;
+//     }
+//     return virt_disk.disk_info.capacity;
+// }
 
-
-int disk_write_sector(void *buffer, int sector)
-{
+static int disk_write_sector(void *buffer, int sector) {
     return virt_disk_rw(buffer, sector, VIRT_DISK_WRITE);
 }
 
-int disk_read_sector(void *buffer, int sector)
-{
+static int disk_read_sector(void *buffer, int sector) {
     return virt_disk_rw(buffer, sector, VIRT_DISK_READ);
 }
 
-int virt_disk_init()
-{
-
+static int virt_disk_init() {
     virtio_blk_init();
 
     virtio->queue_sel = VIRT_DISK_QUEUE;
 
-    if(virtio->queue_num_max == 0)
-    {
+    if (virtio->queue_num_max == 0) {
         return -1;
-    }
-    else if(virtio->queue_num_max < QUEUE_NUM)
-    {
+    } else if (virtio->queue_num_max < QUEUE_NUM) {
         return -1;
     }
 
-    virt_disk.disk_queue.desc = (struct virtq_desc*)page_alloc(1);
-    virt_disk.disk_queue.avail = (struct virtq_avail*)page_alloc(1);
-    virt_disk.disk_queue.used = (struct virtq_used*)page_alloc(1);
+    virt_disk.disk_queue.desc = (struct virtq_desc *)page_alloc(1);
+    virt_disk.disk_queue.avail = (struct virtq_avail *)page_alloc(1);
+    virt_disk.disk_queue.used = (struct virtq_used *)page_alloc(1);
 
     virtio->queue_num = QUEUE_NUM;
 
-    virtio->queue_desc_low = (uint32_t)((uintptr_t) KERNEL_PA(virt_disk.disk_queue.desc) & 0xFFFFFFFF);
+    virtio->queue_desc_low = (uint32_t)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.desc) & 0xFFFFFFFF);
     virtio->queue_desc_high = (uint32_t)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.desc) >> 32);
 
     virtio->queue_avail_low = (uint32_t)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.avail) & 0xFFFFFFFF);
     virtio->queue_avail_high = (uint32_t)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.avail) >> 32);
 
-    virtio->queue_used_low= (uint32_t)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.used) & 0xFFFFFFFF);
+    virtio->queue_used_low = (uint32_t)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.used) & 0xFFFFFFFF);
     virtio->queue_used_high = (uint32_t)((uintptr_t)KERNEL_PA(virt_disk.disk_queue.used) >> 32);
 
     virtio->queue_ready = 1;
 
-    if(!virtio->queue_ready)
-    {
+    if (!virtio->queue_ready) {
         return -1;
     }
 
@@ -243,30 +222,57 @@ int virt_disk_init()
 
     __sync_synchronize();
 
-    for(uint32_t i = 0;i < QUEUE_NUM;i++)
-    {
-        virt_disk.kfree[i] = 1;// 1表示空闲，0表示正在使用
+    for (uint32_t i = 0; i < QUEUE_NUM; i++) {
+        virt_disk.kfree[i] = 1; // 1表示空闲，0表示正在使用
     }
 
-    struct virtio_blk_config* info = (struct virtio_blk_config*)&virtio->config[0];
+    struct virtio_blk_config *info = (struct virtio_blk_config *)&virtio->config[0];
     virt_disk.disk_info.blk_size = info->blk_size;
-    virt_disk.disk_info.blk_num = info->capacity;//从硬件中读取的capacity是以块为单位，
-    virt_disk.disk_info.capacity = info->capacity*info->blk_size; // 所以要乘以每个块的字节数
-    
+    virt_disk.disk_info.blk_num = info->capacity;                   // 从硬件中读取的capacity是以块为单位，
+    virt_disk.disk_info.capacity = info->capacity * info->blk_size; // 所以要乘以每个块的字节数
+
     static struct block_device virt_bdev;
 
-    strcpy(virt_bdev.name,"virt_disk");
-    virt_bdev.private_data = (void*)&virt_disk;
-    virt_bdev.sector_size = 512;         // 设备块大小
-    virt_bdev.capacity = info->capacity*512;// 返回总块数
+    strcpy(virt_bdev.name, "virt_disk");
+    virt_bdev.private_data = (void *)&virt_disk;
+    virt_bdev.sector_size = 512;               // 设备块大小
+    virt_bdev.capacity = info->capacity * 512; // 返回总块数
     virt_bdev.read = disk_read_sector;
     virt_bdev.write = disk_write_sector;
 
     printk("virtio = %xu\n", virtio);
     // 注册设备
-    if(block_device_register(&virt_bdev) < 0)
-    {
+    if (block_device_register(&virt_bdev) < 0) {
         return -1;
     }
     return 0;
 }
+
+static int virt_disk_probe(struct platform_device *pdev) {
+    struct device_node *node = of_find_node_by_compatible("wq,virt_disk");
+    if (!node) {
+        return -1;
+    }
+    uint32_t *reg = of_read_u32_array(node, "reg", 2);
+    virtio = ioremap(reg[0], reg[1]);
+    return virt_disk_init();
+}
+
+static void virt_disk_remove() {
+    virtio->status = 0;
+    virtio = NULL;
+}
+
+static struct of_device_id virt_disk_of_match[] = {
+    {.compatible = "wq,virt_disk",},
+    {/* sentinel */}
+};
+
+static struct platform_driver virt_disk_driver = {
+    .name = "virt_disk_driver",
+    .probe = virt_disk_probe,
+    .remove = virt_disk_remove,
+    .of_match_table = virt_disk_of_match,
+};
+
+module_platform_driver(virt_disk_driver);

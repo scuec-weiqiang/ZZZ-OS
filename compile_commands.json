@@ -297,6 +297,46 @@
       "-Iinclude",
       "-march=rv64gc",
       "-mabi=lp64d",
+      "-Idrivers/virt_disk/",
+      "-c",
+      "-o",
+      "build/./drivers/virt_disk/virtio.o",
+      "drivers/virt_disk/virtio.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/drivers/virt_disk/virtio.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/drivers/virt_disk/virtio.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-g",
+      "-Wall",
+      "-fno-builtin",
+      "-mcmodel=medany",
+      "-Iinclude",
+      "-march=rv64gc",
+      "-mabi=lp64d",
+      "-Idrivers/virt_disk/",
+      "-c",
+      "-o",
+      "build/./drivers/virt_disk/virt_disk.o",
+      "drivers/virt_disk/virt_disk.c"
+    ],
+    "directory": "/home/wqqqq/os/ZZZ-OS",
+    "file": "/home/wqqqq/os/ZZZ-OS/drivers/virt_disk/virt_disk.c",
+    "output": "/home/wqqqq/os/ZZZ-OS/build/drivers/virt_disk/virt_disk.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/riscv64-unknown-elf-gcc",
+      "-g",
+      "-Wall",
+      "-fno-builtin",
+      "-mcmodel=medany",
+      "-Iinclude",
+      "-march=rv64gc",
+      "-mabi=lp64d",
       "-Idrivers/",
       "-c",
       "-o",
@@ -326,46 +366,6 @@
     "directory": "/home/wqqqq/os/ZZZ-OS",
     "file": "/home/wqqqq/os/ZZZ-OS/drivers/uart.c",
     "output": "/home/wqqqq/os/ZZZ-OS/build/drivers/uart.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/riscv64-unknown-elf-gcc",
-      "-g",
-      "-Wall",
-      "-fno-builtin",
-      "-mcmodel=medany",
-      "-Iinclude",
-      "-march=rv64gc",
-      "-mabi=lp64d",
-      "-Idrivers/",
-      "-c",
-      "-o",
-      "build/./drivers/virtio.o",
-      "drivers/virtio.c"
-    ],
-    "directory": "/home/wqqqq/os/ZZZ-OS",
-    "file": "/home/wqqqq/os/ZZZ-OS/drivers/virtio.c",
-    "output": "/home/wqqqq/os/ZZZ-OS/build/drivers/virtio.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/riscv64-unknown-elf-gcc",
-      "-g",
-      "-Wall",
-      "-fno-builtin",
-      "-mcmodel=medany",
-      "-Iinclude",
-      "-march=rv64gc",
-      "-mabi=lp64d",
-      "-Idrivers/",
-      "-c",
-      "-o",
-      "build/./drivers/virt_disk.o",
-      "drivers/virt_disk.c"
-    ],
-    "directory": "/home/wqqqq/os/ZZZ-OS",
-    "file": "/home/wqqqq/os/ZZZ-OS/drivers/virt_disk.c",
-    "output": "/home/wqqqq/os/ZZZ-OS/build/drivers/virt_disk.o"
   },
   {
     "arguments": [

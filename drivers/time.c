@@ -186,8 +186,8 @@ static int timestamp_probe(struct platform_device *pdev) {
     
     dev_t devnr = 1; 
     register_chrdev(devnr,"time", &timestamp_file_ops);
-    if(lookup("/time") == NULL)
-        mknod("/time", S_IFCHR|0644, devnr);
+    // if(lookup("/time") == NULL)
+    //     mknod("/time", S_IFCHR|0644, devnr);
     printk("timestamp init success\n");
     return 0;
 }

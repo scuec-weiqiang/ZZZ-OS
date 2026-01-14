@@ -131,7 +131,7 @@ dtc:
 .PHONY: distclean
 distclean:
 	@echo "正在清理所有输出文件："
-	-rm -rf $(BUILD_DIR)
+	-rm -rf $(BUILD_DIR) $(KBUILD_FILE)
 	-$(MAKE) -C $(DTC_PATH) clean
 	-$(MAKE) -C $(KBUILD_PATH) clean
 	-rm -f disk.img

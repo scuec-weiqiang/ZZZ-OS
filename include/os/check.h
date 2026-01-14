@@ -19,7 +19,7 @@ static inline void __check_fail(const char *expr, const char *file, int line, co
     printk("Check failed: %s, function %s, file %s, line %d\n", expr, func, file, line);
 }
 
-// #define NDEBUG
+#define NDEBUG
 
 #ifdef NDEBUG
     #define CHECK(expr,msg,ret)\

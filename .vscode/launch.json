@@ -1,0 +1,48 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "RISC-V QEMU Debug (WSL)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/kernel.elf",
+            "miDebuggerPath": "/usr/bin/gdb-multiarch",
+            "miDebuggerServerAddress": "localhost:1234",
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": true,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "text": "set output-radix 16", // 关键命令
+                    "description": "全局设置为十六进制显示"
+                },
+                {
+                    "description": "Set architecture",
+                    "text": "set architecture riscv:rv64"
+                },
+                {
+                    "description": "Break",
+                    "text": "break init_kernel"
+                },
+                {
+                    "description": "Load kernel symbols",
+                    "text": "add-symbol-file ${workspaceFolder}/build/kernel.elf 0xffffffffc0200000"
+                },
+                // {
+                //     "description": "Load kernel low symbols",
+                //     "text": "add-symbol-file ${workspaceFolder}/build/kernel.elf 0x80200000"
+                // },
+                // {
+                //     "description": "Load user1 symbols",
+                //     "text": "add-symbol-file ${workspaceFolder}/user_proc/proc1/build/proc1.elf 0x40000"
+                // },
+                // {
+                //     "description": "Load user2 symbols",
+                //     "text": "add-symbol-file ${workspaceFolder}/user_proc/proc2/build/proc2.elf 0x40000"
+                // },
+            ],
+            "preLaunchTask": "wsl-qemu-start"
+        }
+    ],
+    
+}

@@ -56,5 +56,12 @@
             interrupts = <10>;
         };
 
+        virt_disk: virt_disk@10001000 {
+            compatible = "wq,virt_disk";
+            reg = <0x10001000 0x1000>;
+            interrupt-parent = <&plic>;
+            interrupts = <11>;
+        };
+
     };
 };

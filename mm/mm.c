@@ -11,7 +11,6 @@
 #include "os/pfn.h"
 #include <os/mm/pgtbl_types.h>
 #include <os/mm/symbols.h>
-#include <drivers/virtio.h>
 #include <os/check.h>
 #include <os/kmalloc.h>
 #include <os/mm/memblock.h>
@@ -86,7 +85,6 @@ int unmap(pgtable_t *pgtbl, virt_addr_t va, size_t size) {
 }
 
 
-
 struct mm_struct init_mm = {
     .pgdir = NULL,
     .vma_list = {NULL, NULL},
@@ -115,11 +113,8 @@ struct mm_struct *mm_create(char *name) {
 int do_mmap(struct mm_struct * mm, virt_addr_t vaddr, size_t size, vma_flags_t flags) {
     CHECK(mm != NULL, "mm is NULL", return -1;);
 
-    pgtable_t *pgtbl = mm->pgdir;
     size = ALIGN_UP(size, PAGE_SIZE);
     uintptr_t va = ALIGN_DOWN(vaddr, PAGE_SIZE);
-    uintptr_t end = va + size;
-
     vma_add(mm, va, size, flags);
 
     pgtbl_flush();

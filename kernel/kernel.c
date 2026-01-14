@@ -12,7 +12,6 @@
 #include <os/printk.h>
 
 #include <drivers/time.h>
-#include <drivers/virt_disk.h>
 #include <os/mm.h>
 
 #include <asm/arch_timer.h>
@@ -32,7 +31,6 @@
 #include <os/sched.h>
 #include <os/string.h>
 #include <os/mm/physmem.h>
-#include <drivers/virtio.h>
 #include <os/mm/buddy.h>
 #include <os/mm/slab.h>
 
@@ -55,11 +53,8 @@ void init_kernel(int hartid,void *dtb) {
         kmalloc_init();
         of_platform_populate();
         irq_init();
-
-        virt_disk_init();
-        fs_init();
-
         do_initcalls();
+        fs_init();
         irq_enable(EXTERN_IRQ);
 
         is_init = 1;

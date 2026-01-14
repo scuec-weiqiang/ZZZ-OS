@@ -10,7 +10,6 @@
 #include <drivers/core/driver.h>
 #include <fs/chrdev.h>
 #include <fs/vfs.h>
-#include <os/bswap.h>
 #include <os/console.h>
 #include <os/driver_model.h>
 #include <os/mm.h>
@@ -110,7 +109,7 @@ static struct file_ops uart_file_ops = {
     .write = uart_write,
 };
 
-static int uart_prob(struct platform_device *pdev) {
+static int uart_probe(struct platform_device *pdev) {
     struct device_node *node = of_find_node_by_compatible("wq,uart");
     if (!node) {
         return -1;
@@ -122,8 +121,8 @@ static int uart_prob(struct platform_device *pdev) {
 
     dev_t devnr = 2;
     register_chrdev(devnr, "uart", &uart_file_ops);
-    if (lookup("/uart") == NULL)
-        mknod("/uart", S_IFCHR | 0644, devnr);
+    // if (lookup("/uart") == NULL)
+    //     mknod("/uart", S_IFCHR | 0644, devnr);
 
     int virq = platform_get_irq(pdev, 0);
     irq_register(virq, uart0_iqr, "uart0_irq",NULL);
@@ -147,7 +146,7 @@ static struct of_device_id uart_of_match[] = {
 
 static struct platform_driver uart_driver = {
     .name = "uart_driver",
-    .probe = uart_prob,
+    .probe = uart_probe,
     .remove = uart_remove,
     .of_match_table = uart_of_match,
 };

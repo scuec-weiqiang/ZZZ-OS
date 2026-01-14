@@ -7,14 +7,13 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include <drivers/virtio.h>
+#include <virtio.h>
 #include <os/mm.h>
 
 volatile struct virtio_mmio_regs *virtio = NULL;
 
 int virtio_blk_init()
 {
-    virtio = ioremap(VIRTIO_MMIO_BASE, sizeof(struct virtio_mmio_regs));
     if(virtio == NULL)
     {
         return -1;
