@@ -1,21 +1,27 @@
 #include <os/types.h>
 #include <stdarg.h>
-#include <os/console.h>
+// #include <os/console.h>
+#include <os/utils.h>
 
 #define __PBUFF_SIZE 4096 * 4 
 
 // 对齐，避免 64 位 RISC-V 栈错位
 static char print_buff[__PBUFF_SIZE] __attribute__((aligned(8)));
 
-
+extern void puts(char *s);
 /**
  * 数字转字符串（支持 10/16/2 进制）
  */
-int num2char(char *str, unsigned int pos, unsigned long long num, int decimal) {
-    unsigned int digit = 1;
-    for (unsigned long long temp = num; temp /= decimal; digit++)
-        ;
+int num2char(char *str, uintptr_t pos, uintptr_t num, int decimal) {
+    uintptr_t digit = 1;
 
+    uintptr_t temp = num;
+    while (temp) {
+        temp = divmod_u64(temp, decimal, NULL);
+        // temp /= decimal;
+        digit++;
+    }
+        
     if (str) {
         if (decimal == 16) {
             str[pos++] = '0';
@@ -25,9 +31,12 @@ int num2char(char *str, unsigned int pos, unsigned long long num, int decimal) {
             str[pos++] = 'b';
         }
         for (int i = digit - 1; i >= 0; i--) {
-            int rem = num % decimal;
+            uintptr_t rem = 0;
+            divmod_u64(num, decimal, &rem);
+            // rem = num % decimal;
             str[pos + i] = (rem < 10) ? ('0' + rem) : ('a' + rem - 10);
-            num /= decimal;
+            num =  divmod_u64(num, decimal, NULL);
+            // num /= decimal;
         }
     }
     return digit + ((decimal == 10) ? 0 : 2);
@@ -38,7 +47,6 @@ int num2char(char *str, unsigned int pos, unsigned long long num, int decimal) {
  */
 int _vsprint(char *out_buff, const char *fmt, va_list vl) {
     int pos = 0, format = 0, decimal = 0;
-
     for (; *fmt; fmt++) {
         if (format) {
             switch (*fmt) {
@@ -50,7 +58,7 @@ int _vsprint(char *out_buff, const char *fmt, va_list vl) {
                 goto DEC;
             case 'd':
             DEC: {
-                long long num = va_arg(vl, long long);
+                intptr_t num = va_arg(vl, intptr_t );
                 if (decimal == 0)
                     decimal = 10;
                 if (num < 0 && out_buff && *(fmt + 1) != 'u') {
@@ -94,31 +102,37 @@ int _vsprint(char *out_buff, const char *fmt, va_list vl) {
         }
     }
 
-    if (out_buff)
+    if (out_buff) {
         out_buff[pos] = '\0';
+    }
+        
     return pos;
 }
 // #define DEBUG
 /**
  * vprintf: 先计算长度，再格式化
  */
+
+//  extern void puts(char *s);
 int _vprint(const char *fmt, va_list vl) {
+    
     va_list vl_copy;
     va_copy(vl_copy, vl);
-
+    
     int n = _vsprint(NULL, fmt, vl);
     if (n >= __PBUFF_SIZE) {
-        console_puts("printk overflow!\n");
+        // console_puts("printk overflow!\n");
         while (1) {
         } // 死机
     }
-
+    
     _vsprint(print_buff, fmt, vl_copy);
     va_end(vl_copy);
 
+#define DEBUG
 #ifdef DEBUG
-    extern void uart_puts(char *s);
-    uart_puts(print_buff);
+    
+    puts(print_buff);
 #else
     console_puts(print_buff);
     console_flush();
@@ -135,7 +149,6 @@ int printk(const char *fmt, ...) {
     va_start(vl, fmt);
     int n = _vprint(fmt, vl);
     va_end(vl);
-
     return n;
 }
 
@@ -143,7 +156,7 @@ int printk(const char *fmt, ...) {
  * panic: 不可重入 printk
  */
 void panic(const char *fmt, ...) {
-    console_puts("\npanic: ");
+    // console_puts("\npanic: ");
 
     va_list vl;
     va_start(vl, fmt);
@@ -151,8 +164,8 @@ void panic(const char *fmt, ...) {
     va_end(vl);
     
 #ifdef DEBUG
-    extern void uart_puts(char *s);
-    uart_puts(print_buff);
+    extern void puts(char *s);
+    puts(print_buff);
 #else
     console_puts(print_buff);
     console_puts("\n");

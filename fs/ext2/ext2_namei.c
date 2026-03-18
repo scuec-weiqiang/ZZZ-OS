@@ -63,7 +63,8 @@ static int ext2_add(struct inode *i_parent, struct dentry *dentry, uint32_t i_mo
     ext2_add_entry(i_parent, dentry, &slot, i_mode);
     
     i_parent->dirty = true; // 标记父目录inode为脏
-    i_parent->i_mtime.tv_sec = get_current_unix_timestamp(UTC8); // 更新修改时间
+    // i_parent->i_mtime.tv_sec = get_current_unix_timestamp(UTC8); // 更新修改时间
+    i_parent->i_mtime.tv_sec = 0; // 更新修改时间
     
     
     if(EXT2_GET_TYPE(i_mode) == EXT2_S_IFDIR)
@@ -115,7 +116,8 @@ int ext2_mknod(struct inode *i_parent, struct dentry *dentry, uint32_t i_mode, d
     ext2_add_entry(i_parent, dentry, &slot, i_mode);
     
     i_parent->dirty = true; // 标记父目录inode为脏
-    i_parent->i_mtime.tv_sec = get_current_unix_timestamp(UTC8); // 更新修改时间
+    // i_parent->i_mtime.tv_sec = get_current_unix_timestamp(UTC8); // 更新修改时间
+    i_parent->i_mtime.tv_sec = 0; // 更新修改时间
     
     i_parent->dirty = true; // 标记父目录inode为脏
     new_inode->dirty = true; // 标记新inode为脏

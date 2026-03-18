@@ -62,6 +62,7 @@ static struct memblock_region* memblock_get(int idx) {
 #define free_region(region) __PROTECT(memblock_region_free((region));(region) = NULL; )
 
 struct memblock memblock;
+phys_addr_t mem_end;
 
 static void memblock_sort_one(struct memblock_type *type, struct memblock_region *region) {
     struct memblock_region *pos = NULL, *tmp = NULL;

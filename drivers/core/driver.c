@@ -61,19 +61,19 @@ int platform_driver_unregister(struct platform_driver *drv) {
 }
 
 int platform_get_irq(struct platform_device *pdev, int index) {
-    struct device_node *np = pdev->of_node;
-    struct device_prop *prop = of_get_prop_by_name(np, "interrupts");
-    if (!prop)
-        return -1;
+    // struct device_node *np = pdev->of_node;
+    // struct device_prop *prop = of_get_prop_by_name(np, "interrupts");
+    // if (!prop)
+    //     return -1;
 
-    uint32_t *val = of_read_u32_array(np, "interrupts", 1);
-    int hwirq = val[index];
+    // uint32_t *val = of_read_u32_array(np, "interrupts", 1);
+    // int hwirq = val[index];
 
-    struct device_node *intc = of_get_interrupt_parent(np);
-    prop = of_get_prop_by_name(intc, "compatible");
-    struct irq_chip *chip = irq_chip_lookup(prop->value, 0);
-    struct irq_domain *domain = (struct irq_domain *)chip->priv;
-    // int virq = domain->virq_base + hwirq;
-    return irq_domain_add_mapping(domain, hwirq);
+    // struct device_node *intc = of_get_interrupt_parent(np);
+    // prop = of_get_prop_by_name(intc, "compatible");
+    // struct irq_chip *chip = irq_chip_lookup(prop->value, 0);
+    // struct irq_domain *domain = (struct irq_domain *)chip->priv;
+    // // int virq = domain->virq_base + hwirq;
+    // return irq_domain_add_mapping(domain, hwirq);
     
 }

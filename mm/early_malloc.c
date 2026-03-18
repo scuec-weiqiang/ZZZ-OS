@@ -30,5 +30,6 @@ void *early_malloc(size_t size) {
     void *p = (void *)alloc_pos;
     alloc_pos += size;
     free_size -= size;
+    // printk("early_malloc: alloc %xu bytes, free_size = %xu\n", size, free_size);
     return p;
 }

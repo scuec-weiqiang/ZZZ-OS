@@ -178,6 +178,24 @@ int vma_delete(struct mm_struct *mm, virt_addr_t start, size_t len) {
     return 0;
 }
 
+pgprot_t vm_flags_to_pgprot(vma_flags_t flags) {
+    pgprot_t prot = 0;
+    if (flags & VMA_R) {
+        prot |= PROT_READ;
+    }
+    if (flags & VMA_W) {
+        prot |= PROT_WRITE;
+    }
+    if (flags & VMA_X) {
+        prot |= PROT_EXEC;
+    }
+    if (flags & VMA_U) {
+        prot |= PROT_USER;
+    }
+  
+    return prot;
+}
+
 void vma_dump(struct mm_struct *mm) {
     struct vma *vma;
     printk("VMA Dump:\n");

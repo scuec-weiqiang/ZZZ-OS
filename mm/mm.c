@@ -7,8 +7,8 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include "os/mm/mm_types.h"
-#include "os/pfn.h"
+#include <os/mm/mm_types.h>
+#include <os/pfn.h>
 #include <os/mm/pgtbl_types.h>
 #include <os/mm/symbols.h>
 #include <os/check.h>
@@ -18,10 +18,12 @@
 #include <os/printk.h>
 #include <os/string.h>
 #include <os/kva.h>
-#include <os/mm/vma_flags.h>
 #include <os/mm/pgtbl.h>
 #include <os/mm/vma.h>
+#include <os/mm/pgprot.h>
 #include <os/mm.h>
+#include <os/mm/symbols.h>
+#include <os/utils.h>
 
 static int highest_possible_level(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size) {
     if (pgtbl == NULL||pgtbl->features == NULL) {
@@ -35,7 +37,13 @@ static int highest_possible_level(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr
     int level = pgtbl->features->support_levels - 1; // 默认使用最小页大小
     for (int i = 0; i < pgtbl->features->support_levels ; i++) {
         size_t page_size = pgtbl->features->level[i].page_size;
-        if ((vaddr % page_size == 0) && (paddr % page_size == 0) && (size >= page_size)) {
+        // if ((vaddr % page_size == 0) && (paddr % page_size == 0) && (size >= page_size)) {
+        //     level = i;
+        //     break;
+        // }
+
+        if ( (mod_u32(vaddr ,page_size) == 0) 
+            && (mod_u32(paddr , page_size) == 0) && (size >= page_size)) {
             level = i;
             break;
         }
@@ -43,17 +51,21 @@ static int highest_possible_level(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr
     return level;
 }
 
-int map(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, vma_flags_t flags) {
-    CHECK(pgtbl != NULL, "pgtbl is NULL", return -1;);
+int map(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, pgprot_t flags) {
+    CHECK(pgtbl != NULL || size ==0, "pgtbl is NULL or size = 0", return -1;);
     size = ALIGN_UP(size, PAGE_SIZE);
     uintptr_t va = ALIGN_DOWN(vaddr, PAGE_SIZE);
     uintptr_t pa = ALIGN_DOWN(paddr, PAGE_SIZE);
     uintptr_t end = va + size;
 
+    // printk("map: va=%xu, pa=%xu, size=%xu, flags=%x\n", va, pa, size, flags);
+    #include <os/color.h>
     while (va < end) {
         int target_level = highest_possible_level(pgtbl, va, pa, end - va);
         int map_size = pgtbl_level_page_size(pgtbl, target_level);
+        // printk("mapping va=%xu to pa=%xu %x size at level %d, end at %xu\n", va, pa, map_size,target_level, end);
         if (pgtbl_map(pgtbl, va, pa, target_level, flags) < 0) {
+            printk(RED("error: failed to map va=%xu to pa=%xu at level %d\n"), va, pa, target_level);
             return -1;
         }
 
@@ -148,7 +160,7 @@ static virt_addr_t alloc_mmio_va(size_t size) {
 
 void *ioremap(phys_addr_t pa, size_t size) {
     uintptr_t va = alloc_mmio_va(size);
-    map(kernel_mm_struct->pgdir, va, pa, size, VMA_R | VMA_W);
+    map(kernel_mm_struct->pgdir, va, pa, size, PAGE_DEVICE);
     return (void *)va;
 }
 
@@ -158,20 +170,40 @@ void iounmap(virt_addr_t va, size_t size) {
 
 void copy_kernel_mapping(struct mm_struct *dest_mm) {
     int kernel_start_index = pgtbl_level_index(kernel_mm_struct->pgdir, 0, KERNEL_VA_BASE);
-    int kernel_end_index = PAGE_SIZE - sizeof(pte_t);
+    int kernel_end_index = kernel_mm_struct->pgdir->features->level[0].table_size - sizeof(pte_t);
     pgtbl_copy(dest_mm->pgdir, kernel_mm_struct->pgdir, 0, kernel_start_index, kernel_end_index - kernel_start_index);
 }
 
 void mm_init() {
     kernel_mm_struct = &init_mm;
     kernel_mm_struct->pgdir = new_pgtbl("kernel_pgtbl");
-    
-    struct memblock_region *region = NULL;
-    list_for_each_entry(region, &memblock.memory.regions, struct memblock_region, node) {
-        map(kernel_mm_struct->pgdir, KERNEL_VA(region->base), region->base, region->size, VMA_R|VMA_W|VMA_X);
+    if (!kernel_mm_struct->pgdir) {
+        panic("failed to create kernel pgtable");
     }
+
+    // struct memblock_region *region = NULL;
+    // list_for_each_entry(region, &memblock.memory.regions, struct memblock_region, node) {
+    //     map(kernel_mm_struct->pgdir, KERNEL_VA(region->base), region->base, region->size, PAGE_KERNEL);
+    // }
+
+    pgtbl_map(kernel_mm_struct->pgdir, 0x02000000, 0x02000000, 0, PAGE_DEVICE);
+
+    map(kernel_mm_struct->pgdir, trap_start, KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
+    map(kernel_mm_struct->pgdir, text_start, KERNEL_PA(text_start), text_size, PAGE_KERNEL_EXEC);
+    map(kernel_mm_struct->pgdir, data_start, KERNEL_PA(data_start), data_size, PAGE_KERNEL);
+    map(kernel_mm_struct->pgdir, rodata_start, KERNEL_PA(rodata_start), rodata_size, PAGE_KERNEL_RO);
+    map(kernel_mm_struct->pgdir, bss_start, KERNEL_PA(bss_start), bss_size, PAGE_KERNEL);
+    map(kernel_mm_struct->pgdir, initcall_start, KERNEL_PA(initcall_start), initcall_size, PAGE_KERNEL_EXEC);
+    map(kernel_mm_struct->pgdir, exitcall_start, KERNEL_PA(exitcall_start), exitcall_size, PAGE_KERNEL_EXEC);
+    map(kernel_mm_struct->pgdir, irqinitcall_start, KERNEL_PA(irqinitcall_start), irqinitcall_size, PAGE_KERNEL_EXEC);
+    map(kernel_mm_struct->pgdir, irqexitcall_start, KERNEL_PA(irqexitcall_start), irqexitcall_size, PAGE_KERNEL_EXEC);
+    map(kernel_mm_struct->pgdir, early_stack_start, KERNEL_PA(early_stack_start), early_stack_size, PAGE_KERNEL);
+    map(kernel_mm_struct->pgdir, kernel_end, KERNEL_PA(kernel_end), 0x08000000, PAGE_KERNEL);
+    map(kernel_mm_struct->pgdir, 0xffff0000, KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
+   
     pgtbl_switch_to(kernel_mm_struct->pgdir);
-    pgtbl_flush();
+    printk("mm_init success\n") ;
+
     current_mm_struct = NULL;
 }
 

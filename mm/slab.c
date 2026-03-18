@@ -9,23 +9,41 @@
 #include <os/printk.h>
 #include <os/mm/page.h>
 #include <os/kva.h>
+#include <os/utils.h>
 
 
 #define get_slab(list_node) list_entry(list_node, struct slab, list)
 
+#define SIZE_TYPE_0 8
+#define SIZE_TYPE_1 16
+#define SIZE_TYPE_2 32
+#define SIZE_TYPE_3 48
+#define SIZE_TYPE_4 64
+#define SIZE_TYPE_5 96
+#define SIZE_TYPE_6 128
+#define SIZE_TYPE_7 192
+#define SIZE_TYPE_8 256
+#define SIZE_TYPE_9 384
+#define SIZE_TYPE_10 512
+#define SIZE_TYPE_11 768
+#define SIZE_TYPE_12 1024
+#define SIZE_TYPE_13 1536
+#define SIZE_TYPE_14 2048
+
 static const int size_types[] = {
-    8, 16, 32, 48, 64, 
-    96, 128, 192, 256, 384, 
-    512, 768, 1024, 1536, 2048
+    SIZE_TYPE_0, SIZE_TYPE_1, SIZE_TYPE_2, SIZE_TYPE_3, 
+    SIZE_TYPE_4, SIZE_TYPE_5, SIZE_TYPE_6, SIZE_TYPE_7,
+    SIZE_TYPE_8, SIZE_TYPE_9, SIZE_TYPE_10, SIZE_TYPE_11,
+    SIZE_TYPE_12, SIZE_TYPE_13, SIZE_TYPE_14
 };
 
 static struct {
     size_t size;
     struct kmem_cache *cache;
 } kmalloc_caches[] = {
-    {size_types[0], NULL}, {size_types[1], NULL}, {size_types[2], NULL}, {size_types[3], NULL}, {size_types[4], NULL},
-    {size_types[5], NULL}, {size_types[6], NULL}, {size_types[7], NULL}, {size_types[8], NULL}, {size_types[9], NULL},
-    {size_types[10], NULL}, {size_types[11], NULL}, {size_types[12], NULL}, {size_types[13], NULL}, {size_types[14], NULL}
+    {SIZE_TYPE_0, NULL}, {SIZE_TYPE_1, NULL}, {SIZE_TYPE_2, NULL}, {SIZE_TYPE_3, NULL}, {SIZE_TYPE_4, NULL},
+    {SIZE_TYPE_5, NULL}, {SIZE_TYPE_6, NULL}, {SIZE_TYPE_7, NULL}, {SIZE_TYPE_8, NULL}, {SIZE_TYPE_9, NULL},
+    {SIZE_TYPE_10, NULL}, {SIZE_TYPE_11, NULL}, {SIZE_TYPE_12, NULL}, {SIZE_TYPE_13, NULL}, {SIZE_TYPE_14, NULL}
 };
 
 #define SLAB_SIZE_TYPES_NUM (sizeof(size_types)/sizeof(size_types[0]))
@@ -62,7 +80,7 @@ struct kmem_cache* kmem_cache_create(const char *name, size_t size, size_t align
     strcpy(cache->name, name);
     cache->align = round_up_align(align, 8);
     cache->object_size = size;
-    cache->objects_per_slab = (PAGE_SIZE - sizeof(struct slab)) / size;
+    cache->objects_per_slab = div_u32((PAGE_SIZE - sizeof(struct slab)) , size);
 
     INIT_LIST_HEAD(&cache->free_slabs);
     INIT_LIST_HEAD(&cache->full_slabs);

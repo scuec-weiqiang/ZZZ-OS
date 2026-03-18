@@ -80,6 +80,9 @@ int parse(char* path) {
     char line[MAX_LINE_LEN];
     char *token;
     while (fgets(line,MAX_LINE_LEN,f)) {
+        if (line[0] == '#' || line[0] == '\n'|| line[0] == '\r' || line[0] == 0) {
+            continue;
+        }
         char *p = strstr(line,OBJ);
         if (p) {
             p += strlen(OBJ);
@@ -87,8 +90,8 @@ int parse(char* path) {
             while((*p == ' ') || (*p == '+') || (*p == '=') || (*p == ':')) {
                 p++;
             }
-
-            token = strtok(p, " ");
+            char *save_ptr;
+            token = strtok_r(p, " ", &save_ptr);
             while (token) {
                 if (strstr(token,".o")) {
                     add_path(path, token);
@@ -100,7 +103,7 @@ int parse(char* path) {
                     truncate_path(path);
                 } else {
                 }
-                token = strtok(NULL, " ");
+                token = strtok_r(NULL, " ",&save_ptr);
             }
         }
     }
@@ -114,6 +117,7 @@ int parse(char* path) {
     }
     return -1;
 }
+
 
 
 int main(int argc, char *argv[]) {

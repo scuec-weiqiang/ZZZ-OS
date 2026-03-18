@@ -12,7 +12,7 @@
 
 #include "os/mm/mm_types.h"
 #include <os/types.h>
-#include <asm/riscv.h>
+// #include <asm/riscv.h>
 #include <os/mm.h>
 #include <os/list.h>
 #include <os/elf.h>

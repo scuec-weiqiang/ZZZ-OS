@@ -11,6 +11,7 @@
 #include <os/string.h>
 #include <os/types.h>
 #include <os/kmalloc.h>
+#include <os/utils.h>
 
 #define ADAP_INVALID_ARG    -1
 #define ADAP_BDEV_NULL      -2
@@ -45,7 +46,12 @@ int block_adapter_register(const char* adap_name,const char* bdev_name, uint32_t
         return ADAP_BDEV_NULL;
     }
 
-    if(bdev->sector_size == 0 || fs_block_size % bdev->sector_size != 0)
+    // if(bdev->sector_size == 0 || fs_block_size % bdev->sector_size != 0)
+    // {
+    //     return ADAP_NOT_ALIGN;
+    // }
+
+    if (bdev->sector_size == 0 || mod_u32(fs_block_size , bdev->sector_size) != 0)
     {
         return ADAP_NOT_ALIGN;
     }
@@ -54,7 +60,8 @@ int block_adapter_register(const char* adap_name,const char* bdev_name, uint32_t
     strcpy(adap.name,adap_name);
     adap.bdev = bdev;
     adap.fs_block_size = fs_block_size;
-    adap.sectors_per_block = fs_block_size / bdev->sector_size;
+    // adap.sectors_per_block = fs_block_size / bdev->sector_size;
+     adap.sectors_per_block = div_u32(fs_block_size, bdev->sector_size);
     adap.gpt_offset = gpt_offset;
     for(int i=0;i<MAX_BLOCK_ADAPTER_NUM;i++)
     {
@@ -93,7 +100,8 @@ int block_adapter_read(struct block_adapter *adap, void *buf, int logic_block_st
 
     // 计算出从磁盘上的哪个扇区开始读，以及读多少个扇区
     int phy_sector_start = logic_block_start * adap->sectors_per_block + adap->gpt_offset;
-    int phy_sector_size = adap->fs_block_size / adap->sectors_per_block;
+    // int phy_sector_size = adap->fs_block_size / adap->sectors_per_block;
+    int phy_sector_size = div_u32(adap->fs_block_size, adap->sectors_per_block);
     int phy_sector_n = n * adap->sectors_per_block;
 
     char *pos = (char *)buf;
@@ -102,7 +110,8 @@ int block_adapter_read(struct block_adapter *adap, void *buf, int logic_block_st
         int retval = adap->bdev->read(pos, i);
         if (retval < 0)
         {
-            return (-1) * (i / adap->sectors_per_block); // 出现错误则返回具体是在文件系统哪一个逻辑block出现的错误
+            // return (-1) * (i / adap->sectors_per_block); // 出现错误则返回具体是在文件系统哪一个逻辑block出现的错误
+            return (-1) * div_u32(i , adap->sectors_per_block); // 出现错误则返回具体是在文件系统哪一个逻辑block出现的错误
         }
         pos += phy_sector_size;
     }
@@ -119,7 +128,8 @@ int block_adapter_write(struct block_adapter *adap, void *buf, int logic_block_s
 
     // 计算出从磁盘上的哪个扇区开始写，以及写多少个扇区
     int phy_sector_start = logic_block_start * adap->sectors_per_block + adap->gpt_offset;
-    int phy_sector_size = adap->fs_block_size / adap->sectors_per_block;
+    // int phy_sector_size = adap->fs_block_size / adap->sectors_per_block;
+    int phy_sector_size = div_u32(adap->fs_block_size, adap->sectors_per_block);
     int phy_sector_n = n * adap->sectors_per_block;
 
     char *pos = (char *)buf;
@@ -128,7 +138,7 @@ int block_adapter_write(struct block_adapter *adap, void *buf, int logic_block_s
         int retval = adap->bdev->write(pos, i);
         if (retval < 0)
         {
-            return (-1) * (i / adap->sectors_per_block); // 出现错误则返回具体是在文件系统哪一个逻辑block出现的错误
+            return (-1) * div_u32(i , adap->sectors_per_block); // 出现错误则返回具体是在文件系统哪一个逻辑block出现的错误
         }
         pos += phy_sector_size;
     }

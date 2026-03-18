@@ -13,7 +13,6 @@
 #include <fs/path.h>
 #include <os/printk.h>
 #include <os/string.h>
-#include <stdint.h>
 #include <os/kva.h>
 
 #define ALIGN_UP(x, align) (((x) + (align) - 1) & ~((align) - 1))
@@ -134,7 +133,7 @@ struct device_node *parse_struct_block(const char *struct_block, char *strings) 
         case FDT_BEGIN_NODE: {
             const char *name = (const char *)p;
             p++;
-            // printk("in node: %s\n", name);
+            printk("in node: %s\n", name);
             struct device_node *new_node = (struct device_node *)fdt_new_node(name, curr);
             if (root == NULL) {
                 root = new_node;

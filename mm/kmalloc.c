@@ -14,6 +14,7 @@
 #include <os/mm/buddy.h>
 #include <os/mm/slab.h>
 #include <os/kva.h>
+#include <os/utils.h>
 
 enum alloc_state {
     EARLY_ALLOC,
@@ -52,11 +53,14 @@ void *page_alloc(size_t npages) {
         return NULL;
 
     case MEMBLOCK_ALLOC:
-        return memblock_alloc(npages * PAGE_SIZE, PAGE_SIZE);
+        return memblock_alloc(npages * PAGE_SIZE, npages*PAGE_SIZE);
         
     case NORMAL_ALLOC:
         return alloc_pages_kva(npages);
+    default:
+        return NULL;
     }
+    
 }
 
 
@@ -85,6 +89,7 @@ void *kmalloc(size_t size) {
 
     switch (alloc_state) {
     case EARLY_ALLOC:
+        // printk("kmalloc: early alloc\n");
         return early_malloc(size);
     case MEMBLOCK_ALLOC:
         return memblock_alloc(size,8);

@@ -21,7 +21,7 @@
 #include <os/mm/page.h>
 #include <asm/pgtbl.h>
 #include <os/kva.h>
-#include <os/mm/vma_flags.h>
+#include <os/mm/vma.h>
 #include <os/mm/pgtbl.h>
 
 struct list_head proc_list_head[MAX_HARTS_NUM];

@@ -12,7 +12,14 @@
 #define UTILS_H
 
 unsigned int next_power_of_two(unsigned int n);
-
 int is_power_of_two(unsigned int n); 
+
+unsigned int div_u32(unsigned int num, unsigned int div_num);
+unsigned int mod_u32(unsigned int num, unsigned int div_num);
+unsigned int divmod_u32(unsigned int num, unsigned int div_num, unsigned int *rem);
+
+unsigned long long div_u64(unsigned long long num, unsigned int div_num);
+unsigned long long mod_u64(unsigned long long num, unsigned int div_num);
+unsigned long long divmod_u64(unsigned long long num, unsigned int div_num, unsigned int *rem);
 
 #endif

@@ -270,37 +270,37 @@ int of_device_is_type(const struct device_node *node, const char *type) {
 
 void of_test() {
    
-    // fdt_walk_node(fdt_root_node, 0);
-    struct list_head list = LIST_HEAD_INIT(list);
-    fdt_walk(fdt_root_node, &list);
-    struct device_node *pos;
-    list_for_each_entry(pos, &list, struct device_node, node) {
-        for (int i = 0; i < pos->depth; i++) {
-            printk("  ");
-        }
-        printk("%s\n", pos->name);
-    }
-    struct device_node *node = of_find_node_by_path("/soc/rtc@0x50000000");
-    if (node) {
-        printk("Found node: %s\n", node->name);
-    }
-    node = NULL;
-    node = of_find_node_by_compatible("wq,rtc");
-    if (node) {
-        printk("Found node: %s\n", node->name);
-    }
-    // uintptr_t base, size;
-    // if (of_get_memory(&base, &size) == 0) {
-    //     printk("Memory base: %xu, size: %xu\n", base, size);
+    // // fdt_walk_node(fdt_root_node, 0);
+    // struct list_head list = LIST_HEAD_INIT(list);
+    // fdt_walk(fdt_root_node, &list);
+    // struct device_node *pos;
+    // list_for_each_entry(pos, &list, struct device_node, node) {
+    //     for (int i = 0; i < pos->depth; i++) {
+    //         printk("  ");
+    //     }
+    //     printk("%s\n", pos->name);
     // }
+    // struct device_node *node = of_find_node_by_path("/soc/rtc@0x50000000");
+    // if (node) {
+    //     printk("Found node: %s\n", node->name);
+    // }
+    // node = NULL;
+    // node = of_find_node_by_compatible("wq,rtc");
+    // if (node) {
+    //     printk("Found node: %s\n", node->name);
+    // }
+    // // uintptr_t base, size;
+    // // if (of_get_memory(&base, &size) == 0) {
+    // //     printk("Memory base: %xu, size: %xu\n", base, size);
+    // // }
 
-    node = of_find_node_by_compatible("wq,uart");
-    node = of_get_interrupt_parent(node);
-    if (node) {
-        printk("interrupt-parent = %s\n", node->name);
-    }
-    // extern int of_scan_memory();
-    // extern void memblock_dump();
-    // of_scan_memory();
-    // memblock_dump();
+    // node = of_find_node_by_compatible("wq,uart");
+    // node = of_get_interrupt_parent(node);
+    // if (node) {
+    //     printk("interrupt-parent = %s\n", node->name);
+    // }
+    // // extern int of_scan_memory();
+    // // extern void memblock_dump();
+    // // of_scan_memory();
+    // // memblock_dump();
 }

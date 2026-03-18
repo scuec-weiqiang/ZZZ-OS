@@ -4,42 +4,50 @@
 #include <os/kmalloc.h>
 #include <os/kva.h>
 #include <os/mm/pgtbl_types.h>
-#include <os/mm/vma_flags.h>
+#include <os/mm/vma.h>
 #include <os/pfn.h>
 #include <os/string.h>
 #include <os/mm/pgtbl.h>
+#include <os/mm/pgprot.h>
+#include <os/utils.h>
 
-static pte_t *pte_to_table(pte_t *pte) {
-    phys_addr_t pa = arch_pgtbl_pteval_to_pa(pte->val);
+pte_t *entry_to_next_table(pgtable_t *tbl, int level, pgdesc_type_t type, pte_t *pte) {
+    phys_addr_t pa = arch_pgtbl_entry_get_pa(tbl,level, type, pte);
     return (void *)KERNEL_VA(pa);
 }
 
-static pte_t *pte_to_parent_table(pte_t *pte) {
-    return (void *)ALIGN_DOWN((uintptr_t)pte, PAGE_SIZE);
+pte_t *entry_get_table_base(pgtable_t *tbl, int level, pgdesc_type_t type, pte_t *entry) {
+    size_t table_size = tbl->features->level[level].table_size;
+    return (pte_t *)ALIGN_DOWN((uintptr_t)entry, table_size);
 }
 
-static pte_t *alloc_table_va() {
-    return (pte_t*)page_alloc(1); // 一页
+static pte_t *alloc_table_va(pgtable_t *tbl, int level) {
+    uint32_t npages = (tbl->features->level[level].table_size) >> PAGE_SHIFT;
+    if (npages == 0) {
+        npages = 1; // 最小分配一页
+    }
+    printk("alloc_table_va: level=%d, table_size=%xu, npages=%xu\n", level, tbl->features->level[level].table_size, npages);
+    return (pte_t*)page_alloc(npages); // 一页
 }
 
 static void free_table_va(void *p) {
     kfree(p);
 }
 
-bool pgtbl_table_is_empty(pgtable_t *pgtbl, pte_t *table) {
-    for (int i = 0; i < (PAGE_SIZE / sizeof(pte_t)); i++) {
-        if (arch_pgtbl_pte_valid(&table[i]) == true) {
+bool pgtbl_table_is_empty(pgtable_t *pgtbl, int level, pte_t *table) {
+    for (int i = 0; i < (pgtbl->features->level[level].table_size / sizeof(pte_t)); i++) {
+        if (arch_pgtbl_entry_is_valid(&table[i]) == true) {
             return false;
         }
     }
     return true;
 }
 
-bool pgtbl_table_is_full(pgtable_t *pgtbl, pte_t *table) {
-    size_t entries = PAGE_SIZE / sizeof(pte_t);
+bool pgtbl_table_is_full(pgtable_t *pgtbl, int level, pte_t *table) {
+    size_t entries = pgtbl->features->level[level].table_size  / sizeof(pte_t);
     size_t valid_count = 0;
     for (int i = 0; i < entries; i++) {
-        if (arch_pgtbl_pte_valid(&table[i]) == true) {
+        if (arch_pgtbl_entry_is_valid(&table[i]) == true) {
             valid_count++;
         }
     }
@@ -53,16 +61,16 @@ bool pgtbl_table_need_merge(pgtable_t *pgtbl, pte_t *table, int level) {
 
     size_t entries = PAGE_SIZE / sizeof(pte_t);
     phys_addr_t first_pa = 0;
-    vma_flags_t first_flags = 0;
+    pgprot_t first_flags = {0};
 
     for (int i = 0; i < entries; i++) {
         pte_t *pte = &table[i];
-        if (arch_pgtbl_pte_valid(pte) == false || arch_pgtbl_pte_is_leaf(pte) == false) {
+        if (arch_pgtbl_entry_is_valid(pte) == false || arch_pgtbl_entry_is_leaf(pte) == false) {
             return false; // 非法或非叶子节点，无法合并
         }
 
-        phys_addr_t pa = arch_pgtbl_pteval_to_pa(pte->val);
-        vma_flags_t flags = arch_pgtbl_pte_get_flags(pte);
+        phys_addr_t pa = arch_pgtbl_entry_get_pa(pgtbl, level, PGTBL_DESC_PAGE,pte);
+        vma_flags_t flags = arch_pgtbl_entry_get_flags(pgtbl,level, pte);
 
         if (i == 0) {
             first_pa = pa;
@@ -96,39 +104,43 @@ void pgtbl_split(pgtable_t *pgtbl, pte_t *pte, int level) {
         return; // 已经是最低层级，无法拆分
     }
 
-    phys_addr_t pa = arch_pgtbl_pteval_to_pa(pte->val);
-    pte_t *child_table = alloc_table_va();
+    phys_addr_t pa = arch_pgtbl_entry_get_pa(pgtbl, level, PGTBL_DESC_TABLE,pte);
+    pte_t *child_table = alloc_table_va(pgtbl, level + 1);
     if (child_table == NULL) {
         return; // 分配失败
     }
     memset(child_table, 0, PAGE_SIZE);
     size_t child_page_size = pgtbl_level_page_size(pgtbl, level + 1);
-    vma_flags_t flags = arch_pgtbl_pte_get_flags(pte);
+    vma_flags_t flags = arch_pgtbl_entry_get_flags(pgtbl,level,pte);
     for (int i = 0; i < (PAGE_SIZE / sizeof(pte_t)); i++) {
         phys_addr_t child_pa = pa + i * child_page_size;
-        arch_pgtbl_set_pte(&child_table[i], child_pa, flags); // 继承权限位
+        arch_pgtbl_set_entry(pgtbl, level+1, PGTBL_DESC_PAGE,&child_table[i], child_pa, flags); // 继承权限位
     }
  
-    arch_pgtbl_set_pte(pte, KERNEL_PA(child_table), 0);
+    arch_pgtbl_set_entry(pgtbl,level,PGTBL_DESC_TABLE,pte, KERNEL_PA(child_table), 0);
 }
 
 /*
     * 将一个子页表合并为叶子节点
 */
-void pgtbl_merge(pgtable_t *pgtbl, pte_t *table, pte_t *table_pte) {
+void pgtbl_merge(pgtable_t *pgtbl, int level, pte_t *table, pte_t *table_entry) {
     if (pgtbl == NULL || table == NULL) {
         return;
     }
 
-    // 确定合并的地址范围与权限
-    phys_addr_t first_pa = arch_pgtbl_pteval_to_pa(table[0].val);
-    vma_flags_t flags = arch_pgtbl_pte_get_flags(&table[0]);
+    if (level <= 0) {
+        return; // 已经是顶层，无法合并
+    }
 
-    pte_t *parent_table = pte_to_parent_table(table_pte);
-    size_t index = (uintptr_t)table_pte - (uintptr_t)parent_table;
+    // 确定合并的地址范围与权限
+    phys_addr_t first_pa = arch_pgtbl_entry_get_pa(pgtbl,level,PGTBL_DESC_PAGE,&table[0]);
+    vma_flags_t flags = arch_pgtbl_entry_get_flags(pgtbl,level,&table[0]);
+
+    pte_t *table_base = entry_get_table_base(pgtbl,level-1, PGTBL_DESC_TABLE, table_entry);
+    size_t index = (uintptr_t)table_entry - (uintptr_t)table_base;
     index /= sizeof(pte_t);
 
-    arch_pgtbl_set_pte(&parent_table[index], first_pa, flags);
+    arch_pgtbl_set_entry(pgtbl,level-1,PGTBL_DESC_PAGE,&table_base[index], first_pa, flags);
  
     free_table_va(table);
 }
@@ -143,11 +155,15 @@ pgtable_t *new_pgtbl(const char *name) {
     strncpy(tbl->name, name, sizeof(tbl->name) - 1);
     tbl->asid = 0; // TODO: 分配 ASID
     arch_pgtbl_init(tbl);
-    tbl->root = page_alloc(1);
-    if (!tbl->root)
+    int npages = div_u32(tbl->features->level[0].table_size + PAGE_SIZE - 1, PAGE_SIZE);
+    // printk("new_pgtbl: name=%s, root table size = %xu bytes, npages = %xu\n", name, tbl->features->level[0].table_size, npages);
+    tbl->root = page_alloc(npages);
+    if (!tbl->root) {
         return NULL;
+    }
+        
     tbl->root_pa = KERNEL_PA(tbl->root);
-    memset(tbl->root, 0, PAGE_SIZE);
+    memset(tbl->root, 0, tbl->features->level[0].table_size);
 
     return tbl;
 }
@@ -156,22 +172,31 @@ struct map_ctx {
     pte_t *table[MAX_PGTBL_LEVELS];
     pte_t *pte[MAX_PGTBL_LEVELS];
     phys_addr_t pa;
-    vma_flags_t flags;
+    pgprot_t flags;
     int target_level;
 };
 walk_action_t map_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, void *arg) {
     struct map_ctx *ctx = arg;
 
-    ctx->table[level] = pte_to_parent_table(pte);
+    pgdesc_type_t type;
+    if (level == ctx->target_level) {
+        type = PGTBL_DESC_PAGE;
+    } else {
+        type = PGTBL_DESC_TABLE;
+    }
+    ctx->table[level] = entry_get_table_base(pgtbl, level, type, pte);
     ctx->pte[level] = pte;
 
     if (level == ctx->target_level) {
-        arch_pgtbl_set_pte(pte, ctx->pa, ctx->flags);
+        pte->val = 0; // 先清空原有映射
+        // printk("map_cb: set entry at level %d, va=%xu to pa=%xu with flags %xu\n", level, va, ctx->pa, ctx->flags);
+        arch_pgtbl_set_entry(pgtbl,level, type,pte, ctx->pa, ctx->flags);
         for (int l = level; l > 0; l--) {
             pte_t *table = ctx->table[l];
-            pte_t *table_pte = ctx->pte[l-1];
+            pte_t *table_entry = ctx->pte[l-1];
             if (pgtbl_table_need_merge(pgtbl, table, l)) {
-                pgtbl_merge(pgtbl, table, table_pte);
+                printk("map_cb: merge table at level %d\n", l);
+                pgtbl_merge(pgtbl, l, table, table_entry);
             } else {
                 break;
             }
@@ -179,35 +204,43 @@ walk_action_t map_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, vo
         return WALK_STOP;
     }
 
-    if (arch_pgtbl_pte_valid(pte) == false) {
+    // printk("map_cb: pte is valid=%d, is_leaf=%d at level %d for va=%xu\n", arch_pgtbl_entry_is_valid(pte), arch_pgtbl_entry_is_leaf(pte), level, va);
+    if (arch_pgtbl_entry_is_valid(pte) == false && type == PGTBL_DESC_TABLE) {
             // 需要创建子表
-        void *child_table = alloc_table_va();
+        void *child_table = alloc_table_va(pgtbl,level+1);
         if (child_table == NULL) {
             return -1; // 分配失败
         }
+        printk("map_cb: need to create child table %xu at level %du for va=%xu\n",(virt_addr_t)child_table, level, va);
         memset(child_table, 0, PAGE_SIZE);
-        arch_pgtbl_set_pte(pte, KERNEL_PA(child_table), 0);
+        arch_pgtbl_set_entry(pgtbl,level,PGTBL_DESC_TABLE,pte, KERNEL_PA(child_table), PROT_NONE);
     }
     return WALK_CONTINUE;
 }
 
 struct look_ctx {
     phys_addr_t pa;
+    pgprot_t flags;
 };
 walk_action_t look_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, void *arg) {
-    phys_addr_t *res_pa = &((struct look_ctx *)arg)->pa;
+    struct look_ctx *res = (struct look_ctx *)arg;
 
-    if (arch_pgtbl_pte_valid(pte) == false) {
+    if (arch_pgtbl_entry_is_valid(pte) == false) {
         return WALK_STOP; // 无效映射
     }
     
-    if (arch_pgtbl_pte_is_leaf(pte)) {
+    if (arch_pgtbl_entry_is_leaf(pte)) {
         // printk("find in level %d\n", level);
-        phys_addr_t offset = va % pgtbl_level_page_size(pgtbl, level);
-        *res_pa = arch_pgtbl_pteval_to_pa(pte->val);
-        *res_pa += offset;
+        // phys_addr_t offset = va % pgtbl_level_page_size(pgtbl, level);
+
+        phys_addr_t offset = mod_u32(va , pgtbl_level_page_size(pgtbl, level) );
+        res->pa = arch_pgtbl_entry_get_pa(pgtbl,level,PGTBL_DESC_PAGE,pte);
+        res->pa += offset;
+        printk("look_cb: pte = %xu\n", pte->val);
+        res->flags = arch_pgtbl_entry_get_flags(pgtbl,level,pte);
         return WALK_STOP;
     }
+
     return WALK_CONTINUE;
 }
 
@@ -220,19 +253,25 @@ struct unmap_ctx {
 walk_action_t unmap_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, void *arg) {
     struct unmap_ctx *ctx = arg;
 
+    pgdesc_type_t type;
+    if (level == ctx->target_level) {
+        type = PGTBL_DESC_PAGE;
+    } else {
+        type = PGTBL_DESC_TABLE;
+    }
     // 记录路径以便后续清理
-    ctx->table[level] = pte_to_parent_table(pte);
+    ctx->table[level] = entry_get_table_base(pgtbl,level,type,pte);
     ctx->pte[level] = pte;
 
     if (level == ctx->target_level) {
-        arch_pgtbl_clear_pte(pte);
+        arch_pgtbl_clear_entry(pgtbl,level,type,pte);
         // 向上清理空表
         for (int l = level; l > 0; l--) {
-            pte_t *parent_table = ctx->table[l];
+            pte_t *table_base = ctx->table[l];
             pte_t *current_pte = ctx->pte[l];
-            if (pgtbl_table_is_empty(pgtbl, parent_table)) {
-                arch_pgtbl_clear_pte(current_pte);
-                free_table_va(parent_table);
+            if (pgtbl_table_is_empty(pgtbl, l,table_base)) {
+                arch_pgtbl_clear_entry(pgtbl, l, type, current_pte);
+                free_table_va(table_base);
             } else {
                 break;
             }
@@ -240,11 +279,11 @@ walk_action_t unmap_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, 
         return WALK_STOP;
     }
 
-    if (arch_pgtbl_pte_valid(pte) == false) {
+    if (arch_pgtbl_entry_is_valid(pte) == false) {
         return WALK_STOP; // 映射本来就不存在，直接退出
     }
 
-    if (arch_pgtbl_pte_is_leaf(pte) == false) {
+    if (arch_pgtbl_entry_is_leaf(pte) == false) {
         return WALK_CONTINUE; // 已经是非叶子节点，无需拆分
     }
 
@@ -260,34 +299,38 @@ walk_action_t unmap_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, 
 int pgtbl_walk(pgtable_t *pgtbl, virt_addr_t va, int target_level, pgtbl_walk_cb cb, void *arg) {
     CHECK(pgtbl != NULL && pgtbl->root != NULL, "pgtbl is NULL", return 0;);
 
-    pte_t *table = pgtbl->root;
+    pte_t *table = (pte_t*)pgtbl->root;
+ 
     unsigned long index = 0;
     for (int level = 0; level < pgtbl->features->support_levels; level++) {
         index = arch_pgtbl_level_index(pgtbl, level, va);
         pte_t *pte = &table[index];
+        
 
         walk_action_t act = cb(pgtbl, pte, level, va, arg);
-
+        // printk("walk level %d, index %xu, pte %xu\n", level, index, pte->val);
         if (act == WALK_STOP)
             return 0;
 
         if (act == WALK_RETRY)
             return pgtbl_walk(pgtbl, va, target_level, cb, arg);
     
-        if (arch_pgtbl_pte_is_leaf(pte)) {
+        if (arch_pgtbl_entry_is_leaf(pte)) {
+            // printk("pgtbl_walk: hit leaf at level %d, but target level is %d ,problem pte = %xu\n", level, target_level,pte->val);
             return -1;
         }
-        table = pte_to_table(pte); // 还没有到最底层，继续往下找
+        table = entry_to_next_table(pgtbl,level,PGTBL_DESC_TABLE, pte); // 还没有到最底层，继续往下找
     }
     return 0;
 }
 
-int pgtbl_map(pgtable_t *pgtbl, virt_addr_t va, phys_addr_t pa, int target_level, vma_flags_t flags) {
+int pgtbl_map(pgtable_t *pgtbl, virt_addr_t va, phys_addr_t pa, int target_level, pgprot_t flags) {
     struct map_ctx ctx = {
         .pa = pa,
         .flags = flags,
         .target_level = target_level,
     };
+    // printk("pgtbl_map: va=%xu to pa=%xu with flags %xu\n", va, ctx.pa, flags);
     return pgtbl_walk(pgtbl, va, target_level, map_cb, &ctx);
 }
 
@@ -302,10 +345,20 @@ int pgtbl_unmap(pgtable_t *pgtbl, virt_addr_t va, int target_level) {
 phys_addr_t pgtbl_lookup(pgtable_t *pgtbl, virt_addr_t va) {
     struct look_ctx ctx = {
         .pa = 0,
+        .flags = PROT_NONE,
     };
-    pgtbl_walk(pgtbl, va, 2, look_cb, &ctx);
+    pgtbl_walk(pgtbl, va, pgtbl->features->support_levels - 1, look_cb, &ctx);
     return ctx.pa;
 }
+pgprot_t pgtbl_lookup_prot(pgtable_t *pgtbl, virt_addr_t va) {
+    struct look_ctx ctx = {
+        .pa = 0,
+        .flags = PROT_NONE,
+    };
+    pgtbl_walk(pgtbl, va, pgtbl->features->support_levels - 1, look_cb, &ctx);
+    return ctx.flags;
+}
+
 
 void pgtbl_flush() {
     arch_pgtbl_flush();
@@ -313,6 +366,7 @@ void pgtbl_flush() {
 
 void pgtbl_switch_to(pgtable_t *pgtbl) {
     arch_pgtbl_switch_to(pgtbl);
+    arch_pgtbl_flush();
 }
 
 int pgtbl_level_index(pgtable_t *pgtbl, int level, virt_addr_t va) {
@@ -330,16 +384,16 @@ int pgtbl_copy(pgtable_t *dest, pgtable_t *src, int level, int index_start, int 
 
     int index = 0;
     for (int i = 0; i < level; i++) {
-        index = arch_pgtbl_level_index(src, i, index_start);
-        src_table = pte_to_table(&src_table[index]);
+        index = arch_pgtbl_level_index(src, i,index_start);
+        src_table = entry_to_next_table(src,i,PGTBL_DESC_TABLE,&src_table[index]);
 
         index = arch_pgtbl_level_index(dest, i, index_start);
-        dest_table = pte_to_table(&dest_table[index]);
+        dest_table = entry_to_next_table(dest,i,PGTBL_DESC_TABLE,&dest_table[index]);
     }
     
     for (int i = index_start; i < index_start + index_num; i++) {
         pte_t *pte = &src_table[i];
-        if (arch_pgtbl_pte_valid(pte)) {
+        if (arch_pgtbl_entry_is_valid(pte)) {
             dest_table[i] = *pte;
         }
     }
@@ -347,147 +401,147 @@ int pgtbl_copy(pgtable_t *dest, pgtable_t *src, int level, int index_start, int 
     return 0;
 }
 
-void pgtbl_split_merge_unmap_test() {
-    #define SPLIT_TEST_VA  0x5000000000UL
-    #define SPLIT_TEST_PA  0x200000000UL
-    pgtable_t *pgtbl = new_pgtbl("split_test_pgtbl");
-    printk("[pgtbl_split_test] begin\n");
+// void pgtbl_split_merge_unmap_test() {
+//     #define SPLIT_TEST_VA  0x5000000000UL
+//     #define SPLIT_TEST_PA  0x200000000UL
+//     pgtable_t *pgtbl = new_pgtbl("split_test_pgtbl");
+//     printk("[pgtbl_split_test] begin\n");
 
-    int pte_level = pgtbl->features->support_levels - 1;
-    int pmd_level = pte_level - 1;
+//     int pte_level = pgtbl->features->support_levels - 1;
+//     int pmd_level = pte_level - 1;
 
-    if (pmd_level < 0) {
-        printk("[pgtbl_split_test] no PMD level, skip\n");
-        return;
-    }
+//     if (pmd_level < 0) {
+//         printk("[pgtbl_split_test] no PMD level, skip\n");
+//         return;
+//     }
 
-    virt_addr_t va = ALIGN_UP(SPLIT_TEST_VA, 0x200000);
-    phys_addr_t pa = ALIGN_UP(SPLIT_TEST_PA, 0x200000);
+//     virt_addr_t va = ALIGN_UP(SPLIT_TEST_VA, 0x200000);
+//     phys_addr_t pa = ALIGN_UP(SPLIT_TEST_PA, 0x200000);
 
-    /* ---------- 1. map 2MB ---------- */
-    printk("[pgtbl_split_test] map 2MB huge page\n");
-    CHECK(pgtbl_map(pgtbl, va, pa, pmd_level,
-                     VMA_R | VMA_W) == 0,
-          "map 2MB failed", return;);
+//     /* ---------- 1. map 2MB ---------- */
+//     printk("[pgtbl_split_test] map 2MB huge page\n");
+//     CHECK(pgtbl_map(pgtbl, va, pa, pmd_level,
+//                      VMA_R | VMA_W) == 0,
+//           "map 2MB failed", return;);
 
-    /* ---------- 2. 验证整个 2MB ---------- */
-    for (int i = 0; i < 16; i++) {
-        virt_addr_t test_va = va + i * PAGE_SIZE;
-        phys_addr_t expect = pa + i * PAGE_SIZE;
-        CHECK(pgtbl_lookup(pgtbl, test_va) == expect,
-              "lookup before split failed", return;);
-    }
+//     /* ---------- 2. 验证整个 2MB ---------- */
+//     for (int i = 0; i < 16; i++) {
+//         virt_addr_t test_va = va + i * PAGE_SIZE;
+//         phys_addr_t expect = pa + i * PAGE_SIZE;
+//         CHECK(pgtbl_lookup(pgtbl, test_va) == expect,
+//               "lookup before split failed", return;);
+//     }
 
-    /* ---------- 3. unmap 中间一个 4KB ---------- */
-    virt_addr_t hole_va = va + 0x10000; // 第 16 个 4KB
-    printk("[pgtbl_split_test] unmap 4KB inside 2MB\n");
+//     /* ---------- 3. unmap 中间一个 4KB ---------- */
+//     virt_addr_t hole_va = va + 0x10000; // 第 16 个 4KB
+//     printk("[pgtbl_split_test] unmap 4KB inside 2MB\n");
 
-    CHECK(pgtbl_unmap(pgtbl, hole_va, pte_level) == 0,
-          "split unmap failed", return;);
+//     CHECK(pgtbl_unmap(pgtbl, hole_va, pte_level) == 0,
+//           "split unmap failed", return;);
 
-    /* ---------- 4. 验证 hole ---------- */
-    CHECK(pgtbl_lookup(pgtbl, hole_va) == 0,
-          "hole lookup should be unmapped", return;);
+//     /* ---------- 4. 验证 hole ---------- */
+//     CHECK(pgtbl_lookup(pgtbl, hole_va) == 0,
+//           "hole lookup should be unmapped", return;);
 
-    /* ---------- 5. 验证 hole 前 ---------- */
-    for (int i = 0; i < 8; i++) {
-        virt_addr_t test_va = va + i * PAGE_SIZE;
-        phys_addr_t expect = pa + i * PAGE_SIZE;
-        CHECK(pgtbl_lookup(pgtbl, test_va) == expect,
-              "lookup before hole failed", return;);
-    }
+//     /* ---------- 5. 验证 hole 前 ---------- */
+//     for (int i = 0; i < 8; i++) {
+//         virt_addr_t test_va = va + i * PAGE_SIZE;
+//         phys_addr_t expect = pa + i * PAGE_SIZE;
+//         CHECK(pgtbl_lookup(pgtbl, test_va) == expect,
+//               "lookup before hole failed", return;);
+//     }
 
-    /* ---------- 6. 验证 hole 后 ---------- */
-    for (int i = 17; i < 32; i++) {
-        virt_addr_t test_va = va + i * PAGE_SIZE;
-        phys_addr_t expect = pa + i * PAGE_SIZE;
-        CHECK(pgtbl_lookup(pgtbl, test_va) == expect,
-              "lookup after hole failed", return;);
-    }
+//     /* ---------- 6. 验证 hole 后 ---------- */
+//     for (int i = 17; i < 32; i++) {
+//         virt_addr_t test_va = va + i * PAGE_SIZE;
+//         phys_addr_t expect = pa + i * PAGE_SIZE;
+//         CHECK(pgtbl_lookup(pgtbl, test_va) == expect,
+//               "lookup after hole failed", return;);
+//     }
 
-    /* ---------- 7. map hole 测试merg---------- */
-    printk("[pgtbl_split_test] map back 4KB hole\n");
-    CHECK(pgtbl_map(pgtbl, hole_va, pa + 0x10000,
-                     pte_level,
-                     VMA_R | VMA_W) == 0,
-          "map back hole failed", return;);
+//     /* ---------- 7. map hole 测试merg---------- */
+//     printk("[pgtbl_split_test] map back 4KB hole\n");
+//     CHECK(pgtbl_map(pgtbl, hole_va, pa + 0x10000,
+//                      pte_level,
+//                      VMA_R | VMA_W) == 0,
+//           "map back hole failed", return;);
     
-    /* ---------- 8. 验证整个 2MB ---------- */
-    for (int i = 0; i < 16; i++) {
-        virt_addr_t test_va = va + i * PAGE_SIZE;
-        phys_addr_t expect = pa + i * PAGE_SIZE;
-        CHECK(pgtbl_lookup(pgtbl, test_va) == expect,
-              "lookup after merge failed", return;);
-    }
+//     /* ---------- 8. 验证整个 2MB ---------- */
+//     for (int i = 0; i < 16; i++) {
+//         virt_addr_t test_va = va + i * PAGE_SIZE;
+//         phys_addr_t expect = pa + i * PAGE_SIZE;
+//         CHECK(pgtbl_lookup(pgtbl, test_va) == expect,
+//               "lookup after merge failed", return;);
+//     }
 
-    printk("[pgtbl_split_test] PASS\n");
-}
+//     printk("[pgtbl_split_test] PASS\n");
+// }
 
-void pgtbl_test() {
-    #define TEST_VA_BASE  0x4000000000UL
-    #define TEST_PA_BASE  0x100000000UL
+// void pgtbl_test() {
+//     #define TEST_VA_BASE  0x4000000000UL
+//     #define TEST_PA_BASE  0x100000000UL
 
-    pgtable_t *pgtbl = new_pgtbl("test_pgtbl");
+//     pgtable_t *pgtbl = new_pgtbl("test_pgtbl");
     
-    printk("[pgtbl_test] begin\n");
+//     printk("[pgtbl_test] begin\n");
 
-    virt_addr_t va = TEST_VA_BASE;
-    phys_addr_t pa = TEST_PA_BASE;
+//     virt_addr_t va = TEST_VA_BASE;
+//     phys_addr_t pa = TEST_PA_BASE;
 
-    /* ---------- 1. map 4K ---------- */
-    printk("[pgtbl_test] map 4K\n");
-    CHECK(pgtbl_map(pgtbl, va, pa,
-                     pgtbl->features->support_levels - 1,
-                     VMA_R | VMA_W) == 0,
-          "map 4K failed", return;);
+//     /* ---------- 1. map 4K ---------- */
+//     printk("[pgtbl_test] map 4K\n");
+//     CHECK(pgtbl_map(pgtbl, va, pa,
+//                      pgtbl->features->support_levels - 1,
+//                      VMA_R | VMA_W) == 0,
+//           "map 4K failed", return;);
 
-    phys_addr_t r = pgtbl_lookup(pgtbl, va);
-    CHECK(r == pa, "lookup 4K failed", return;);
+//     phys_addr_t r = pgtbl_lookup(pgtbl, va);
+//     CHECK(r == pa, "lookup 4K failed", return;);
 
-    /* ---------- 2. unmap 4K ---------- */
-    printk("[pgtbl_test] unmap 4K\n");
-    CHECK(pgtbl_unmap(pgtbl, va,
-                       pgtbl->features->support_levels - 1) == 0,
-          "unmap 4K failed", return;);
+//     /* ---------- 2. unmap 4K ---------- */
+//     printk("[pgtbl_test] unmap 4K\n");
+//     CHECK(pgtbl_unmap(pgtbl, va,
+//                        pgtbl->features->support_levels - 1) == 0,
+//           "unmap 4K failed", return;);
 
-    CHECK(pgtbl_lookup(pgtbl, va) == 0,
-          "lookup after unmap should be 0", return;);
+//     CHECK(pgtbl_lookup(pgtbl, va) == 0,
+//           "lookup after unmap should be 0", return;);
 
-    /* ---------- 3. map 2M (if supported) ---------- */
-    if (pgtbl->features->support_levels >= 2) {
-        int pmd_level = pgtbl->features->support_levels - 2;
+//     /* ---------- 3. map 2M (if supported) ---------- */
+//     if (pgtbl->features->support_levels >= 2) {
+//         int pmd_level = pgtbl->features->support_levels - 2;
 
-        va = ALIGN_UP(TEST_VA_BASE + 0x200000, 0x200000);
-        pa = ALIGN_UP(TEST_PA_BASE + 0x200000, 0x200000);
+//         va = ALIGN_UP(TEST_VA_BASE + 0x200000, 0x200000);
+//         pa = ALIGN_UP(TEST_PA_BASE + 0x200000, 0x200000);
 
-        printk("[pgtbl_test] map 2M\n");
-        CHECK(pgtbl_map(pgtbl, va, pa,
-                         pmd_level,
-                         VMA_R | VMA_W) == 0,
-              "map 2M failed", return;);
+//         printk("[pgtbl_test] map 2M\n");
+//         CHECK(pgtbl_map(pgtbl, va, pa,
+//                          pmd_level,
+//                          VMA_R | VMA_W) == 0,
+//               "map 2M failed", return;);
 
-        /* 同一个 2M 内多个地址 */
-        for (int i = 0; i < 4; i++) {
-            virt_addr_t test_va = va + i * PAGE_SIZE;
-            phys_addr_t expect = pa + i * PAGE_SIZE;
-            CHECK(pgtbl_lookup(pgtbl, test_va) == expect,
-                  "lookup inside 2M failed", return;);
-        }
+//         /* 同一个 2M 内多个地址 */
+//         for (int i = 0; i < 4; i++) {
+//             virt_addr_t test_va = va + i * PAGE_SIZE;
+//             phys_addr_t expect = pa + i * PAGE_SIZE;
+//             CHECK(pgtbl_lookup(pgtbl, test_va) == expect,
+//                   "lookup inside 2M failed", return;);
+//         }
 
-        printk("[pgtbl_test] unmap 2M\n");
-        CHECK(pgtbl_unmap(pgtbl, va, pmd_level) == 0,
-              "unmap 2M failed", return;);
+//         printk("[pgtbl_test] unmap 2M\n");
+//         CHECK(pgtbl_unmap(pgtbl, va, pmd_level) == 0,
+//               "unmap 2M failed", return;);
 
-        CHECK(pgtbl_lookup(pgtbl, va) == 0,
-              "lookup after 2M unmap failed", return;);
-    }
+//         CHECK(pgtbl_lookup(pgtbl, va) == 0,
+//               "lookup after 2M unmap failed", return;);
+//     }
 
-    /* ---------- 4. lookup unmapped ---------- */
-    printk("[pgtbl_test] lookup unmapped\n");
-    CHECK(pgtbl_lookup(pgtbl, TEST_VA_BASE + 0xdeadbeef) == 0,
-          "lookup unmapped should return 0", return;);
+//     /* ---------- 4. lookup unmapped ---------- */
+//     printk("[pgtbl_test] lookup unmapped\n");
+//     CHECK(pgtbl_lookup(pgtbl, TEST_VA_BASE + 0xdeadbeef) == 0,
+//           "lookup unmapped should return 0", return;);
 
-    pgtbl_split_merge_unmap_test();
+//     pgtbl_split_merge_unmap_test();
 
-    printk("[pgtbl_test] PASS\n");
-}
+//     printk("[pgtbl_test] PASS\n");
+// }

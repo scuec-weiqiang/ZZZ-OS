@@ -29,12 +29,21 @@ typedef struct { pteval_t val; } pmd_t;
 typedef struct { pteval_t val; } pud_t;
 typedef struct { pteval_t val; } pgd_t;
 
+typedef enum {
+    PGTBL_DESC_INVALID = 0,
+    PGTBL_DESC_TABLE,   // 指向下一层页表
+    PGTBL_DESC_PAGE,    // 4KB page
+    PGTBL_DESC_HUGE     // huge page / section
+} pgdesc_type_t;
+
+
 #define MAX_PGTBL_LEVELS 4
 /* 页表层级描述 */
 struct pgtable_level {
     int level;              // 层级号（从0开始）
     int bits;               // 该层级占用的虚拟地址位数
     size_t page_size;       // 该层级对应的页面大小
+    size_t table_size;
     const char *name;       // 层级名称
 };
 

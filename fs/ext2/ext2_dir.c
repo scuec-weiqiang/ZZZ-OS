@@ -20,6 +20,7 @@
 #include <os/list.h>
 #include <os/kmalloc.h>
 #include <os/string.h>
+#include <stdint.h>
 
 #define EXT2_ENTRY_LEN(name_len) (((sizeof(struct ext2_dir_entry_2) + (name_len) + 3) / 4) * 4)
 
@@ -134,11 +135,11 @@ int ext2_init_new_inode(struct inode *inode, uint32_t i_mode)
 
     struct superblock *vfs_sb = inode->i_sb;
     struct ext2_inode *new_inode = (struct ext2_inode *)inode->i_private;
-
+    int new_block_idx_ret = -1;
     switch (EXT2_GET_TYPE(i_mode))
     {
     case EXT2_S_IFDIR:
-        int new_block_idx_ret = ext2_alloc_bno(vfs_sb); // 分配新的块
+        new_block_idx_ret = ext2_alloc_bno(vfs_sb); // 分配新的块
         CHECK(new_block_idx_ret >= 0, "", return -1;);  // 检查分配块是否成功
         new_inode->i_block[0] = (uint64_t)new_block_idx_ret; // 更新块索引
         new_inode->i_blocks += vfs_sb->s_block_size / 512;
@@ -156,7 +157,8 @@ int ext2_init_new_inode(struct inode *inode, uint32_t i_mode)
         new_inode->i_blocks = 0;
         break;
     }
-    uint32_t current_time = get_current_unix_timestamp(UTC8);
+    // uint32_t current_time = get_current_unix_timestamp(UTC8);
+    uint32_t current_time = 0;
     new_inode->i_atime = current_time;
     new_inode->i_ctime = current_time;
     new_inode->i_mtime = current_time;

@@ -1,7 +1,8 @@
 #--------------架构---------------#
-ARCH ?= riscv64
-CROSS_COMPILE ?= riscv64-unknown-elf-
-BOARD ?= qemu_virt
+ARCH ?= arm
+# CROSS_COMPILE ?= riscv64-unknown-elf-
+CROSS_COMPILE ?= arm-linux-gnueabihf-
+BOARD ?= imx6ull
 
 DISK = ./disk.img
 DISK_DEV = /dev/loop0p1
@@ -18,14 +19,13 @@ LD := $(CROSS_COMPILE)ld
 OBJDUMP :=$(CROSS_COMPILE)objdump
 OBJCOPY := $(CROSS_COMPILE)objcopy
 
-CFLAGS = -g -Wall -fno-builtin -mcmodel=medany 
+CFLAGS = -g -Wall -fno-builtin -std=c11
 CFLAGS += -Iinclude 
 CFLAGS += -MMD -MP
 ASFLAGS := $(CFLAGS)
 LDFLAGS := -Tarch/$(ARCH)/link.ld 
 LDFLAGS += -nostdlib  # 不链接标准库
 LDFLAGS += -nostartfiles  # 不使用标准启动文件（如 crt0.o）
-LDFLAGS += -ffreestanding  # 告知编译器这是独立环境（无 OS）
 -include arch/$(ARCH)/config.mk
 
 # 目标架构的asm头文件目录（如arch/riscv64/include/asm）
@@ -67,17 +67,21 @@ $(DTC):
 all: disk $(TARGET) $(DTB) 
 	sudo losetup -D
 	sudo losetup -Pf --show disk.img
-	sudo mount  $(DISK_DEV) $(MOUNT_PATH) && echo "挂载成功!" 
+	-sudo mount  $(DISK_DEV) $(MOUNT_PATH) && echo "挂载成功!" 
 	sudo cp $(TARGET) $(MOUNT_PATH)
 	sudo cp $(DTB) $(MOUNT_PATH)
 	sudo umount $(MOUNT_PATH)
 
+os: $(TARGET) $(ASM_LINK) $(KBUILD_FILE) $(DTB)
+	cp $(TARGET) ../linux/tftpboot/
+	cp $(DTB) ../linux/tftpboot/
+
 $(TARGET): $(ELF) 
-	$(OBJCOPY) -O binary $< $@
+	$(OBJCOPY) -O binary $< -S $@
 	@echo "$@ is ready"
 	
 $(ELF): $(BUILD_OBJS) 
-	$(CC) $(LDFLAGS) $^ -o $@
+	$(LD) $(LDFLAGS) $^ -o $@
 	@echo "$@ is ready"
 
 $(BUILD_DIR)/%.o: %.c $(ASM_LINK) $(KBUILD_FILE) 
@@ -145,7 +149,7 @@ distclean:
 #********************************************************************************
 .PHONY:dump
 dump:
-	$(OBJDUMP) -D -m riscv $(ELF) > $(BUILD_DIR)/disassembly.asm
+	$(OBJDUMP) -D -m arm $(ELF) > $(BUILD_DIR)/disassembly.asm
 
 .PHONY:disk
 disk:

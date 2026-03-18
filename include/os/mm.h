@@ -12,13 +12,14 @@
 
 #include <os/types.h>
 #include <os/mm/pgtbl_types.h>
-#include <os/mm/vma_flags.h>
 #include <os/mm/mm_types.h>
+#include <os/mm/pgprot.h>
+#include <os/mm/vma.h>
 
 extern struct mm_struct *kernel_mm_struct;
 extern struct mm_struct *current_mm_struct;
 
-int map(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, vma_flags_t flags);
+int map(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, pgprot_t flags);
 int unmap(pgtable_t *pgtbl, virt_addr_t vaddr, size_t size);
 
 void *ioremap(phys_addr_t pa, size_t size);

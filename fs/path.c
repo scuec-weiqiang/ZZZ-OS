@@ -44,9 +44,7 @@ char *path_split(char *str, const char *delim)
     else
     {
         // 如果str为NULL，说明是后续调用
-        while (
-            *cur_token !=
-            '\0') // 这时cur_token指向上一个token的开头，需要跳过上一段token指向下一个/0分隔符
+        while (*cur_token != '\0') // 这时cur_token指向上一个token的开头，需要跳过上一段token指向下一个/0分隔符
         {
             if (cur_token == end) // 如果
             {
@@ -57,9 +55,7 @@ char *path_split(char *str, const char *delim)
         }
     }
 
-    while (
-        *cur_token ==
-        '\0') // 这时cur_token已经不再指向上一个token的内容，但是有可能上个token结尾有多个/0分隔符，需要跳过这些分隔符指向下一个token开头
+    while (*cur_token =='\0') // 这时cur_token已经不再指向上一个token的内容，但是有可能上个token结尾有多个/0分隔符，需要跳过这些分隔符指向下一个token开头
     {
         // 注意，一定要先判断是否到达字符串末尾，否则不会及时跳出循环，会越界报错
         if (cur_token == end)

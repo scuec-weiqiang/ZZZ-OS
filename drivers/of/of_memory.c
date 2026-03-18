@@ -7,11 +7,11 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
+#include "os/types.h"
 #include <os/mm/memblock.h>
 #include <os/of.h>
 #include <os/bswap.h>
 #include <os/printk.h>
-#include <stdint.h>
 
 int of_scan_memory() {
     struct device_node *memory_node = of_find_node_by_path("/memory");
@@ -22,11 +22,13 @@ int of_scan_memory() {
     struct list_head list = LIST_HEAD_INIT(list);
     fdt_walk(memory_node, &list);
 
-    struct device_node *pos;
+    struct device_node *pos = NULL;
     list_for_each_entry(pos, &list, struct device_node, node) {
         printk("Memory node: %s\n", pos->name);
         uint32_t address_cells = of_get_address_cells(pos);
         uint32_t size_cells = of_get_size_cells(pos);
+
+        printk("address_cells: %x, size_cells: %x\n", address_cells, size_cells);
 
         struct device_prop *reg_prop = of_get_prop_by_name(pos, "reg");
         if (!reg_prop) {
@@ -36,6 +38,7 @@ int of_scan_memory() {
 
         uint32_t *reg = of_get_reg(pos);
         if (!reg) {
+            printk("Failed to get reg property for node: %s\n", pos->name);
             return -1;
         }
 

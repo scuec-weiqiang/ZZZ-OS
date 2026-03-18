@@ -9,7 +9,7 @@
 */
 // 不依赖标准库的随机数生成器（线性同余生成器 LCG）
 // 仅使用C语言基础语法，无外部库依赖
-
+#include <os/utils.h>
 // 静态全局变量存储当前种子（保证每次调用延续随机序列）
 static long long seed = 1;  // 默认种子，可通过my_srand修改
 
@@ -45,5 +45,6 @@ int rand_range(int min, int max) {
         max = temp;
     }
     // 取模缩放到目标范围
-    return (rand() % (max - min + 1)) + min;
+    // return (rand() % (max - min + 1)) + min;
+    return (int)(mod_u32(rand(), (max - min + 1)) + min);
 }

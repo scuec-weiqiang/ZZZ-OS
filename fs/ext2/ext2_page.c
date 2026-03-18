@@ -12,6 +12,7 @@
 #include <fs/ext2/ext2_block.h>
 #include <fs/block_adapter.h>
 #include <os/string.h>
+#include <os/utils.h>
 
 int ext2_readpage(struct page_cache *page) 
 {
@@ -19,7 +20,8 @@ int ext2_readpage(struct page_cache *page)
     page->under_io = true;  // 表示正在进行IO操作
     uint32_t page_index = page->index;  // 页号
     uint32_t block_size = inode->i_sb->s_block_size;
-    uint32_t blocks_per_page = VFS_PAGE_SIZE / block_size;
+    // uint32_t blocks_per_page = VFS_PAGE_SIZE / block_size;
+    uint32_t blocks_per_page = div_u32(VFS_PAGE_SIZE, block_size);
 
     char *kaddr = page->data;  // 页的内存地址
 
@@ -54,7 +56,8 @@ int ext2_writepage(struct page_cache *page)
     page->under_io = true;  // 表示正在进行IO操作
     uint32_t page_index = page->index;  // 页号
     uint32_t block_size = inode->i_sb->s_block_size;
-    uint32_t blocks_per_page = VFS_PAGE_SIZE / block_size;
+    // uint32_t blocks_per_page = VFS_PAGE_SIZE / block_size;
+    uint32_t blocks_per_page = div_u32(VFS_PAGE_SIZE, block_size);
 
     char *kaddr = page->data;  // 页的内存地址
 

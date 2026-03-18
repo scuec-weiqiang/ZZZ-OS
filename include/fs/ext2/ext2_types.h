@@ -234,7 +234,7 @@ struct ext2_fs_info
         bool dirty;      // inode表是否被修改
     } it_cache;
     // struct ext2_inode *inode_table;
-    uint64_t disk_size; // 磁盘大小（字节）
+    uint32_t disk_size; // 磁盘大小（字节）
 };
 
 static inline struct ext2_inode* EXT2_INODE(struct inode *inode)

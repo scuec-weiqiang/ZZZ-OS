@@ -11,6 +11,7 @@
 #include <os/printk.h>
 
 extern char _text_start[], _text_end[];
+extern char _trap_start[], _trap_end[]; 
 extern char _rodata_start[], _rodata_end[];
 extern char _data_start[], _data_end[];
 extern char _bss_start[], _bss_end[];
@@ -20,52 +21,98 @@ extern char _irqinitcall_start[],_irqinitcall_end[];
 extern char _irqexitcall_start[],_irqexitcall_end[];
 extern char _kernel_start[],_kernel_end[];
 extern char _early_stack_start[], _early_stack_end[];
+extern char _early_pgtbl_start[], _early_pgtbl_end[];
 
 phys_addr_t text_start;
 phys_addr_t text_end;
-phys_addr_t text_size;
+size_t text_size;
+
+phys_addr_t trap_start;
+phys_addr_t trap_end;
+size_t trap_size;
+
 phys_addr_t rodata_start;
 phys_addr_t rodata_end;
-phys_addr_t rodata_size;
+size_t rodata_size;
+
 phys_addr_t data_start;
 phys_addr_t data_end;
-phys_addr_t data_size;
+size_t data_size;
+
 phys_addr_t bss_start;
 phys_addr_t bss_end;
-phys_addr_t bss_size;
+size_t bss_size;
+
 phys_addr_t initcall_start;
 phys_addr_t initcall_end;
-phys_addr_t initcall_size;
+size_t initcall_size;
+
 phys_addr_t exitcall_start;
 phys_addr_t exitcall_end;
-phys_addr_t exitcall_size;
+size_t exitcall_size;
 
 phys_addr_t irqinitcall_start;
 phys_addr_t irqinitcall_end;
-phys_addr_t irqinitcall_size;
+size_t irqinitcall_size;
+
 phys_addr_t irqexitcall_start;
 phys_addr_t irqexitcall_end;
-phys_addr_t irqexitcall_size;
+size_t irqexitcall_size;
 
 phys_addr_t kernel_start;
 phys_addr_t kernel_end;
-phys_addr_t kernel_size;
+size_t kernel_size;
 
 phys_addr_t early_stack_start;
 phys_addr_t early_stack_end;
-phys_addr_t early_stack_size;
+size_t early_stack_size;
+
+phys_addr_t early_pgtbl_start;
+phys_addr_t early_pgtbl_end;
+size_t early_pgtbl_size;
+
+void print_section() {
+    printk("text:        start= %xu, end=  %xu, size=  %xu\n", text_start, text_end, text_size);
+    printk("rodata:      start= %xu, end=  %xu, size=  %xu\n", rodata_start, rodata_end, rodata_size);
+    printk("data:        start= %xu, end=  %xu, size=  %xu\n", data_start, data_end, data_size);
+    printk("bss:         start= %xu, end=  %xu, size=  %xu\n", bss_start, bss_end, bss_size);
+    printk("initcall:    start= %xu, end=  %xu, size=  %xu\n", initcall_start, initcall_end, initcall_size);
+    printk("irqinitcall: start= %xu, end=  %xu, size=  %xu\n", irqinitcall_start, irqinitcall_end, irqinitcall_size);
+    printk("exitcall:    start= %xu, end=  %xu, size=  %xu\n", exitcall_start, exitcall_end, exitcall_size);
+    printk("irqexitcall: start= %xu, end=  %xu, size=  %xu\n", irqexitcall_start, irqexitcall_end, irqexitcall_size);
+    printk("early_stack: start= %xu, end=  %xu, size=  %xu\n", early_stack_start, early_stack_end, early_stack_size);
+    printk("early_pgtbl: start= %xu, end=  %xu, size=  %xu\n", early_pgtbl_start, early_pgtbl_end, early_pgtbl_size);
+    printk("kernel:      start= %xu, end=  %xu, size=  %xu\n", kernel_start, kernel_end, kernel_size);
+}
+
+
+void zero_bss() 
+{
+    for (char *p = (char*)(&_bss_start); p < (char*)(&_bss_end); p++) 
+    {
+        *p = 0;
+    }
+}
 
 void symbols_init()
 {
+    zero_bss();
     text_start = (phys_addr_t)&_text_start;
     text_end = (phys_addr_t)&_text_end;
     text_size = (text_end - text_start);
+
+    trap_start = (phys_addr_t)&_trap_start;
+    trap_end = (phys_addr_t)&_trap_end;
+    trap_size = (trap_end - trap_start);
+
     rodata_start = (phys_addr_t)&_rodata_start;
     rodata_end = (phys_addr_t)&_rodata_end;
     rodata_size = (rodata_end - rodata_start);
+
     data_start = (phys_addr_t)&_data_start;
     data_end = (phys_addr_t)&_data_end;
     data_size = (data_end - data_start);
+
     bss_start = (phys_addr_t)&_bss_start;
     bss_end = (phys_addr_t)&_bss_end;
     bss_size = (bss_end - bss_start);
@@ -74,7 +121,7 @@ void symbols_init()
     initcall_end = (phys_addr_t)&_initcall_end;
     initcall_size = (initcall_end - initcall_start);
 
-    
+
     irqinitcall_start = (phys_addr_t)&_irqinitcall_start;
     irqinitcall_end = (phys_addr_t)&_irqinitcall_end;
     irqinitcall_size = (irqinitcall_end - irqinitcall_start);
@@ -95,14 +142,10 @@ void symbols_init()
     early_stack_end = (phys_addr_t)&_early_stack_end;
     early_stack_size = early_stack_end - early_stack_start;
 
-    printk("text:        start= %xu, end=  %xu, size=  %xu\n", text_start, text_end, text_size);
-    printk("rodata:      start= %xu, end=  %xu, size=  %xu\n", rodata_start, rodata_end, rodata_size);
-    printk("data:        start= %xu, end=  %xu, size=  %xu\n", data_start, data_end, data_size);
-    printk("bss:         start= %xu, end=  %xu, size=  %xu\n", bss_start, bss_end, bss_size);
-    printk("initcall:    start= %xu, end=  %xu, size=  %xu\n", initcall_start, initcall_end, initcall_size);
-    printk("irqinitcall: start= %xu, end=  %xu, size=  %xu\n", irqinitcall_start, irqinitcall_end, irqinitcall_size);
-    printk("exitcall:    start= %xu, end=  %xu, size=  %xu\n", exitcall_start, exitcall_end, exitcall_size);
-    printk("irqexitcall: start= %xu, end=  %xu, size=  %xu\n", irqexitcall_start, irqexitcall_end, irqexitcall_size);
+    early_pgtbl_start = (phys_addr_t)&_early_pgtbl_start;
+    early_pgtbl_end = (phys_addr_t)&_early_pgtbl_end;
+    early_pgtbl_size = early_pgtbl_end - early_pgtbl_start;
+    print_section();
 }
 
 /**
@@ -113,10 +156,3 @@ void symbols_init()
  * BSS段通常用于存储未初始化的全局变量和静态变量，它们在程序启动时不会自动初始化为零。
  * 本函数通过手动遍历并清零这些变量，确保它们在程序启动时是干净的。
  */
-void zero_bss() 
-{
-    for (char *p = (char*)bss_start; p < (char*)bss_end; p++) 
-    {
-        *p = 0;
-    }
-}

@@ -1,0 +1,2 @@
+OBJ_Y += boot.o 
+OBJ_Y += boot_c.o

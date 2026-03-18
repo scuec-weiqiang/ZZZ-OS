@@ -13,18 +13,22 @@
 
 #include <os/types.h>
 #include <os/mm/pgtbl_types.h>
-#include <os/mm/vma_flags.h>
+#include <os/mm/pgprot.h>
 
 void arch_pgtbl_init(pgtable_t *tbl); // 初始化页表
-pteval_t arch_pgtbl_pa_to_pteval(phys_addr_t pa); // 物理地址转 pte 值
-phys_addr_t arch_pgtbl_pteval_to_pa(pteval_t val); // pte 值转物理地址
+
+phys_addr_t arch_pgtbl_entry_get_pa(pgtable_t *tbl, uint32_t level,pgdesc_type_t type, pteval_t val); // pte 值转物理地址
 uint32_t arch_pgtbl_level_index(pgtable_t *tbl, uint32_t level, virt_addr_t va); // 计算某层级索引
-void arch_pgtbl_set_pte(pte_t* pte, phys_addr_t pa, uint32_t flags); // 设置 PTE 条目
-void arch_pgtbl_clear_pte(pte_t* pte); // 清除 PTE 条目
-void arch_pgtbl_pte_set_flags(pte_t* pte, vma_flags_t flags);
-vma_flags_t  arch_pgtbl_pte_get_flags(pte_t* pte);
-bool arch_pgtbl_pte_valid(pte_t *pte); // 检查 PTE 是否有效
-bool arch_pgtbl_pte_is_leaf(pte_t *pte); // 检查 PTE 是否为叶子节点
+
+void arch_pgtbl_entry_set_flags(pgtable_t *tbl, int level, pte_t* entry, pgprot_t flags);
+pgprot_t  arch_pgtbl_entry_get_flags(pgtable_t *tbl, int level, pte_t *entry);
+
+void arch_pgtbl_set_entry(pgtable_t *tbl, int level, pgdesc_type_t type, pte_t* entry, phys_addr_t pa, pgprot_t flags); // 设置 PTE 条目
+void arch_pgtbl_clear_entry(pgtable_t *tbl, int level, pgdesc_type_t type, pte_t* entry); // 清除 PTE 条目
+
+bool arch_pgtbl_entry_is_valid(pte_t *entry); // 检查 PTE 是否有效
+bool arch_pgtbl_entry_is_leaf(pte_t *entry); // 检查 PTE 是否为叶子节点
+
 void arch_pgtbl_flush(void); // 刷新页表缓存（如 TLB）
 void arch_pgtbl_switch_to(pgtable_t *pgtbl); // 切换到指定页表
 

@@ -16,7 +16,11 @@ typedef unsigned long pfn_t;
 #define PAGE_SIZE  (1UL << PAGE_SHIFT)
 #define PAGE_MASK (~(PAGE_SIZE - 1))   // 页掩码
 
+#define SIZE_1K (1024)
 #define SIZE_4K  (4 * 1024)
+#define SIZE_2K  (2 * 1024)
+#define SIZE_16K (16 * 1024)
+#define SIZE_512K (512 * 1024)
 #define SIZE_1M (1024 * 1024)
 #define SIZE_2M (2 * SIZE_1M)
 #define SIZE_1G (1024 * SIZE_1M)

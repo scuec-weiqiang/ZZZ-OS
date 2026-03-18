@@ -6,7 +6,7 @@
  * the GPL, or the BSD license, at your option.
  *
  *  a) This library is free software; you can redistribute it and/or
- *     modify it under the terms of the GNU General Public License as
+ *     mod_u32ify it under the terms of the GNU General Public License as
  *     published by the Free Software Foundation; either version 2 of the
  *     License, or (at your option) any later version.
  *
@@ -23,7 +23,7 @@
  * Alternatively,
  *
  *  b) Redistribution and use in source and binary forms, with or
- *     without modification, are permitted provided that the following
+ *     without mod_u32ification, are permitted provided that the following
  *     conditions are met:
  *
  *     1. Redistributions of source code must retain the above

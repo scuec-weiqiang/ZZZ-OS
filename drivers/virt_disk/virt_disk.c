@@ -17,7 +17,7 @@
 #include <os/printk.h>
 #include <os/string.h>
 #include <os/types.h>
-#include <virtio.h>
+#include "virtio.h"
 #include <drivers/core/driver.h>
 
 #define VIRT_DISK_QUEUE 0

@@ -7,12 +7,12 @@ RAM_BASE = 0xffffffffc0200000;      /* RAM起始地址 */
 SECTIONS
 {
     . = RAM_BASE;
-    .text : ALIGN(4) {
+    .text : AT(0x80200000) ALIGN(4) {
         __kernel_start = .;
         __text_start = .;
+        *(.text.trap)
         *(.text.entry)
         __trap_start = .;  /* trap处理函数起始地址 */
-        *(.text.trap)
         __trap_end = .;    /* trap处理函数结束地址 */
         *(.text .text.*)
         . = ALIGN(4096);
@@ -85,6 +85,13 @@ SECTIONS
         . = . + 4096;
         __early_pgtbl_end = .;
         __kernel_end = .;  /* 记录内核结束地址 */
+    }
+
+    /DISCARD/ : {
+        *(.note*)
+        *(.comment)
+        *(.note)         /* 如果需要保留其他 note，请保留 */
+        *(.eh_frame)     /* 通常不需要 */
     }
     
     PROVIDE_HIDDEN(_text_start = __text_start);
