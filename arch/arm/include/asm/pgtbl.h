@@ -28,6 +28,7 @@ void arch_pgtbl_clear_entry(pgtable_t *tbl, int level, pgdesc_type_t type, pte_t
 bool arch_pgtbl_entry_is_valid(pte_t *entry); // 检查 PTE 是否有效
 bool arch_pgtbl_entry_is_leaf(pte_t *entry); // 检查 PTE 是否为叶子节点
 
+void arch_pgtbl_sync_range(void *addr, size_t size);
 void arch_pgtbl_flush(void); // 刷新页表缓存（如 TLB）
 void arch_pgtbl_switch_to(pgtable_t *pgtbl); // 切换到指定页表
 

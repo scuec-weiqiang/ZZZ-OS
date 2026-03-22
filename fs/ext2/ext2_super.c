@@ -177,7 +177,7 @@ int ext2_sync_super(struct superblock *sb)
 
 
     // 同步块描述符
-   uint32_t gdt_block = (block_size==1024) ? 2:1 ;
+    uint32_t gdt_block = (block_size==1024) ? 2:1 ;
     ret = block_adapter_write(sb->adap,fs_info->group_desc,gdt_block,fs_info->s_gdb_count);
     CHECK(ret>=0,"ext2_sync_super error: write group desc failed!",return -1;);
 

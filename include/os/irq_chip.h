@@ -15,22 +15,50 @@
 
 struct irq_chip;
 
-struct irq_chip_ops {
-    int  (*ack)(struct irq_chip* self);
-    void (*eoi)(struct irq_chip* self, int hwirq);
-    void (*enable)(struct irq_chip* self, int hwirq);             // 使能中断
-    void (*disable)(struct irq_chip* self, int hwirq);            // 禁用中断
-    int  (*get_pending)(struct irq_chip* self, int hwirq);            // 获取并清除中断挂起状态
-    void (*set_pending)(struct irq_chip* self, int hwirq);            // 设置中断为挂起状态
-    void (*clear_pending)(struct irq_chip* self, int hwirq);         // 清除中断挂起状态
-    void (*set_priority)(struct irq_chip* self, int hwirq, int priority); // 设置中断优先级
-    int  (*get_priority)(struct irq_chip* self, int hwirq);       // 获取中断优先级
+struct irq_cpuif_ops {
+    int  (*claim)(struct irq_chip *chip);
+    void (*eoi)(struct irq_chip *chip, int hwirq);
+
+    void (*cpu_enable)(struct irq_chip *chip, int cpu);
+    void (*cpu_disable)(struct irq_chip *chip, int cpu);
+    void (*set_prio_mask)(struct irq_chip *chip, int cpu, int prio);
+
 };
+
+struct irq_ipi_ops {
+    void (*send_ipi)(struct irq_chip *chip, int target_cpu, int ipi_id);
+    void (*broadcast_ipi)(struct irq_chip *chip, int ipi_id);
+};
+
+
+struct irq_ops {
+    void (*enable)(struct irq_chip *chip, int hwirq);
+    void (*disable)(struct irq_chip *chip, int hwirq);
+
+    int  (*get_pending)(struct irq_chip *chip, int hwirq);
+    void (*set_pending)(struct irq_chip *chip, int hwirq);
+    void (*clear_pending)(struct irq_chip *chip, int hwirq);
+
+    void (*set_priority)(struct irq_chip *chip, int hwirq, int prio);
+    int  (*get_priority)(struct irq_chip *chip, int hwirq);
+
+    void (*set_type)(struct irq_chip *chip, int hwirq, int type);
+    void (*set_affinity)(struct irq_chip *chip, int hwirq, unsigned long cpu_mask);
+};
+
+struct irq_chip_ops {
+    struct irq_ops *irq;
+    struct irq_cpuif_ops *cpuif;
+    struct irq_ipi_ops *ipi;
+};
+
 
 struct irq_chip {
     char name[32];                       // 中断控制器名称
     int hart;
     struct irq_chip_ops *ops;            // 中断控制器操作函数指针
+    struct irq_cpuif_ops *cpuif_ops;    // CPU接口操作函数指针
+    struct irq_ipi_ops *ipi_ops;        // IPI操作函数指针
     struct list_head link;          // 链表节点 
     void *priv;
 };

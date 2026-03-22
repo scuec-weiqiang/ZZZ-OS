@@ -26,8 +26,9 @@ static pte_t *alloc_table_va(pgtable_t *tbl, int level) {
     if (npages == 0) {
         npages = 1; // 最小分配一页
     }
-    printk("alloc_table_va: level=%d, table_size=%xu, npages=%xu\n", level, tbl->features->level[level].table_size, npages);
-    return (pte_t*)page_alloc(npages); // 一页
+    pte_t *p = (pte_t*)page_alloc(npages);
+    printk("alloc_table_va:%xu,level=%d,  npages=%xu\n",p, level, npages);
+    return p; // 一页
 }
 
 static void free_table_va(void *p) {
@@ -110,6 +111,7 @@ void pgtbl_split(pgtable_t *pgtbl, pte_t *pte, int level) {
         return; // 分配失败
     }
     memset(child_table, 0, PAGE_SIZE);
+    arch_pgtbl_sync_range(child_table, pgtbl->features->level[level+1].table_size); // 确保新表的内容被写回内存
     size_t child_page_size = pgtbl_level_page_size(pgtbl, level + 1);
     vma_flags_t flags = arch_pgtbl_entry_get_flags(pgtbl,level,pte);
     for (int i = 0; i < (PAGE_SIZE / sizeof(pte_t)); i++) {
@@ -161,6 +163,7 @@ pgtable_t *new_pgtbl(const char *name) {
     if (!tbl->root) {
         return NULL;
     }
+    printk("new_pgtbl: allocated root table at %xu for pgtable %s\n", tbl->root, name);
         
     tbl->root_pa = KERNEL_PA(tbl->root);
     memset(tbl->root, 0, tbl->features->level[0].table_size);
@@ -187,6 +190,7 @@ walk_action_t map_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, vo
     ctx->table[level] = entry_get_table_base(pgtbl, level, type, pte);
     ctx->pte[level] = pte;
 
+    // printk("map_cb: level=%d, va=%xu, pte val=%xu\n", level, va, pte->val);
     if (level == ctx->target_level) {
         pte->val = 0; // 先清空原有映射
         // printk("map_cb: set entry at level %d, va=%xu to pa=%xu with flags %xu\n", level, va, ctx->pa, ctx->flags);
@@ -195,12 +199,14 @@ walk_action_t map_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, vo
             pte_t *table = ctx->table[l];
             pte_t *table_entry = ctx->pte[l-1];
             if (pgtbl_table_need_merge(pgtbl, table, l)) {
-                printk("map_cb: merge table at level %d\n", l);
+                // printk("map_cb: merge table at level %d\n", l);
                 pgtbl_merge(pgtbl, l, table, table_entry);
+                arch_pgtbl_sync_range(table_entry, sizeof(pte_t)); // 确保合并后的表项被写回内存
             } else {
                 break;
             }
         }
+        // printk("map success at level %d for va=%xu\n", level, va);
         return WALK_STOP;
     }
 
@@ -211,9 +217,12 @@ walk_action_t map_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, vo
         if (child_table == NULL) {
             return -1; // 分配失败
         }
-        printk("map_cb: need to create child table %xu at level %du for va=%xu\n",(virt_addr_t)child_table, level, va);
+        // printk("map_cb: need to create child table %xu at level %du for va=%xu\n",(virt_addr_t)child_table, level, va);
         memset(child_table, 0, PAGE_SIZE);
         arch_pgtbl_set_entry(pgtbl,level,PGTBL_DESC_TABLE,pte, KERNEL_PA(child_table), PROT_NONE);
+        arch_pgtbl_sync_range(child_table, pgtbl->features->level[level+1].table_size); // 确保新表的内容被写回内存
+        // printk("create pte = %xu\n", pte->val);
+
     }
     return WALK_CONTINUE;
 }

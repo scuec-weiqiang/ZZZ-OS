@@ -1,7 +1,7 @@
 #ifndef OS_OF_PLATFORM_H
 #define OS_OF_PLATFORM_H
 
-#include <os/driver_mod_u32el.h>
+#include <os/driver_model.h>
 
 extern void of_platform_populate();
 

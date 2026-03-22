@@ -63,7 +63,7 @@ int map(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, pgp
     while (va < end) {
         int target_level = highest_possible_level(pgtbl, va, pa, end - va);
         int map_size = pgtbl_level_page_size(pgtbl, target_level);
-        // printk("mapping va=%xu to pa=%xu %x size at level %d, end at %xu\n", va, pa, map_size,target_level, end);
+    
         if (pgtbl_map(pgtbl, va, pa, target_level, flags) < 0) {
             printk(RED("error: failed to map va=%xu to pa=%xu at level %d\n"), va, pa, target_level);
             return -1;
@@ -186,8 +186,10 @@ void mm_init() {
     //     map(kernel_mm_struct->pgdir, KERNEL_VA(region->base), region->base, region->size, PAGE_KERNEL);
     // }
 
-    pgtbl_map(kernel_mm_struct->pgdir, 0x02000000, 0x02000000, 0, PAGE_DEVICE);
-
+    // pgtbl_map(kernel_mm_struct->pgdir, 0x02000000, 0x02000000, 0, PAGE_DEVICE);
+    // map(kernel_mm_struct->pgdir, 0xf0000000, 0x02020000, 0x1000,PAGE_DEVICE);
+    // pgtbl_map(kernel_mm_struct->pgdir, 0xf0000000, 0x02000000, 0, PAGE_DEVICE);
+    
     map(kernel_mm_struct->pgdir, trap_start, KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
     map(kernel_mm_struct->pgdir, text_start, KERNEL_PA(text_start), text_size, PAGE_KERNEL_EXEC);
     map(kernel_mm_struct->pgdir, data_start, KERNEL_PA(data_start), data_size, PAGE_KERNEL);
@@ -198,11 +200,13 @@ void mm_init() {
     map(kernel_mm_struct->pgdir, irqinitcall_start, KERNEL_PA(irqinitcall_start), irqinitcall_size, PAGE_KERNEL_EXEC);
     map(kernel_mm_struct->pgdir, irqexitcall_start, KERNEL_PA(irqexitcall_start), irqexitcall_size, PAGE_KERNEL_EXEC);
     map(kernel_mm_struct->pgdir, early_stack_start, KERNEL_PA(early_stack_start), early_stack_size, PAGE_KERNEL);
-    map(kernel_mm_struct->pgdir, kernel_end, KERNEL_PA(kernel_end), 0x08000000, PAGE_KERNEL);
+    map(kernel_mm_struct->pgdir, kernel_end, KERNEL_PA(kernel_end), 0x08000000 - (kernel_end - KERNEL_VA_BASE), PAGE_KERNEL);
+    map(kernel_mm_struct->pgdir, 0xc8000000, 0x88000000, 0xf00000, PAGE_DEVICE);
     map(kernel_mm_struct->pgdir, 0xffff0000, KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
-   
+        
     pgtbl_switch_to(kernel_mm_struct->pgdir);
     printk("mm_init success\n") ;
+
 
     current_mm_struct = NULL;
 }

@@ -10,9 +10,9 @@
 #ifndef __KERNEL_MODULE_H__
 #define __KERNEL_MODULE_H__
 
-#include "os/printk.h"
+// #include "os/printk.h"
 #include <os/compiler_attributes.h>
-#include <os/mm/symbols.h>
+
 
 typedef int(*initcall_t)(void);
 
@@ -53,29 +53,18 @@ typedef int(*initcall_t)(void);
     module_init(__driver##_init,".irqinitcall"); \
     module_exit(__driver##_exit,".irqexitcall");
 
+#define do_initcalls(start, end, type) \
+    for ((type *)fn = (type *)start; fn < (type *)end; fn++) { \
+        if ((*fn)() != 0) {\
+            printk("Module initcall failed\n");\
+        }\
+    }\
 
-// 启动阶段执行
-static __used void do_initcalls(void) {
-    for (initcall_t *fn = (initcall_t *)irqinitcall_start; fn < (initcall_t *)irqinitcall_end; fn++) {
-        if ((*fn)() != 0) {
-            printk("Module initcall failed\n");
-            // 处理初始化失败
-        }
-    }
-    for (initcall_t *fn = (initcall_t *)initcall_start; fn < (initcall_t *)initcall_end; fn++) {
-        if ((*fn)() != 0) {
-            printk("Module initcall failed\n");
-            // 处理初始化失败
-        }
-    }
-}
+#define do_exitcalls(start, end, type) \
+    for ((type *)fn = (type *)start; fn < (type *)end; fn++) { \
+        if ((*fn)() != 0) {\
+            printk("Module exitcall failed\n");\
+        }\
+    }\
 
-static __used void do_exitcalls(void) {
-    for (initcall_t *fn = (initcall_t *)exitcall_start; fn < (initcall_t *)exitcall_end; fn++) {
-        if ((*fn)() != 0) {
-            printk("Module exitcall failed\n");
-            // 处理退出失败
-        }
-    }
-}
 #endif

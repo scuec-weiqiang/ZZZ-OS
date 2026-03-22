@@ -20,11 +20,16 @@ struct list_head platform_device_list = LIST_HEAD_INIT(platform_device_list);
 
 bool device_matches_driver(struct platform_device *pdev, struct platform_driver *drv) {
     const struct of_device_id *m = drv->of_match_table;
+    // printk("device_matches_driver: matching device %s with driver %s\n", pdev->name, drv->name);
     for (; m && m->compatible; m++) {
         struct device_prop *prop = of_get_prop_by_name(pdev->of_node, "compatible");
         if (!prop) continue;
-        if (strcmp(prop->value, m->compatible) == 0)
+        // printk("device_matches_driver: device compatible = %s, driver compatible = %s\n", prop->value, m->compatible);
+        printk("%d\n",strcmp(prop->value, m->compatible));
+        if (strcmp(prop->value, m->compatible) == 0) {
             return true;
+        }
+            
         // if compatible is list, check each
     }
     return false;

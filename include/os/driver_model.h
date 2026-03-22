@@ -38,32 +38,32 @@ struct device {
     void *driver_data;             // driver-specific pointer
 };
 
-struct platform_device {
-    const char *name;              // 例如 "ns16550a"
-    struct device_node *of_node;   // 对应 device tree 节点
-    // struct platform_device *parent;  // optional
-    void *platform_data;           // optional
-    struct resource *resources;
-    int num_resources;
-    struct device *dev;            // device core
-    struct list_head link;         // 链接到全局 platform device 列表
-};
+// struct platform_device {
+//     const char *name;              // 例如 "ns16550a"
+//     struct device_node *of_node;   // 对应 device tree 节点
+//     // struct platform_device *parent;  // optional
+//     void *platform_data;           // optional
+//     struct resource *resources;
+//     int num_resources;
+//     struct device *dev;            // device core
+//     struct list_head link;         // 链接到全局 platform device 列表
+// };
 
 extern struct list_head platform_device_list;
 
 
-struct of_device_id {
-    const char *compatible;
-    const void *data;
-};
+// struct of_device_id {
+//     const char *compatible;
+//     const void *data;
+// };
 
-struct platform_driver {
-    const char *name;
-    const struct of_device_id *of_match_table; // null-terminated
-    int (*probe)(struct platform_device *pdev);
-    void (*remove)(struct platform_device *pdev);
-    // struct platform_driver *next;
-    struct list_head link;         
-};
+// struct platform_driver {
+//     const char *name;
+//     const struct of_device_id *of_match_table; // null-terminated
+//     int (*probe)(struct platform_device *pdev);
+//     void (*remove)(struct platform_device *pdev);
+//     // struct platform_driver *next;
+//     struct list_head link;         
+// };
 
 #endif // OS_DRIVER_MODEL_H

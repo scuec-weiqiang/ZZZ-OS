@@ -197,9 +197,13 @@ void buddy_init(void) {
         }
     }
 
+
     for (unsigned int order = 0; order < MAX_ORDER - 1; order++) {
         try_merge_order(order);
     }
+
+    
+
 }
 
 void buddy_dump(void) {

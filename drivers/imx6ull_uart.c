@@ -3,7 +3,7 @@
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @Date         : 2026-03-12 00:25:01
- * @LastEditTime : 2026-03-12 01:02:16
+ * @LastEditTime : 2026-03-19 22:59:26
  * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2026.
 */
@@ -17,8 +17,8 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
 #include <drivers/core/driver.h>
-#include <fs/chrdev.h>
-#include <fs/vfs.h>
+// #include <fs/chrdev.h>
+// #include <fs/vfs.h>
 #include <os/console.h>
 #include <os/driver_model.h>
 #include <os/mm.h>
@@ -27,129 +27,144 @@
 #include <os/irqreturn.h>
 #include <os/irq.h>
 
-struct uart_reg {
-    uint8_t RHR_THR_DLL;
-    uint8_t IER_DLM;
-    uint8_t FCR_ISR;
-    uint8_t LCR;
-    uint8_t MCR;
-    uint8_t LSR;
-    uint8_t MSR;
-    uint8_t SPR;
-};
+#define __IO volatile
+#define __I  volatile const
 
-uintptr_t uart_base = 0;
-#define UART0 (*(volatile struct uart_reg *)(uart_base))
+typedef struct {
+    __I  uint32_t URXD;                              /**< UART Receiver Register, offset: 0x0 */
+         uint8_t RESERVED_0[60];
+    __IO uint32_t UTXD;                              /**< UART Transmitter Register, offset: 0x40 */
+         uint8_t RESERVED_1[60];
+    __IO uint32_t UCR1;                              /**< UART Control Register 1, offset: 0x80 */
+    __IO uint32_t UCR2;                              /**< UART Control Register 2, offset: 0x84 */
+    __IO uint32_t UCR3;                              /**< UART Control Register 3, offset: 0x88 */
+    __IO uint32_t UCR4;                              /**< UART Control Register 4, offset: 0x8C */
+    __IO uint32_t UFCR;                              /**< UART FIFO Control Register, offset: 0x90 */
+    __IO uint32_t USR1;                              /**< UART Status Register 1, offset: 0x94 */
+    __IO uint32_t USR2;                              /**< UART Status Register 2, offset: 0x98 */
+    __IO uint32_t UESC;                              /**< UART Escape Character Register, offset: 0x9C */
+    __IO uint32_t UTIM;                              /**< UART Escape Timer Register, offset: 0xA0 */
+    __IO uint32_t UBIR;                              /**< UART BRM Incremental Register, offset: 0xA4 */
+    __IO uint32_t UBMR;                              /**< UART BRM Modulator Register, offset: 0xA8 */
+    __I  uint32_t UBRC;                              /**< UART Baud Rate Count Register, offset: 0xAC */
+    __IO uint32_t ONEMS;                             /**< UART One Millisecond Register, offset: 0xB0 */
+    __IO uint32_t UTS;                               /**< UART Test Register, offset: 0xB4 */
+    __IO uint32_t UMCR;                              /**< UART RS-485 Mode Control Register, offset: 0xB8 */
+  } UART_Type;
 
-#define UART_TX_IDLE (1 << 5)
-#define UART_RX_IDLE (1 << 0)
+phys_addr_t uart_base = 0;
 
-#define WAIT_FOR_TRANS_READY(uartx) while (0 == (uartx.LSR & UART_TX_IDLE))
-#define WAIT_FOR_RECEIVE_READY(uartx) while (0 == (uartx.LSR & UART_RX_IDLE))
+#define UART1 ((UART_Type*)uart_base)
+#define UART ((UART_Type*)0x02020000)
 
-static void uart_reg_init() {
-
-    UART0.IER_DLM = 0x00; // 关闭中断
-
-    UART0.LCR |= (1 << 7); // 允许访问除数锁寄存器
-    UART0.IER_DLM = 0x00;  // 波特率38.4k
-    UART0.RHR_THR_DLL = 0x03;
-    UART0.LCR &= ~(1 << 7); // 禁止访问除数锁寄存器
-
-    UART0.LCR |= (0x03 << 0); // 设置传输字长为8位
-    UART0.LCR &= ~(1 << 2);   // 停止位 1位
-
-    uint8_t a = UART0.IER_DLM;
-    a |= 0x01;
-    UART0.IER_DLM = a; // 打开中断
+static void putc (char c)
+{
+    while ((UART1->UTS >> 4) & 1) {
+    }
+    UART1->UTXD = c;
 }
 
-static void uart_putc(char c) {
-    WAIT_FOR_TRANS_READY(UART0);
-    UART0.RHR_THR_DLL = c;
+void uart_putc(char c)
+{
+    while ((UART->UTS >> 4) & 1) {
+    }
+    UART->UTXD = c;
 }
 
-static char uart_getc() {
-    WAIT_FOR_RECEIVE_READY(UART0);
-    return UART0.RHR_THR_DLL;
+static char getc(void) {
+    while ((UART1->UTS >> 0) & 1) {
+    }
+    return UART1->UTXD & 0xFF;
 }
 
-void uart_puts(char *s) {
+void puts(char *s)
+{
     while (*s) {
-        uart_putc(*s);
-        s++;
+        uart_putc(*s++);
+        if (*s == '\n') {
+            uart_putc('\r');
+        }
     }
 }
 
+
+static void uart_reg_init() {
+        // 配置UART寄存器，设置波特率、数据位、停止位等
+        // 具体配置根据芯片手册进行设置
+}
+
+
 static irqreturn_t uart0_iqr(int virq, void *dev_id) {
-    char a = uart_getc();
+    char a = getc();
     printk("%c",a);
     if('\r'==a)
         printk("\n");
     return IRQ_HANDLED;
 }
 
-static int uart_open(struct inode *inode, struct file *file) {
-    return 0;
-}
+// static int uart_open(struct inode *inode, struct file *file) {
+//     return 0;
+// }
 
-static ssize_t uart_write(struct inode *inode, const void *buf, size_t size, loff_t *offset) {
-    if (inode == NULL || buf == NULL || offset == NULL) {
-        return -1;
-    }
-    if (*offset >= sizeof(struct system_time)) {
-        *offset = 0; // 重置偏移量
-    }
+// static ssize_t uart_write(struct inode *inode, const void *buf, size_t size, loff_t *offset) {
+    // if (inode == NULL || buf == NULL || offset == NULL) {
+    //     return -1;
+    // }
+    // if (*offset >= sizeof(struct system_time)) {
+    //     *offset = 0; // 重置偏移量
+    // }
 
-    size_t bytes_to_read = size;
-    if (*offset + bytes_to_read > sizeof(struct system_time)) {
-        bytes_to_read = sizeof(struct system_time) - *offset; // 调整读取大小
-    }
+    // size_t bytes_to_read = size;
+    // if (*offset + bytes_to_read > sizeof(struct system_time)) {
+    //     bytes_to_read = sizeof(struct system_time) - *offset; // 调整读取大小
+    // }
 
-    uart_puts((char *)buf);
-    *offset += bytes_to_read;
+    // uart_puts((char *)buf);
+    // *offset += bytes_to_read;
 
-    return bytes_to_read;
-}
+    // return bytes_to_read;
+// }
 
-static struct file_ops uart_file_ops = {
-    .open = uart_open,
+// static struct file_ops uart_file_ops = {
+    // .open = uart_open,
     // .read = uart_read,
-    .write = uart_write,
-};
+    // .write = uart_write,
+// };
 
 static int uart_probe(struct platform_device *pdev) {
-    struct device_node *node = of_find_node_by_compatible("wq,uart");
+    struct device_node *node = of_find_node_by_compatible("imx6ull,uart");
     if (!node) {
         return -1;
     }
 
     uint32_t *reg = of_read_u32_array(node, "reg", 2);
     uart_base = (virt_addr_t)ioremap(reg[0], reg[1]);
-    uart_reg_init();
 
-    dev_t devnr = 2;
-    register_chrdev(devnr, "uart", &uart_file_ops);
+    // uart_reg_init();
+
+    // dev_t devnr = 2;
+    // register_chrdev(devnr, "uart", &uart_file_ops);
     // if (lookup("/uart") == NULL)
     //     mknod("/uart", S_IFCHR | 0644, devnr);
 
-    int virq = platform_get_irq(pdev, 0);
-    irq_register(virq, uart0_iqr, "uart0_irq",NULL);
+    // int virq = platform_get_irq(pdev, 0);
+    // irq_register(virq, uart0_iqr, "uart0_irq",NULL);
 
-    console_register(uart_putc);
-    irq_enable(virq);
+    console_register(putc);
+    // irq_enable(virq);
     return 0;
 }
 
 static void uart_remove() {
-    unregister_chrdev(2, "/uart");
-    if (lookup("/uart")) {
-    }
+    // unregister_chrdev(2, "/uart");
+    // if (lookup("/uart")) {
+    // }
+    iounmap(uart_base, sizeof(UART_Type));
     uart_base = 0;
 }
 
 static struct of_device_id uart_of_match[] = {
-    {.compatible = "wq,uart",},
+    {.compatible = "imx6ull,uart",},
     {/* sentinel */}
 };
 

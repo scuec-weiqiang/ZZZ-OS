@@ -3,6 +3,15 @@
 #define __LINUX_COMPILER_ATTRIBUTES_H
 
 /*
+ * Older compilers may not provide feature-test builtins like
+ * __has_attribute(). Treat unknown queries as "attribute unsupported"
+ * so the optional attribute wrappers below degrade cleanly.
+ */
+#ifndef __has_attribute
+#define __has_attribute(x) 0
+#endif
+
+/*
  * The attributes in this file are unconditionally defined and they directly
  * map to compiler attribute(s), unless one of the compilers does not support
  * the attribute. In that case, __has_attribute is used to check for support

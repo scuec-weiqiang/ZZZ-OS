@@ -56,6 +56,10 @@ void irq_domain_destroy(struct irq_domain *domain) {
     kfree(domain);
 }
 
+/*
+    * 将硬件中断号hwirq映射到虚拟中断号virq_base + hwirq，并返回映射后的虚拟中断号。
+    * 如果hwirq无效（大于等于hw_irq_count），则返回-1。
+*/
 int irq_domain_add_mapping(struct irq_domain *domain, unsigned int hwirq) {
     if (hwirq >= domain->hw_irq_count) {
         return -1; // Invalid hwirq

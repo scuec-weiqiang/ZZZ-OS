@@ -3,7 +3,7 @@
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @Date         : 2026-03-13 18:44:52
- * @LastEditTime : 2026-03-15 18:38:17
+ * @LastEditTime : 2026-03-19 17:12:40
  * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2026.
 */
@@ -28,7 +28,7 @@ typedef unsigned int pgprot_t;
 #define PROT_GLOBAL     BIT(6)
 
 #define PAGE_KERNEL \
-    __pgprot(PROT_READ | PROT_WRITE  | PROT_GLOBAL)
+    __pgprot(PROT_READ | PROT_WRITE  |  PROT_GLOBAL)
 
 #define PAGE_KERNEL_RO \
     __pgprot(PROT_READ | PROT_GLOBAL)
@@ -37,9 +37,9 @@ typedef unsigned int pgprot_t;
     __pgprot(PROT_READ | PROT_EXEC | PROT_GLOBAL)
 
 #define PAGE_DEVICE \
-    __pgprot(PROT_READ | PROT_WRITE | PROT_DEVICE)
+    __pgprot(PROT_READ | PROT_WRITE | PROT_DEVICE | PROT_GLOBAL)
 
 #define PAGE_DMA \
-    __pgprot(PROT_READ | PROT_WRITE | PROT_UNCACHED)
+    __pgprot(PROT_READ | PROT_WRITE | PROT_UNCACHED | PROT_GLOBAL)
 
 #endif

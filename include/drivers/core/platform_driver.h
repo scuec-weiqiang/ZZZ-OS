@@ -7,8 +7,8 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#ifndef __KERNEL_DRIVER_H
-#define __KERNEL_DRIVER_H
+#ifndef __KERNEL_PLATFORM_DRIVER_H
+#define __KERNEL_PLATFORM_DRIVER_H
 
 #include <os/driver_model.h>
 #include <os/module.h>

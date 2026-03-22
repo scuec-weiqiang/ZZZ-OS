@@ -1,5 +1,6 @@
 OBJ_Y += boot/
 OBJ_Y += mm/
+OBJ_Y += irq/
 
 
         

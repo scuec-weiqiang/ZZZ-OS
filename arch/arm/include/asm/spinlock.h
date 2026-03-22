@@ -10,6 +10,8 @@
  #ifndef ARM_SPINLOCK_H
  #define ARM_SPINLOCK_H
  
+ #include <os/types.h>
+
  /* ARMv7无RISC-V的AMO原子交换指令，需用LDREX/STREX实现原子操作 */
  typedef struct spinlock {
      volatile int lock;  // 锁状态：0=未持有，1=已持有

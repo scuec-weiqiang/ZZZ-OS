@@ -1,6 +1,6 @@
 #include <os/types.h>
 #include <stdarg.h>
-// #include <os/console.h>
+#include <os/console.h>
 #include <os/utils.h>
 
 #define __PBUFF_SIZE 4096 * 4 
@@ -129,9 +129,9 @@ int _vprint(const char *fmt, va_list vl) {
     _vsprint(print_buff, fmt, vl_copy);
     va_end(vl_copy);
 
-#define DEBUG
+// #define DEBUG
 #ifdef DEBUG
-    
+   extern void puts(char *s); 
     puts(print_buff);
 #else
     console_puts(print_buff);
@@ -144,7 +144,6 @@ int _vprint(const char *fmt, va_list vl) {
  * printk: 有锁
  */
 int printk(const char *fmt, ...) {
-
     va_list vl;
     va_start(vl, fmt);
     int n = _vprint(fmt, vl);

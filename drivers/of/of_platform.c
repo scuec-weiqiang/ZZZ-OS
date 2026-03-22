@@ -25,7 +25,9 @@ struct platform_device *platform_device_create_from_node(struct device_node *np)
     // int irq_count = interrupts ? 1:0;
 
     pdev = kmalloc(sizeof(struct platform_device));
+    memset(pdev, 0, sizeof(struct platform_device));
     pdev->dev = kmalloc(sizeof(struct device));
+    memset(pdev->dev, 0, sizeof(struct device));
     pdev->of_node = np;
     pdev->name  = strdup(compatible->value);
     

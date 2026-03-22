@@ -441,6 +441,25 @@ static pgprot_t get_level1_flags(pte_t *entry) {
     return flags;
 }
 
+static inline void dcache_clean_mva_poc(uintptr_t addr)
+{
+    asm volatile(
+        "mcr p15, 0, %0, c7, c10, 1\n"
+        :
+        : "r"(addr)
+        : "memory"
+    );
+}
+
+static inline void dcache_clean_mva_poc_range(uintptr_t start, uintptr_t end)
+{
+    for (uintptr_t addr = start; addr < end; addr += 32) {
+        dcache_clean_mva_poc(addr);
+    }
+    asm volatile("dsb" : : : "memory");
+
+}
+
 void arch_pgtbl_entry_set_pa(pgtable_t *tbl, uint32_t level, pgdesc_type_t type, pte_t *entry, phys_addr_t pa) {
     switch (level) {
         case 0:
@@ -515,6 +534,7 @@ void arch_pgtbl_set_entry(pgtable_t *tbl, int level, pgdesc_type_t type, pte_t* 
     if (type == PGTBL_DESC_PAGE) {
         arch_pgtbl_entry_set_flags(tbl, level, entry, flags);
     }
+    dcache_clean_mva_poc((uintptr_t)entry); // 确保页表项的修改被写回内存
 }
 
 void arch_pgtbl_clear_entry(pgtable_t *tbl, int level, pgdesc_type_t type, pte_t* entry) {
@@ -534,21 +554,42 @@ bool arch_pgtbl_entry_is_leaf(pte_t *entry) {
     }
 }
 
+void arch_pgtbl_sync_range(void *addr, size_t size) {
+    uintptr_t start = ALIGN_DOWN((uintptr_t)addr, 32);
+    uintptr_t end = ALIGN_UP((uintptr_t)addr + size, 32);
+    dcache_clean_mva_poc_range(start, end);
+}
+
 void arch_pgtbl_flush() {
     asm volatile(
+        "dsb\n"
         "mov r0, #0\n"
         "mcr p15, 0, r0, c8, c7, 0\n" 
         "dsb\n"
         "isb\n"
+        :
+        :
+        : "r0", "memory"
     ); 
 }
 
 void arch_pgtbl_switch_to(pgtable_t *pgtbl) {
     asm volatile(
-        "mcr p15,0,%0,c2,c0,0"
+        /*
+         * Force the short-descriptor walk to use TTBR0 for the full VA space.
+         * Some boot environments may leave TTBCR configured with a split,
+         * which would make high VAs (for example 0xf0000000) bypass TTBR0.
+         */
+        "mov r1, #0\n"
+        "mcr p15, 0, r1, c2, c0, 2\n"
+        "mcr p15, 0, %0, c2, c0, 0\n"
+        "mcr p15, 0, r1, c8, c7, 0\n"
+        "dsb\n"
+        "isb\n"
         :
         : "r"(pgtbl->root_pa)
-    );
+        : "r1", "memory"
+    ); 
 }
 
 void arch_pgtbl_init(pgtable_t *tbl) {
@@ -562,7 +603,6 @@ void arch_pgtbl_deinit(pgtable_t *tbl) {
         tbl->root = NULL;
     }
 }
-
 
 
 

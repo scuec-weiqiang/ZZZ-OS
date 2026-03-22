@@ -5,9 +5,12 @@ _start:
 
     cpsid if                 @ 关中断
 
-    /* 关闭MMU */
+    /* 关闭MMU和cache，避免后续页表修改只停留在cache里，
+       但页表遍历器仍从内存读到旧内容。 */
     mrc p15,0,r0,c1,c0,0
-    bic r0,r0,#1
+    bic r0,r0,#1          @ SCTLR.M
+    bic r0,r0,#(1 << 2)   @ SCTLR.C
+    bic r0,r0,#(1 << 12)  @ SCTLR.I
     mcr p15,0,r0,c1,c0,0
     isb
 

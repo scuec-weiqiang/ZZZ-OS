@@ -30,6 +30,8 @@ int pgtbl_unmap(pgtable_t *pgtbl, virt_addr_t va, int target_level);
 phys_addr_t pgtbl_lookup(pgtable_t *pgtbl, virt_addr_t va);
 pgprot_t pgtbl_lookup_prot(pgtable_t *pgtbl, virt_addr_t va);
 void pgtbl_switch_to(pgtable_t *pgtbl);
+
+
 void pgtbl_flush();
 
 void pgtbl_test();

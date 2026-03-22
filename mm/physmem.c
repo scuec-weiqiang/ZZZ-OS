@@ -74,14 +74,15 @@ void physmem_init(void) {
             high = pos->base + pos->size;
         }
     }
-    printk("Physical memory range: [%x - %x]\n", low, high);
+    printk("Physical memory range: [%xu - %xu]\n", low, high);
     first_pfn = phys_to_pfn(low);
     last_pfn = phys_to_pfn(high);
     total_pages = last_pfn - first_pfn;
-    printk("Total pages: %u\n", total_pages);
+    printk("Total pages: %xu, first pfn = %xu,last pfn = %xu\n", total_pages, first_pfn, last_pfn);
 
     size_t sz = total_pages * sizeof(struct page);
     mem_map = (struct page *)memblock_alloc(sz, PAGE_SIZE);
+    printk("mem_map allocated at physical address %xu, size %xu bytes\n", KERNEL_PA(mem_map), sz);
     for (pfn_t i = 0; i < total_pages; i++) {
         struct page *pg = &mem_map[i];
         pg->flags = 0;

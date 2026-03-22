@@ -8,7 +8,7 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
 // #include "os/pfn.h"
-// #include <os/kmalloc.h>
+#include <os/kmalloc.h>
 #include <os/printk.h>
 
 // #include <drivers/time.h>
@@ -16,15 +16,15 @@
 
 // #include <asm/arch_timer.h>
 #include <drivers/of/fdt.h>
-// #include <drivers/of/of_platform.h>
-// #include <fs/fs_init.h>
-// #include <fs/vfs.h>
+#include <drivers/of/of_platform.h>
+#include <fs/fs_init.h>
+#include <fs/vfs.h>
 // #include <os/elf.h>
 // #include <os/irq.h>
 #include <os/mm/memblock.h>
 #include <os/mm/symbols.h>
 #include <os/mm/early_malloc.h>
-// #include <os/module.h>
+#include <os/driver.h>
 // #include <os/of.h>
 // #include <os/mm/page.h>
 // #include <os/proc.h>
@@ -53,20 +53,18 @@ void init_kernel(int hartid,void *dtb) {
 		fdt_init(dtb);
         memblock_init();
         mm_init();
-        
-        uint32_t *a = (uint32_t*)0x87000000;
-        *a = 0x12345678;
-        printk("value of a = %xu\n", *a);
-        printk("kernel init end\n");
-        // kmalloc_init();
-        // of_platform_populate();
+    
+        kmalloc_init();
+        of_platform_populate();
         // irq_init();
-        // do_initcalls();
-        // fs_init();
+        
+        driver_init();
+        fs_init();
         // irq_enable(EXTERN_IRQ);
 
         // is_init = 1;
     }
+    printk("kernel init end\n");
     // set_hart_stack();
     // arch_timer_init(SYS_HZ_1);
     // irq_enable(GLOBAL_IRQ);

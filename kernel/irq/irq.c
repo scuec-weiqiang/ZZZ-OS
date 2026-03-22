@@ -10,6 +10,8 @@
 #include <os/irq.h>
 #include <os/irq_chip.h>
 #include <os/irq_domain.h>
+#include <os/module.h>
+
 #include <asm/irq.h>
 
 #define IRQ_COUNT 128
@@ -22,6 +24,7 @@ void irq_init(void) {
         irq_desc[i].handler = NULL;
         irq_desc[i].dev_id = NULL;
     }
+    do_irqinitcalls();
     arch_irq_init();
 }
 
@@ -29,30 +32,30 @@ void irq_init(void) {
 void irq_enable(int virq) {
     struct irq_domain *domain = irq_domain_lookup(virq);
     int hwirq = irq_domain_get_hwirq(domain, virq);
-    domain->chip->ops->enable(domain->chip,hwirq);
+    domain->chip->ops->irq->enable(domain->chip,hwirq);
 }
 
 void irq_disable(int virq) {
     struct irq_domain *domain = irq_domain_lookup(virq);
     int hwirq = irq_domain_get_hwirq(domain, virq);
-    domain->chip->ops->disable(domain->chip,hwirq);
+    domain->chip->ops->irq->disable(domain->chip,hwirq);
 }
 
 void irq_acknowledge(int virq) {
     struct irq_domain *domain = irq_domain_lookup(virq);
-    domain->chip->ops->ack(domain->chip);
+    domain->chip->cpuif_ops->claim(domain->chip);
 }
 
 void irq_set_priority(int virq, int priority) {
     struct irq_domain *domain = irq_domain_lookup(virq);
     int hwirq = irq_domain_get_hwirq(domain, virq);
-    domain->chip->ops->set_priority(domain->chip, hwirq, priority);
+    domain->chip->ops->irq->set_priority(domain->chip, hwirq, priority);
 }
 
 int irq_get_priority(int virq) {
     struct irq_domain *domain = irq_domain_lookup(virq);
     int hwirq = irq_domain_get_hwirq(domain, virq);
-    return domain->chip->ops->get_priority(domain->chip,hwirq);
+    return domain->chip->ops->irq->get_priority(domain->chip,hwirq);
 }
 
 reg_t do_irq(reg_t ctx,void *arg) {
