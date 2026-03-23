@@ -5,6 +5,7 @@
 #include <fs/path.h>
 #include <os/kmalloc.h>
 #include <os/bswap.h>
+#include <os/device.h>
 
 struct device_node *of_find_node_by_path(const char *path) {
     if (!fdt_root_node || !path)
@@ -256,6 +257,21 @@ int of_device_is_type(const struct device_node *node, const char *type) {
     return -1;
 }
 
+const struct of_device_id *of_match_node(const struct of_device_id *matches, const struct device_node *node) {
+    if (!matches || !node)
+        return NULL;
+
+    for (const struct of_device_id *id = matches; id->compatible[0]; id++) {
+        struct device_prop *prop = of_get_prop_by_name(node, "compatible");
+        if (!prop) continue;
+        
+        if (strcmp(prop->value, id->compatible) == 0) {
+            return id;
+        }
+    }
+    return NULL;
+}
+
 // int of_node_is_bus(const struct device_node *np)
 // {
 //     if (of_node_is_type(np, "simple-bus"))
@@ -267,6 +283,22 @@ int of_device_is_type(const struct device_node *node, const char *type) {
 //     //     return 1;
 //     return 0;
 // }
+
+struct device *of_device_create(struct device_node *np, struct device *parent, struct bus_type *bus) {
+    if (!np || !bus) {
+        return NULL;
+    }
+
+    struct device *dev = (struct device *)kmalloc(sizeof(struct device));
+    memset(dev, 0, sizeof(struct device));
+    dev->name = strdup(np->name);
+    dev->of_node = np;
+    dev->parent = parent;
+    dev->bus = bus;
+    INIT_LIST_HEAD(&dev->node);
+
+    return dev;
+}
 
 void of_test() {
    

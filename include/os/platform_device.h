@@ -13,7 +13,7 @@
 
 struct platform_device {
     const char *name;              // 例如 "ns16550a"
-    // struct platform_device *parent;  // optional
+    struct platform_device *parent;  // optional
     void *platform_data;           // optional
     struct resource *resources;
     int num_resources;

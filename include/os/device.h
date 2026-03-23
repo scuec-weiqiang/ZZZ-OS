@@ -21,9 +21,11 @@ struct device_node;
 struct bus_type {
     const char *name;
     struct device *dev_root; // 根设备
-    int (*match)(struct device *dev, struct device_driver *drv); // 匹配函数
+    int (*match)(struct device *dev, const struct device_driver *drv); // 匹配函数
     struct list_head drivers; // 该总线上的驱动列表
     struct list_head devices; // 该总线上的设备列表
+
+    struct list_head node;
 };
 
 struct device_driver {
@@ -36,7 +38,8 @@ struct device_driver {
 };
 
 struct device {
-    const char *name;              
+    const char *name;
+    // int state;              
     struct bus_type *bus;            // 关联的总线
     struct device_node *of_node;   // 对应 device tree 节点
     struct device *parent;          // optional
@@ -44,5 +47,19 @@ struct device {
     void *driver_data;              // optional
     struct list_head node;         // 链接到总线的设备列表
 };
+
+static inline void *dev_get_drvdata(const struct device *dev)
+{
+	return dev->driver_data;
+}
+
+static inline void dev_set_drvdata(struct device *dev, void *data)
+{
+	dev->driver_data = data;
+}
+
+extern int device_register(struct device *dev);
+extern int device_add(struct device *dev);
+extern int device_attach(struct device *dev);
 
 #endif

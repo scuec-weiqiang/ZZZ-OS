@@ -11,10 +11,11 @@
 #include <os/list.h>
 #include <os/string.h>
 #include <os/of.h>
-#include <os/driver_model.h>
+#include <os/resource.h>
 #include <os/kmalloc.h>
 #include <os/bswap.h>
 #include <os/printk.h>
+#include <os/platform_device.h>
 
 struct platform_device *platform_device_create_from_node(struct device_node *np) {
     if (!np) return 0;
@@ -28,7 +29,7 @@ struct platform_device *platform_device_create_from_node(struct device_node *np)
     memset(pdev, 0, sizeof(struct platform_device));
     pdev->dev = kmalloc(sizeof(struct device));
     memset(pdev->dev, 0, sizeof(struct device));
-    pdev->of_node = np;
+    pdev->dev->of_node = np;
     pdev->name  = strdup(compatible->value);
     
     if (regs) {
@@ -38,9 +39,10 @@ struct platform_device *platform_device_create_from_node(struct device_node *np)
         pdev->resources[0].size = be32_to_cpu(regs[1]);  // if your fdt_get_reg returns pair
         pdev->num_resources = 1;
     }
-    list_add(&platform_device_list, &pdev->link);
+    
     return pdev;
 }
+
 static struct device_node *queue[sizeof(struct device_node*)*512] = {0};
 void of_platform_populate() {
     int front=0,rear=0;

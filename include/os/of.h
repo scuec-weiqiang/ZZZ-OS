@@ -12,6 +12,7 @@
 
 #include <os/types.h>
 #include <drivers/of/fdt.h>
+#include <os/device.h>
 
 extern struct device_node* of_find_node_by_path(const char* path);
 extern struct device_node* of_find_node_by_compatible(const char* compatible_prop);
@@ -28,5 +29,7 @@ extern int of_device_is_type(const struct device_node *node, const char *type);
 // extern int of_node_is_bus(const struct device_node *node);
 extern int of_scan_memory();
 extern int of_scan_reserved_memory();
+extern struct device *of_device_create(struct device_node *np, struct device *parent, struct bus_type *bus);
+extern const struct of_device_id *of_match_node(const struct of_device_id *matches, const struct device_node *node);
 extern void of_test();
 #endif // __KERNEL_OF_H__
