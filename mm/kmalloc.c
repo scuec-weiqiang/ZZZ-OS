@@ -8,11 +8,11 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include <os/printk.h>
-#include <os/mm/early_malloc.h>
-#include <os/mm/memblock.h>
-#include <os/mm/physmem.h>
-#include <os/mm/buddy.h>
-#include <os/mm/slab.h>
+#include <mm/early_malloc.h>
+#include <mm/memblock.h>
+#include <mm/physmem.h>
+#include <mm/buddy.h>
+#include <mm/slab.h>
 #include <os/kva.h>
 #include <os/utils.h>
 

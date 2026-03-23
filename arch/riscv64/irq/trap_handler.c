@@ -11,7 +11,7 @@
 #include <os/sched.h>
 #include <os/syscall.h>
 #include <os/types.h>
-#include <os/mm/page_fault.h>
+#include <mm/page_fault.h>
 
 
 extern void kernel_trap_entry();

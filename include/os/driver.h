@@ -11,7 +11,7 @@
 #define __KERNEL_DRIVER_H
 
 #include <os/module.h>
-#include <os/mm/symbols.h>
+#include <mm/symbols.h>
 
 
 #define driver_init() do_initcalls(initcall_start, initcall_end, initcall_t)

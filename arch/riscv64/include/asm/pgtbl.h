@@ -12,8 +12,8 @@
 #define _MM_H
 
 #include <os/types.h>
-#include <os/mm/pgtbl_types.h>
-#include <os/mm/pgprot.h>
+#include <mm/pgtbl_types.h>
+#include <mm/pgprot.h>
 
 void arch_pgtbl_init(pgtable_t *tbl); // 初始化页表
 

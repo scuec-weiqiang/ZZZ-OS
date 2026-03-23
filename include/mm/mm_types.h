@@ -11,7 +11,7 @@
 #define __KERNEL_MM_TYPES_H
 
 #include <os/types.h>
-#include <os/mm/pgtbl_types.h>
+#include <mm/pgtbl_types.h>
 
 struct mm_struct {
     pgtable_t *pgdir;          // 页表根目录

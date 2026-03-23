@@ -7,22 +7,22 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include <os/mm/mm_types.h>
+#include <mm/mm_types.h>
 #include <os/pfn.h>
-#include <os/mm/pgtbl_types.h>
-#include <os/mm/symbols.h>
+#include <mm/pgtbl_types.h>
+#include <mm/symbols.h>
 #include <os/check.h>
 #include <os/kmalloc.h>
-#include <os/mm/memblock.h>
-#include <os/mm/page.h>
+#include <mm/memblock.h>
+#include <mm/page.h>
 #include <os/printk.h>
 #include <os/string.h>
 #include <os/kva.h>
-#include <os/mm/pgtbl.h>
-#include <os/mm/vma.h>
-#include <os/mm/pgprot.h>
+#include <mm/pgtbl.h>
+#include <mm/vma.h>
+#include <mm/pgprot.h>
 #include <os/mm.h>
-#include <os/mm/symbols.h>
+#include <mm/symbols.h>
 #include <os/utils.h>
 
 static int highest_possible_level(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size) {
@@ -186,9 +186,7 @@ void mm_init() {
     //     map(kernel_mm_struct->pgdir, KERNEL_VA(region->base), region->base, region->size, PAGE_KERNEL);
     // }
 
-    // pgtbl_map(kernel_mm_struct->pgdir, 0x02000000, 0x02000000, 0, PAGE_DEVICE);
-    // map(kernel_mm_struct->pgdir, 0xf0000000, 0x02020000, 0x1000,PAGE_DEVICE);
-    // pgtbl_map(kernel_mm_struct->pgdir, 0xf0000000, 0x02000000, 0, PAGE_DEVICE);
+    pgtbl_map(kernel_mm_struct->pgdir, 0x02000000, 0x02000000, 0, PAGE_DEVICE);
     
     map(kernel_mm_struct->pgdir, trap_start, KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
     map(kernel_mm_struct->pgdir, text_start, KERNEL_PA(text_start), text_size, PAGE_KERNEL_EXEC);

@@ -9,9 +9,9 @@
 */
 #include "os/kva.h"
 #include "os/types.h"
-#include <os/mm/buddy.h>
-#include <os/mm/physmem.h>
-#include <os/mm/memblock.h>
+#include <mm/buddy.h>
+#include <mm/physmem.h>
+#include <mm/memblock.h>
 #include <os/printk.h>
 #include <os/rand.h>
 #include <os/string.h>

@@ -1,13 +1,13 @@
 #include <os/list.h>
 #include <os/pfn.h>
 #include <os/types.h>
-#include <os/mm/physmem.h>
-#include <os/mm/slab.h>
-#include <os/mm/buddy.h>
+#include <mm/physmem.h>
+#include <mm/slab.h>
+#include <mm/buddy.h>
 #include <os/string.h>
 #include <os/list.h>
 #include <os/printk.h>
-#include <os/mm/page.h>
+#include <mm/page.h>
 #include <os/kva.h>
 #include <os/utils.h>
 

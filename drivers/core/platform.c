@@ -1,8 +1,8 @@
-#include <os/device.h>
 #include <os/of.h>
 #include <os/string.h>
 #include <os/printk.h>
 #include <os/bus.h>
+#include <os/platform_device.h>
 
 struct device platform_bus = {
 	.name	= "platform",
@@ -19,6 +19,8 @@ static int platform_match(struct device *dev, const struct device_driver *drv) {
 struct bus_type platform_bus_type = {
     .name = "platform",
     .match = platform_match,
+    .devices = LIST_HEAD_INIT(platform_bus_type.devices),
+    .drivers = LIST_HEAD_INIT(platform_bus_type.drivers),
 };
 
 int platform_bus_init() {
@@ -28,33 +30,19 @@ int platform_bus_init() {
 
 
 
-int platform_driver_register(struct platform_driver *pdrv) {
-    if (!pdrv) {
+int platform_device_register(struct platform_device *pdev) {
+    if (!pdev) {
         return -1;
     }
-    list_add(&driver_list, &pdrv->link);
-
-    struct platform_device *pdev;
-    list_for_each_entry(pdev, &platform_device_list, struct platform_device, link) {
-        if (device_matches_driver(pdev, pdrv)) {
-            if (!pdev->dev->driver_data) {
-                if (pdrv->probe(pdev) == 0) {
-                    pdev->dev->driver_data = pdrv;
-                    return 0;
-                }
-            }
-        }
-    }
-    printk("platform_driver_register: no matching device for driver %s\n", pdrv->name);
-    return -1;
+    device_register(&pdev->dev);
+    return 0;
 }
 
-int platform_driver_unregister(struct platform_driver *pdrv) {
-    if (!pdrv) {
+int platform_device_unregister(struct platform_device *pdev) {
+    if (!pdev) {
         return -1;
     }
-    list_del(&pdrv->link);
-    pdrv->remove(NULL);
+    device_unregister(&pdev->dev);
     return 0;
 }
 

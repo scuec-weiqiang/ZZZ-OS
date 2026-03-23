@@ -1,8 +1,8 @@
 #ifndef __KERNEL_PGTBL_H
 #define __KERNEL_PGTBL_H
 
-#include <os/mm/pgtbl_types.h>
-#include <os/mm/pgprot.h>
+#include <mm/pgtbl_types.h>
+#include <mm/pgprot.h>
 
 typedef enum {
     WALK_CONTINUE,

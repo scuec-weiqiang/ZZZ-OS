@@ -10,11 +10,11 @@
 #include "os/list.h"
 #include "os/pfn.h"
 #include "os/types.h"
-#include <os/mm/physmem.h>
-#include <os/mm/memblock.h>
+#include <mm/physmem.h>
+#include <mm/memblock.h>
 #include <os/printk.h>
 #include <os/string.h>
-#include <os/mm/symbols.h>
+#include <mm/symbols.h>
 #include <os/kva.h>
 
 struct page *mem_map;   // base of page array

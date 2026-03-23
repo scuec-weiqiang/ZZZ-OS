@@ -11,10 +11,10 @@
 #define KERNEL_MM_H
 
 #include <os/types.h>
-#include <os/mm/pgtbl_types.h>
-#include <os/mm/mm_types.h>
-#include <os/mm/pgprot.h>
-#include <os/mm/vma.h>
+#include <mm/pgtbl_types.h>
+#include <mm/mm_types.h>
+#include <mm/pgprot.h>
+#include <mm/vma.h>
 
 extern struct mm_struct *kernel_mm_struct;
 extern struct mm_struct *current_mm_struct;

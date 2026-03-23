@@ -16,7 +16,7 @@
 #include <os/string.h>
 #include <asm/spinlock.h>
 #include <fs/ext2/ext2_cache.h>
-#include <drivers/time.h>
+#include <os/time.h>
 #include <fs/ext2/ext2_block.h>
 #include <fs/ext2/ext2_page.h>
 #include <fs/ext2/ext2_namei.h>

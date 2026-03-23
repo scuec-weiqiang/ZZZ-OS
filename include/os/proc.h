@@ -10,7 +10,7 @@
 #ifndef KERNEL_PROC_H
 #define KERNEL_PROC_H
 
-#include "os/mm/mm_types.h"
+#include "mm/mm_types.h"
 #include <os/types.h>
 // #include <asm/riscv.h>
 #include <os/mm.h>

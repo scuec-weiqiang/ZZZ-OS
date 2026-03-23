@@ -1,11 +1,25 @@
 #include "os/types.h"
-#include <drivers/of/fdt.h>
+#include <os/fdt.h>
 #include <os/printk.h>
 #include <os/string.h>
 #include <fs/path.h>
 #include <os/kmalloc.h>
 #include <os/bswap.h>
 #include <os/device.h>
+
+struct device_node* of_get_next_child(const struct device_node *node,struct device_node *prev)
+{
+	struct device_node *next;
+
+	if (!node)
+		return NULL;
+
+	next = prev ? prev->sibling : node->children;
+	for (; next; next = next->sibling)
+		if (next)
+			break;
+	return next;
+}
 
 struct device_node *of_find_node_by_path(const char *path) {
     if (!fdt_root_node || !path)
@@ -257,6 +271,7 @@ int of_device_is_type(const struct device_node *node, const char *type) {
     return -1;
 }
 
+
 const struct of_device_id *of_match_node(const struct of_device_id *matches, const struct device_node *node) {
     if (!matches || !node)
         return NULL;
@@ -284,21 +299,6 @@ const struct of_device_id *of_match_node(const struct of_device_id *matches, con
 //     return 0;
 // }
 
-struct device *of_device_create(struct device_node *np, struct device *parent, struct bus_type *bus) {
-    if (!np || !bus) {
-        return NULL;
-    }
-
-    struct device *dev = (struct device *)kmalloc(sizeof(struct device));
-    memset(dev, 0, sizeof(struct device));
-    dev->name = strdup(np->name);
-    dev->of_node = np;
-    dev->parent = parent;
-    dev->bus = bus;
-    INIT_LIST_HEAD(&dev->node);
-
-    return dev;
-}
 
 void of_test() {
    

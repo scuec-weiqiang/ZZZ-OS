@@ -11,7 +11,7 @@
 #define OS_RESOURCE_H
 
 #include <os/list.h>
-#include <drivers/of/fdt.h>
+#include <os/fdt.h>
 #include <os/types.h>
 #include <os/list.h>
 

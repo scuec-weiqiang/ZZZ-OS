@@ -3,7 +3,7 @@
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @Date         : 2026-03-12 00:25:01
- * @LastEditTime : 2026-03-19 22:59:26
+ * @LastEditTime : 2026-03-24 01:30:18
  * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2026.
 */
@@ -16,16 +16,15 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include <drivers/core/driver.h>
 // #include <fs/chrdev.h>
 // #include <fs/vfs.h>
 #include <os/console.h>
-#include <os/driver_model.h>
 #include <os/mm.h>
 #include <os/of.h>
 #include <os/string.h>
 #include <os/irqreturn.h>
 #include <os/irq.h>
+#include <os/printk.h>
 
 #define __IO volatile
 #define __I  volatile const
@@ -131,48 +130,48 @@ static irqreturn_t uart0_iqr(int virq, void *dev_id) {
     // .write = uart_write,
 // };
 
-static int uart_probe(struct platform_device *pdev) {
-    struct device_node *node = of_find_node_by_compatible("imx6ull,uart");
-    if (!node) {
-        return -1;
-    }
+// static int uart_probe(struct platform_device *pdev) {
+//     struct device_node *node = of_find_node_by_compatible("imx6ull,uart");
+//     if (!node) {
+//         return -1;
+//     }
 
-    uint32_t *reg = of_read_u32_array(node, "reg", 2);
-    uart_base = (virt_addr_t)ioremap(reg[0], reg[1]);
+//     uint32_t *reg = of_read_u32_array(node, "reg", 2);
+//     uart_base = (virt_addr_t)ioremap(reg[0], reg[1]);
 
-    // uart_reg_init();
+//     // uart_reg_init();
 
-    // dev_t devnr = 2;
-    // register_chrdev(devnr, "uart", &uart_file_ops);
-    // if (lookup("/uart") == NULL)
-    //     mknod("/uart", S_IFCHR | 0644, devnr);
+//     // dev_t devnr = 2;
+//     // register_chrdev(devnr, "uart", &uart_file_ops);
+//     // if (lookup("/uart") == NULL)
+//     //     mknod("/uart", S_IFCHR | 0644, devnr);
 
-    // int virq = platform_get_irq(pdev, 0);
-    // irq_register(virq, uart0_iqr, "uart0_irq",NULL);
+//     // int virq = platform_get_irq(pdev, 0);
+//     // irq_register(virq, uart0_iqr, "uart0_irq",NULL);
 
-    console_register(putc);
-    // irq_enable(virq);
-    return 0;
-}
+//     console_register(putc);
+//     // irq_enable(virq);
+//     return 0;
+// }
 
-static void uart_remove() {
-    // unregister_chrdev(2, "/uart");
-    // if (lookup("/uart")) {
-    // }
-    iounmap(uart_base, sizeof(UART_Type));
-    uart_base = 0;
-}
+// static void uart_remove() {
+//     // unregister_chrdev(2, "/uart");
+//     // if (lookup("/uart")) {
+//     // }
+//     iounmap(uart_base, sizeof(UART_Type));
+//     uart_base = 0;
+// }
 
-static struct of_device_id uart_of_match[] = {
-    {.compatible = "imx6ull,uart",},
-    {/* sentinel */}
-};
+// static struct of_device_id uart_of_match[] = {
+//     {.compatible = "imx6ull,uart",},
+//     {/* sentinel */}
+// };
 
-static struct platform_driver uart_driver = {
-    .name = "uart_driver",
-    .probe = uart_probe,
-    .remove = uart_remove,
-    .of_match_table = uart_of_match,
-};
+// static struct platform_driver uart_driver = {
+//     .name = "uart_driver",
+//     .probe = uart_probe,
+//     .remove = uart_remove,
+//     .of_match_table = uart_of_match,
+// };
 
-module_platform_driver(uart_driver);
+// module_platform_driver(uart_driver);

@@ -1,14 +1,14 @@
 
 #include "os/types.h"
-#include <os/mm/pgtbl_types.h>
+#include <mm/pgtbl_types.h>
 #include <os/string.h>
 #include <os/kmalloc.h>
-#include <os/mm/page.h>
+#include <mm/page.h>
 #include <os/check.h>
 #include <asm/barrier.h>
 #include <asm/riscv.h> 
 #include <os/kva.h>
-#include <os/mm/pgprot.h>
+#include <mm/pgprot.h>
 #include <asm/pgtbl.h>
 
 #define PTE_V (1 << 0)      // 有效位

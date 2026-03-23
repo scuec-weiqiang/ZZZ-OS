@@ -11,7 +11,7 @@
 #define __KERNEL_PHYSMEM_H_
 
 #include <os/types.h>
-#include <os/mm/page.h>
+#include <mm/page.h>
 
 extern struct page* mem_map;   // base of page array
 extern pfn_t total_pages;

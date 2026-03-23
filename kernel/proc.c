@@ -7,7 +7,7 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "os/mm/mm_types.h"
+#include "mm/mm_types.h"
 #include <os/proc.h>
 #include <fs/vfs.h>
 #include <os/elf.h>
@@ -18,11 +18,11 @@
 #include <os/kmalloc.h>
 #include <asm/arch_timer.h>
 #include <os/sched.h>
-#include <os/mm/page.h>
+#include <mm/page.h>
 #include <asm/pgtbl.h>
 #include <os/kva.h>
-#include <os/mm/vma.h>
-#include <os/mm/pgtbl.h>
+#include <mm/vma.h>
+#include <mm/pgtbl.h>
 
 struct list_head proc_list_head[MAX_HARTS_NUM];
 

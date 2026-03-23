@@ -3,12 +3,12 @@
 #include <os/check.h>
 #include <os/kmalloc.h>
 #include <os/kva.h>
-#include <os/mm/pgtbl_types.h>
-#include <os/mm/vma.h>
+#include <mm/pgtbl_types.h>
+#include <mm/vma.h>
 #include <os/pfn.h>
 #include <os/string.h>
-#include <os/mm/pgtbl.h>
-#include <os/mm/pgprot.h>
+#include <mm/pgtbl.h>
+#include <mm/pgprot.h>
 #include <os/utils.h>
 
 pte_t *entry_to_next_table(pgtable_t *tbl, int level, pgdesc_type_t type, pte_t *pte) {

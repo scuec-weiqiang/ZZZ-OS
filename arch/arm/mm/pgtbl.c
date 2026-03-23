@@ -1,7 +1,7 @@
 
 #include <os/types.h>
-#include <os/mm/pgtbl_types.h>
-#include <os/mm/pgprot.h>
+#include <mm/pgtbl_types.h>
+#include <mm/pgprot.h>
 #include <os/string.h>
 #include <os/kmalloc.h>
 #include <os/pfn.h>

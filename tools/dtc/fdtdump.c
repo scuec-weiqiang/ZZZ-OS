@@ -8,7 +8,7 @@
 #include <os/string.h>
 #include <ctype.h>
 
-#include <drivers/of/fdt.h>
+#include <os/fdt.h>
 #include <libfdt_env.h>
 
 #include <util.h>

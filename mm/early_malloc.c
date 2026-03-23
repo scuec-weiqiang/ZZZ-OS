@@ -1,9 +1,9 @@
-#include "os/mm/early_malloc.h"
-#include <os/mm/symbols.h>
+#include "mm/early_malloc.h"
+#include <mm/symbols.h>
 #include <os/pfn.h>
 #include <os/printk.h>
 #include <os/types.h>
-#include <os/mm/memblock.h>
+#include <mm/memblock.h>
 
 static virt_addr_t alloc_pos = 0;
 static size_t free_size = 0;

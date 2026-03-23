@@ -13,7 +13,7 @@
 #include <asm/platform.h>
 #include <os/list.h>
 #include <asm/arch_timer.h>
-#include <os/mm/pgtbl.h>
+#include <mm/pgtbl.h>
 
 struct scheduler scheduler[MAX_HARTS_NUM];
 

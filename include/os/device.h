@@ -3,7 +3,7 @@
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @Date         : 2026-03-23 00:06:13
- * @LastEditTime : 2026-03-23 00:55:48
+ * @LastEditTime : 2026-03-23 23:07:39
  * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2026.
 */
@@ -48,17 +48,16 @@ struct device {
     struct list_head node;         // 链接到总线的设备列表
 };
 
-static inline void *dev_get_drvdata(const struct device *dev)
-{
+static inline void *dev_get_drvdata(const struct device *dev) {
 	return dev->driver_data;
 }
 
-static inline void dev_set_drvdata(struct device *dev, void *data)
-{
+static inline void dev_set_drvdata(struct device *dev, void *data) {
 	dev->driver_data = data;
 }
 
 extern int device_register(struct device *dev);
+extern int device_unregister(struct device *dev);
 extern int device_add(struct device *dev);
 extern int device_attach(struct device *dev);
 

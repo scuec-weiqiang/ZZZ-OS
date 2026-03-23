@@ -14,7 +14,7 @@
 #include <os/list.h>
 #include <os/lru.h>
 #include <asm/spinlock.h>
-#include <drivers/time.h>
+#include <os/time.h>
 #include <os/types.h>
 #include <os/pfn.h>
 

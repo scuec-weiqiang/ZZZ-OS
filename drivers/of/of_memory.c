@@ -8,7 +8,7 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include "os/types.h"
-#include <os/mm/memblock.h>
+#include <mm/memblock.h>
 #include <os/of.h>
 #include <os/bswap.h>
 #include <os/printk.h>

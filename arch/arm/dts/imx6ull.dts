@@ -29,19 +29,18 @@
         };
     };
 
+    intc:interrupt-controller@00a01000 {
+    compatible = "arm,cortex-a7-gic";
+    #interrupt-cells = <3>;
+    interrupt-controller;
+    reg =   <0x00a01000 0x1000>,
+            <0x00a02000 0x100>;
+    };
+
     soc {
         #address-cells = <1>;
         #size-cells = <1>;
         compatible = "simple-bus";
-
-        intc:interrupt-controller@00a01000 {
-		compatible = "arm,cortex-a7-gic";
-		#interrupt-cells = <3>;
-		interrupt-controller;
-		reg = <0x00a01000 0x1000>,
-		      <0x00a02000 0x100>;
-	    };
-
 
         // plic: plic@c000000 {
         //     compatible = "riscv,plic";
@@ -53,10 +52,10 @@
         //     interrupts-extended = <&cpu0 9>; // 通知目标CPU
         // };
        
-        // time: time@50000000 {
-        //     compatible = "wq,time";
-        //     reg = <0x50000000 0x1c>;
-        // };
+        time: time@50000000 {
+            compatible = "wq,time";
+            reg = <0x50000000 0x1c>;
+        };
   
         uart0: uart@02020000 {
             compatible = "imx6ull,uart";

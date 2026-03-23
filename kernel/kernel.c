@@ -11,28 +11,28 @@
 #include <os/kmalloc.h>
 #include <os/printk.h>
 
-// #include <drivers/time.h>
+// #include <os/time.h>
 #include <os/mm.h>
 
 // #include <asm/arch_timer.h>
-#include <drivers/of/fdt.h>
-#include <drivers/of/of_platform.h>
-#include <fs/fs_init.h>
-#include <fs/vfs.h>
+#include <os/fdt.h>
+#include <os/of_platform.h>
+// #include <fs/fs_init.h>
+// #include <fs/vfs.h>
 // #include <os/elf.h>
 // #include <os/irq.h>
-#include <os/mm/memblock.h>
-#include <os/mm/symbols.h>
-#include <os/mm/early_malloc.h>
+#include <mm/memblock.h>
+#include <mm/symbols.h>
+#include <mm/early_malloc.h>
 #include <os/driver.h>
 // #include <os/of.h>
-// #include <os/mm/page.h>
+// #include <mm/page.h>
 // #include <os/proc.h>
 // #include <os/sched.h>
 // #include <os/string.h>
-// #include <os/mm/physmem.h>
-// #include <os/mm/buddy.h>
-// #include <os/mm/slab.h>
+// #include <mm/physmem.h>
+// #include <mm/buddy.h>
+// #include <mm/slab.h>
 
 uint8_t is_init = 0;
 
@@ -55,11 +55,12 @@ void init_kernel(int hartid,void *dtb) {
         mm_init();
     
         kmalloc_init();
-        of_platform_populate();
+        printk("init kernel: kmalloc init done\n");
+        of_platform_populate(fdt_root_node,of_default_bus_match_table,NULL);
         // irq_init();
         
-        driver_init();
-        fs_init();
+        // driver_init();
+        // fs_init();
         // irq_enable(EXTERN_IRQ);
 
         // is_init = 1;

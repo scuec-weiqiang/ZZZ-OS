@@ -3,7 +3,7 @@
 
 #include <os/types.h>
 #include <os/bitops.h>
-#include <os/mm/pgprot.h>
+#include <mm/pgprot.h>
 
 typedef enum {
     VMA_NONE    = 0,         // 非pte页表项

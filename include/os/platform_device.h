@@ -3,22 +3,29 @@
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @Date         : 2026-03-23 00:08:30
- * @LastEditTime : 2026-03-23 00:08:32
+ * @LastEditTime : 2026-03-23 23:59:51
  * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2026.
 */
 #ifndef __KERNEL_PLATFORM_DEVICE_H
 #define __KERNEL_PLATFORM_DEVICE_H
 #include <os/types.h>
+#include <os/device.h>
 
 struct platform_device {
     const char *name;              // 例如 "ns16550a"
-    struct platform_device *parent;  // optional
+    struct device dev;            // device core
     void *platform_data;           // optional
     struct resource *resources;
     int num_resources;
-    struct device *dev;            // device core
-    struct list_head link;         // 链接到全局 platform device 列表
+    
+    struct list_head node;         // 链接到全局 platform device 列表
 };
+
+extern struct bus_type platform_bus_type;
+extern struct device platform_bus;
+extern int platform_bus_init();
+extern int platform_device_register(struct platform_device *pdev);
+extern int platform_device_unregister(struct platform_device *pdev);
 
 #endif

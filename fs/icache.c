@@ -13,7 +13,7 @@
 #include <os/lru.h>
 #include <asm/spinlock.h>
 #include <os/string.h>
-#include <drivers/time.h>
+#include <os/time.h>
 #include <os/container_of.h>
 #include <fs/icache.h>
 

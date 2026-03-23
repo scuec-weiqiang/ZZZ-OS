@@ -1,5 +1,5 @@
-#include <os/mm/vma.h>
-#include <os/mm/mm_types.h>
+#include <mm/vma.h>
+#include <mm/mm_types.h>
 #include <os/printk.h>
 #include <os/mm.h>
 #include <os/pfn.h>

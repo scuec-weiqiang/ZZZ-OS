@@ -7,7 +7,7 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright        : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include <drivers/of/fdt.h>
+#include <os/fdt.h>
 #include <os/bswap.h>
 #include <os/kmalloc.h>
 #include <fs/path.h>

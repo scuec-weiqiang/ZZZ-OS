@@ -9,15 +9,15 @@
 */
 
 #include "os/types.h"
-#include <os/mm/memblock.h>
+#include <mm/memblock.h>
 #include <os/printk.h>
 #include <os/list.h>
 #include <os/pfn.h>
-#include <os/mm/symbols.h>
+#include <mm/symbols.h>
 #include <os/mm.h>
 #include <os/minmax.h>
 #include <os/of.h>
-#include <os/mm/early_malloc.h>
+#include <mm/early_malloc.h>
 #include <os/kva.h>
 
 

@@ -36,3 +36,11 @@ int device_register(struct device *dev) {
     device_add(dev);
     return device_attach(dev);
 }
+
+int device_unregister(struct device *dev) {
+    if (!dev) {
+        return -1;
+    }
+    list_del(&dev->node);
+    return 0;
+}
