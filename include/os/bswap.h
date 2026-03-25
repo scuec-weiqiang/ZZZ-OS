@@ -10,12 +10,14 @@
 #ifndef macros_lib_bswap_h
 #define macros_lib_bswap_h
 
-static inline unsigned int __bswapsi2(unsigned int x) {
+#include <os/types.h>
+
+static inline unsigned int __bswapsi2(__be32 x) {
     return (x << 24) | ((x << 8) & 0x00FF0000) | ((x >> 8) & 0x0000FF00) | (x >> 24);
 }
 
 
-static inline unsigned long long __bswapdi2(unsigned long long x) {
+static inline unsigned long long __bswapdi2(__be64 x) {
     return (x << 56) | ((x << 40) & 0x00FF000000000000) |
            ((x << 24) & 0x0000FF0000000000) | ((x << 8) & 0x000000FF00000000) |
            ((x >> 8) & 0x00000000FF000000) | ((x >> 24) & 0x0000000000FF0000) |

@@ -19,7 +19,6 @@
     };
 
     cpus {
-        compatible = "armv7-a";
         #address-cells = <1>;
         #size-cells = <1>;
         cpu0: cpu@0 {
@@ -31,7 +30,7 @@
 
     intc:interrupt-controller@00a01000 {
     compatible = "arm,cortex-a7-gic";
-    #interrupt-cells = <3>;
+    #interrupt-cells = <1>;
     interrupt-controller;
     reg =   <0x00a01000 0x1000>,
             <0x00a02000 0x100>;
@@ -41,16 +40,6 @@
         #address-cells = <1>;
         #size-cells = <1>;
         compatible = "simple-bus";
-
-        // plic: plic@c000000 {
-        //     compatible = "riscv,plic";
-        //     interrupt-controller;
-        //     reg = <0xc000000 0x4000000>;
-        //     #interrupt-cells = <1>;
-        //     riscv,max-priority = <7>;
-        //     riscv,ndev = <53>;       // 支持的外设中断数量
-        //     interrupts-extended = <&cpu0 9>; // 通知目标CPU
-        // };
        
         time: time@50000000 {
             compatible = "wq,time";
@@ -60,8 +49,7 @@
         uart0: uart@02020000 {
             compatible = "imx6ull,uart";
             reg = <0x02020000 0xbc>;
-            // interrupt-parent = <&plic>;
-            // interrupts = <10>;
+            interrupts-extended = <&intc 33>; // GIC中对应的中断号
         };
 
         // virt_disk: virt_disk@10001000 {

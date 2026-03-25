@@ -1,1 +1,20 @@
-[]
+[
+    {
+        "arguments": [
+            "arm-linux-gnueabihf-gcc",
+            "-c",
+            "-g",
+            "-Wall",
+            "-fno-builtin",
+            "-std=c11",
+            "-Iinclude",
+            "-march=armv7-a",
+            "-Idrivers/of/",
+            "-o",
+            "build/./drivers/of/of_irq.o",
+            "drivers/of/of_irq.c"
+        ],
+        "directory": "/home/wei/ZZZ-OS",
+        "file": "drivers/of/of_irq.c"
+    }
+]

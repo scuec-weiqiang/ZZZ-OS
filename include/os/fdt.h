@@ -57,12 +57,13 @@ struct device_prop {
 struct device_node {
     char *name;
     char *full_path; // 全路径（如 /soc/uart@12340000）
-    char *type;
     int depth;
     struct device_node *parent;
     struct device_node *children;
     struct device_node *sibling;
     struct device_prop *properties;
+
+    unsigned int _flags;
 
     // optional: if necessary,you can make nodes tree flat, so we can traverse nodes you need easily
     struct list_head node;

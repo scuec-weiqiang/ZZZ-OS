@@ -13,11 +13,37 @@
 #include <os/types.h>
 #include <os/fdt.h>
 #include <os/device.h>
+#include <os/bswap.h>
+#include <os/bitops.h>
+
+/* flag descriptions */
+#define OF_DYNAMIC	1 /* node and properties were allocated via kmalloc */
+#define OF_DETACHED	2 /* node has been detached from the device tree */
+#define OF_POPULATED	3 /* device already created for the node */
+#define OF_POPULATED_BUS	4 /* of_platform_populate recursed to children of this node */
+
+static inline void of_node_set_flag(struct device_node *n, unsigned long flag)
+{
+	n->_flags |= BIT(flag);
+}
+
+static inline void of_node_clear_flag(struct device_node *n, unsigned long flag)
+{
+	n->_flags &= ~BIT(flag);
+}
+
+#define MAX_PHANDLE_ARGS 16
+struct of_phandle_args {
+	struct device_node *np;
+	int args_count;
+	uint32_t args[MAX_PHANDLE_ARGS];
+};
 
 extern struct device_node* of_get_next_child(const struct device_node *node,struct device_node *prev);
 extern struct device_node* of_find_node_by_path(const char* path);
 extern struct device_node* of_find_node_by_compatible(const char* compatible_prop);
-extern struct device_prop* of_get_prop_by_name(const struct device_node* node, const char* name);
+extern struct device_prop* of_get_property_by_name(const struct device_node* node, const char* name);
+extern void *of_get_property(const struct device_node *node, const char *name, uint32_t *lenp);
 extern struct device_node* of_find_node_by_phandle(uint32_t phandle);
 extern uint32_t of_get_address_cells(const struct device_node *node);
 extern uint32_t of_get_size_cells(const struct device_node *node);
@@ -37,5 +63,14 @@ extern const struct of_device_id *of_match_node(const struct of_device_id *match
 	for (child = of_get_next_child(parent, NULL); child != NULL; \
 	     child = of_get_next_child(parent, child))
          
+
+static inline uint64_t of_read_number(const __be32 *cell, int size)
+{
+	uint64_t r = 0;
+	while (size--)
+		r = (r << 32) | be32_to_cpu(*(cell++));
+	return r;
+}
+
 extern void of_test();
 #endif // __KERNEL_OF_H__

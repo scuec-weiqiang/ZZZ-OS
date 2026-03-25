@@ -78,7 +78,7 @@ struct device_node *of_find_node_by_compatible(const char *compatible_prop) {
     return NULL;
 }
 
-struct device_prop *of_get_prop_by_name(const struct device_node *node, const char *name) {
+struct device_prop *of_get_property_by_name(const struct device_node *node, const char *name) {
     if (!node || !name)
         return NULL;
 
@@ -92,10 +92,21 @@ struct device_prop *of_get_prop_by_name(const struct device_node *node, const ch
     return NULL;
 }
 
+void *of_get_property(const struct device_node *node, const char *name, uint32_t *lenp) {
+    struct device_prop *prop = of_get_property_by_name(node, name);
+    if (prop) {
+        if (lenp) {
+            *lenp = prop->length;
+        }
+        return prop->value;
+    }
+    return NULL;
+}
+
 uint32_t fdt_get_phandle(const struct device_node *node) {
     if (!node)
         return 0;
-    struct device_prop *prop = of_get_prop_by_name(node, "phandle");
+    struct device_prop *prop = of_get_property_by_name(node, "phandle");
     if (prop) {
         return be32_to_cpu(*(uint32_t *)prop->value);
     }
@@ -105,7 +116,7 @@ uint32_t fdt_get_phandle(const struct device_node *node) {
 uint32_t *of_get_reg(const struct device_node *node) {
     if (!node)
         return 0;
-    struct device_prop *prop = of_get_prop_by_name(node, "reg");
+    struct device_prop *prop = of_get_property_by_name(node, "reg");
     if (prop) {
         return (uint32_t *)prop->value;
     }
@@ -116,7 +127,7 @@ uint32_t *of_read_u32_array(const struct device_node *node, const char *prop_nam
     if (!node || !prop_name || count <= 0)
         return NULL;
 
-    struct device_prop *prop = of_get_prop_by_name(node, prop_name);
+    struct device_prop *prop = of_get_property_by_name(node, prop_name);
     if (!prop || prop->length < count * sizeof(uint32_t))
         return NULL;
 
@@ -131,7 +142,7 @@ uint64_t *of_read_u64_array(const struct device_node *node, const char *prop_nam
     if (!node || !prop_name || count <= 0)
         return NULL;
 
-    struct device_prop *prop = of_get_prop_by_name(node, prop_name);
+    struct device_prop *prop = of_get_property_by_name(node, prop_name);
     if (!prop || prop->length < count * sizeof(uint64_t))
         return NULL;
 
@@ -176,45 +187,42 @@ struct device_node *of_find_node_by_phandle(uint32_t phandle) {
     return NULL;
 }
 
-uint32_t of_get_address_cells(const struct device_node *node) {
+int of_get_address_cells(const struct device_node *node) {
+    struct device_node *current = (struct device_node *)node->parent;
+    struct device_prop *prop = NULL;
+
+    while (current) {
+        prop = of_get_property_by_name(current, "#address-cells");
+        if (!prop) {
+            current = current->parent;
+        } else {
+            return be32_to_cpu(*(__be32 *)prop->value);
+        }
+    }
+    return 1;
+}
+
+int of_get_size_cells(const struct device_node *node) {
     if (!node)
         return -1;
     struct device_node *current = (struct device_node *)node->parent;
     struct device_prop *prop = NULL;
 
     while (current) {
-        prop = of_get_prop_by_name(current, "#address-cells");
+        prop = of_get_property_by_name(current, "#size-cells");
         if (!prop) {
             current = current->parent;
         } else {
-            return be32_to_cpu(*(uint32_t *)prop->value);
+            return be32_to_cpu(*(__be32 *)prop->value);
         }
     }
-    return 2;
+    return 1;
 }
-
-uint32_t of_get_size_cells(const struct device_node *node) {
-    if (!node)
-        return -1;
-    struct device_node *current = (struct device_node *)node->parent;
-    struct device_prop *prop = NULL;
-
-    while (current) {
-        prop = of_get_prop_by_name(current, "#size-cells");
-        if (!prop) {
-            current = current->parent;
-        } else {
-            return be32_to_cpu(*(uint32_t *)prop->value);
-        }
-    }
-    return 2;
-}
-
 
 struct device_node *of_get_interrupt_parent(const struct device_node *node) {
     if (!node)
         return NULL;
-    struct device_prop *prop = of_get_prop_by_name(node, "interrupt-parent");
+    struct device_prop *prop = of_get_property_by_name(node, "interrupt-parent");
     if (!prop) {
         return NULL;
     }
@@ -228,7 +236,7 @@ int of_device_is_available(const struct device_node *node) {
         return -1;
     }
 
-    struct device_prop *status = of_get_prop_by_name(node, "status");
+    struct device_prop *status = of_get_property_by_name(node, "status");
 
     if (!status) {
         return 0;
@@ -245,39 +253,12 @@ int of_device_is_available(const struct device_node *node) {
     return -1;
 }
 
-int of_device_is_type(const struct device_node *node, const char *type) {
-    if (!node || !type)
-        return -1;
-
-    if (strcmp(type, "soc") == 0 && strcmp(node->name, "soc") == 0) {
-       return 0; 
-    }
-
-    struct device_prop *prop = of_get_prop_by_name(node, "device_type");
-    if (!prop)
-        return -1;
-
-    if (strncmp((const char *)prop->value, type, prop->length) == 0) {
-        return 0;
-    }
-
-    prop = of_get_prop_by_name(node, "compatible");
-    if (!prop)
-        return -1;
-    if (strncmp((const char *)prop->value, type, prop->length) == 0) {
-        return 0;
-    }
-    
-    return -1;
-}
-
-
 const struct of_device_id *of_match_node(const struct of_device_id *matches, const struct device_node *node) {
     if (!matches || !node)
         return NULL;
 
     for (const struct of_device_id *id = matches; id->compatible[0]; id++) {
-        struct device_prop *prop = of_get_prop_by_name(node, "compatible");
+        struct device_prop *prop = of_get_property_by_name(node, "compatible");
         if (!prop) continue;
         
         if (strcmp(prop->value, id->compatible) == 0) {
@@ -286,6 +267,8 @@ const struct of_device_id *of_match_node(const struct of_device_id *matches, con
     }
     return NULL;
 }
+
+
 
 // int of_node_is_bus(const struct device_node *np)
 // {

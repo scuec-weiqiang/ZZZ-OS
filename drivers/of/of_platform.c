@@ -17,6 +17,8 @@
 #include <os/printk.h>
 #include <os/platform_device.h>
 #include <os/device.h>
+#include <os/of_address.h>
+#include <os/of_irq.h>
 
 const struct of_device_id of_default_bus_match_table[] = {
 	{ .compatible = "simple-bus", },
@@ -24,11 +26,9 @@ const struct of_device_id of_default_bus_match_table[] = {
 };
 
 struct platform_device *platform_device_create(struct device_node *np, struct device *parent) {
-    if (!np) return 0;
     struct platform_device *pdev = NULL;
-    uint32_t *regs = of_get_reg(np);
-    // struct device_prop *interrupts = of_get_prop_by_name(np, "interrupts");
-    // int irq_count = interrupts ? 1:0;
+    struct resource temp_res;
+    int i = 0, num_reg = 0, num_irq = 0;
 
     pdev = kmalloc(sizeof(struct platform_device));
     memset(pdev, 0, sizeof(struct platform_device));
@@ -36,89 +36,61 @@ struct platform_device *platform_device_create(struct device_node *np, struct de
     pdev->dev.of_node = np;
     pdev->dev.bus = &platform_bus_type;
     pdev->dev.name = strdup(np->name);
-    pdev->dev.parent = parent;
-
+    pdev->dev.parent = parent ? parent : &platform_bus;
     pdev->name  = pdev->dev.name;
-    
-    if (regs) {
-        pdev->resources = kmalloc(sizeof(struct resource));
-        pdev->resources[0].type = RESOURCE_MEM;
-        pdev->resources[0].start = be32_to_cpu(regs[0]); // careful with 64-bit
-        pdev->resources[0].size = be32_to_cpu(regs[1]);  // if your fdt_get_reg returns pair
-        pdev->num_resources = 1;
+
+    // printk("platform device: %s\n", pdev->name);
+	while (of_address_to_resource(np, num_reg, &temp_res)) {
+        // printk("  - reg: start=%xu, size=%xu\n", temp_res.start, temp_res.size);
+        num_reg++;
     }
 
-    platform_device_register(pdev);
+    num_irq = of_irq_count(np);
+		
+    if (num_reg || num_irq) {
+        pdev->num_resources = num_reg + num_irq;
+        pdev->resources = kmalloc(sizeof(struct resource) * pdev->num_resources);
+        // printk("register platform device: %s\n", pdev->name);
+        for (; i < num_reg; i++) {
+            of_address_to_resource(np, i, &pdev->resources[i]);
+            // printk("  - reg: start=%xu, size=%xu\n", pdev->resources[i].start, pdev->resources[i].size);
+        }
+
+        for (;i < num_reg + num_irq; i++) {
+            of_irq_to_resource(np, i - num_reg, &pdev->resources[i]);
+            // printk("  - irq: irq=%d\n", pdev->resources[i].irq);
+        }
+
+    }
     
+    platform_device_register(pdev);
     return pdev;
 }
 
-// static struct device_node *queue[sizeof(struct device_node*)*512] = {0};
-
-// void of_platform_populate1() {
-//     int front=0,rear=0;
-//     struct device_node *node=NULL ,*child=NULL;
-//     struct platform_device *pdev=NULL;
-//     struct platform_device *parent=NULL;
-
-//     queue[rear] = (struct device_node *)fdt_root_node;
-//     rear++;    
-
-//     while(front < rear) {
-//         node = queue[front];
-//         front++;
-
-//         if (node == fdt_root_node) {
-//             goto next;
-//         }
-
-//         if (of_device_is_available(node) < 0) {
-//             goto next;
-//         }
-        
-//         if (of_device_is_type(node, "soc")==0 
-//         || of_device_is_type(node, "simple-bus")==0 
-//         || of_device_is_type(node, "memory")==0
-//         || of_device_is_type(node, "cpu")==0 
-//         || of_get_prop_by_name(node, "compatible") == NULL) {
-//             goto next;
-//         }
-
-//         pdev = platform_device_create(node,parent);
-//         printk("Found platform device: %s\n", pdev->name);
-//         parent = pdev;
-
-//         next:
-//         child = node->children;
-//         while(child) {
-//             queue[rear] = child;
-//             rear++;
-//             child = child->sibling; 
-//         }
-//     }
-// }
 
 int of_platform_bus_create(struct device_node *bus, const struct of_device_id *matches, struct device *parent) {
     struct device_node *child;
 	struct platform_device *pdev;
     int rc = 0;
 
-    if (of_get_prop_by_name(bus, "compatible") == NULL) {
+    if (of_get_property_by_name(bus, "compatible") == NULL) {
         return 0;
     }
 
     pdev = platform_device_create(bus, parent);
+		// printk("   create: %s\n", bus->full_path);
 
 	if (!pdev || !of_match_node(matches, bus))
 		return 0;
 
 	for_each_child_of_node(bus, child) {
-		printk("   create child: %s\n", child->full_path);
 		rc = of_platform_bus_create(child, matches,  &pdev->dev);
 		if (rc) {
 			break;
 		}
 	}
+
+    of_node_set_flag(bus, OF_POPULATED_BUS);
     return 0;
 }
 
@@ -137,4 +109,5 @@ void of_platform_populate(struct device_node *root, const struct of_device_id *m
 			break;
 	}
 
+    of_node_set_flag(root, OF_POPULATED_BUS);
 }

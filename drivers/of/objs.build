@@ -2,3 +2,5 @@ OBJ_Y += fdt.o
 OBJ_Y += of_platform.o
 OBJ_Y += of.o
 OBJ_Y += of_memory.o
+OBJ_Y =+ of_address.o
+OBJ_Y += of_irq.o

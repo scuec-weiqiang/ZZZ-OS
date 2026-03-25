@@ -30,7 +30,7 @@ int of_scan_memory() {
 
         printk("address_cells: %x, size_cells: %x\n", address_cells, size_cells);
 
-        struct device_prop *reg_prop = of_get_prop_by_name(pos, "reg");
+        struct device_prop *reg_prop = of_get_property_by_name(pos, "reg");
         if (!reg_prop) {
             continue;
         }
@@ -63,7 +63,7 @@ int of_scan_memory() {
             }
             
             memblock_add(start, size);
-            if (of_get_prop_by_name(pos, "no-map")) {
+            if (of_get_property_by_name(pos, "no-map")) {
                 memblock_mark_nomap(start, size);
             }
         }
@@ -89,7 +89,7 @@ int of_scan_reserved_memory() {
         uint32_t address_cells = of_get_address_cells(pos);
         uint32_t size_cells = of_get_size_cells(pos);
 
-        struct device_prop *reg_prop = of_get_prop_by_name(pos, "reg");
+        struct device_prop *reg_prop = of_get_property_by_name(pos, "reg");
         if (!reg_prop) {
             continue;
         }
@@ -121,7 +121,7 @@ int of_scan_reserved_memory() {
             }
             
             memblock_reserve(start, size);
-            if (of_get_prop_by_name(pos, "no-map")) {
+            if (of_get_property_by_name(pos, "no-map")) {
                 memblock_mark_nomap(start, size);
             }
         }

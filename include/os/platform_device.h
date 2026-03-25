@@ -3,7 +3,7 @@
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @Date         : 2026-03-23 00:08:30
- * @LastEditTime : 2026-03-23 23:59:51
+ * @LastEditTime : 2026-03-25 18:53:50
  * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2026.
 */
@@ -20,6 +20,14 @@ struct platform_device {
     int num_resources;
     
     struct list_head node;         // 链接到全局 platform device 列表
+};
+
+struct platform_driver {
+    const char *name;
+    struct device_driver drv; // driver core
+    int (*probe) (struct platform_device *pdev);
+    int (*remove) (struct platform_device *pdev);
+    struct list_head node; // 链接到全局 platform driver 列表
 };
 
 extern struct bus_type platform_bus_type;

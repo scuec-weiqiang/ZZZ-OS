@@ -28,8 +28,6 @@ int platform_bus_init() {
     return bus_register(&platform_bus_type);
 }
 
-
-
 int platform_device_register(struct platform_device *pdev) {
     if (!pdev) {
         return -1;
