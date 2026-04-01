@@ -1,4 +1,5 @@
 OBJ_Y += bus.o
 OBJ_Y += platform.o
 OBJ_Y += device.o
-
+OBJ_Y += driver.o
+OBJ_Y += dd.o

@@ -48,7 +48,7 @@ static int n_to_order(uint32_t n) {
     return order;
 }
 
-struct free_area free_area[MAX_ORDER]= {0};
+struct free_area free_area[MAX_ORDER];
 
 void try_merge_order(unsigned int order) {
     if (order >= MAX_ORDER - 1) {

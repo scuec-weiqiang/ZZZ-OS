@@ -3,12 +3,13 @@
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @Date         : 2026-03-18 16:16:46
- * @LastEditTime : 2026-03-18 16:16:47
+ * @LastEditTime : 2026-03-26 19:50:42
  * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2026.
 */
 #include <os/types.h>
 #include <os/printk.h>
+#include <asm/irq.h>
 
 static inline uint32_t read_dfar(void)
 {
@@ -17,9 +18,8 @@ static inline uint32_t read_dfar(void)
     return v;
 }
 
-void default_exception(void)
-{
-    printk("default exception\n");
+static void exception(char *s) {
+    printk("%s exception\n", s);
     while (1) {
     }
 }
@@ -27,37 +27,45 @@ void default_exception(void)
 
 void reset_handler(void)
 {
-    default_exception();
+    exception("reset");
 }
 
 void reserved_handler(void)
 {
-    default_exception();
+    exception("reserved");
 }
 
 void undef_handler(void)
 {
-    default_exception();
+   exception("undef");
 }
 
 void swi_handler(void)
 {
-    default_exception();
+    exception("swi");
 }
 
 void prefetch_abort_handler(void)
 {
-    default_exception();
+    exception("prefetch");
 }
 
-void irq_handler(void)
+
+reg_t irq_handler(reg_t ctx)
 {
-    default_exception();
+    if (handle_arch_irq) {
+        return handle_arch_irq(&ctx);
+    } else {
+        printk("No arch irq handler registered\n");
+        exception("irq");
+        return ctx;
+    }
+        
 }
 
 void fiq_handler(void)
 {
-    default_exception();
+    exception("fiq");
 }
 
 static inline uint32_t read_dfsr(void)

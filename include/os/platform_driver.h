@@ -11,7 +11,7 @@
 #define __KERNEL_PLATFORM_DRIVER_H
 
 #include <os/driver_model.h>
-#include <os/module.h>
+#include <os/init.h>
 
 extern int platform_driver_register(struct platform_driver *drv);
 extern int platform_driver_unregister(struct platform_driver *drv);

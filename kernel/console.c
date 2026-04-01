@@ -34,6 +34,9 @@ static int ring_getc(void) {
 }
 
 void console_register(void (*fn)(char c)) {
+    if (!fn || fn_putc) {
+        return;
+    }
     fn_putc = fn;
 }
 
@@ -41,6 +44,9 @@ void console_puts(char *str) {
     int i = 0;
     while(str[i]) {
         ring_putc(str[i]);
+        if (str[i] == '\n') {
+            ring_putc('\r');
+        }
         i++;
     }
     ring_putc(0);

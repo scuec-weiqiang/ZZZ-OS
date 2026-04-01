@@ -10,16 +10,14 @@
 #include <os/time.h>
 #include <os/bswap.h>
 #include <os/types.h>
-#include <asm/platform.h>
 #include <fs/vfs.h>
 #include <fs/vfs_types.h>
 #include <fs/chrdev.h>
 #include <os/string.h>
 #include <os/of.h>
 #include <os/printk.h>
-#include <os/module.h>
+#include <os/init.h>
 #include <os/mm.h>
-#include <os/driver_model.h>
 #include <drivers/core/driver.h>
 
 // 固定地址的时间缓冲区

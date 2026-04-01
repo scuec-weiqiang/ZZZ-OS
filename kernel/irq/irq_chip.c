@@ -8,6 +8,7 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include <os/irq_chip.h>
+#include <os/of_irq.h>
 #include <os/string.h>
 #include <os/kmalloc.h>
 
@@ -38,4 +39,10 @@ struct irq_chip* irq_chip_lookup(char *name, int hart) {
         }
     }
     return NULL;
+}
+
+extern struct of_device_id __irqchip_of_table[];
+
+void irq_chip_init() {
+    of_irq_init(__irqchip_of_table);
 }

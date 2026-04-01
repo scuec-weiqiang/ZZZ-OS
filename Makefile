@@ -19,13 +19,11 @@ LD := $(CROSS_COMPILE)ld
 OBJDUMP :=$(CROSS_COMPILE)objdump
 OBJCOPY := $(CROSS_COMPILE)objcopy
 
-CFLAGS = -g -Wall -fno-builtin -std=c11
+CFLAGS = -g -Wall -fno-builtin -std=c11 -ffreestanding
 CFLAGS += -Iinclude 
 CFLAGS += -MMD -MP
 ASFLAGS := $(CFLAGS)
 LDFLAGS := -Tarch/$(ARCH)/link.ld 
-LDFLAGS += -nostdlib  # 不链接标准库
-LDFLAGS += -nostartfiles  # 不使用标准启动文件（如 crt0.o）
 -include arch/$(ARCH)/config.mk
 
 # 目标架构的asm头文件目录（如arch/riscv64/include/asm）

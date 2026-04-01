@@ -3,19 +3,11 @@
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @Date         : 2026-03-12 00:25:01
- * @LastEditTime : 2026-03-24 01:30:18
+ * @LastEditTime : 2026-03-26 00:04:55
  * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2026.
 */
-/**
- * @FilePath: /ZZZ-OS/drivers/uart.c
- * @Description:
- * @Author: scuec_weiqiang scuec_weiqiang@qq.com
- * @Date: 2025-04-15 17:10:59
- * @LastEditTime: 2025-11-14 02:20:34
- * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
- * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
- */
+
 // #include <fs/chrdev.h>
 // #include <fs/vfs.h>
 #include <os/console.h>
@@ -25,6 +17,7 @@
 #include <os/irqreturn.h>
 #include <os/irq.h>
 #include <os/printk.h>
+#include <os/platform_device.h>
 
 #define __IO volatile
 #define __I  volatile const
@@ -54,7 +47,7 @@ typedef struct {
 phys_addr_t uart_base = 0;
 
 #define UART1 ((UART_Type*)uart_base)
-#define UART ((UART_Type*)0x02020000)
+// #define UART ((UART_Type*)0x02020000)
 
 static void putc (char c)
 {
@@ -63,12 +56,12 @@ static void putc (char c)
     UART1->UTXD = c;
 }
 
-void uart_putc(char c)
-{
-    while ((UART->UTS >> 4) & 1) {
-    }
-    UART->UTXD = c;
-}
+// void uart_putc(char c)
+// {
+//     while ((UART->UTS >> 4) & 1) {
+//     }
+//     UART->UTXD = c;
+// }
 
 static char getc(void) {
     while ((UART1->UTS >> 0) & 1) {
@@ -76,24 +69,17 @@ static char getc(void) {
     return UART1->UTXD & 0xFF;
 }
 
-void puts(char *s)
-{
-    while (*s) {
-        uart_putc(*s++);
-        if (*s == '\n') {
-            uart_putc('\r');
-        }
-    }
-}
+// void puts(char *s)
+// {
+//     while (*s) {
+//         uart_putc(*s++);
+//         if (*s == '\n') {
+//             uart_putc('\r');
+//         }
+//     }
+// }
 
-
-static void uart_reg_init() {
-        // 配置UART寄存器，设置波特率、数据位、停止位等
-        // 具体配置根据芯片手册进行设置
-}
-
-
-static irqreturn_t uart0_iqr(int virq, void *dev_id) {
+irqreturn_t uart0_iqr(int virq, void *dev_id) {
     char a = getc();
     printk("%c",a);
     if('\r'==a)
@@ -130,48 +116,52 @@ static irqreturn_t uart0_iqr(int virq, void *dev_id) {
     // .write = uart_write,
 // };
 
-// static int uart_probe(struct platform_device *pdev) {
-//     struct device_node *node = of_find_node_by_compatible("imx6ull,uart");
-//     if (!node) {
-//         return -1;
-//     }
+static int uart_probe(struct platform_device *pdev) {
+    struct device_node *node = of_find_node_by_compatible("imx6ull,uart");
+    if (!node) {
+        return -1;
+    }
 
-//     uint32_t *reg = of_read_u32_array(node, "reg", 2);
-//     uart_base = (virt_addr_t)ioremap(reg[0], reg[1]);
+    uart_base = platform_ioremap_resource(pdev, 0);
 
-//     // uart_reg_init();
+    // printk("uart_base = %xu\n", uart_base);
+    
+    // uart_reg_init();
 
-//     // dev_t devnr = 2;
-//     // register_chrdev(devnr, "uart", &uart_file_ops);
-//     // if (lookup("/uart") == NULL)
-//     //     mknod("/uart", S_IFCHR | 0644, devnr);
+    // dev_t devnr = 2;
+    // register_chrdev(devnr, "uart", &uart_file_ops);
+    // if (lookup("/uart") == NULL)
+    //     mknod("/uart", S_IFCHR | 0644, devnr);
 
-//     // int virq = platform_get_irq(pdev, 0);
-//     // irq_register(virq, uart0_iqr, "uart0_irq",NULL);
+    // int virq = platform_get_irq(pdev, 0);
+    // irq_register(virq, uart0_iqr, "uart0_irq",NULL);
 
-//     console_register(putc);
-//     // irq_enable(virq);
-//     return 0;
-// }
+    console_register(putc);
+    // irq_enable(virq);
+    return 0;
+}
 
-// static void uart_remove() {
-//     // unregister_chrdev(2, "/uart");
-//     // if (lookup("/uart")) {
-//     // }
-//     iounmap(uart_base, sizeof(UART_Type));
-//     uart_base = 0;
-// }
+static int uart_remove(struct platform_device *pdev) {
+    // unregister_chrdev(2, "/uart");
+    // if (lookup("/uart")) {
+    // }
+    iounmap(uart_base, sizeof(UART_Type));
+    uart_base = 0;
+    return 0;
+}
 
-// static struct of_device_id uart_of_match[] = {
-//     {.compatible = "imx6ull,uart",},
-//     {/* sentinel */}
-// };
+static struct of_device_id uart_of_match[] = {
+    {.compatible = "imx6ull,uart",},
+    {/* sentinel */}
+};
 
-// static struct platform_driver uart_driver = {
-//     .name = "uart_driver",
-//     .probe = uart_probe,
-//     .remove = uart_remove,
-//     .of_match_table = uart_of_match,
-// };
+static struct platform_driver uart_driver = {
+    .name = "uart_driver",
+    .probe = uart_probe,
+    .remove = uart_remove,
+    .driver = {
+        .of_match_table = uart_of_match,
+    }
+};
 
-// module_platform_driver(uart_driver);
+module_platform_driver(uart_driver);

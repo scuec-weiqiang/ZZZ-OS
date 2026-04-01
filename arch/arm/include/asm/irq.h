@@ -15,6 +15,11 @@
 #include <os/irqreturn.h>
 #include <os/types.h>
 
+
+typedef reg_t (*handle_arch_irq_t)(reg_t *ctx);
+
+extern handle_arch_irq_t handle_arch_irq;
+
 extern void arch_irq_cpu_init();
 extern int arch_local_irq_register(int hwirq, irq_handler_t handler, char *name, int hart, void *dev_id);
 extern int arch_extern_irq_register(int hwirq, irq_handler_t handler, char *name, int hart, void *dev_id);

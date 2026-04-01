@@ -12,6 +12,7 @@
 
 #include <os/types.h>
 #include <os/list.h>
+#include <os/of.h>
 
 struct irq_chip;
 
@@ -29,7 +30,6 @@ struct irq_ipi_ops {
     void (*send_ipi)(struct irq_chip *chip, int target_cpu, int ipi_id);
     void (*broadcast_ipi)(struct irq_chip *chip, int ipi_id);
 };
-
 
 struct irq_ops {
     void (*enable)(struct irq_chip *chip, int hwirq);
@@ -52,13 +52,10 @@ struct irq_chip_ops {
     struct irq_ipi_ops *ipi;
 };
 
-
 struct irq_chip {
     char name[32];                       // 中断控制器名称
     int hart;
     struct irq_chip_ops *ops;            // 中断控制器操作函数指针
-    struct irq_cpuif_ops *cpuif_ops;    // CPU接口操作函数指针
-    struct irq_ipi_ops *ipi_ops;        // IPI操作函数指针
     struct list_head link;          // 链表节点 
     void *priv;
 };
@@ -66,5 +63,7 @@ struct irq_chip {
 extern struct list_head irq_chip_list;
 extern struct irq_chip* irq_chip_register(char *name, struct irq_chip_ops *ops, int hart, void *priv);
 extern struct irq_chip* irq_chip_lookup(char *name,int hart);
+extern void irq_chip_init();
+#define IRQCHIP_DECLARE(name, compat, fn) OF_DECLARE_2(irqchip, name, compat, fn)
 
 #endif // __KERNEL_IRQ_H__

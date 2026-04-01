@@ -6,6 +6,7 @@
 #include <os/kmalloc.h>
 #include <os/bswap.h>
 #include <os/device.h>
+#include <os/of.h>
 
 struct device_node* of_get_next_child(const struct device_node *node,struct device_node *prev)
 {
@@ -253,6 +254,22 @@ int of_device_is_available(const struct device_node *node) {
     return -1;
 }
 
+struct device_node *of_find_all_nodes(struct device_node *prev) {
+	struct device_node *np;
+	if (!prev) {
+		np = fdt_root_node;
+	} else if (prev->children) {
+		np = prev->children;
+	} else {
+		/* Walk back up looking for a sibling, or the end of the structure */
+		np = prev;
+		while (np->parent && !np->sibling)
+			np = np->parent;
+		np = np->sibling; /* Might be null at the end of the tree */
+	}
+	return np;
+}
+
 const struct of_device_id *of_match_node(const struct of_device_id *matches, const struct device_node *node) {
     if (!matches || !node)
         return NULL;
@@ -268,19 +285,26 @@ const struct of_device_id *of_match_node(const struct of_device_id *matches, con
     return NULL;
 }
 
+struct device_node *of_find_matching_node_and_match(struct device_node *from,
+					const struct of_device_id *matches,
+					const struct of_device_id **match) {
+	struct device_node *np;
+	const struct of_device_id *m;
 
+	if (match)
+		*match = NULL;
 
-// int of_node_is_bus(const struct device_node *np)
-// {
-//     if (of_node_is_type(np, "simple-bus"))
-//         return 0;
-//     if (fdt_get_prop_by_name(np, "ranges"))
-//         return 0;
-//     // if (fdt_get_prop_by_name(np, "compatible") &&
-//     //     strstr((char*)prop->value, "bus"))
-//     //     return 1;
-//     return 0;
-// }
+	for_each_of_allnodes_from(from, np) {
+		m = of_match_node(matches, np);
+		if (m && np) {
+			if (match)
+				*match = m;
+			break;
+		}
+	}
+
+	return np;
+}
 
 
 void of_test() {

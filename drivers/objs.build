@@ -1,5 +1,6 @@
 OBJ_Y += of/
 OBJ_Y += core/
+OBJ_Y += irq_chip/
 OBJ_Y += imx6ull_uart.o
 # OBJ_Y += plic/
 # OBJ_Y += virt_disk/

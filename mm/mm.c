@@ -185,8 +185,6 @@ void mm_init() {
     // list_for_each_entry(region, &memblock.memory.regions, struct memblock_region, node) {
     //     map(kernel_mm_struct->pgdir, KERNEL_VA(region->base), region->base, region->size, PAGE_KERNEL);
     // }
-
-    pgtbl_map(kernel_mm_struct->pgdir, 0x02000000, 0x02000000, 0, PAGE_DEVICE);
     
     map(kernel_mm_struct->pgdir, trap_start, KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
     map(kernel_mm_struct->pgdir, text_start, KERNEL_PA(text_start), text_size, PAGE_KERNEL_EXEC);

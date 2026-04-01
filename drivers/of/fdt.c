@@ -25,7 +25,7 @@ static const char *struct_block;
 static const char *strings;
 
 struct device_node *phandle_table[PHANDLE_MAX] = {NULL};
-const struct device_node *fdt_root_node;
+struct device_node *fdt_root_node;
 
 struct device_node *fdt_new_node(const char *name, struct device_node *parent) {
     struct device_node *node = (struct device_node *)kmalloc(sizeof(struct device_node));

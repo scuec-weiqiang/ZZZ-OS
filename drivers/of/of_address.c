@@ -3,7 +3,7 @@
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @Date         : 2026-03-25 12:01:01
- * @LastEditTime : 2026-03-25 17:23:19
+ * @LastEditTime : 2026-03-25 20:50:31
  * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2026.
 */
@@ -46,10 +46,6 @@ static struct of_bus of_busses[] = {
 		.get_flags = of_bus_default_get_flags,
 	},
 };
-
-// const __be32 *of_get_address(struct device_node *dev, int index, uint64_t *size, unsigned int *flags) {
-
-// }
 
 
 const __be32* of_address_to_resource(struct device_node *dev, int index, struct resource *res) {

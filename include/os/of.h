@@ -15,6 +15,7 @@
 #include <os/device.h>
 #include <os/bswap.h>
 #include <os/bitops.h>
+#include <os/compiler_attributes.h>
 
 /* flag descriptions */
 #define OF_DYNAMIC	1 /* node and properties were allocated via kmalloc */
@@ -45,8 +46,8 @@ extern struct device_node* of_find_node_by_compatible(const char* compatible_pro
 extern struct device_prop* of_get_property_by_name(const struct device_node* node, const char* name);
 extern void *of_get_property(const struct device_node *node, const char *name, uint32_t *lenp);
 extern struct device_node* of_find_node_by_phandle(uint32_t phandle);
-extern uint32_t of_get_address_cells(const struct device_node *node);
-extern uint32_t of_get_size_cells(const struct device_node *node);
+extern int of_get_address_cells(const struct device_node *node);
+extern int of_get_size_cells(const struct device_node *node);
 extern uint32_t* of_get_reg(const struct device_node *node);
 extern uint32_t *of_read_u32_array(const struct device_node *node, const char *prop_name, int count);
 extern uint64_t *of_read_u64_array(const struct device_node *node, const char *prop_name, int count);
@@ -57,20 +58,43 @@ extern int of_scan_memory();
 extern int of_scan_reserved_memory();
 extern struct device *of_device_create(struct device_node *np, struct device *parent, struct bus_type *bus);
 extern const struct of_device_id *of_match_node(const struct of_device_id *matches, const struct device_node *node);
-
+extern struct device_node *of_find_all_nodes(struct device_node *prev);
+extern struct device_node *of_find_matching_node_and_match(struct device_node *from,const struct of_device_id *matches,const struct of_device_id **match);
+static inline struct device_node *of_find_matching_node(struct device_node *from, const struct of_device_id *matches) {
+	return of_find_matching_node_and_match(from, matches, NULL);
+}
 
 #define for_each_child_of_node(parent, child) \
 	for (child = of_get_next_child(parent, NULL); child != NULL; \
 	     child = of_get_next_child(parent, child))
-         
 
-static inline uint64_t of_read_number(const __be32 *cell, int size)
-{
+#define for_each_of_allnodes_from(from, dn) \
+	for (dn = of_find_all_nodes(from); dn; dn = of_find_all_nodes(dn))
+
+#define for_each_matching_node(dn, matches) \
+	for (dn = of_find_matching_node(NULL, matches); dn; \
+	     dn = of_find_matching_node(dn, matches))
+
+static inline uint64_t of_read_number(const __be32 *cell, int size) {
 	uint64_t r = 0;
 	while (size--)
 		r = (r << 32) | be32_to_cpu(*(cell++));
 	return r;
 }
+
+#define _OF_DECLARE(table, name, compat, fn, fn_type)			\
+	static const struct of_device_id __of_table_##name		\
+		__used __section("__"#table"_of_table")			\
+		 = { .compatible = compat,				\
+		     .data = (fn == (fn_type)NULL) ? fn : fn  }
+
+typedef int (*of_init_fn_2)(struct device_node *, struct device_node *);
+typedef void (*of_init_fn_1)(struct device_node *);
+
+#define OF_DECLARE_1(table, name, compat, fn) \
+		_OF_DECLARE(table, name, compat, fn, of_init_fn_1)
+#define OF_DECLARE_2(table, name, compat, fn) \
+		_OF_DECLARE(table, name, compat, fn, of_init_fn_2)
 
 extern void of_test();
 #endif // __KERNEL_OF_H__

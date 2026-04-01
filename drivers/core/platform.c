@@ -2,7 +2,10 @@
 #include <os/string.h>
 #include <os/printk.h>
 #include <os/bus.h>
+#include <os/device.h>
 #include <os/platform_device.h>
+#include <os/resource.h>
+#include <os/mm.h>
 
 struct device platform_bus = {
 	.name	= "platform",
@@ -45,3 +48,99 @@ int platform_device_unregister(struct platform_device *pdev) {
 }
 
 
+
+
+
+static int platform_drv_probe(struct device *_dev)
+{
+	struct platform_driver *drv = to_platform_driver(_dev->driver);
+	struct platform_device *dev = to_platform_device(_dev);
+
+	int ret;
+
+	ret = drv->probe(dev);
+		
+	return ret;
+}
+
+static int platform_drv_remove(struct device *_dev)
+{
+	struct platform_driver *drv = to_platform_driver(_dev->driver);
+	struct platform_device *dev = to_platform_device(_dev);
+	int ret;
+
+	ret = drv->remove(dev);
+	
+	return ret;
+}
+
+int platform_driver_unregister(struct platform_driver *pdrv) {
+    if (!pdrv) {
+        return -1;
+    }
+    bus_remove_driver(&pdrv->driver);
+    return 0;
+}
+
+int platform_driver_register(struct platform_driver *pdrv) {
+    if (!pdrv) {
+        return -1;
+    }
+    pdrv->driver.bus = &platform_bus_type;
+    if (pdrv->probe) {
+        pdrv->driver.probe = platform_drv_probe;
+    }
+    if (pdrv->remove) {
+        pdrv->driver.remove = platform_drv_remove;
+    }
+
+    driver_register(&pdrv->driver);
+    return 0;
+}
+
+
+struct resource *platform_get_resource(struct platform_device *pdev, unsigned int type, unsigned int index) {
+    int i;
+
+	for (i = 0; i < pdev->num_resources; i++) {
+		struct resource *r = &pdev->resources[i];
+
+		if (type == resource_type(r) && index-- == 0)
+			return r;
+	}
+	return NULL;
+}
+
+virt_addr_t platform_ioremap_resource(struct platform_device *pdev, unsigned int index) {
+    struct resource *res = platform_get_resource(pdev, IORESOURCE_MEM, index);
+    if (!res) {
+        return 0;
+    }
+    return (virt_addr_t)ioremap(res->start, res->size);
+}
+
+// int platform_get_irq(struct platform_device *dev, unsigned int num)
+// {
+// 	struct resource *r;
+// 	if (dev->dev.of_node) {
+// 		int ret;
+
+// 		ret = of_irq_get(dev->dev.of_node, num);
+// 		if (ret >= 0 || ret == -EPROBE_DEFER)
+// 			return ret;
+// 	}
+
+// 	r = platform_get_resource(dev, IORESOURCE_IRQ, num);
+// 	/*
+// 	 * The resources may pass trigger flags to the irqs that need
+// 	 * to be set up. It so happens that the trigger flags for
+// 	 * IORESOURCE_BITS correspond 1-to-1 to the IRQF_TRIGGER*
+// 	 * settings.
+// 	 */
+// 	if (r && r->flags & IORESOURCE_BITS)
+// 		irqd_set_trigger_type(irq_get_irq_data(r->start),
+// 				      r->flags & IORESOURCE_BITS);
+
+// 	return r ? r->start : -ENXIO;
+
+// }

@@ -46,6 +46,7 @@ enum fdt_token {
     FDT_END        = 9
 };
 
+
 // 属性结构
 struct device_prop {
     char *name;
@@ -53,6 +54,7 @@ struct device_prop {
     void *value;
     struct device_prop *next;
 };
+
 
 struct device_node {
     char *name;
@@ -69,7 +71,7 @@ struct device_node {
     struct list_head node;
 };
 
-extern const struct device_node *fdt_root_node;
+extern struct device_node *fdt_root_node;
 extern struct device_node *phandle_table[PHANDLE_MAX];
 
 extern struct device_node *fdt_new_node(const char *name, struct device_node *parent);
@@ -83,11 +85,6 @@ extern struct device_node *find_child_node_by_name(const struct device_node *par
 extern int fdt_walk_node(const struct device_node *node, int level);
 extern int fdt_walk(struct device_node *node, struct list_head *list);
 extern int fdt_init(void *dtb);
-
-
-
-
-
 
 
 #define OF_DECLARE 

@@ -41,5 +41,9 @@ struct resource {
     struct resource *parent, *sibling, *child;
 };
 
+static inline unsigned long resource_type(const struct resource *res)
+{
+	return res->flags & IORESOURCE_TYPE_BITS;
+}
 
 #endif // OS_RESOURCE_H

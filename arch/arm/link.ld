@@ -36,7 +36,8 @@ SECTIONS
     
     .irqinitcall : ALIGN(4096) {
         __irqinitcall_start = .;
-        KEEP(*(.irqinitcall))     /* 保留所有 initcall 段内容 */
+        __irqchip_of_table = .;
+        KEEP(*(__irqchip_of_table))     /* 保留所有 initcall 段内容 */
         __irqinitcall_end = .;
     }
     

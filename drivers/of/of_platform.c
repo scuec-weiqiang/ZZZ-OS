@@ -19,6 +19,7 @@
 #include <os/device.h>
 #include <os/of_address.h>
 #include <os/of_irq.h>
+#include <os/bus.h>
 
 const struct of_device_id of_default_bus_match_table[] = {
 	{ .compatible = "simple-bus", },
@@ -99,6 +100,7 @@ void of_platform_populate(struct device_node *root, const struct of_device_id *m
     if (!root) {
         root = (struct device_node *)fdt_root_node;
     }
+    bus_register(&platform_bus_type);
     
     struct device_node *child;
     int rc = 0;

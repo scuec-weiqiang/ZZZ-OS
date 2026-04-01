@@ -17,7 +17,7 @@
 #include <os/list.h>
 #include <os/elf.h>
 #include <fs/vfs_types.h>
-#include <asm/platform.h>
+// #include <asm/platform.h>
 
 #define PROC_STACK_SIZE PAGE_SIZE
 
@@ -71,7 +71,7 @@ struct proc
     struct list_head proc_lnode;
 };
 
-extern struct list_head proc_list_head[MAX_HARTS_NUM];
+extern struct list_head proc_list_head[2];
 extern void proc_init();
 extern struct proc* proc_create(char* path);
 extern struct proc* current_proc();

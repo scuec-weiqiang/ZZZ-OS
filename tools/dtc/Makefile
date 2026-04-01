@@ -1,7 +1,7 @@
 CC = gcc
 LEX = flex
 YACC = bison
-CFLAGS = -Wall -O2 -I.
+CFLAGS = -Wall -O2 -I. -I./libfdt
 
 # 输出文件名
 OBJS = dtc.o flattree.o fstree.o livetree.o srcpos.o treesource.o util.o \

@@ -3,7 +3,7 @@
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @Date         : 2026-03-23 00:06:13
- * @LastEditTime : 2026-03-23 23:07:39
+ * @LastEditTime : 2026-03-25 22:54:50
  * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2026.
 */
@@ -12,6 +12,7 @@
 
 #include <os/types.h>
 #include <os/devicetable.h>
+#include <os/init.h>
 
 struct device_driver;
 struct bus_type;
@@ -60,5 +61,23 @@ extern int device_register(struct device *dev);
 extern int device_unregister(struct device *dev);
 extern int device_add(struct device *dev);
 extern int device_attach(struct device *dev);
+
+extern int driver_register(struct device_driver *drv);
+extern void driver_unregister(struct device_driver *drv);
+extern int driver_attach(struct device_driver *drv);
+
+#define module_driver(__driver, __register, __unregister) \
+    static int  __driver##_init(void) \
+    { \
+        return __register(&(__driver)); \
+    } \
+    static void  __driver##_exit(void) \
+    { \
+        __unregister(&(__driver)); \
+    } \
+    module_init(__driver##_init,".initcall"); \
+    module_exit(__driver##_exit,".exitcall");
+
+extern void driver_init();
 
 #endif

@@ -20,11 +20,11 @@
 // #include <fs/fs_init.h>
 // #include <fs/vfs.h>
 // #include <os/elf.h>
-// #include <os/irq.h>
+#include <os/irq.h>
 #include <mm/memblock.h>
 #include <mm/symbols.h>
 #include <mm/early_malloc.h>
-#include <os/driver.h>
+#include <os/device.h>
 // #include <os/of.h>
 // #include <mm/page.h>
 // #include <os/proc.h>
@@ -55,9 +55,12 @@ void init_kernel(int hartid,void *dtb) {
         mm_init();
     
         kmalloc_init();
-        printk("init kernel: kmalloc init done\n");
-        of_platform_populate(fdt_root_node,of_default_bus_match_table,NULL);
-        // irq_init();
+
+        of_platform_populate(NULL,of_default_bus_match_table,NULL);
+
+        irq_init();
+        driver_init();
+
         
         // driver_init();
         // fs_init();

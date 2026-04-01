@@ -10,7 +10,7 @@
 #include <os/irq.h>
 #include <os/irq_chip.h>
 #include <os/irq_domain.h>
-#include <os/module.h>
+#include <os/init.h>
 
 #include <asm/irq.h>
 
@@ -24,8 +24,8 @@ void irq_init(void) {
         irq_desc[i].handler = NULL;
         irq_desc[i].dev_id = NULL;
     }
-    do_irqinitcalls();
-    arch_irq_init();
+    irq_chip_init();
+    // arch_irq_init();
 }
 
 
@@ -43,7 +43,7 @@ void irq_disable(int virq) {
 
 void irq_acknowledge(int virq) {
     struct irq_domain *domain = irq_domain_lookup(virq);
-    domain->chip->cpuif_ops->claim(domain->chip);
+    domain->chip->ops->cpuif->claim(domain->chip);
 }
 
 void irq_set_priority(int virq, int priority) {
