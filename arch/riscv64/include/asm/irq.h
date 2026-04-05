@@ -15,7 +15,8 @@
 #include <os/types.h>
 
 extern void arch_irq_init();
-extern int arch_local_irq_register(int hwirq, irq_handler_t handler, char *name, int hart, void *dev_id);
-extern int arch_extern_irq_register(int hwirq, irq_handler_t handler, char *name, int hart, void *dev_id);
+extern int arch_irq_cpu_id(void);
+extern int arch_local_irq_register(int hwirq, irq_handler_t handler, char *name, int cpu, void *dev_id);
+extern int arch_extern_irq_register(int hwirq, irq_handler_t handler, char *name, int cpu, void *dev_id);
 
 #endif // _ASM_IRQ_H

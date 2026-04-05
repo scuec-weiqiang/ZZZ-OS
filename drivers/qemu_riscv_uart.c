@@ -125,7 +125,7 @@ static int uart_probe(struct platform_device *pdev) {
     //     mknod("/uart", S_IFCHR | 0644, devnr);
 
     int virq = platform_get_irq(pdev, 0);
-    irq_register(virq, uart0_iqr, "uart0_irq",NULL);
+    irq_request(virq, uart0_iqr, "uart0_irq",NULL);
 
     console_register(uart_putc);
     irq_enable(virq);

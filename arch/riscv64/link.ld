@@ -36,6 +36,10 @@ SECTIONS
     .irqinitcall : {
         . = ALIGN(4096);
         __irqinitcall_start = .;
+        __irqchip_of_table = .;
+        KEEP(*(__irqchip_of_table))
+        __timerchip_of_table = .;
+        KEEP(*(__timerchip_of_table))
         KEEP(*(.irqinitcall))     /* 保留所有 initcall 段内容 */
         __irqinitcall_end = .;
     }
@@ -129,4 +133,3 @@ SECTIONS
     PROVIDE_HIDDEN(_early_pgtbl_start = __early_pgtbl_start);
     PROVIDE_HIDDEN(_early_pgtbl_end = __early_pgtbl_end);
 }
-

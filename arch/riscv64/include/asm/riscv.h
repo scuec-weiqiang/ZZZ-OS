@@ -6,10 +6,10 @@
 #define MCAUSE_MASK_INTERRUPT 0x8000000000000000
 #define MCAUSE_MASK_CAUSECODE 0x7fffffffffffffff
 
-static inline reg_t mhartid_r()
+static inline reg_t mcpuid_r()
 {
     reg_t a;
-    asm volatile("csrr %0,mhartid" : "=r"(a));
+    asm volatile("csrr %0,mcpuid" : "=r"(a));
     return a;
 }
 
@@ -308,11 +308,11 @@ static inline void pmpaddr0_w(reg_t a)
 // #define M_TO_U(x)    __PROTECT(
 //     mstatus_w(mscratch_r() & ~(3<<11));
 //     mepc_w((reg_t)(x));
-//     asm volatile ("mv a0, %0": : "r"(mhartid_r()));
+//     asm volatile ("mv a0, %0": : "r"(mcpuid_r()));
 //     asm volatile("mret");
 // )
 
-static inline reg_t get_hart_id_s()
+static inline reg_t get_cpu_id_s()
 {
     reg_t a;
     asm volatile("mv %0,tp" : "=r"(a));
@@ -332,7 +332,7 @@ static inline reg_t get_hart_id_s()
 // #define M_TO_M(x)    __PROTECT(
 //     mstatus_w(mscratch_r() | (3<<11));
 //     mepc_w((reg_t)(x));
-//     asm volatile ("mv a0, %0": : "r"(mhartid_r()));
+//     asm volatile ("mv a0, %0": : "r"(mcpuid_r()));
 //     asm volatile("mret");
 // )
 

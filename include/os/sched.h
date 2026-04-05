@@ -12,9 +12,9 @@
 #define _SCHED_H
 
 #include <os/list.h>
-#include <asm/riscv.h>
+// #include <asm/riscv.h>
 #include <os/proc.h>
-#include <asm/platform.h>
+// #include <asm/platform.h>
 
 enum sched_state 
 { 
@@ -32,9 +32,9 @@ struct scheduler
     struct context ctx;   // 调度器的上下文
 };
 
-extern struct scheduler scheduler[MAX_HARTS_NUM];
+extern struct scheduler scheduler[MAX_cpuS_NUM];
 
-extern void sched_init(int hart_id);
+extern void sched_init(int cpu_id);
 extern void sched();
 extern void yield();
 

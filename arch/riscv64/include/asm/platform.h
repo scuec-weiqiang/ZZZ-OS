@@ -15,12 +15,12 @@
 
 #define SYS_CLOCK_FREQ 10000000
 
-#define MAX_HARTS_NUM 1
+#define MAX_cpuS_NUM 1
 
 #define CLINT_BASE          0x02000000
 #define CLINT_MTIME                 (CLINT_BASE + (0xbff8))
 #define CLINT_MTIMECMP_BASE         (CLINT_BASE + (0x4000))
-#define CLINT_MSIP(hartid)          (CLINT_BASE + 4*(hartid))
-#define RELEASE_CORE(hartid)        (*(uint32_t*)CLINT_MSIP(hartid)=1)
+#define CLINT_MSIP(cpuid)          (CLINT_BASE + 4*(cpuid))
+#define RELEASE_CORE(cpuid)        (*(uint32_t*)CLINT_MSIP(cpuid)=1)
 
 #endif

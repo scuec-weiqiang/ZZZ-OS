@@ -185,7 +185,7 @@ void mm_init() {
     // list_for_each_entry(region, &memblock.memory.regions, struct memblock_region, node) {
     //     map(kernel_mm_struct->pgdir, KERNEL_VA(region->base), region->base, region->size, PAGE_KERNEL);
     // }
-    
+
     map(kernel_mm_struct->pgdir, trap_start, KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
     map(kernel_mm_struct->pgdir, text_start, KERNEL_PA(text_start), text_size, PAGE_KERNEL_EXEC);
     map(kernel_mm_struct->pgdir, data_start, KERNEL_PA(data_start), data_size, PAGE_KERNEL);
@@ -200,6 +200,8 @@ void mm_init() {
     map(kernel_mm_struct->pgdir, 0xc8000000, 0x88000000, 0xf00000, PAGE_DEVICE);
     map(kernel_mm_struct->pgdir, 0xffff0000, KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
         
+    map(kernel_mm_struct->pgdir, 0x02020000,0x02020000, PAGE_SIZE, PAGE_DEVICE); // UART
+    
     pgtbl_switch_to(kernel_mm_struct->pgdir);
     printk("mm_init success\n") ;
 

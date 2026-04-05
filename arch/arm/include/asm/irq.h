@@ -19,9 +19,12 @@
 typedef reg_t (*handle_arch_irq_t)(reg_t *ctx);
 
 extern handle_arch_irq_t handle_arch_irq;
-
+extern void set_handle_irq(reg_t (*handle_irq)(reg_t *));
 extern void arch_irq_cpu_init();
-extern int arch_local_irq_register(int hwirq, irq_handler_t handler, char *name, int hart, void *dev_id);
-extern int arch_extern_irq_register(int hwirq, irq_handler_t handler, char *name, int hart, void *dev_id);
+extern void local_irq_enable(void);
+extern void local_irq_disable(void);
+extern int arch_irq_cpu_id(void);
+extern int arch_local_irq_register(int hwirq, irq_handler_t handler, char *name, int cpu, void *dev_id);
+extern int arch_extern_irq_register(int hwirq, irq_handler_t handler, char *name, int cpu, void *dev_id);
 
 #endif // _ASM_IRQ_H

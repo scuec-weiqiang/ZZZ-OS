@@ -6,6 +6,8 @@
 #include <os/platform_device.h>
 #include <os/resource.h>
 #include <os/mm.h>
+#include <os/irq_domain.h>
+#include <os/of_irq.h>
 
 struct device platform_bus = {
 	.name	= "platform",
@@ -47,12 +49,7 @@ int platform_device_unregister(struct platform_device *pdev) {
     return 0;
 }
 
-
-
-
-
-static int platform_drv_probe(struct device *_dev)
-{
+static int platform_drv_probe(struct device *_dev) {
 	struct platform_driver *drv = to_platform_driver(_dev->driver);
 	struct platform_device *dev = to_platform_device(_dev);
 
@@ -63,8 +60,7 @@ static int platform_drv_probe(struct device *_dev)
 	return ret;
 }
 
-static int platform_drv_remove(struct device *_dev)
-{
+static int platform_drv_remove(struct device *_dev) {
 	struct platform_driver *drv = to_platform_driver(_dev->driver);
 	struct platform_device *dev = to_platform_device(_dev);
 	int ret;
@@ -119,28 +115,6 @@ virt_addr_t platform_ioremap_resource(struct platform_device *pdev, unsigned int
     return (virt_addr_t)ioremap(res->start, res->size);
 }
 
-// int platform_get_irq(struct platform_device *dev, unsigned int num)
-// {
-// 	struct resource *r;
-// 	if (dev->dev.of_node) {
-// 		int ret;
-
-// 		ret = of_irq_get(dev->dev.of_node, num);
-// 		if (ret >= 0 || ret == -EPROBE_DEFER)
-// 			return ret;
-// 	}
-
-// 	r = platform_get_resource(dev, IORESOURCE_IRQ, num);
-// 	/*
-// 	 * The resources may pass trigger flags to the irqs that need
-// 	 * to be set up. It so happens that the trigger flags for
-// 	 * IORESOURCE_BITS correspond 1-to-1 to the IRQF_TRIGGER*
-// 	 * settings.
-// 	 */
-// 	if (r && r->flags & IORESOURCE_BITS)
-// 		irqd_set_trigger_type(irq_get_irq_data(r->start),
-// 				      r->flags & IORESOURCE_BITS);
-
-// 	return r ? r->start : -ENXIO;
-
-// }
+int platform_get_irq(struct platform_device *dev, unsigned int index) {
+    return of_irq_get(dev->dev.of_node, index);
+}

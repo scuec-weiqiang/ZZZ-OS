@@ -90,6 +90,25 @@
       "-std=c11",
       "-ffreestanding",
       "-Iinclude",
+      "-Iarch/arm/irq/",
+      "-c",
+      "-o",
+      "build/./arch/arm/irq/vector.o",
+      "arch/arm/irq/vector.S"
+    ],
+    "directory": "/home/wqqqq/ZZZ-OS",
+    "file": "/home/wqqqq/ZZZ-OS/arch/arm/irq/vector.S",
+    "output": "/home/wqqqq/ZZZ-OS/build/arch/arm/irq/vector.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/arm-linux-gnueabihf-gcc",
+      "-g",
+      "-Wall",
+      "-fno-builtin",
+      "-std=c11",
+      "-ffreestanding",
+      "-Iinclude",
       "-march=armv7-a",
       "-mfpu=vfpv3-d16",
       "-Idrivers/of/",

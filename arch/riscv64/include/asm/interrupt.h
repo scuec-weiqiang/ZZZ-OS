@@ -130,11 +130,11 @@ static inline int s_extern_interrupt_get_pending()
     return (sip_r()&(1<<9))?1:0;
 }
 
-// static inline void extern_interrupt_setting(int hart_id,uint32_t iqrn,uint32_t priority)
+// static inline void extern_interrupt_setting(int cpu_id,uint32_t iqrn,uint32_t priority)
 // { 
 //     __plic_priority_set(iqrn,priority);
-//     __plic_threshold_set(hart_id,0);
-//     __plic_interrupt_enable(hart_id,iqrn);
+//     __plic_threshold_set(cpu_id,0);
+//     __plic_interrupt_enable(cpu_id,iqrn);
 // } 
 
 

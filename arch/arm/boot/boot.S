@@ -4,7 +4,7 @@ _start:
     // 关闭中断
     cpsid if
 
-    // 关闭MMU和cache，避免后续页表修改只停留在cache里，
+    // 关闭MMU和cache
     mrc p15,0,r0,c1,c0,0
     bic r0,r0,#1          @ SCTLR.M
     bic r0,r0,#(1 << 2)   @ SCTLR.C
@@ -80,16 +80,6 @@ loop1:
     b loop1
 
 done1:
-
-    @ 映射一下串口
-    add r2, r0, #(0x20*4)
-    ldr r3, =0x02000000 @ r3为开始映射的虚拟地址,这里映射 pa = 0x02000000 -> va = 0x02000000，len = 1M
-
-    ldr r6, =0xFFF00000
-    and r5, r3, r6 @ 保留物理地址的高20位
-    orr r5, r5, r1 @ 加上属性位
-
-    str r5, [r2] @ 将页表项写入内存
     
     // 将页表基地址写入TTBR0寄存器
     mcr p15, 0, r0, c2, c0, 0
@@ -148,18 +138,7 @@ done1:
     ldr r0, =0
     ldr r1, =0x80000000
 
+    cpsie i
+    
     b init_kernel
 
-
-.section .trap, "ax"
-.global vector_table
-
-vector_table:
-    b reset_handler
-    b undef_handler
-    b swi_handler
-    b prefetch_abort_handler
-    b data_abort_handler
-    b reserved_handler
-    b irq_handler
-    b fiq_handler

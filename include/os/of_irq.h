@@ -25,6 +25,7 @@ extern int of_irq_count(struct device_node *np);
 extern int of_irq_parse_one(struct device_node *np, int index, struct of_phandle_args *out);
 extern int of_irq_to_resource(struct device_node *np, int index, struct resource *res);
 extern void of_irq_init(struct of_device_id *matches);
+extern int of_irq_get(struct device_node *np, int index);
 
 typedef int (*of_irq_init_cb_t)(struct device_node *, struct device_node *);
 

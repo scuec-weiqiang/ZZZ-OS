@@ -1,5 +1,5 @@
 OBJ_Y += interrupt_handler.o
 OBJ_Y += irq.o
-
+OBJ_Y += vector.o
 
         

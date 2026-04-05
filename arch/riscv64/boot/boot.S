@@ -102,7 +102,7 @@ smode:
     mv sp, t0  # 设置早期栈指针
     csrw sscratch, sp  # sscratch存放内核栈指针
 
-    li a0, 0        /* hartid */
+    li a0, 0        /* cpuid */
     li a1, 0xffffffffc0400000        /* dtb phys addr */
 
     la t0, init_kernel

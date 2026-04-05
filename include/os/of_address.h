@@ -5,5 +5,5 @@
 #include <os/device.h>
 
 extern int of_address_to_resource(struct device_node *dev, int index, struct resource *res);
-
+extern void *of_iomap(struct device_node *dev, int index);
 #endif // OS_OF_PLATFORM_H

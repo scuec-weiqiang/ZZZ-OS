@@ -16,6 +16,11 @@
 #include <os/kmalloc.h>
 #include <os/irq_domain.h>
 #include <os/irq.h>
+#include <asm/riscv.h>
+
+int arch_irq_cpu_id(void) {
+    return (int)tp_r();
+}
 
 void arch_irq_init() {
     trap_init();
@@ -27,14 +32,14 @@ void arch_irq_init() {
     irq_domain_add_mapping(domain, 0); // 将全局中断号0也进行映射，方便控制全局中断，但是不注册中断函数
 
     int virq = irq_domain_add_mapping(domain, CLINT_IRQ_SOFT);
-    irq_register(virq, s_soft_interrupt_handler, "soft_irq", NULL);
+    irq_request(virq, s_soft_interrupt_handler, "soft_irq", NULL);
 
     virq = irq_domain_add_mapping(domain, CLINT_IRQ_TIMER);
-    irq_register(virq, s_timer_interrupt_handler, "timer_irq", NULL);
+    irq_request(virq, s_timer_interrupt_handler, "timer_irq", NULL);
 }
 
-int arch_local_irq_register(int hwirq, irq_handler_t handler, char *name, int hart, void *dev_id) {
-    struct irq_chip *chip = irq_chip_lookup("riscv64_clint", hart);
+int arch_local_irq_register(int hwirq, irq_handler_t handler, char *name, int cpu, void *dev_id) {
+    struct irq_chip *chip = irq_chip_lookup("riscv64_clint", cpu);
     if (!chip) {
         return -1;
     }
@@ -46,12 +51,12 @@ int arch_local_irq_register(int hwirq, irq_handler_t handler, char *name, int ha
     if (virq < 0) {
         return virq;
     }
-    irq_register(virq, handler, name, dev_id);
+    irq_request(virq, handler, name, dev_id);
     return 0;
 }
 
-int arch_extern_irq_register(int hwirq, irq_handler_t handler, char *name, int hart, void *dev_id) {
-    struct irq_chip *chip = irq_chip_lookup("riscv64_plic", hart);
+int arch_extern_irq_register(int hwirq, irq_handler_t handler, char *name, int cpu, void *dev_id) {
+    struct irq_chip *chip = irq_chip_lookup("riscv64_plic", cpu);
     if (!chip) {
         return -1;
     }
@@ -63,7 +68,7 @@ int arch_extern_irq_register(int hwirq, irq_handler_t handler, char *name, int h
     if (virq < 0) {
         return virq;
     }
-    irq_register(virq, handler, name, dev_id);
+    irq_request(virq, handler, name, dev_id);
     return 0;
 }
 

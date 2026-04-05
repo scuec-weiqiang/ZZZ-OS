@@ -22,19 +22,19 @@
 virt_addr_t plic_base = 0;
 
 static void riscv64_plic_enable(struct irq_chip* self, int hwirq) {
-    __plic_interrupt_enable(self->hart, hwirq);
+    __plic_interrupt_enable(self->cpu, hwirq);
 }
 
 static void riscv64_plic_disable(struct irq_chip* self, int hwirq) {
-    __plic_interrupt_disable(self->hart, hwirq);
+    __plic_interrupt_disable(self->cpu, hwirq);
 }
 
 static int riscv64_plic_ack(struct irq_chip *self) {
-   return  __plic_claim(self->hart);
+   return  __plic_claim(self->cpu);
 }
 
 static void riscv64_plic_eio(struct irq_chip *self, int hwirq) {
-    __plic_complete(self->hart, hwirq);
+    __plic_complete(self->cpu, hwirq);
 }
 
 static void riscv64_plic_set_pending(struct irq_chip* self, int hwirq) {
@@ -71,7 +71,7 @@ struct irq_chip_ops riscv64_plic_chip_ops = {
 };
 
 static irqreturn_t extern_interrupt_handler(int virq, void *dev_id) {
-    // int hart_id = tp_r();
+    // int cpu_id = tp_r();
 
     struct irq_chip *chip = irq_chip_lookup("riscv,plic", tp_r());
     if (chip) {

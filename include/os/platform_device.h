@@ -51,4 +51,5 @@ extern int platform_driver_unregister(struct platform_driver *drv);
 
 extern struct resource *platform_get_resource(struct platform_device *pdev, unsigned int type, unsigned int index);
 extern  virt_addr_t platform_ioremap_resource(struct platform_device *pdev, unsigned int index);
+extern int platform_get_irq(struct platform_device *dev, unsigned int index);
 #endif

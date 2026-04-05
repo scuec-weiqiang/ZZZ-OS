@@ -14,7 +14,8 @@
 #include <os/list.h>
 
 struct irq_domain {
-    struct irq_chip *chip;         // 关联的中断控制器
+    struct device_node *np;   // 设备树节点
+    // struct irq_chip *chip;   // 关联的irq_chip
     int virq_base;        // 虚拟中断号起始值
     int hw_irq_count;     // 支持的硬件中断数量
     int *hw_to_virq;      // HW IRQ→VIRQ映射表（数组）
@@ -22,11 +23,13 @@ struct irq_domain {
 };
 
 extern int irq_domain_alloc_virq_base(unsigned int count);
-extern struct irq_domain *irq_domain_create(struct irq_chip *chip, unsigned int virq_base, unsigned int hw_irq_count);
+extern struct irq_domain *irq_domain_create(struct device_node *np, unsigned int virq_base, unsigned int hw_irq_count);
 extern void irq_domain_destroy(struct irq_domain *domain);
 extern int irq_domain_add_mapping(struct irq_domain *domain, unsigned int hwirq);
 extern struct irq_domain *irq_domain_lookup(unsigned int virq);
-extern int irq_domain_get_virq(struct irq_chip *chip, unsigned int hwirq);
+extern int irq_domain_get_virq(struct device_node *np, unsigned int hwirq);
 extern int irq_domain_get_hwirq(struct irq_domain *domain, int virq );
-
+extern int irq_set_hwirq_and_chip(struct irq_domain *domain, unsigned int hwirq, struct irq_chip *chip);
+extern struct irq_domain* irq_find_host(struct device_node *np);
+// extern struct irq_domain* irq_domain_lookup_by_hwirq( unsigned int hwirq);
 #endif

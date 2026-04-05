@@ -14,7 +14,7 @@
 #include <os/mm.h>
 #include <os/check.h>
 #include <os/string.h>
-#include <asm/platform.h>
+// #include <asm/platform.h>
 #include <os/kmalloc.h>
 #include <asm/arch_timer.h>
 #include <os/sched.h>
@@ -24,9 +24,9 @@
 #include <mm/vma.h>
 #include <mm/pgtbl.h>
 
-struct list_head proc_list_head[MAX_HARTS_NUM];
+struct list_head proc_list_head[MAX_cpuS_NUM];
 
-uint64_t proc_count[MAX_HARTS_NUM];
+uint64_t proc_count[MAX_cpuS_NUM];
 
 static pid_t alloc_pid()
 {
@@ -48,10 +48,10 @@ void proc_setup()
 }
 
 void proc_init() {
-    for(int hart_id = 0;hart_id < MAX_HARTS_NUM; hart_id++)
+    for(int cpu_id = 0;cpu_id < MAX_cpuS_NUM; cpu_id++)
     {
-        INIT_LIST_HEAD(&proc_list_head[hart_id])
-        proc_count[hart_id] = 0;
+        INIT_LIST_HEAD(&proc_list_head[cpu_id])
+        proc_count[cpu_id] = 0;
     }
 
 }
@@ -106,9 +106,9 @@ struct proc* proc_create(char* path) {
     new_proc->pid = alloc_pid();
     new_proc->status = PROC_RUNABLE;
     new_proc->time_slice = PROC_DEFAULT_SLICE;
-    int hart_id = tp_r();
-    list_add(&proc_list_head[hart_id], &new_proc->proc_lnode);
-    proc_count[hart_id]++;
+    int cpu_id = tp_r();
+    list_add(&proc_list_head[cpu_id], &new_proc->proc_lnode);
+    proc_count[cpu_id]++;
     return new_proc;
 }
 

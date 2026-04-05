@@ -54,15 +54,16 @@ struct irq_chip_ops {
 
 struct irq_chip {
     char name[32];                       // 中断控制器名称
-    int hart;
+    struct device_node *of_node;              // 设备树节点
+    int cpu;
     struct irq_chip_ops *ops;            // 中断控制器操作函数指针
     struct list_head link;          // 链表节点 
     void *priv;
 };
 
 extern struct list_head irq_chip_list;
-extern struct irq_chip* irq_chip_register(char *name, struct irq_chip_ops *ops, int hart, void *priv);
-extern struct irq_chip* irq_chip_lookup(char *name,int hart);
+extern struct irq_chip* irq_chip_register(struct device_node *np, struct irq_chip_ops *ops, void *priv);
+struct irq_chip* irq_chip_lookup(struct device_node *np);
 extern void irq_chip_init();
 #define IRQCHIP_DECLARE(name, compat, fn) OF_DECLARE_2(irqchip, name, compat, fn)
 

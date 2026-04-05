@@ -21,6 +21,7 @@
 // #include <fs/vfs.h>
 // #include <os/elf.h>
 #include <os/irq.h>
+#include <os/timer_chip.h>
 #include <mm/memblock.h>
 #include <mm/symbols.h>
 #include <mm/early_malloc.h>
@@ -36,14 +37,14 @@
 
 uint8_t is_init = 0;
 
-// void set_hart_stack() {
-//     char *hart_stack = (char *)page_alloc(1);
-//     memset(hart_stack, 0, PAGE_SIZE);
-//     asm volatile("csrw sscratch,%0" ::"r"(hart_stack + PAGE_SIZE));
+// void set_cpu_stack() {
+//     char *cpu_stack = (char *)page_alloc(1);
+//     memset(cpu_stack, 0, PAGE_SIZE);
+//     asm volatile("csrw sscratch,%0" ::"r"(cpu_stack + PAGE_SIZE));
 // }
 
-void init_kernel(int hartid,void *dtb) {
-    if (hartid == 0) {
+void init_kernel(int cpuid,void *dtb) {
+    if (cpuid == 0) {
         symbols_init();
 		early_malloc_init();
 
@@ -59,17 +60,20 @@ void init_kernel(int hartid,void *dtb) {
         of_platform_populate(NULL,of_default_bus_match_table,NULL);
 
         irq_init();
+        timer_chip_init();
         driver_init();
 
-        
-        // driver_init();
         // fs_init();
         // irq_enable(EXTERN_IRQ);
 
         // is_init = 1;
     }
+
+
+
     printk("kernel init end\n");
-    // set_hart_stack();
+
+    // set_cpu_stack();
     // arch_timer_init(SYS_HZ_1);
     // irq_enable(GLOBAL_IRQ);
 
@@ -78,7 +82,7 @@ void init_kernel(int hartid,void *dtb) {
     // proc_create("/proc2.elf");
     // proc_create("/proc1.elf");
 
-    // sched_init(hartid);
+    // sched_init(cpuid);
     // sched();
 
     while(1);

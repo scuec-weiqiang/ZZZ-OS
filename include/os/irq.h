@@ -18,27 +18,31 @@ struct irq_domain;
 
 typedef irqreturn_t (*irq_handler_t)(int virq, void *dev_id);
 
-struct irq_desc {
+#ifndef IRQ_PERCPU_MAX_CPUS
+#define IRQ_PERCPU_MAX_CPUS 4
+#endif
+
+struct irq_data {
     const char *name;                   // 调试名称
     int virq;                     // 逻辑中断号
-    // int hwirq;                          // 硬件中断号
-    // struct irq_chip *chip;        // 指向控制器私有数据
+    struct irq_chip *chip;        // 指向控制器私有数据
     struct irq_domain *domain;    // 所属中断域
     irq_handler_t handler;        // 中断处理函数
     void *dev_id;                  // 设备标识符         
+    int is_percpu;
+    irq_handler_t percpu_handler[IRQ_PERCPU_MAX_CPUS];
+    void *percpu_dev_id[IRQ_PERCPU_MAX_CPUS];
 };
 
 extern void irq_init(void);
-extern int irq_register(int virq, irq_handler_t handler, const char *name, void *dev_id);
+extern struct irq_data *irq_data_get(int virq);
+extern int irq_request(int virq, irq_handler_t handler, const char *name, void *dev_id);
+extern int irq_percpu_request(int virq, int cpu, irq_handler_t handler, const char *name, void *dev_id);
 extern void irq_enable(int virq);
 extern void irq_disable(int virq);
 extern reg_t do_irq(reg_t ctx,void *arg);
 extern void irq_set_priority(int virq, int priority);
 extern int irq_get_priority(int virq);
 
-#define GLOBAL_IRQ 0
-#define SOFT_IRQ 1
-#define TIMER_IRQ 5
-#define EXTERN_IRQ 9
 
 #endif // __KERNEL_IRQ_H

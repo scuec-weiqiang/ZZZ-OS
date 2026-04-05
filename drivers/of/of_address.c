@@ -12,6 +12,7 @@
 #include <os/resource.h>
 #include <os/bswap.h>
 #include <os/printk.h>
+#include <os/mm.h>
 
 /* Callbacks for bus specific translators */
 struct of_bus {
@@ -86,3 +87,14 @@ const __be32* of_address_to_resource(struct device_node *dev, int index, struct 
 		}
 	return NULL;
 }
+
+
+void *of_iomap(struct device_node *dev, int index) {
+	struct resource res;
+	if (!of_address_to_resource(dev, index, &res)) {
+		return NULL;
+	}
+	printk("of_iomap: start=%xu, size=%xu\n", res.start, res.size);
+	return ioremap(res.start, res.size);
+}
+

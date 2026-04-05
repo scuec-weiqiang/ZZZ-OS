@@ -14,13 +14,12 @@
 
 struct list_head irq_chip_list = LIST_HEAD_INIT(irq_chip_list);
 
-struct irq_chip* irq_chip_register(char *name, struct irq_chip_ops *ops, int hart, void *priv) {
-    if (!name || !ops) {
+struct irq_chip* irq_chip_register(struct device_node *np, struct irq_chip_ops *ops, void *priv) {
+    if (!np || !ops) {
         return NULL;
     }
     struct irq_chip *chip = (struct irq_chip *)kmalloc(sizeof(struct irq_chip));
-    strcpy(chip->name, name);
-    chip->hart = hart;
+    chip->of_node = np;
     chip->ops = ops;
     chip->priv = priv;
 
@@ -28,13 +27,13 @@ struct irq_chip* irq_chip_register(char *name, struct irq_chip_ops *ops, int har
     return chip;
 }
 
-struct irq_chip* irq_chip_lookup(char *name, int hart) {
+struct irq_chip* irq_chip_lookup(struct device_node *np) {
     struct irq_chip *chip;
     struct list_head *pos;
 
     list_for_each(pos, &irq_chip_list) {
         chip = list_entry(pos, struct irq_chip, link);
-        if (strcmp(chip->name, name) == 0 && chip->hart == hart) {
+        if (chip->of_node == np) {
             return chip;
         }
     }

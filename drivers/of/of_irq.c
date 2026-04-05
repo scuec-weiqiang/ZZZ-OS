@@ -13,6 +13,7 @@
 #include <os/printk.h>
 #include <os/kmalloc.h>
 #include <os/of_irq.h>
+#include <os/irq_domain.h>
 
 static int __of_irq_parse_one(struct device_node *np, int index, struct of_phandle_args *out) {
     uint32_t size = 0;
@@ -123,6 +124,27 @@ int of_irq_parse_one(struct device_node *np, int index, struct of_phandle_args *
     return __of_irq_parse_one(np, index, out);
 }
 
+
+int of_irq_get(struct device_node *np, int index) {
+    struct of_phandle_args args;
+    struct irq_domain *domain;
+    struct irq_chip *chip;
+
+    if (of_irq_parse_one(np, index, &args) < 0) {
+        return -1;
+    }
+    domain = irq_find_host(args.np);
+    if (!domain) {
+        return -1;
+    }
+    chip = irq_chip_lookup(args.np);
+    if (!chip) {
+        return -1;
+    }
+    irq_set_hwirq_and_chip(domain, args.args[0], chip);
+    return irq_domain_add_mapping(domain, args.args[0]);
+}
+
 int of_irq_to_resource(struct device_node *np, int index, struct resource *res) {
     struct of_phandle_args args;
     if (of_irq_parse_one(np, index, &args) < 0) {
@@ -141,10 +163,10 @@ void of_irq_init(struct of_device_id *matches) {
     int ret = 0; 
 
     for_each_matching_node(np, matches) {
-        printk("of_irq_init: node %s\n",np->full_path);
+        // printk("of_irq_init: node %s\n",np->full_path);
         
         if (!of_get_property_by_name(np, "interrupt-controller")) {
-            printk("no property interrupt-controller\n");
+            // printk("no property interrupt-controller\n");
             continue;
         }
         

@@ -33,7 +33,10 @@
 
 struct resource {
     int flags;
-    uintptr_t start;
+    union {
+        uintptr_t start;
+        
+    };
     union {
         uintptr_t size;        // for MEM, IOPORT
         int irq;              // for IRQ

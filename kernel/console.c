@@ -44,9 +44,12 @@ void console_puts(char *str) {
     int i = 0;
     while(str[i]) {
         ring_putc(str[i]);
-        if (str[i] == '\n') {
+        if (str[i] == '\r') {
+            ring_putc('\n');
+        } else if (str[i] == '\n') {
             ring_putc('\r');
         }
+
         i++;
     }
     ring_putc(0);

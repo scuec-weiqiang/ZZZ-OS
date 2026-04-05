@@ -46,44 +46,100 @@ typedef struct {
 
 phys_addr_t uart_base = 0;
 
-#define UART1 ((UART_Type*)uart_base)
+#define UART ((UART_Type*)uart_base)
 // #define UART ((UART_Type*)0x02020000)
 
-static void putc (char c)
-{
-    while ((UART1->UTS >> 4) & 1) {
-    }
-    UART1->UTXD = c;
+void uart_disable() {
+	UART->UCR1 &= ~(1<<0);	
 }
 
-// void uart_putc(char c)
-// {
-//     while ((UART->UTS >> 4) & 1) {
-//     }
-//     UART->UTXD = c;
-// }
+
+void uart_enable() {
+	UART->UCR1 |= (1<<0);	
+}
+
+#define UCR1_UARTEN   (1U << 0)
+#define UCR1_RRDYEN   (1U << 9)   // 接收就绪中断使能
+#define UCR2_SRST     (1U << 0)
+#define UCR2_RXEN     (1U << 1)
+#define UCR2_TXEN     (1U << 2)
+
+static void uart_enable_rx_irq() {
+    UART->UCR2 |= UCR2_SRST | UCR2_RXEN | UCR2_TXEN;
+    UART->UCR1 |= UCR1_UARTEN | UCR1_RRDYEN;
+}
+
+void uart_reg_init() {
+    uart_disable();
+    UART->UCR1 = 0;		/* 先清除UCR1寄存器 */
+	
+	/*
+     * 设置UART的UCR1寄存器，关闭自动波特率
+     * bit14: 0 关闭自动波特率检测,我们自己设置波特率
+	 */
+	UART->UCR1 &= ~(1<<14);
+	
+	/*
+     * 设置UART的UCR2寄存器，设置内容包括字长，停止位，校验模式，关闭RTS硬件流控
+     * bit14: 1 忽略RTS引脚
+	 * bit8: 0 关闭奇偶校验
+     * bit6: 0 1位停止位
+ 	 * bit5: 1 8位数据位
+ 	 * bit2: 1 打开发送
+ 	 * bit1: 1 打开接收
+	 */
+	UART->UCR2 |= (1<<14) | (1<<5) | (1<<2) | (1<<1);
+
+	/*
+     * UART1的UCR3寄存器
+     * bit2: 1 必须设置为1！参考IMX6ULL参考手册3624页
+	 */
+	UART->UCR3 |= 1<<2; 
+	
+	/*
+	 * 设置波特率
+	 * 波特率计算公式:Baud Rate = Ref Freq / (16 * (UBMR + 1)/(UBIR+1)) 
+	 * 如果要设置波特率为115200，那么可以使用如下参数:
+	 * Ref Freq = 80M 也就是寄存器UFCR的bit9:7=101, 表示1分频
+	 * UBMR = 3124
+ 	 * UBIR =  71
+ 	 * 因此波特率= 80000000/(16 * (3124+1)/(71+1))=80000000/(16 * 3125/72) = (80000000*72) / (16*3125) = 115200
+	 */
+	// UART->UFCR = 5<<7; //ref freq等于ipg_clk/1=80Mhz
+	// UART->UBIR = 71;
+	// UART->UBMR = 3124;
+    uart_enable();
+}
+
+static void putc (char c) {
+    while ((UART->UTS >> 4) & 1) {
+    }
+    UART->UTXD = c;
+}
+
+void uart_putc(char c) {
+    while ((UART->UTS >> 4) & 1) {
+    }
+    UART->UTXD = c;
+}
 
 static char getc(void) {
-    while ((UART1->UTS >> 0) & 1) {
-    }
-    return UART1->UTXD & 0xFF;
+    while((UART->USR2 & 0x1) == 0);/* 等待接收完成 */
+	return UART->URXD;				/* 返回接收到的数据 */
 }
 
-// void puts(char *s)
-// {
-//     while (*s) {
-//         uart_putc(*s++);
-//         if (*s == '\n') {
-//             uart_putc('\r');
-//         }
-//     }
-// }
+void puts(char *s) {
+    while (*s) {
+        uart_putc(*s++);
+        if (*s == '\n') {
+            uart_putc('\r');
+        }
+    }
+}
 
-irqreturn_t uart0_iqr(int virq, void *dev_id) {
+irqreturn_t uart_iqr(int virq, void *dev_id) {
     char a = getc();
     printk("%c",a);
-    if('\r'==a)
-        printk("\n");
     return IRQ_HANDLED;
 }
 
@@ -116,6 +172,9 @@ irqreturn_t uart0_iqr(int virq, void *dev_id) {
     // .write = uart_write,
 // };
 
+
+
+
 static int uart_probe(struct platform_device *pdev) {
     struct device_node *node = of_find_node_by_compatible("imx6ull,uart");
     if (!node) {
@@ -124,27 +183,23 @@ static int uart_probe(struct platform_device *pdev) {
 
     uart_base = platform_ioremap_resource(pdev, 0);
 
-    // printk("uart_base = %xu\n", uart_base);
-    
-    // uart_reg_init();
+    uart_reg_init();
 
-    // dev_t devnr = 2;
-    // register_chrdev(devnr, "uart", &uart_file_ops);
-    // if (lookup("/uart") == NULL)
-    //     mknod("/uart", S_IFCHR | 0644, devnr);
+    // 打开串口中断
+    uart_enable_rx_irq();
 
-    // int virq = platform_get_irq(pdev, 0);
-    // irq_register(virq, uart0_iqr, "uart0_irq",NULL);
+    int virq = platform_get_irq(pdev, 0);
+    printk("uart irq: %d\n", virq);
+    irq_request(virq, uart_iqr, "uart0_irq",NULL);
+    irq_enable(virq);
 
     console_register(putc);
-    // irq_enable(virq);
+    
     return 0;
 }
 
 static int uart_remove(struct platform_device *pdev) {
-    // unregister_chrdev(2, "/uart");
-    // if (lookup("/uart")) {
-    // }
+
     iounmap(uart_base, sizeof(UART_Type));
     uart_base = 0;
     return 0;

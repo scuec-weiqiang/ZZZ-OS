@@ -21,13 +21,13 @@ extern virt_addr_t plic_base;
 #define PLIC_COMPLETE_BASE            (PLIC_BASE + (0x200004))
 
 
-static inline uint32_t plic_get_context(uint32_t hart)
+static inline uint32_t plic_get_context(uint32_t cpu)
 {
     // unsigned long sstatus;
     // asm volatile("csrr %0, sstatus" : "=r"(sstatus));
     // // 如果sstatus可访问且SIE位可读写，说明当前在S态
-    // return (sstatus & 0x2) ? (hart * 2 + 1) : (hart * 2);
-    return hart * 2 + 1; // 仅支持S态
+    // return (sstatus & 0x2) ? (cpu * 2 + 1) : (cpu * 2);
+    return cpu * 2 + 1; // 仅支持S态
 }
 
 /***************************************************************
@@ -66,61 +66,61 @@ static  inline uint32_t __plic_pending_get(uint32_t irqn)
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} hart [in/out]:  
+ * @param {uint32_t} cpu [in/out]:  
  * @param {uint32_t} irqn [in/out]:  
  * @return {*}
 ***************************************************************/
-static inline void __plic_interrupt_enable(uint32_t hart,uint32_t irqn)
+static inline void __plic_interrupt_enable(uint32_t cpu,uint32_t irqn)
 {
     volatile uint32_t *plic_int_en = (volatile uint32_t *)PLIC_INT_EN_BASE;
-    plic_int_en[plic_get_context(hart) * 0x80/4 + 4*(irqn/32)] |= (1<<(irqn%32));
+    plic_int_en[plic_get_context(cpu) * 0x80/4 + 4*(irqn/32)] |= (1<<(irqn%32));
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} hart [in/out]:  
+ * @param {uint32_t} cpu [in/out]:  
  * @param {uint32_t} irqn [in/out]:  
  * @return {*}
 ***************************************************************/
-static  inline void __plic_interrupt_disable(uint32_t hart,uint32_t irqn)
+static  inline void __plic_interrupt_disable(uint32_t cpu,uint32_t irqn)
 {
     volatile uint32_t *plic_int_en = (volatile uint32_t *)PLIC_INT_EN_BASE;
-    plic_int_en[plic_get_context(hart) * 0x80/4 + 4*(irqn/32)]  &= ~(1<<(irqn%32));
+    plic_int_en[plic_get_context(cpu) * 0x80/4 + 4*(irqn/32)]  &= ~(1<<(irqn%32));
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} hart [in/out]:  
+ * @param {uint32_t} cpu [in/out]:  
  * @param {uint32_t} threshold [in/out]:  
  * @return {*}
 ***************************************************************/
-static  inline void __plic_threshold_set(uint32_t hart,uint32_t threshold)
+static  inline void __plic_threshold_set(uint32_t cpu,uint32_t threshold)
 {
     volatile uint32_t *plic_int_thrshold = (volatile uint32_t *)PLIC_INT_THRSHOLD_BASE;
-    plic_int_thrshold[plic_get_context(hart) * 0x1000] = threshold;
+    plic_int_thrshold[plic_get_context(cpu) * 0x1000] = threshold;
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} hart [in/out]:  
+ * @param {uint32_t} cpu [in/out]:  
  * @return {*}
 ***************************************************************/
-static  inline uint32_t __plic_claim(uint32_t hart)
+static  inline uint32_t __plic_claim(uint32_t cpu)
 {
     volatile uint32_t *plic_claim = (volatile uint32_t *)PLIC_CLAIM_BASE ;
-    return  plic_claim[plic_get_context(hart) * 0x1000/4];
+    return  plic_claim[plic_get_context(cpu) * 0x1000/4];
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} hart [in/out]:  
+ * @param {uint32_t} cpu [in/out]:  
  * @param {uint32_t} irqn [in/out]:  
  * @return {*}
 ***************************************************************/
-static  inline void __plic_complete(uint32_t hart,uint32_t irqn)
+static  inline void __plic_complete(uint32_t cpu,uint32_t irqn)
 {
     volatile uint32_t *plic_complete = (volatile uint32_t *)PLIC_COMPLETE_BASE;
-    plic_complete[plic_get_context(hart) * 0x1000/4]= irqn;
+    plic_complete[plic_get_context(cpu) * 0x1000/4]= irqn;
 }
 
 
