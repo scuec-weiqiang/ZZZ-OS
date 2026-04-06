@@ -22,6 +22,7 @@
 // #include <os/elf.h>
 #include <os/irq.h>
 #include <os/timer_chip.h>
+#include <os/time.h>
 #include <mm/memblock.h>
 #include <mm/symbols.h>
 #include <mm/early_malloc.h>
@@ -62,9 +63,9 @@ void init_kernel(int cpuid,void *dtb) {
         irq_init();
         timer_chip_init();
         driver_init();
+        timekeeping_init();
 
         // fs_init();
-        // irq_enable(EXTERN_IRQ);
 
         // is_init = 1;
     }

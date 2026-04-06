@@ -77,6 +77,32 @@ int map(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, pgp
     return 0;
 }
 
+int remap(pgtable_t *pgtbl, virt_addr_t vaddr, size_t size, pgprot_t flags) {
+    phys_addr_t paddr = pgtbl_lookup(pgtbl, vaddr);
+    if (paddr == 0) {
+        printk("remap failed: va=%xu is not mapped\n", vaddr);
+        return -1;
+    }
+    size = ALIGN_UP(size, PAGE_SIZE);
+    uintptr_t va = ALIGN_DOWN(vaddr, PAGE_SIZE);
+    uintptr_t pa = ALIGN_DOWN(paddr, PAGE_SIZE);
+    uintptr_t end = va + size;
+
+    while (va < end) {
+        int target_level = highest_possible_level(pgtbl, va, pa, end - va);
+        int map_size = pgtbl_level_page_size(pgtbl, target_level);
+    
+        if (pgtbl_remap(pgtbl, va, pa, target_level, flags) < 0) {
+            return -1;
+        }
+        va += map_size;
+        pa += map_size;
+    }
+
+    pgtbl_flush();
+    return 0;
+}
+
 int unmap(pgtable_t *pgtbl, virt_addr_t va, size_t size) {
     CHECK(pgtbl != NULL, "mm is NULL", return -1;);
     size = ALIGN_UP(size, PAGE_SIZE);
@@ -174,6 +200,7 @@ void copy_kernel_mapping(struct mm_struct *dest_mm) {
     pgtbl_copy(dest_mm->pgdir, kernel_mm_struct->pgdir, 0, kernel_start_index, kernel_end_index - kernel_start_index);
 }
 
+
 void mm_init() {
     kernel_mm_struct = &init_mm;
     kernel_mm_struct->pgdir = new_pgtbl("kernel_pgtbl");
@@ -181,30 +208,26 @@ void mm_init() {
         panic("failed to create kernel pgtable");
     }
 
-    // struct memblock_region *region = NULL;
-    // list_for_each_entry(region, &memblock.memory.regions, struct memblock_region, node) {
-    //     map(kernel_mm_struct->pgdir, KERNEL_VA(region->base), region->base, region->size, PAGE_KERNEL);
-    // }
-
-    map(kernel_mm_struct->pgdir, trap_start, KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
-    map(kernel_mm_struct->pgdir, text_start, KERNEL_PA(text_start), text_size, PAGE_KERNEL_EXEC);
-    map(kernel_mm_struct->pgdir, data_start, KERNEL_PA(data_start), data_size, PAGE_KERNEL);
-    map(kernel_mm_struct->pgdir, rodata_start, KERNEL_PA(rodata_start), rodata_size, PAGE_KERNEL_RO);
-    map(kernel_mm_struct->pgdir, bss_start, KERNEL_PA(bss_start), bss_size, PAGE_KERNEL);
-    map(kernel_mm_struct->pgdir, initcall_start, KERNEL_PA(initcall_start), initcall_size, PAGE_KERNEL_EXEC);
-    map(kernel_mm_struct->pgdir, exitcall_start, KERNEL_PA(exitcall_start), exitcall_size, PAGE_KERNEL_EXEC);
-    map(kernel_mm_struct->pgdir, irqinitcall_start, KERNEL_PA(irqinitcall_start), irqinitcall_size, PAGE_KERNEL_EXEC);
-    map(kernel_mm_struct->pgdir, irqexitcall_start, KERNEL_PA(irqexitcall_start), irqexitcall_size, PAGE_KERNEL_EXEC);
-    map(kernel_mm_struct->pgdir, early_stack_start, KERNEL_PA(early_stack_start), early_stack_size, PAGE_KERNEL);
-    map(kernel_mm_struct->pgdir, kernel_end, KERNEL_PA(kernel_end), 0x08000000 - (kernel_end - KERNEL_VA_BASE), PAGE_KERNEL);
-    map(kernel_mm_struct->pgdir, 0xc8000000, 0x88000000, 0xf00000, PAGE_DEVICE);
-    map(kernel_mm_struct->pgdir, 0xffff0000, KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
-        
-    map(kernel_mm_struct->pgdir, 0x02020000,0x02020000, PAGE_SIZE, PAGE_DEVICE); // UART
+    struct memblock_region *region = NULL;
+    list_for_each_entry(region, &memblock.memory.regions, struct memblock_region, node) {
+        map(kernel_mm_struct->pgdir, KERNEL_VA(region->base), region->base, region->size, PAGE_KERNEL);
+    }
+    map(kernel_mm_struct->pgdir, 0xffff0000,KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
+    // map(kernel_mm_struct->pgdir, 0x02020000,0x02020000, PAGE_SIZE, PAGE_DEVICE);
+     
+    remap(kernel_mm_struct->pgdir, trap_start, trap_size, PAGE_KERNEL_EXEC);
+    remap(kernel_mm_struct->pgdir, text_start, text_size, PAGE_KERNEL_EXEC);
+    remap(kernel_mm_struct->pgdir, data_start, data_size, PAGE_KERNEL);
+    remap(kernel_mm_struct->pgdir, rodata_start, rodata_size, PAGE_KERNEL_RO);
+    remap(kernel_mm_struct->pgdir, bss_start, bss_size, PAGE_KERNEL);
+    remap(kernel_mm_struct->pgdir, initcall_start, initcall_size, PAGE_KERNEL_EXEC);
+    remap(kernel_mm_struct->pgdir, exitcall_start, exitcall_size, PAGE_KERNEL_EXEC);
+    remap(kernel_mm_struct->pgdir, irqinitcall_start, irqinitcall_size, PAGE_KERNEL_EXEC);
+    remap(kernel_mm_struct->pgdir, irqexitcall_start, irqexitcall_size, PAGE_KERNEL_EXEC);
+    remap(kernel_mm_struct->pgdir, early_stack_start, early_stack_size, PAGE_KERNEL);
     
     pgtbl_switch_to(kernel_mm_struct->pgdir);
-    printk("mm_init success\n") ;
-
+    printk("mm_init success\n");
 
     current_mm_struct = NULL;
 }
@@ -221,6 +244,7 @@ int copyin(pgtable_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
     memcpy(dst + n, (char *)src, len);
     return n;
 }
+
 
 int copyout(pgtable_t *pagetable, uintptr_t dst_va, char *src, size_t len) {
     size_t n = 0;

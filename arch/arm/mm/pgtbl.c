@@ -145,8 +145,10 @@ static void set_level0_flags(pte_t *entry, pgprot_t flags) {
     /* ---------- execute permission ---------- */
     if (flags & PROT_EXEC){
         SET_VAL(val, LEVEL0_SECTION_XN_MASK, 0);
+        // printk("set_level0_flags: set executable page, val=%xu\n", val);
     } else {
         SET_VAL(val, LEVEL0_SECTION_XN_MASK, 1);
+        // printk("set_level0_flags: set non-executable page, val=%xu\n", val);
     }
        
 
@@ -332,6 +334,7 @@ static void set_level1_flags(pte_t *entry, pgprot_t flags) {
     /* ---------- execute permission ---------- */
     if (flags & PROT_EXEC){
         SET_VAL(val, LEVEL1_PAGE_XN_MASK, 0);
+        // printk("set_level1_flags: set executable page, val=%xu\n", val);
     } else {
         SET_VAL(val, LEVEL1_PAGE_XN_MASK, 1);
     }
@@ -523,6 +526,13 @@ pgprot_t arch_pgtbl_entry_get_flags(pgtable_t *tbl, int level, pte_t *entry) {
 }
 
 void arch_pgtbl_set_entry(pgtable_t *tbl, int level, pgdesc_type_t type, pte_t* entry, phys_addr_t pa, pgprot_t flags) {
+    /*
+     * Always rebuild the descriptor from scratch.
+     * This is required when converting SECTION -> TABLE during split,
+     * otherwise stale bits may remain and produce malformed descriptors.
+     */
+    entry->val = 0;
+
     switch (level) {
         case 0: set_level0_type(entry, type); break;
         case 1: set_level1_type(entry, type); break;
@@ -603,6 +613,5 @@ void arch_pgtbl_deinit(pgtable_t *tbl) {
         tbl->root = NULL;
     }
 }
-
 
 

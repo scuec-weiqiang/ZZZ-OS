@@ -4,6 +4,9 @@ _start:
     // 关闭中断
     cpsid if
 
+    // 保存 U-Boot 传入的 dtb 指针（Linux ARM 启动协议: r2 = dtb）
+    mov r8, r2
+
     // 关闭MMU和cache
     mrc p15,0,r0,c1,c0,0
     bic r0,r0,#1          @ SCTLR.M
@@ -80,12 +83,21 @@ loop1:
     b loop1
 
 done1:
+    @ 映射一下串口
+    add r2, r0, #(0x20*4)
+    ldr r3, =0x02000000 @ r3为开始映射的虚拟地址,这里映射 pa = 0x02000000 -> va = 0x02000000，len = 1M
+
+    ldr r6, =0xFFF00000
+    and r5, r3, r6 @ 保留物理地址的高20位
+    orr r5, r5, r1 @ 加上属性位
+
+    str r5, [r2] @ 将页表项写入内存
     
     // 将页表基地址写入TTBR0寄存器
     mcr p15, 0, r0, c2, c0, 0
 
-    // 设置域访问控制寄存器，允许访问所有域
-    mov r1, #0xFFFFFFFF
+    // 设置域访问控制寄存器为 client 模式，开启页表权限检查（含 AP/XN）
+    ldr r1, =0x55555555
     mcr p15, 0, r1, c3, c0, 0
 
     @ invalidate TLB
@@ -136,9 +148,11 @@ done1:
     cps #0x13
 
     ldr r0, =0
-    ldr r1, =0x80000000
+    mov r1, r8
+    cmp r1, #0
+    ldreq r1, =0x80000000
 
     cpsie i
+
     
     b init_kernel
-

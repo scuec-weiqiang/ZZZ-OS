@@ -10,7 +10,8 @@ MOUNT_PATH = ./mount
 
 #--------------输出目录---------------#
 BUILD_DIR := build
-TARGET := $(BUILD_DIR)/kernel.bin
+TARGET := $(BUILD_DIR)/uImage
+BIN := $(BUILD_DIR)/kernel.bin
 ELF := $(BUILD_DIR)/kernel.elf
 
 #--------------编译器---------------#
@@ -74,7 +75,11 @@ os: $(TARGET) $(ASM_LINK) $(KBUILD_FILE) $(DTB)
 	cp $(TARGET) ../linux/tftpboot/
 	cp $(DTB) ../linux/tftpboot/
 
-$(TARGET): $(ELF) 
+$(TARGET): $(BIN)
+	./tools/mkimage -A arm -O linux -T kernel -C none -a 0x80200000 -e 0x80200000 -n "ZZZ-OS" -d $(BIN) $(TARGET)
+
+
+$(BIN): $(ELF) 
 	$(OBJCOPY) -O binary $< -S $@
 	@echo "$@ is ready"
 	

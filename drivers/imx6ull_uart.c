@@ -44,17 +44,35 @@ typedef struct {
     __IO uint32_t UMCR;                              /**< UART RS-485 Mode Control Register, offset: 0xB8 */
   } UART_Type;
 
+#if 0
+  #define _UART ((UART_Type*)0x02020000)
+  void _putc(char c) {
+      while ((_UART->UTS >> 4) & 1) {
+      }
+      _UART->UTXD = c;
+  }
+  
+  void puts(char *s) {
+      while (*s) {
+          _putc(*s++);
+          if (*s == '\n') {
+              uart_putc('\r');
+          }
+      }
+  }
+#endif
+
 phys_addr_t uart_base = 0;
 
 #define UART ((UART_Type*)uart_base)
-// #define UART ((UART_Type*)0x02020000)
 
-void uart_disable() {
+
+static void uart_disable() {
 	UART->UCR1 &= ~(1<<0);	
 }
 
 
-void uart_enable() {
+static void uart_enable() {
 	UART->UCR1 |= (1<<0);	
 }
 
@@ -69,7 +87,7 @@ static void uart_enable_rx_irq() {
     UART->UCR1 |= UCR1_UARTEN | UCR1_RRDYEN;
 }
 
-void uart_reg_init() {
+static void uart_reg_init() {
     uart_disable();
     UART->UCR1 = 0;		/* 先清除UCR1寄存器 */
 	
@@ -117,25 +135,12 @@ static void putc (char c) {
     UART->UTXD = c;
 }
 
-void uart_putc(char c) {
-    while ((UART->UTS >> 4) & 1) {
-    }
-    UART->UTXD = c;
-}
-
 static char getc(void) {
     while((UART->USR2 & 0x1) == 0);/* 等待接收完成 */
 	return UART->URXD;				/* 返回接收到的数据 */
 }
 
-void puts(char *s) {
-    while (*s) {
-        uart_putc(*s++);
-        if (*s == '\n') {
-            uart_putc('\r');
-        }
-    }
-}
+
 
 irqreturn_t uart_iqr(int virq, void *dev_id) {
     char a = getc();

@@ -52,6 +52,20 @@ static inline uint32_t read_dacr(void)
     asm volatile("mrc p15,0,%0,c3,c0,0":"=r"(v));
     return v;
 }
+
+static inline uint32_t read_ifar(void)
+{
+    uint32_t v;
+    asm volatile("mrc p15,0,%0,c6,c0,2":"=r"(v));
+    return v;
+}
+
+static inline uint32_t read_ifsr(void)
+{
+    uint32_t v;
+    asm volatile("mrc p15,0,%0,c5,c0,1":"=r"(v));
+    return v;
+}
 static void exception(char *s) {
     printk("%s exception\n", s);
     while (1) {
@@ -80,6 +94,10 @@ void swi_handler(void)
 
 void prefetch_abort_handler(void)
 {
+    uint32_t ifar = read_ifar();
+    uint32_t ifsr = read_ifsr();
+    uint32_t fs = ((ifsr & 0xF) | ((ifsr >> 6) & 0x10));
+    printk("PREFETCH ABORT ifar=%xu ifsr=%xu fs=%xu\n", ifar, ifsr, fs);
     exception("prefetch");
 }
 

@@ -45,6 +45,16 @@ void systick_up()
     arch_timer_tick[id]++;
 }
 
+uint64_t arch_timer_counter(void)
+{
+    return time_r();
+}
+
+uint32_t arch_timer_frequency(void)
+{
+    return (uint32_t)SYS_CLOCK_FREQ;
+}
+
 void arch_timer_init( enum arch_timer_hz hz)
 {
     s_timer_interrupt_disable();

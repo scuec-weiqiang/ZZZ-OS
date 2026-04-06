@@ -105,7 +105,7 @@ void pgtbl_split(pgtable_t *pgtbl, pte_t *pte, int level) {
         return; // 已经是最低层级，无法拆分
     }
 
-    phys_addr_t pa = arch_pgtbl_entry_get_pa(pgtbl, level, PGTBL_DESC_TABLE,pte);
+    phys_addr_t pa = arch_pgtbl_entry_get_pa(pgtbl, level, PGTBL_DESC_PAGE, pte);
     pte_t *child_table = alloc_table_va(pgtbl, level + 1);
     if (child_table == NULL) {
         return; // 分配失败
@@ -113,9 +113,11 @@ void pgtbl_split(pgtable_t *pgtbl, pte_t *pte, int level) {
     memset(child_table, 0, PAGE_SIZE);
     arch_pgtbl_sync_range(child_table, pgtbl->features->level[level+1].table_size); // 确保新表的内容被写回内存
     size_t child_page_size = pgtbl_level_page_size(pgtbl, level + 1);
+    size_t child_entries = pgtbl->features->level[level + 1].table_size / sizeof(pte_t);
     vma_flags_t flags = arch_pgtbl_entry_get_flags(pgtbl,level,pte);
-    for (int i = 0; i < (PAGE_SIZE / sizeof(pte_t)); i++) {
+    for (size_t i = 0; i < child_entries; i++) {
         phys_addr_t child_pa = pa + i * child_page_size;
+        // printk("pgtbl_split: set child entry %d at level %d to pa=%xu with flags %xu\n", i, level+1, child_pa, flags);
         arch_pgtbl_set_entry(pgtbl, level+1, PGTBL_DESC_PAGE,&child_table[i], child_pa, flags); // 继承权限位
     }
  
@@ -222,7 +224,45 @@ walk_action_t map_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, vo
         arch_pgtbl_set_entry(pgtbl,level,PGTBL_DESC_TABLE,pte, KERNEL_PA(child_table), PROT_NONE);
         arch_pgtbl_sync_range(child_table, pgtbl->features->level[level+1].table_size); // 确保新表的内容被写回内存
         // printk("create pte = %xu\n", pte->val);
+    }
+    return WALK_CONTINUE;
+}
 
+walk_action_t remap_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, void *arg) {
+    struct map_ctx *ctx = arg;
+
+    pgdesc_type_t type;
+    if (level == ctx->target_level) {
+        type = PGTBL_DESC_PAGE;
+    } else {
+        type = PGTBL_DESC_TABLE;
+    }
+    ctx->table[level] = entry_get_table_base(pgtbl, level, type, pte);
+    ctx->pte[level] = pte;
+
+    // printk("map_cb: level=%d, va=%xu, pte val=%xu\n", level, va, pte->val);
+    if (level == ctx->target_level) {
+        pte->val = 0; // 先清空原有映射
+        // printk("map_cb: set entry at level %d, va=%xu to pa=%xu with flags %xu\n", level, va, ctx->pa, ctx->flags);
+        arch_pgtbl_set_entry(pgtbl,level, type,pte, ctx->pa, ctx->flags);
+        for (int l = level; l > 0; l--) {
+            pte_t *table = ctx->table[l];
+            pte_t *table_entry = ctx->pte[l-1];
+            if (pgtbl_table_need_merge(pgtbl, table, l)) {
+                // printk("map_cb: merge table at level %d\n", l);
+                pgtbl_merge(pgtbl, l, table, table_entry);
+                arch_pgtbl_sync_range(table_entry, sizeof(pte_t)); // 确保合并后的表项被写回内存
+            } else {
+                break;
+            }
+        }
+        // printk("map success at level %d for va=%xu\n", level, va);
+        return WALK_STOP;
+    }
+
+    // 映射存在且不是目标级别，直接拆分
+    if (arch_pgtbl_entry_is_valid(pte) == true && arch_pgtbl_entry_is_leaf(pte) == true) {
+        pgtbl_split(pgtbl, pte, level);
     }
     return WALK_CONTINUE;
 }
@@ -245,7 +285,7 @@ walk_action_t look_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, v
         phys_addr_t offset = mod_u32(va , pgtbl_level_page_size(pgtbl, level) );
         res->pa = arch_pgtbl_entry_get_pa(pgtbl,level,PGTBL_DESC_PAGE,pte);
         res->pa += offset;
-        printk("look_cb: pte = %xu\n", pte->val);
+        // printk("look_cb: pte = %xu\n", pte->val);
         res->flags = arch_pgtbl_entry_get_flags(pgtbl,level,pte);
         return WALK_STOP;
     }
@@ -343,6 +383,14 @@ int pgtbl_map(pgtable_t *pgtbl, virt_addr_t va, phys_addr_t pa, int target_level
     return pgtbl_walk(pgtbl, va, target_level, map_cb, &ctx);
 }
 
+int pgtbl_remap(pgtable_t *pgtbl, virt_addr_t va, phys_addr_t pa, int target_level, pgprot_t new_flags) {
+    return pgtbl_walk(pgtbl, va, target_level, remap_cb, &(struct map_ctx){
+        .pa = pa,
+        .flags = new_flags,
+        .target_level = target_level,
+    });
+}
+
 int pgtbl_unmap(pgtable_t *pgtbl, virt_addr_t va, int target_level) {
     struct unmap_ctx ctx = {
         .va = va,
@@ -350,6 +398,7 @@ int pgtbl_unmap(pgtable_t *pgtbl, virt_addr_t va, int target_level) {
     };
     return pgtbl_walk(pgtbl, va, target_level, unmap_cb, &ctx);
 }
+
 
 phys_addr_t pgtbl_lookup(pgtable_t *pgtbl, virt_addr_t va) {
     struct look_ctx ctx = {
@@ -367,6 +416,8 @@ pgprot_t pgtbl_lookup_prot(pgtable_t *pgtbl, virt_addr_t va) {
     pgtbl_walk(pgtbl, va, pgtbl->features->support_levels - 1, look_cb, &ctx);
     return ctx.flags;
 }
+
+
 
 
 void pgtbl_flush() {

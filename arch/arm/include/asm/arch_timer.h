@@ -26,5 +26,7 @@ extern void arch_timer_period(enum arch_timer_hz hz);
 extern void arch_timer_reload(void);
 extern uint64_t systick(void);
 extern void systick_up(void);
+extern uint64_t arch_timer_counter(void);
+extern uint32_t arch_timer_frequency(void);
 
 #endif

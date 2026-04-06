@@ -56,6 +56,11 @@
             interrupts-extended = <&intc 58>; // GIC中对应的中断号
         };
 
+        rtc: rtc@020cc000 {
+            compatible = "fsl,imx6ull-snvs-rtc";
+            reg = <0x020cc000 0x4000>;
+        };
+
         // virt_disk: virt_disk@10001000 {
         //     compatible = "wq,virt_disk";
         //     reg = <0x10001000 0x1000>;

@@ -12,6 +12,10 @@
 
 #include <os/types.h>
 
+typedef uint64_t (*clocksource_counter_cb_t)(void);
+typedef uint32_t (*clocksource_frequency_cb_t)(void);
+typedef int (*rtc_boot_seconds_cb_t)(uint64_t *sec);
+
 typedef struct timespec 
 {
     uint64_t tv_sec;   // 秒数（自 Unix 纪元时间 1970-01-01 00:00:00 起）
@@ -64,5 +68,14 @@ extern uint32_t get_current_unix_timestamp(enum UTC utc);
 
 extern int timestamp_init();
 extern uint32_t system_time_to_unix_timestamp(const struct system_time *t);
+
+/* minimal unified timekeeping API */
+extern void timekeeping_init(void);
+extern uint64_t monotonic_ns(void);
+extern uint64_t realtime_sec(void);
+extern uint64_t realtime_ns(void);
+extern int timekeeping_register_clocksource(clocksource_counter_cb_t counter_cb,
+                                            clocksource_frequency_cb_t frequency_cb);
+extern int timekeeping_register_rtc(rtc_boot_seconds_cb_t rtc_cb);
 
 #endif

@@ -29,6 +29,7 @@ int pgtbl_map(pgtable_t *pgtbl, virt_addr_t va, phys_addr_t pa, int target_level
 int pgtbl_unmap(pgtable_t *pgtbl, virt_addr_t va, int target_level);
 phys_addr_t pgtbl_lookup(pgtable_t *pgtbl, virt_addr_t va);
 pgprot_t pgtbl_lookup_prot(pgtable_t *pgtbl, virt_addr_t va);
+int pgtbl_remap(pgtable_t *pgtbl, virt_addr_t va, phys_addr_t pa, int target_level, pgprot_t new_flags);
 void pgtbl_switch_to(pgtable_t *pgtbl);
 
 

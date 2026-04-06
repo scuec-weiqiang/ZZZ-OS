@@ -129,7 +129,6 @@ int _vprint(const char *fmt, va_list vl) {
     _vsprint(print_buff, fmt, vl_copy);
     va_end(vl_copy);
 
-// #define DEBUG
 #ifdef DEBUG
    extern void puts(char *s); 
     puts(print_buff);

@@ -8,6 +8,7 @@
 #include <os/irqreturn.h>
 #include <os/of_irq.h>
 #include <os/printk.h>
+#include <os/time.h>
 #include <os/timer_chip.h>
 #include <os/utils.h>
 
@@ -35,6 +36,12 @@ static inline void arm_cntp_tval_write(uint32_t v) {
     asm volatile("mcr p15, 0, %0, c14, c2, 0" : : "r"(v));
 }
 
+static inline uint64_t arm_cntpct_read(void) {
+    uint32_t lo, hi;
+    asm volatile("mrrc p15, 0, %0, %1, c14" : "=r"(lo), "=r"(hi));
+    return ((uint64_t)hi << 32) | (uint64_t)lo;
+}
+
 static inline uint32_t arm_cntp_ctl_read(void) {
     uint32_t v = 0;
     asm volatile("mrc p15, 0, %0, c14, c2, 1" : "=r"(v));
@@ -49,7 +56,7 @@ static irqreturn_t arm_arch_timer_irq_handler(int virq, void *dev_id) {
     (void)virq;
     (void)dev_id;
     arch_timer_reload();
-    printk("tick=%d%du\n",
+    printk("tick=%d%du\r",
        (uint32_t)(arm_timer.tick >> 32),
        (uint32_t)arm_timer.tick);
 
@@ -117,6 +124,17 @@ void systick_up(void) {
     arm_timer.tick++;
 }
 
+uint64_t arch_timer_counter(void) {
+    return arm_cntpct_read();
+}
+
+uint32_t arch_timer_frequency(void) {
+    if (arm_timer.cntfrq == 0) {
+        arm_timer.cntfrq = arm_cntfrq_read();
+    }
+    return arm_timer.cntfrq;
+}
+
 static int arm_arch_timer_of_init(struct device_node *np, struct device_node *parent) {
     int virq;
     int cpu;
@@ -137,6 +155,10 @@ static int arm_arch_timer_of_init(struct device_node *np, struct device_node *pa
     
     arm_timer.virq = virq;
     arch_timer_init(SYS_HZ_1);
+    if (timekeeping_register_clocksource(arch_timer_counter, arch_timer_frequency) < 0) {
+        printk("arm_arch_timer: register clocksource failed\n");
+        return -1;
+    }
     arch_timer_start();
     printk("arm_arch_timer: initialized with virq=%d\n", virq);
     return 0;
