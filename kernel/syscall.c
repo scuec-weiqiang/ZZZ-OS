@@ -13,13 +13,13 @@
 
 #include <asm/riscv.h>
 #include <os/printk.h>
-#include <os/proc.h>
+#include <os/task.h>
 #include <os/sched.h>
 #include <fs/vfs.h>
 #include <os/kmalloc.h>
 #include <os/mm.h>
 
-int sys_printf(struct trap_frame *ctx)
+int sys_printf(struct pt_regs *ctx)
 {
     char *s = kmalloc(ctx->a1); // 获取字符串指针
     copyin(current_proc()->mm->pgdir, s, (uintptr_t)ctx->a0, (uintptr_t)ctx->a1);
@@ -28,14 +28,14 @@ int sys_printf(struct trap_frame *ctx)
     return n;
 }
 
-int sys_yield(struct trap_frame *ctx)
+int sys_yield(struct pt_regs *ctx)
 {
     // printk("sys_yield called by %xu\n", ctx->a0);
     yield(); // 调用调度函数，切换到其他线程
     return 0;
 }
 
-int sys_open(struct trap_frame *ctx)
+int sys_open(struct pt_regs *ctx)
 {
     char path[128];
     char *s = path;
@@ -56,7 +56,7 @@ int sys_open(struct trap_frame *ctx)
     return alloc_fd(p, file);
 }
 
-int sys_close(struct trap_frame *ctx)
+int sys_close(struct pt_regs *ctx)
 {
     struct proc *p = current_proc();
     int fd = ctx->a0;
@@ -65,7 +65,7 @@ int sys_close(struct trap_frame *ctx)
     return 0;
 }
 
-int sys_read(struct trap_frame *ctx)
+int sys_read(struct pt_regs *ctx)
 {
     struct proc *p = current_proc();
     int fd = ctx->a0;
@@ -85,7 +85,7 @@ int sys_read(struct trap_frame *ctx)
     return ret;
 }
 
-int sys_write(struct trap_frame *ctx)
+int sys_write(struct pt_regs *ctx)
 {
     struct proc *p = current_proc();
     int fd = ctx->a0;
@@ -102,7 +102,7 @@ int sys_write(struct trap_frame *ctx)
     return ret;
 }
 
-int sys_creat(struct trap_frame *ctx)
+int sys_creat(struct pt_regs *ctx)
 {
     char path[128];
     char *s = path;
@@ -128,7 +128,7 @@ int sys_creat(struct trap_frame *ctx)
     return alloc_fd(p, file);
 }
 
-int sys_mkdir(struct trap_frame *ctx)
+int sys_mkdir(struct pt_regs *ctx)
 {
     char path[128];
     char *s = path;
@@ -153,7 +153,7 @@ int sys_mkdir(struct trap_frame *ctx)
     return 0;
 }
 
-typedef int (*sysfuncPtr)(struct trap_frame *ctx); // 定义函数指针类型 FuncPtr
+typedef int (*sysfuncPtr)(struct pt_regs *ctx); // 定义函数指针类型 FuncPtr
 
 static sysfuncPtr syscalls[] = {
     [SYSCALL_PRINT] = sys_printf,
@@ -166,7 +166,7 @@ static sysfuncPtr syscalls[] = {
     [SYSCALL_MKDIR] = sys_mkdir,
 };
 
-void do_syscall(struct trap_frame *ctx)
+void do_syscall(struct pt_regs *ctx)
 {
     uint64_t num = ctx->a7; // 获取系统调用号
     if (num < SYSCALL_END)

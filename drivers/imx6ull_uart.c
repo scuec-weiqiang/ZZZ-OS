@@ -44,7 +44,7 @@ typedef struct {
     __IO uint32_t UMCR;                              /**< UART RS-485 Mode Control Register, offset: 0xB8 */
   } UART_Type;
 
-#if 0
+#if 1
   #define _UART ((UART_Type*)0x02020000)
   void _putc(char c) {
       while ((_UART->UTS >> 4) & 1) {
@@ -52,11 +52,11 @@ typedef struct {
       _UART->UTXD = c;
   }
   
-  void puts(char *s) {
+  void _puts(char *s) {
       while (*s) {
           _putc(*s++);
           if (*s == '\n') {
-              uart_putc('\r');
+              _putc('\r');
           }
       }
   }
@@ -199,7 +199,7 @@ static int uart_probe(struct platform_device *pdev) {
     irq_enable(virq);
 
     console_register(putc);
-    
+
     return 0;
 }
 

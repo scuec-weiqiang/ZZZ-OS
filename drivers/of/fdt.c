@@ -10,7 +10,6 @@
 #include <os/fdt.h>
 #include <os/bswap.h>
 #include <os/kmalloc.h>
-#include <fs/path.h>
 #include <os/printk.h>
 #include <os/string.h>
 #include <os/kva.h>
@@ -121,6 +120,62 @@ int fdt_add_child(struct device_node *parent, struct device_node *child) {
     return 0;
 }
 
+// struct device_node *parse_struct_block(const char *struct_block, char *strings) {
+//     struct device_node *root = NULL;
+//     struct device_node *curr = NULL;
+//     uint32_t *p = (uint32_t *)struct_block;
+
+//     while (1) {
+//         uint32_t token = be32_to_cpu(*p);
+//         p++;
+//         switch (token) {
+//         case FDT_BEGIN_NODE: {
+//             const char *name = (const char *)p;
+//             p++;
+//             printk("in node: %s\n", name);
+//             struct device_node *new_node = (struct device_node *)fdt_new_node(name, curr);
+//             if (root == NULL) {
+//                 root = new_node;
+//             } else {
+//                 fdt_add_child(curr, new_node);
+//             }
+//             curr = new_node;
+//             curr->depth = curr->parent ? curr->parent->depth + 1 : 0;
+//             break;
+//         }
+//         case FDT_PROP: {
+//             uint32_t len = be32_to_cpu(*p);
+//             p++;
+//             uint32_t nameoff = be32_to_cpu(*p);
+//             p++;
+//             const char *prop_name = strings + nameoff;
+//             struct device_prop *new_prop = fdt_new_prop(prop_name, len, p);
+//             if (strcmp(new_prop->name, "phandle") == 0) {
+//                 uint32_t phandle = be32_to_cpu(*(uint32_t *)new_prop->value);
+//                 if (phandle < PHANDLE_MAX - 1) {
+//                     phandle_table[phandle] = curr; // 只存一定数值的phandle，超出的部分等到要用的时候再解析
+//                 }
+//             }
+//             fdt_add_prop(curr, new_prop);
+//             p += (len + 3) / 4; // 跳过属性值
+//             break;
+//         }
+//         case FDT_NOP:
+//             break;
+//         case FDT_END_NODE:
+//             if (curr)
+//                 curr = curr->parent;
+//             break;
+//         case FDT_END:
+//             return root;
+//         default:
+//             break; // 其他
+//         }
+//     }
+//     fdt_free_node(root);
+//     return NULL;
+// }
+
 struct device_node *parse_struct_block(const char *struct_block, char *strings) {
     struct device_node *root = NULL;
     struct device_node *curr = NULL;
@@ -129,50 +184,62 @@ struct device_node *parse_struct_block(const char *struct_block, char *strings) 
     while (1) {
         uint32_t token = be32_to_cpu(*p);
         p++;
+
         switch (token) {
         case FDT_BEGIN_NODE: {
             const char *name = (const char *)p;
-            p++;
-            printk("in node: %s\n", name);
-            struct device_node *new_node = (struct device_node *)fdt_new_node(name, curr);
-            if (root == NULL) {
+            // ====================== 修复 1：节点名必须 4 字节对齐 ======================
+            uint32_t name_len = strlen(name) + 1;
+            p = (uint32_t *)((uintptr_t)p + ALIGN_UP(name_len, 4));
+
+            struct device_node *new_node = fdt_new_node(name, curr);
+            if (root == NULL)
                 root = new_node;
-            } else {
+            else
                 fdt_add_child(curr, new_node);
-            }
+
             curr = new_node;
             curr->depth = curr->parent ? curr->parent->depth + 1 : 0;
             break;
         }
+
         case FDT_PROP: {
-            uint32_t len = be32_to_cpu(*p);
-            p++;
-            uint32_t nameoff = be32_to_cpu(*p);
-            p++;
+            uint32_t len = be32_to_cpu(*p); p++;
+            uint32_t nameoff = be32_to_cpu(*p); p++;
             const char *prop_name = strings + nameoff;
+
             struct device_prop *new_prop = fdt_new_prop(prop_name, len, p);
-            if (strcmp(new_prop->name, "phandle") == 0) {
+ 
+            if (new_prop && strcmp(new_prop->name, "phandle") == 0) {
                 uint32_t phandle = be32_to_cpu(*(uint32_t *)new_prop->value);
-                if (phandle < PHANDLE_MAX - 1) {
-                    phandle_table[phandle] = curr; // 只存一定数值的phandle，超出的部分等到要用的时候再解析
-                }
+                if (phandle < PHANDLE_MAX)
+                    phandle_table[phandle] = curr;
             }
             fdt_add_prop(curr, new_prop);
-            p += (len + 3) / 4; // 跳过属性值
+
+            // ====================== 修复 2：属性值必须按 4 字节对齐跳过 ======================
+            p = (uint32_t *)((uintptr_t)p + ALIGN_UP(len, 4));
             break;
         }
+
         case FDT_NOP:
             break;
+
         case FDT_END_NODE:
             if (curr)
                 curr = curr->parent;
             break;
+
         case FDT_END:
             return root;
+
         default:
-            break; // 其他
+            printk("unknown token: %x\n", token);
+            goto fail;
         }
     }
+
+fail:
     fdt_free_node(root);
     return NULL;
 }
@@ -201,6 +268,19 @@ int fdt_walk_node(const struct device_node *node, int level) {
     }
     level++;
     printk("%s\n", node->name);
+    printk("Properties:\n");
+    struct device_prop *prop = node->properties;
+    while (prop) {
+        for (int i = 0; i < level; i++) {
+            printk("  ");
+        }
+        printk("- %s: ", prop->name);
+        for (uint32_t i = 0; i < prop->length; i++) {
+            printk("%xu ", ((uint8_t *)prop->value)[i]);
+        }
+        printk("\n");
+        prop = prop->next;
+    }
     struct device_node *curr = node->children;
     while (curr) {
         fdt_walk_node(curr, level + 1);
@@ -210,32 +290,6 @@ int fdt_walk_node(const struct device_node *node, int level) {
     return level;
 }
 
-static struct device_node *queue[sizeof(struct device_node *) * 512] = {0};
-int fdt_walk(struct device_node *node, struct list_head *list) {
-    if (!node && !list)
-        return -1;
-
-    int front = 0, rear = 0;
-
-    queue[rear] = node;
-    rear++;
-
-    while (front < rear) {
-        struct device_node *current_node = queue[front];
-        front++;
-
-        list_add_tail(list,&current_node->node);
-
-        // 将子节点加入队列
-        struct device_node *child = current_node->children;
-        while (child) {
-            queue[rear] = child;
-            rear++;
-            child = child->sibling;
-        }
-    }
-    return 0;
-}
 
 
 int fdt_init(void *dtb) {
@@ -255,7 +309,6 @@ int fdt_init(void *dtb) {
     struct_block = (char *)dtb + (size_t)be32_to_cpu(fdt->off_dt_struct);
     strings = (char *)dtb + (size_t)be32_to_cpu(fdt->off_dt_strings);
     fdt_root_node = parse_struct_block(struct_block, (char *)strings);
-
     return 0;
 }
 

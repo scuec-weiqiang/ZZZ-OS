@@ -1,0 +1,72 @@
+/dts-v1/;
+/ {
+    #address-cells = <1>;
+    #size-cells = <1>;
+    compatible = "wq,imx6ull";
+
+    memory {
+        device_type = "memory";
+        reg = < 0x80000000 0x20000000 >; // 内存起始地址和大小
+    };
+
+    reserved-memory {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        ranges;
+        boot: reserved@80000000 {
+            reg = <0x80000000 0x200000>; // 保留内存区域
+        };
+    };
+
+    cpus {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        cpu0: cpu@0 {
+            compatible = "arm,cortex-a7";
+            device_type = "cpu";
+            clock-frequency = <10000000>;
+        };
+    };
+
+    intc:interrupt-controller@00a01000 {
+        compatible = "arm,cortex-a7-gic";
+        #interrupt-cells = <1>;
+        interrupt-controller;
+        reg =   <0x00a01000 0x1100>;
+    };
+
+    arch_timer {
+        compatible = "arm,armv7-timer";
+        interrupts-extended = <&intc 29>;
+    };
+
+    soc {
+        #address-cells = <1>;
+        #size-cells = <1>;
+        compatible = "simple-bus";
+       
+        // time: time@50000000 {
+        //     compatible = "wq,time";
+        //     reg = <0x50000000 0x1c>;
+        // };
+  
+        uart0: uart@02020000 {
+            compatible = "imx6ull,uart";
+            reg = <0x02020000 0xbc>;
+            interrupts-extended = <&intc 58>; // GIC中对应的中断号
+        };
+
+        rtc: rtc@020cc000 {
+            compatible = "fsl,imx6ull-snvs-rtc";
+            reg = <0x020cc000 0x4000>;
+        };
+
+        // virt_disk: virt_disk@10001000 {
+        //     compatible = "wq,virt_disk";
+        //     reg = <0x10001000 0x1000>;
+        //     interrupt-parent = <&plic>;
+        //     interrupts = <11>;
+        // };
+
+    };
+};

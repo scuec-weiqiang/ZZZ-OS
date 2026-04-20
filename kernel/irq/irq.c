@@ -11,15 +11,12 @@
 #include <os/irq_chip.h>
 #include <os/irq_domain.h>
 #include <os/init.h>
-
+#include <os/cpu.h>
 #include <asm/irq.h>
 
 #define IRQ_COUNT 128
 struct irq_data __irq_data[IRQ_COUNT];
 
-static int irq_current_cpu_id(void) {
-    return arch_irq_cpu_id();
-}
 
 void irq_init(void) {
     for (int i=0; i<IRQ_COUNT; i++) {
@@ -37,7 +34,7 @@ void irq_init(void) {
         }
     }
     irq_chip_init();
-    // arch_irq_init();
+    arch_irq_init();
 }
 
 struct irq_data *irq_data_get(int virq) {
@@ -81,7 +78,7 @@ reg_t do_irq(reg_t ctx,void *arg) {
         return ctx;
     }
 
-    cpu_id = irq_current_cpu_id();
+    cpu_id = get_cpuid();
     if (__irq_data[virq].is_percpu && cpu_id >= 0 && cpu_id < IRQ_PERCPU_MAX_CPUS) {
         handler = __irq_data[virq].percpu_handler[cpu_id];
         dev_id = __irq_data[virq].percpu_dev_id[cpu_id];
@@ -101,24 +98,31 @@ int irq_request(int virq, irq_handler_t handler, const char *name, void *dev_id)
     if (virq < 0 || virq >= IRQ_COUNT) {
         return -1;
     }
+    struct irq_domain *domain = irq_domain_lookup(virq);
+    struct irq_chip *chip = irq_chip_lookup(domain->np);
+    
     __irq_data[virq].is_percpu = 0;
     __irq_data[virq].handler = handler;
     __irq_data[virq].name = name;
     __irq_data[virq].dev_id = dev_id;
     __irq_data[virq].virq = virq;
-    __irq_data[virq].domain = irq_domain_lookup(virq);
+    __irq_data[virq].domain = domain;
+    __irq_data[virq].chip = chip;
     irq_set_priority(virq, 1);
     return 0;
 }
 
 int irq_percpu_request(int virq, int cpu, irq_handler_t handler, const char *name, void *dev_id) {
     if (virq < 0 || virq >= IRQ_COUNT) {
+        dprintk("irq_percpu_request: invalid virq %d\n", virq);
         return -1;
     }
     if (cpu < 0 || cpu >= IRQ_PERCPU_MAX_CPUS) {
+        dprintk("irq_percpu_request: invalid cpu %x\n", cpu);
         return -1;
     }
     if (!handler) {
+        dprintk("irq_percpu_request: handler is NULL\n");
         return -1;
     }
 
@@ -131,4 +135,9 @@ int irq_percpu_request(int virq, int cpu, irq_handler_t handler, const char *nam
     irq_set_priority(virq, 1);
 
     return 0;
+}
+
+void irq_send_ipi(int cpu_id, int ipi_id) {
+    int hwirq = irq_domain_get_hwirq(__irq_data[ipi_id].domain, ipi_id);
+    __irq_data[ipi_id].chip->ops->ipi->send_ipi(__irq_data[ipi_id].chip, cpu_id, hwirq);
 }

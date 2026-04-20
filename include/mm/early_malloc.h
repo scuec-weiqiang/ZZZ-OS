@@ -12,7 +12,7 @@
 
 #include <os/types.h>
 
-#define EARLY_MALLOC_SIZE 4*SIZE_4K  // 16KB
+#define EARLY_MALLOC_SIZE SIZE_16K  // 16KB
 
 extern phys_addr_t early_malloc_start;
 

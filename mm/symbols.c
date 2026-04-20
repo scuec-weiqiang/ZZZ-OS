@@ -11,6 +11,7 @@
 #include <os/printk.h>
 
 extern char _text_start[], _text_end[];
+extern char _sched_text_start[], _sched_text_end[];
 extern char _trap_start[], _trap_end[]; 
 extern char _rodata_start[], _rodata_end[];
 extern char _data_start[], _data_end[];
@@ -26,6 +27,10 @@ extern char _early_pgtbl_start[], _early_pgtbl_end[];
 phys_addr_t text_start;
 phys_addr_t text_end;
 size_t text_size;
+
+phys_addr_t sched_text_start;
+phys_addr_t sched_text_end;
+size_t sched_text_size;
 
 phys_addr_t trap_start;
 phys_addr_t trap_end;
@@ -73,6 +78,7 @@ size_t early_pgtbl_size;
 
 void print_section() {
     printk("text:        start= %xu, end=  %xu, size=  %xu\n", text_start, text_end, text_size);
+    printk("trap:        start= %xu, end=  %xu, size=  %xu\n", trap_start, trap_end, trap_size);
     printk("rodata:      start= %xu, end=  %xu, size=  %xu\n", rodata_start, rodata_end, rodata_size);
     printk("data:        start= %xu, end=  %xu, size=  %xu\n", data_start, data_end, data_size);
     printk("bss:         start= %xu, end=  %xu, size=  %xu\n", bss_start, bss_end, bss_size);
@@ -100,6 +106,10 @@ void symbols_init()
     text_start = (phys_addr_t)&_text_start;
     text_end = (phys_addr_t)&_text_end;
     text_size = (text_end - text_start);
+
+    sched_text_start = (phys_addr_t)&_sched_text_start;
+    sched_text_end = (phys_addr_t)&_sched_text_start;
+    sched_text_size = sched_text_end - sched_text_start;
 
     trap_start = (phys_addr_t)&_trap_start;
     trap_end = (phys_addr_t)&_trap_end;

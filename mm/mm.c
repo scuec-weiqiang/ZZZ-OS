@@ -58,12 +58,11 @@ int map(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, pgp
     uintptr_t pa = ALIGN_DOWN(paddr, PAGE_SIZE);
     uintptr_t end = va + size;
 
-    // printk("map: va=%xu, pa=%xu, size=%xu, flags=%x\n", va, pa, size, flags);
     #include <os/color.h>
     while (va < end) {
         int target_level = highest_possible_level(pgtbl, va, pa, end - va);
         int map_size = pgtbl_level_page_size(pgtbl, target_level);
-    
+        // printk("map: va=%xu to pa=%xu with flags %xu at level %d, map_size=%xu\n", va, pa, flags, target_level, map_size);
         if (pgtbl_map(pgtbl, va, pa, target_level, flags) < 0) {
             printk(RED("error: failed to map va=%xu to pa=%xu at level %d\n"), va, pa, target_level);
             return -1;
@@ -122,33 +121,54 @@ int unmap(pgtable_t *pgtbl, virt_addr_t va, size_t size) {
     return 0;
 }
 
-
 struct mm_struct init_mm = {
     .pgdir = NULL,
-    .vma_list = {NULL, NULL},
+    .vma_list = {0, 0, 0, &init_mm, {NULL, NULL}},
     .vma_count = 0,
 };
 
-struct mm_struct *kernel_mm_struct = NULL;
-struct mm_struct *current_mm_struct = NULL;
-
-struct mm_struct *mm_create(char *name) {
+struct mm_struct *mm_alloc() {
     struct mm_struct *mm = kmalloc(sizeof(struct mm_struct));
     if (!mm) {
         return NULL;
     }
-    mm->pgdir = new_pgtbl(name);
+    mm->pgdir = new_pgtbl();
     if (!mm->pgdir) {
         kfree(mm);
         return NULL;
     }
-    INIT_LIST_HEAD(&mm->vma_list);
+    mm->vma_list = (struct vma){0, 0, 0, mm, {NULL, NULL}}; // 初始化哨兵节点  
     mm->vma_count = 0;
     vma_add(mm, 0, 1, 0); // 添加哨兵节点
     return mm;
 }
 
-int do_mmap(struct mm_struct * mm, virt_addr_t vaddr, size_t size, vma_flags_t flags) {
+void mm_destroy(struct mm_struct *mm) {
+    struct list_head *pos, *n;
+
+    if (mm == NULL) {
+        return;
+    }
+
+    if (mm == &init_mm) {
+        return;
+    }
+
+    list_for_each_safe(pos, n, &mm->vma_list.node) {
+        struct vma *vma = list_entry(pos, struct vma, node);
+        list_del(&vma->node);
+        vma_destroy(vma);
+    }
+
+    if (mm->pgdir != NULL) {
+        pgtbl_destroy(mm->pgdir);
+        mm->pgdir = NULL;
+    }
+
+    kfree(mm);
+}
+
+int do_mmap(struct mm_struct * mm, virt_addr_t vaddr, size_t size, pgprot_t flags) {
     CHECK(mm != NULL, "mm is NULL", return -1;);
 
     size = ALIGN_UP(size, PAGE_SIZE);
@@ -159,21 +179,21 @@ int do_mmap(struct mm_struct * mm, virt_addr_t vaddr, size_t size, vma_flags_t f
     return 0;
 }
 
-int do_munmap(struct mm_struct *mm, virt_addr_t va, size_t size) {
+int do_unmap(struct mm_struct *mm, virt_addr_t va, size_t size) {
     CHECK(mm != NULL, "mm is NULL", return -1;);
+    CHECK(mm->pgdir != NULL, "mm pgdir is NULL", return -1;);
 
     size = ALIGN_UP(size, PAGE_SIZE);
     va = ALIGN_DOWN(va, PAGE_SIZE);
 
-    vma_delete(mm, va, size);
-   
-    return 0;
+    CHECK(vma_delete(mm, va, size) == 0, "vma delete failed", return -1;);
+    return unmap(mm->pgdir, va, size);
 }
 
 static virt_addr_t alloc_mmio_va(size_t size) {
     static virt_addr_t current_mmio_va = KERNEL_MMIO_BASE;
-    for (int i = 0; i < kernel_mm_struct->pgdir->features->support_levels; i++) {
-        size_t page_size = kernel_mm_struct->pgdir->features->level[i].page_size;
+    for (int i = 0; i < init_mm.pgdir->features->support_levels; i++) {
+        size_t page_size = init_mm.pgdir->features->level[i].page_size;
         if (size >= page_size) {
             current_mmio_va = ALIGN_UP(current_mmio_va, page_size);
             break;
@@ -186,52 +206,68 @@ static virt_addr_t alloc_mmio_va(size_t size) {
 
 void *ioremap(phys_addr_t pa, size_t size) {
     uintptr_t va = alloc_mmio_va(size);
-    map(kernel_mm_struct->pgdir, va, pa, size, PAGE_DEVICE);
+    map(init_mm.pgdir, va, pa, size, PAGE_DEVICE);
     return (void *)va;
 }
 
 void iounmap(virt_addr_t va, size_t size) {
-    unmap(kernel_mm_struct->pgdir, va, size);
+    unmap(init_mm.pgdir, va, size);
 }
 
 void copy_kernel_mapping(struct mm_struct *dest_mm) {
-    int kernel_start_index = pgtbl_level_index(kernel_mm_struct->pgdir, 0, KERNEL_VA_BASE);
-    int kernel_end_index = kernel_mm_struct->pgdir->features->level[0].table_size - sizeof(pte_t);
-    pgtbl_copy(dest_mm->pgdir, kernel_mm_struct->pgdir, 0, kernel_start_index, kernel_end_index - kernel_start_index);
+    int kernel_start_index = pgtbl_level_index(init_mm.pgdir, 0, KERNEL_VA_BASE);
+    int kernel_end_index = init_mm.pgdir->features->level[0].table_size - sizeof(pte_t);
+    pgtbl_copy(dest_mm->pgdir, init_mm.pgdir, 0, kernel_start_index, kernel_end_index - kernel_start_index);
 }
 
 
-void mm_init() {
-    kernel_mm_struct = &init_mm;
-    kernel_mm_struct->pgdir = new_pgtbl("kernel_pgtbl");
-    if (!kernel_mm_struct->pgdir) {
+
+void initial_mm_init() {
+    extern char _early_pgtbl_start[];
+
+    pgtable_t old_pgdir = {
+        .root = (void *)(&_early_pgtbl_start),
+        .root_pa = KERNEL_PA(&_early_pgtbl_start),
+    };
+    printk("old_pgdir root=%xu, root_pa=%xu\n", old_pgdir.root, old_pgdir.root_pa);
+    extern void arch_pgtbl_init(pgtable_t *tbl);
+    arch_pgtbl_init(&old_pgdir);
+
+    map(&old_pgdir, 0xffff0000,KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
+
+    pgtbl_switch_to(&old_pgdir);
+    
+    init_mm.pgdir = new_pgtbl();
+
+    if (!init_mm.pgdir) {
         panic("failed to create kernel pgtable");
     }
 
     struct memblock_region *region = NULL;
-    list_for_each_entry(region, &memblock.memory.regions, struct memblock_region, node) {
-        map(kernel_mm_struct->pgdir, KERNEL_VA(region->base), region->base, region->size, PAGE_KERNEL);
+
+    list_for_each_entry(region, &memblock.memory.region_head.node, struct memblock_region, node) {
+        map(init_mm.pgdir, KERNEL_VA(region->base), region->base, region->size, PAGE_KERNEL);
     }
-    map(kernel_mm_struct->pgdir, 0xffff0000,KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
-    // map(kernel_mm_struct->pgdir, 0x02020000,0x02020000, PAGE_SIZE, PAGE_DEVICE);
-     
-    remap(kernel_mm_struct->pgdir, trap_start, trap_size, PAGE_KERNEL_EXEC);
-    remap(kernel_mm_struct->pgdir, text_start, text_size, PAGE_KERNEL_EXEC);
-    remap(kernel_mm_struct->pgdir, data_start, data_size, PAGE_KERNEL);
-    remap(kernel_mm_struct->pgdir, rodata_start, rodata_size, PAGE_KERNEL_RO);
-    remap(kernel_mm_struct->pgdir, bss_start, bss_size, PAGE_KERNEL);
-    remap(kernel_mm_struct->pgdir, initcall_start, initcall_size, PAGE_KERNEL_EXEC);
-    remap(kernel_mm_struct->pgdir, exitcall_start, exitcall_size, PAGE_KERNEL_EXEC);
-    remap(kernel_mm_struct->pgdir, irqinitcall_start, irqinitcall_size, PAGE_KERNEL_EXEC);
-    remap(kernel_mm_struct->pgdir, irqexitcall_start, irqexitcall_size, PAGE_KERNEL_EXEC);
-    remap(kernel_mm_struct->pgdir, early_stack_start, early_stack_size, PAGE_KERNEL);
+
+    map(init_mm.pgdir, 0xffff0000,KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
+    map(init_mm.pgdir, 0x02020000,0x02020000, PAGE_SIZE, PAGE_DEVICE);
+
+    remap(init_mm.pgdir, trap_start, trap_size, PAGE_KERNEL_EXEC);
+    remap(init_mm.pgdir, text_start, text_size, PAGE_KERNEL_EXEC);
+
+    remap(init_mm.pgdir, data_start, data_size, PAGE_KERNEL);
+    remap(init_mm.pgdir, rodata_start, rodata_size, PAGE_KERNEL_RO);
+    remap(init_mm.pgdir, bss_start, bss_size, PAGE_KERNEL);
+    remap(init_mm.pgdir, initcall_start, initcall_size, PAGE_KERNEL_EXEC);
+    remap(init_mm.pgdir, exitcall_start, exitcall_size, PAGE_KERNEL_EXEC);
+    remap(init_mm.pgdir, irqinitcall_start, irqinitcall_size, PAGE_KERNEL_EXEC);
+    remap(init_mm.pgdir, irqexitcall_start, irqexitcall_size, PAGE_KERNEL_EXEC);
+    remap(init_mm.pgdir, early_stack_start, early_stack_size, PAGE_KERNEL);
+    here;
+    pgtbl_switch_to(init_mm.pgdir);
+    here;
     
-    pgtbl_switch_to(kernel_mm_struct->pgdir);
-    printk("mm_init success\n");
-
-    current_mm_struct = NULL;
 }
-
 
 int copyin(pgtable_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
     size_t n = 0;
@@ -244,7 +280,6 @@ int copyin(pgtable_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
     memcpy(dst + n, (char *)src, len);
     return n;
 }
-
 
 int copyout(pgtable_t *pagetable, uintptr_t dst_va, char *src, size_t len) {
     size_t n = 0;

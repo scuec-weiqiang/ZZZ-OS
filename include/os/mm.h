@@ -15,9 +15,7 @@
 #include <mm/mm_types.h>
 #include <mm/pgprot.h>
 #include <mm/vma.h>
-
-extern struct mm_struct *kernel_mm_struct;
-extern struct mm_struct *current_mm_struct;
+extern struct mm_struct init_mm;
 
 int map(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, pgprot_t flags);
 int unmap(pgtable_t *pgtbl, virt_addr_t vaddr, size_t size);
@@ -25,11 +23,11 @@ int unmap(pgtable_t *pgtbl, virt_addr_t vaddr, size_t size);
 void *ioremap(phys_addr_t pa, size_t size);
 void iounmap(virt_addr_t va, size_t size);
 
+void initial_mm_init();
+struct mm_struct *mm_alloc();
+void mm_destroy(struct mm_struct *mm);
 
-void mm_init();
-struct mm_struct *mm_create(char *name);
-
-int do_mmap(struct mm_struct *mm, virt_addr_t vaddr, size_t size, vma_flags_t flags);
+int do_mmap(struct mm_struct *mm, virt_addr_t vaddr, size_t size, pgprot_t flags);
 int do_unmap(struct mm_struct *mm, virt_addr_t vaddr, size_t size);
 
 void copy_kernel_mapping(struct mm_struct *dest_mm);

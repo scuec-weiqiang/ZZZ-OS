@@ -68,7 +68,6 @@ struct pgtable_features {
 };
 
 typedef struct pgtable{
-    char name[32]; // 页表名称
     uint32_t asid;          // 地址空间 id 
     void* root;           // 根页表虚拟地址
     phys_addr_t root_pa;   // 根页表物理地址

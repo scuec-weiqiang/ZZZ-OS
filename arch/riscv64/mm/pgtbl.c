@@ -145,8 +145,8 @@ void arch_pgtbl_deinit(pgtable_t *tbl) {
         kfree(tbl->root);
         tbl->root = NULL;
     }
+    tbl->root_pa = 0;
 }
-
 
 
 

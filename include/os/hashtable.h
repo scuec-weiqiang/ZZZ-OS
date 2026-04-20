@@ -26,10 +26,21 @@
 
 typedef uint64_t hval_t;
 
-typedef hval_t (*hash_func_t)(const struct hlist_node *);
-typedef int (*hash_compare_t)(const struct hlist_node *, const struct hlist_node *);
+struct hash_ops
+{
+    hval_t (*hash_func)(const struct hlist_node *);
+    int (*hash_compare)(const struct hlist_node *, const struct hlist_node *);
+};
 
-struct hashtable *hashtable_init(size_t num_buckets, hash_func_t hash_func, hash_compare_t hash_compare);
+// 哈希表结构
+struct hashtable {
+    struct hlist_head *buckets;
+    size_t size; //桶的数量
+    size_t node_count; // 节点总数
+    struct hash_ops *ops; // 哈希函数和比较函数
+};
+
+struct hashtable *hashtable_init(size_t num_buckets, struct hash_ops *ops);
 void hashtable_destroy(struct hashtable *ht);
 struct hlist_node *hashtable_lookup(struct hashtable *ht, struct hlist_node *node);
 int hashtable_insert(struct hashtable *ht, struct hlist_node *node);

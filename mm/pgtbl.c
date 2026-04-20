@@ -71,7 +71,7 @@ bool pgtbl_table_need_merge(pgtable_t *pgtbl, pte_t *table, int level) {
         }
 
         phys_addr_t pa = arch_pgtbl_entry_get_pa(pgtbl, level, PGTBL_DESC_PAGE,pte);
-        vma_flags_t flags = arch_pgtbl_entry_get_flags(pgtbl,level, pte);
+        pgprot_t flags = arch_pgtbl_entry_get_flags(pgtbl,level, pte);
 
         if (i == 0) {
             first_pa = pa;
@@ -114,7 +114,7 @@ void pgtbl_split(pgtable_t *pgtbl, pte_t *pte, int level) {
     arch_pgtbl_sync_range(child_table, pgtbl->features->level[level+1].table_size); // 确保新表的内容被写回内存
     size_t child_page_size = pgtbl_level_page_size(pgtbl, level + 1);
     size_t child_entries = pgtbl->features->level[level + 1].table_size / sizeof(pte_t);
-    vma_flags_t flags = arch_pgtbl_entry_get_flags(pgtbl,level,pte);
+    pgprot_t flags = arch_pgtbl_entry_get_flags(pgtbl,level,pte);
     for (size_t i = 0; i < child_entries; i++) {
         phys_addr_t child_pa = pa + i * child_page_size;
         // printk("pgtbl_split: set child entry %d at level %d to pa=%xu with flags %xu\n", i, level+1, child_pa, flags);
@@ -138,7 +138,7 @@ void pgtbl_merge(pgtable_t *pgtbl, int level, pte_t *table, pte_t *table_entry) 
 
     // 确定合并的地址范围与权限
     phys_addr_t first_pa = arch_pgtbl_entry_get_pa(pgtbl,level,PGTBL_DESC_PAGE,&table[0]);
-    vma_flags_t flags = arch_pgtbl_entry_get_flags(pgtbl,level,&table[0]);
+    pgprot_t flags = arch_pgtbl_entry_get_flags(pgtbl,level,&table[0]);
 
     pte_t *table_base = entry_get_table_base(pgtbl,level-1, PGTBL_DESC_TABLE, table_entry);
     size_t index = (uintptr_t)table_entry - (uintptr_t)table_base;
@@ -149,28 +149,77 @@ void pgtbl_merge(pgtable_t *pgtbl, int level, pte_t *table, pte_t *table_entry) 
     free_table_va(table);
 }
 
-pgtable_t *new_pgtbl(const char *name) {
+pgtable_t *new_pgtbl() {
     pgtable_t *tbl = kmalloc(sizeof(pgtable_t));
     if (!tbl) {
         return NULL;
     }
 
     memset(tbl, 0, sizeof(pgtable_t));
-    strncpy(tbl->name, name, sizeof(tbl->name) - 1);
+
     tbl->asid = 0; // TODO: 分配 ASID
     arch_pgtbl_init(tbl);
     int npages = div_u32(tbl->features->level[0].table_size + PAGE_SIZE - 1, PAGE_SIZE);
-    // printk("new_pgtbl: name=%s, root table size = %xu bytes, npages = %xu\n", name, tbl->features->level[0].table_size, npages);
     tbl->root = page_alloc(npages);
     if (!tbl->root) {
+        kfree(tbl);
         return NULL;
     }
-    printk("new_pgtbl: allocated root table at %xu for pgtable %s\n", tbl->root, name);
         
     tbl->root_pa = KERNEL_PA(tbl->root);
     memset(tbl->root, 0, tbl->features->level[0].table_size);
 
     return tbl;
+}
+
+static void pgtbl_destroy_table(pgtable_t *pgtbl, pte_t *table, int level)
+{
+    size_t entries;
+
+    if (pgtbl == NULL || table == NULL || pgtbl->features == NULL) {
+        return;
+    }
+
+    if (level >= pgtbl->features->support_levels - 1) {
+        return;
+    }
+
+    entries = pgtbl->features->level[level].table_size / sizeof(pte_t);
+    for (size_t i = 0; i < entries; i++) {
+        pte_t *entry = &table[i];
+        pte_t *child_table;
+
+        if (arch_pgtbl_entry_is_valid(entry) == false) {
+            continue;
+        }
+
+        if (arch_pgtbl_entry_is_leaf(entry)) {
+            continue;
+        }
+
+        child_table = entry_to_next_table(pgtbl, level, PGTBL_DESC_TABLE, entry);
+        if (child_table == NULL) {
+            continue;
+        }
+
+        pgtbl_destroy_table(pgtbl, child_table, level + 1);
+        arch_pgtbl_clear_entry(pgtbl, level, PGTBL_DESC_TABLE, entry);
+        free_table_va(child_table);
+    }
+}
+
+void pgtbl_destroy(pgtable_t *pgtbl)
+{
+    if (pgtbl == NULL) {
+        return;
+    }
+
+    if (pgtbl->root != NULL && pgtbl->features != NULL) {
+        pgtbl_destroy_table(pgtbl, (pte_t *)pgtbl->root, 0);
+    }
+
+    arch_pgtbl_deinit(pgtbl);
+    kfree(pgtbl);
 }
 
 struct map_ctx {
@@ -365,7 +414,7 @@ int pgtbl_walk(pgtable_t *pgtbl, virt_addr_t va, int target_level, pgtbl_walk_cb
             return pgtbl_walk(pgtbl, va, target_level, cb, arg);
     
         if (arch_pgtbl_entry_is_leaf(pte)) {
-            // printk("pgtbl_walk: hit leaf at level %d, but target level is %d ,problem pte = %xu\n", level, target_level,pte->val);
+            printk("pgtbl_walk: hit leaf at level %d, but target level is %d ,problem pte = %xu\n", level, target_level,pte->val);
             return -1;
         }
         table = entry_to_next_table(pgtbl,level,PGTBL_DESC_TABLE, pte); // 还没有到最底层，继续往下找
@@ -416,9 +465,6 @@ pgprot_t pgtbl_lookup_prot(pgtable_t *pgtbl, virt_addr_t va) {
     pgtbl_walk(pgtbl, va, pgtbl->features->support_levels - 1, look_cb, &ctx);
     return ctx.flags;
 }
-
-
-
 
 void pgtbl_flush() {
     arch_pgtbl_flush();

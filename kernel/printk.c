@@ -8,7 +8,6 @@
 // 对齐，避免 64 位 RISC-V 栈错位
 static char print_buff[__PBUFF_SIZE] __attribute__((aligned(8)));
 
-extern void puts(char *s);
 /**
  * 数字转字符串（支持 10/16/2 进制）
  */
@@ -113,7 +112,7 @@ int _vsprint(char *out_buff, const char *fmt, va_list vl) {
  * vprintf: 先计算长度，再格式化
  */
 
-//  extern void puts(char *s);
+
 int _vprint(const char *fmt, va_list vl) {
     
     va_list vl_copy;
@@ -128,10 +127,10 @@ int _vprint(const char *fmt, va_list vl) {
     
     _vsprint(print_buff, fmt, vl_copy);
     va_end(vl_copy);
-
+#define DEBUG
 #ifdef DEBUG
-   extern void puts(char *s); 
-    puts(print_buff);
+   extern void _puts(char *s);
+    _puts(print_buff);
 #else
     console_puts(print_buff);
     console_flush();
@@ -162,8 +161,8 @@ void panic(const char *fmt, ...) {
     va_end(vl);
     
 #ifdef DEBUG
-    extern void puts(char *s);
-    puts(print_buff);
+    extern void _puts(char *s);
+    _puts(print_buff);
 #else
     console_puts(print_buff);
     console_puts("\n");

@@ -1,8 +1,10 @@
 .section .text.entry
-.globl  _start
+.align 4
+.global  _start
 _start:
     // 关闭中断
     cpsid if
+
 
     // 保存 U-Boot 传入的 dtb 指针（Linux ARM 启动协议: r2 = dtb）
     mov r8, r2
@@ -92,7 +94,7 @@ done1:
     orr r5, r5, r1 @ 加上属性位
 
     str r5, [r2] @ 将页表项写入内存
-    
+
     // 将页表基地址写入TTBR0寄存器
     mcr p15, 0, r0, c2, c0, 0
 
@@ -116,32 +118,50 @@ done1:
 
     isb 
 
+
+    mcr p15, 0, r0, c2, c0, 0
+
+    @ invalidate TLB
+    mov r1,#0
+    mcr p15,0,r1,c8,c7,0
+    
+    dsb                         @ 确保TLB无效化完成
+    isb                         @ 确保后续指令使用新TLB
+
+    ldr r0 , =_arm_mode
+    bx r0
+
+_arm_mode:
+    .global init_thread_union
+    ldr r0, =init_thread_union
+
+    @ SVC  
+    cps #0x13
+    add r0, r0, #0x2000
+    mov sp, r0
+
     ldr r0, =_early_stack_end
 
     @ 设置不同模式下的栈
-    @ SVC  
-    cps #0x13
-    sub r0, r0, #0x2000
-    mov sp, r0
 
     @ IRQ
     cps #0x12
-    sub r0, r0, #0x1000
+    sub r0, r0, #0x2000
     mov sp, r0
 
     @ FIQ
     cps #0x11
-    sub r0, r0, #0x1000
+    sub r0, r0, #0x2000
     mov sp, r0
 
     @ Abort
     cps #0x17
-    sub r0, r0, #0x1000
+    sub r0, r0, #0x2000
     mov sp, r0
 
     @ Undef 
     cps #0x1b
-    sub r0, r0, #0x1000
+    sub r0, r0, #0x2000
     mov sp, r0
 
     @ 回到 SVC 
@@ -154,5 +174,6 @@ done1:
 
     cpsie i
 
-    
-    b init_kernel
+    b start_kernel
+
+    # b ret_from_fork

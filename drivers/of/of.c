@@ -2,7 +2,6 @@
 #include <os/fdt.h>
 #include <os/printk.h>
 #include <os/string.h>
-#include <fs/path.h>
 #include <os/kmalloc.h>
 #include <os/bswap.h>
 #include <os/device.h>
@@ -27,56 +26,96 @@ struct device_node *of_find_node_by_path(const char *path) {
         return NULL;
     struct device_node *current_node = (struct device_node *)fdt_root_node;
     char *path_dup = strdup(path);
-    char *token = path_split(path_dup, "/");
+    char *token = strtok(path_dup, "/");
  
     while (token) {
         current_node = find_child_node_by_name(current_node, token);
         if (!current_node) {
             return NULL;
         }
-        token = path_split(NULL, "/");
+        token = strtok(NULL, "/");
     }
     return current_node;
+}
+
+// struct device_node *of_find_node_by_compatible(const char *compatible_prop) {
+//     if (!fdt_root_node || !compatible_prop)
+//         return NULL;
+
+//     // 使用队列进行深度优先搜索
+//     struct device_node **queue = (struct device_node **)kmalloc(sizeof(struct device_node *) * 512);
+//     int front = 0, rear = 0;
+
+//     queue[rear] = (struct device_node *)fdt_root_node;
+//     rear++;
+
+//     while (front < rear) {
+//         struct device_node *current_node = queue[front];
+//         front++;
+
+//         // 检查当前节点的 compatible 属性
+//         struct device_prop *prop = current_node->properties;
+//         while (prop) {
+//             if (strcmp(prop->name, "compatible") == 0) {
+//                 if (strncmp((const char *)prop->value, compatible_prop, prop->length) == 0) {
+//                     kfree(queue);
+//                     return current_node;
+//                 }
+//             }
+//             prop = prop->next;
+//         }
+
+//         // 将子节点加入队列
+//         struct device_node *child = current_node->children;
+//         while (child) {
+//             queue[rear] = child;
+//             rear++;
+//             child = child->sibling;
+//         }
+//     }
+
+//     kfree(queue);
+//     return NULL;
+// }
+
+// 递归辅助函数：深度优先遍历子树，查找匹配 compatible 的节点
+static struct device_node *
+__of_find_node_by_compatible_recursive(struct device_node *node, const char *compatible)
+{
+    if (!node || !compatible)
+        return NULL;
+
+    // 1. 检查当前节点是否匹配
+    struct device_prop *prop = node->properties;
+    while (prop) {
+        if (strcmp(prop->name, "compatible") == 0) {
+            if (strncmp((const char *)prop->value, compatible, prop->length) == 0) {
+                return node; // 找到匹配，直接返回
+            }
+        }
+        prop = prop->next;
+    }
+
+    // 2. 递归遍历所有子节点
+    struct device_node *child = node->children;
+    while (child) {
+        struct device_node *found = __of_find_node_by_compatible_recursive(child, compatible);
+        if (found) {
+            return found; // 子树中找到，向上返回
+        }
+        child = child->sibling;
+    }
+
+    // 3. 当前节点和所有子节点都不匹配
+    return NULL;
 }
 
 struct device_node *of_find_node_by_compatible(const char *compatible_prop) {
     if (!fdt_root_node || !compatible_prop)
         return NULL;
 
-    // 使用队列进行深度优先搜索
-    struct device_node **queue = (struct device_node **)kmalloc(sizeof(struct device_node *) * 512);
-    int front = 0, rear = 0;
-
-    queue[rear] = (struct device_node *)fdt_root_node;
-    rear++;
-
-    while (front < rear) {
-        struct device_node *current_node = queue[front];
-        front++;
-
-        // 检查当前节点的 compatible 属性
-        struct device_prop *prop = current_node->properties;
-        while (prop) {
-            if (strcmp(prop->name, "compatible") == 0) {
-                if (strncmp((const char *)prop->value, compatible_prop, prop->length) == 0) {
-                    kfree(queue);
-                    return current_node;
-                }
-            }
-            prop = prop->next;
-        }
-
-        // 将子节点加入队列
-        struct device_node *child = current_node->children;
-        while (child) {
-            queue[rear] = child;
-            rear++;
-            child = child->sibling;
-        }
-    }
-
-    kfree(queue);
-    return NULL;
+    // 从根节点开始递归查找
+    return __of_find_node_by_compatible_recursive(fdt_root_node, compatible_prop);
 }
 
 struct device_prop *of_get_property_by_name(const struct device_node *node, const char *name) {
@@ -91,6 +130,19 @@ struct device_prop *of_get_property_by_name(const struct device_node *node, cons
         prop = prop->next;
     }
     return NULL;
+}
+
+int of_get_child_node_count(const struct device_node *node) {
+    if (!node)
+        return -1;
+
+    int count = 0;
+    struct device_node *child = node->children;
+    while (child) {
+        count++;
+        child = child->sibling;
+    }
+    return count;
 }
 
 void *of_get_property(const struct device_node *node, const char *name, uint32_t *lenp) {

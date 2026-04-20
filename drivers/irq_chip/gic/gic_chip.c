@@ -247,8 +247,7 @@ reg_t handle_gic_irq(reg_t *ctx) {
     return 0;
 }
 
-static int gic_of_init(struct device_node *np, struct device_node *parent)
-{
+static int gic_of_init(struct device_node *np, struct device_node *parent) {
     gic_data.base = of_iomap(np, 0);
     printk("gic base: %xu\n", gic_data.base);
     unsigned int irq_count;

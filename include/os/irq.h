@@ -43,6 +43,7 @@ extern void irq_disable(int virq);
 extern reg_t do_irq(reg_t ctx,void *arg);
 extern void irq_set_priority(int virq, int priority);
 extern int irq_get_priority(int virq);
+extern void irq_send_ipi(int cpu_id, int ipi_id);
 
 
 #endif // __KERNEL_IRQ_H

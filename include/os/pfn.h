@@ -19,6 +19,7 @@ typedef unsigned long pfn_t;
 #define SIZE_1K (1024)
 #define SIZE_4K  (4 * 1024)
 #define SIZE_2K  (2 * 1024)
+#define SIZE_8K  (8 * 1024)
 #define SIZE_16K (16 * 1024)
 #define SIZE_512K (512 * 1024)
 #define SIZE_1M (1024 * 1024)

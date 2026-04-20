@@ -14,6 +14,9 @@
 extern phys_addr_t text_start;
 extern phys_addr_t text_end;
 extern size_t text_size;
+extern phys_addr_t sched_text_start;
+extern phys_addr_t sched_text_end;
+extern size_t sched_text_size;
 extern phys_addr_t trap_start;
 extern phys_addr_t trap_end;
 extern size_t trap_size;
@@ -57,5 +60,13 @@ extern size_t early_pgtbl_size;
 extern void symbols_init();
 extern void print_section();
 extern void zero_bss();
+
+static inline int in_sched_functions(unsigned long ptr) {
+    return (ptr >= sched_text_start) && (ptr < sched_text_end);
+}
+
+static inline int in_exception_text(unsigned long ptr) {
+	return (ptr >= trap_start) && (ptr < trap_end);
+}
 
 #endif

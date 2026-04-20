@@ -23,7 +23,8 @@ bool pgtbl_table_is_full(pgtable_t *pgtbl, int level, pte_t *table);
 int pgtbl_level_index(pgtable_t *pgtbl, int level, virt_addr_t va);
 int pgtbl_walk(pgtable_t *pgtbl, virt_addr_t va, int target_level, pgtbl_walk_cb cb, void *arg);
 
-pgtable_t *new_pgtbl(const char* name);
+pgtable_t *new_pgtbl();
+void pgtbl_destroy(pgtable_t *pgtbl);
 int pgtbl_copy(pgtable_t *dest, pgtable_t *src, int level, int index_start, int index_num);
 int pgtbl_map(pgtable_t *pgtbl, virt_addr_t va, phys_addr_t pa, int target_level, pgprot_t flags);
 int pgtbl_unmap(pgtable_t *pgtbl, virt_addr_t va, int target_level);

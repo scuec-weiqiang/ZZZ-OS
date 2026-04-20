@@ -41,7 +41,7 @@ irqreturn_t s_timer_interrupt_handler(int virq, void *dev_id) {
 
 reg_t trap_handler(reg_t _ctx) {
     // printk("trap handler enter\n");
-    struct trap_frame *ctx = (struct trap_frame *)_ctx;
+    struct pt_regs *ctx = (struct pt_regs *)_ctx;
     reg_t return_epc = ctx->sepc;
     uint64_t cause_code = ctx->scause & MCAUSE_MASK_CAUSECODE;
     uint64_t is_interrupt = (ctx->scause & MCAUSE_MASK_INTERRUPT);
@@ -87,7 +87,7 @@ reg_t trap_handler(reg_t _ctx) {
             break;
         case 8:
             // printk("Environment call from U-mode\n");
-            do_syscall((struct trap_frame *)ctx);
+            do_syscall((struct pt_regs *)ctx);
             return_epc += 4;
             break;
         case 9:

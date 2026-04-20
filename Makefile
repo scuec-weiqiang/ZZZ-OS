@@ -20,12 +20,13 @@ LD := $(CROSS_COMPILE)ld
 OBJDUMP :=$(CROSS_COMPILE)objdump
 OBJCOPY := $(CROSS_COMPILE)objcopy
 
-CFLAGS = -g -Wall -fno-builtin -std=c11 -ffreestanding
+CFLAGS = -g -Wall -fno-builtin -std=c11 -ffreestanding -fno-pic -fno-pie -no-pie
+-include arch/$(ARCH)/config/config.mk
 CFLAGS += -Iinclude 
 CFLAGS += -MMD -MP
 ASFLAGS := $(CFLAGS)
-LDFLAGS := -Tarch/$(ARCH)/link.ld 
--include arch/$(ARCH)/config.mk
+LDFLAGS := -Tarch/$(ARCH)/config/link.ld 
+
 
 # 目标架构的asm头文件目录（如arch/riscv64/include/asm）
 ARCH_ASM_DIR := arch/$(ARCH)/include/asm
@@ -55,7 +56,7 @@ BUILD_OBJS := $(patsubst %.o, $(BUILD_DIR)/%.o, $(OBJ_Y))
 #--------------设备树---------------#
 DTC_PATH = tools/dtc
 DTC = $(DTC_PATH)/dtc
-DTS :=  arch/$(ARCH)/dts/$(BOARD).dts
+DTS :=  arch/$(ARCH)/boot/dts/$(BOARD).dts
 DTB := $(BUILD_DIR)/$(DTS:.dts=.dtb)
 $(DTB):$(DTC)
 
@@ -127,7 +128,7 @@ clean_dtbs:
 	
 
 $(BUILD_DIR)/%.dtb: %.dts
-	mkdir -p $(BUILD_DIR)/arch/$(ARCH)/dts
+	mkdir -p $(BUILD_DIR)/arch/$(ARCH)/boot/dts
 	$(DTC) -I dts -O dtb -o $@ $< -i .
 
 

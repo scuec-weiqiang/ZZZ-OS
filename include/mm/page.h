@@ -12,7 +12,7 @@
 
 #include <os/types.h>  
 #include <os/list.h>
-#include <asm/spinlock.h>
+#include <os/spinlock.h>
 #include <os/pfn.h>
 
 #define PAGE_FREE        (0U<<0)

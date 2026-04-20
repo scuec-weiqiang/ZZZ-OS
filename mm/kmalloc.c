@@ -70,6 +70,9 @@ void *page_alloc(size_t npages) {
  * @return {*}
  ***************************************************************/
 void kfree(void *p) {
+    if (p == NULL) {
+        return;
+    }
     switch (alloc_state) {
     case EARLY_ALLOC:
         return;

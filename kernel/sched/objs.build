@@ -1,0 +1,8 @@
+OBJ_Y += completion.o
+OBJ_Y += core.o
+OBJ_Y += exit.o
+OBJ_Y += fork.o
+OBJ_Y += idle.o
+OBJ_Y += rr.o
+OBJ_Y += test.o
+OBJ_Y += wait.o

@@ -1,232 +1,155 @@
 /**
  * @FilePath: /ZZZ-OS/lib/lru.c
- * @Description:  
+ * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-21 14:53:56
- * @LastEditTime: 2025-10-29 22:29:35
+ * @LastEditTime: 2026-04-12 00:00:00
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
-*/
-#include <os/hashtable.h>
-#include <os/list.h>
+ */
 #include <os/check.h>
-#include <os/utils.h>
+#include <os/container_of.h>
+#include <os/hashtable.h>
 #include <os/kmalloc.h>
+#include <os/list.h>
 #include <os/lru.h>
 
-/**
-* @brief 初始化LRU缓存
-*
-* 初始化一个LRU缓存对象。
-*
-* @param capacity 缓存容量
-* @param kfree 释放缓存节点的回调函数
-* @param hash_func 哈希函数
-* @param hash_compare 哈希比较函数
-*
-* @return 返回初始化的LRU缓存对象指针，如果初始化失败则返回NULL
-*/
-struct lru_cache* lru_init(size_t capacity, lru_free_func_t free_func, lru_sync_func_t sync_func, hash_func_t hash_func, hash_compare_t hash_compare)
-{
-    CHECK(capacity > 0, "Capacity must be greater than 0", return NULL;);
-    // CHECK(free_func != NULL, "Free function must not be NULL", return NULL;);
-    CHECK(hash_func != NULL, "Hash function must not be NULL", return NULL;);
-    CHECK(hash_compare != NULL, "Key compare function must not be NULL", return NULL;);
-    // CHECK(sync_func != NULL, "Sync function must not be NULL", return NULL;);
+static int lru_cache_release_node(struct lru_cache *cache, struct lru_node *node) {
+    CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return -1;);
+    CHECK(node != NULL, "ptr <struct lru_node *node> is NULL", return -1;);
+    CHECK(node->hnode.pprev != NULL, "ptr <struct lru_node *node> is not hashed", return -1;);
+    CHECK(!list_empty(&node->lnode), "ptr <struct lru_node *node> is not linked", return -1;);
 
-    struct lru_cache *cache = (struct lru_cache *)kmalloc(sizeof(struct lru_cache));
-    CHECK(cache != NULL, "Memory allocation for LRU cache failed", return NULL;);
+    hashtable_remove(cache->ht, &node->hnode);
+    list_del(&node->lnode);
+    cache->node_count--;
 
-    cache->ht = hashtable_init(next_power_of_two(capacity), hash_func, hash_compare);
-    CHECK(cache->ht != NULL, "Initialization of hashtable failed", kfree(cache);return NULL;);
-
-    cache->capacity = capacity;
-    INIT_LIST_HEAD(&cache->lhead); // 初始化双向链表头
-    if(free_func != NULL)
-    {
-        cache->kfree = free_func; // 设置释放节点的回调函数
+    if (cache->ops != NULL && cache->ops->sync != NULL) {
+        cache->ops->sync(node);
     }
-    if(sync_func != NULL)
-    {
-        cache->sync = sync_func; // 设置同步节点的回调函数
+    if (cache->ops != NULL && cache->ops->free != NULL) {
+        cache->ops->free(node);
     }
-    cache->node_count = 0;
 
-    return cache;
-
+    return 0;
 }
 
-void lru_node_init(struct lru_node *node)
-{
+struct lru_cache *lru_cache_create(size_t bucket_hint, struct lru_ops *lru_ops, struct hash_ops *hash_ops) {
+    struct lru_cache *cache = NULL;
+
+    CHECK(bucket_hint > 0, "Bucket hint must be greater than 0", return NULL;);
+    CHECK(lru_ops != NULL, "LRU ops must not be NULL", return NULL;);
+    CHECK(hash_ops != NULL, "Hash ops must not be NULL", return NULL;);
+
+    cache = (struct lru_cache *)kmalloc(sizeof(struct lru_cache));
+    CHECK(cache != NULL, "Memory allocation for LRU cache failed", return NULL;);
+
+    cache->ht = hashtable_init(bucket_hint, hash_ops);
+    CHECK(cache->ht != NULL, "Initialization of hashtable failed", kfree(cache); return NULL;);
+
+    cache->bucket_hint = bucket_hint;
+    cache->node_count = 0;
+    cache->ops = lru_ops;
+    INIT_LIST_HEAD(&cache->lhead);
+
+    return cache;
+}
+
+void lru_node_reset(struct lru_node *node) {
     CHECK(node != NULL, "Node is NULL", return;);
     hlist_node_init(&node->hnode);
     INIT_LIST_HEAD(&node->lnode);
 }
 
+void lru_cache_destroy(struct lru_cache *cache) {
+    struct list_head *pos = NULL, *n = NULL;
 
-/**
-* @brief 销毁LRU缓存
-*
-* 销毁传入的LRU缓存对象，释放所有相关资源。
-*
-* @param cache 指向LRU缓存对象的指针
-*/
-void lru_destroy(struct lru_cache *cache)
-{
     CHECK(cache != NULL, "Cache is NULL", return;);
 
-    struct list_head *pos,*n;
-    list_for_each_safe(pos,n,&cache->lhead) 
+    list_for_each_safe(pos, n, &cache->lhead)
     {
         struct lru_node *node = container_of(pos, struct lru_node, lnode);
-        cache->kfree(node); // 释放每个节点
+        lru_cache_release_node(cache, node);
     }
+
     hashtable_destroy(cache->ht);
     kfree(cache);
 }
 
-int lru_update(struct lru_cache *cache,struct lru_node *node)
-{
+int lru_cache_touch(struct lru_cache *cache, struct lru_node *node) {
     CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return -1;);
     CHECK(node != NULL, "ptr <struct lru_node *node> is NULL", return -1;);
-    
-    if(node->lnode.prev != NULL && node->lnode.next != NULL) // 如果节点在双向链表中，那么将其移动到链表头部
-    {
-        list_mov(&cache->lhead,&node->lnode); // 将节点添加到双向链表头部，表示最近访问
-        return 0;
-    }
-    return -1;
+    CHECK(node->hnode.pprev != NULL, "ptr <struct lru_node *node> is not hashed", return -1;);
+    CHECK(!list_empty(&node->lnode), "ptr <struct lru_node *node> is not linked", return -1;);
+
+    list_mov(&cache->lhead, &node->lnode);
+
+    return 0;
 }
 
-/**
-* @brief 在LRU缓存中查找节点
-*
-* 在LRU缓存中查找指定的节点，并返回该节点的指针。
-*
-* @param cache LRU缓存的指针
-* @param node 要查找的节点的指针
-*
-* @return 如果找到了节点，则返回该节点的指针；否则返回NULL
-*
-*/
-struct lru_node* lru_lookup(struct lru_cache *cache, struct lru_node *node)
-{
+struct lru_node *lru_cache_find(struct lru_cache *cache, struct lru_node *node) {
+    struct hlist_node *hnode = NULL;
+    struct lru_node *found = NULL;
+
     CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return NULL;);
     CHECK(node != NULL, "ptr <struct lru_node *node> is NULL", return NULL;);
 
-    struct hlist_node *hlist_node = hashtable_lookup(cache->ht, &node->hnode);
-    CHECK(hlist_node != NULL, "", return NULL;);
-    lru_update(cache,node);
+    hnode = hashtable_lookup(cache->ht, &node->hnode);
+    CHECK(hnode != NULL, "", return NULL;);
 
-    return (struct lru_node *)container_of(hlist_node, struct lru_node, hnode);
+    found = container_of(hnode, struct lru_node, hnode);
+    lru_cache_touch(cache, found);
+    return found;
 }
 
-int lru_evict(struct lru_cache *cache)
-{
-    CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return -1;);
+int lru_cache_evict_tail(struct lru_cache *cache) {
+    struct lru_node *victim = NULL;
 
-    if(cache->node_count == 0) 
-    {
+    CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return -1;);
+    if (cache->node_count == 0 || list_empty(&cache->lhead)) {
         return 0;
     }
 
-    hashtable_remove(cache->ht, &container_of(cache->lhead.prev,struct lru_node,lnode)->hnode); // 从哈希表中移除最久未访问的节点
-    list_del(cache->lhead.prev); // 删除最久未访问的节点
-    if(cache->sync != NULL) 
-    {
-        cache->sync(container_of(cache->lhead.prev,struct lru_node,lnode)); // 同步节点
-    }
-
-    if(cache->kfree != NULL) 
-    {
-        cache->kfree(container_of(cache->lhead.prev,struct lru_node,lnode));
-    }
-    cache->node_count--;
-
-    return 0;
+    victim = container_of(cache->lhead.prev, struct lru_node, lnode);
+    return lru_cache_release_node(cache, victim);
 }
 
-/**
-* @brief 将节点插入到LRU缓存中
-*
-* 将给定的节点插入到LRU缓存中。如果缓存已满，将删除最久未访问的节点。
-*
-* @param cache LRU缓存指针
-* @param node 待插入的节点指针
-*
-* @return 插入成功返回0，失败返回-1
-*/
-int lru_insert(struct lru_cache *cache, struct lru_node *node)
+int lru_cache_add(struct lru_cache *cache, struct lru_node *node)
 {
+    int ret = 0;
+
     CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return -1;);
     CHECK(node != NULL, "ptr <struct lru_node *node> is NULL", return -1;);
+    CHECK(node->hnode.pprev == NULL, "ptr <struct lru_node *node> already hashed", return -1;);
+    CHECK(list_empty(&node->lnode), "ptr <struct lru_node *node> already linked", return -1;);
 
-    if(cache->node_count >= cache->capacity) 
-    {
-        lru_evict(cache);
-    }
-
-    int ret = hashtable_insert(cache->ht, &node->hnode);
+    ret = hashtable_insert(cache->ht, &node->hnode);
     CHECK(ret >= 0, "", return -1;);
-    list_add(&cache->lhead,&node->lnode); // 将节点添加到双向链表头部，表示最近访问
+
+    list_add(&cache->lhead, &node->lnode);
     cache->node_count++;
-    
+
     return 0;
 }
 
-
-/**
-* @brief 将节点放入LRU缓存中
-*
-* 将传入的节点插入到LRU缓存的头部
-*
-* @param cache LRU缓存对象指针
-* @param node 需要插入的节点指针
-*
-* @return 0 表示操作成功，-1 表示传入的节点指针为空
-*/
-int lru_put(struct lru_cache *cache, struct lru_node *node)
+int lru_cache_remove(struct lru_cache *cache, struct lru_node *node)
 {
-    CHECK(node != NULL, "ptr <struct lru_node *node> is NULL", return -1;);
     CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return -1;);
-    if(list_empty(&node->lnode))
-    {
-        list_add(&cache->lhead,&node->lnode);
-        return 0;
-    }
-    else 
-    {
-        list_mov(&cache->lhead,&node->lnode); 
-        return 0;
-    }
-    
-}
-
-int lru_get(struct lru_node *node)
-{
     CHECK(node != NULL, "ptr <struct lru_node *node> is NULL", return -1;);
-    if(list_empty(&node->lnode) || node->lnode.prev == NULL || node->lnode.next == NULL)
-    {
-        return 0;
-    }
-    else
-    {
-        list_del(&node->lnode); 
-        return 0;
-    }
+
+    return lru_cache_release_node(cache, node);
 }
 
-int lru_walk(struct lru_cache *cache, lru_walk_func_t func)
+int lru_cache_walk(struct lru_cache *cache, lru_walk_func_t func)
 {
+    struct lru_node *pos = NULL, *n = NULL;
+
     CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return -1;);
     CHECK(func != NULL, "ptr <lru_walk_func_t func> is NULL", return -1;);
 
-    // 遍历全局inode缓存，写回所有脏inode
-    struct lru_node *pos, *n;
-    list_for_each_entry_safe(pos, n, &cache->lhead, struct lru_node, lnode) 
+    list_for_each_entry_safe(pos, n, &cache->lhead, struct lru_node, lnode)
     {
         func(pos);
-        // lru_update(cache,pos);
     }
     return 0;
 }

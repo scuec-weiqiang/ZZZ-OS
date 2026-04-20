@@ -594,7 +594,7 @@ void arch_pgtbl_switch_to(pgtable_t *pgtbl) {
         "mcr p15, 0, r1, c2, c0, 2\n"
         "mcr p15, 0, %0, c2, c0, 0\n"
         "mcr p15, 0, r1, c8, c7, 0\n"
-        "dsb\n"
+        "dsb sy\n"
         "isb\n"
         :
         : "r"(pgtbl->root_pa)
@@ -612,6 +612,6 @@ void arch_pgtbl_deinit(pgtable_t *tbl) {
         kfree(tbl->root);
         tbl->root = NULL;
     }
+    tbl->root_pa = 0;
 }
-
 

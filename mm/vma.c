@@ -6,7 +6,7 @@
 
 #define node_to_vma(node_ptr) list_entry(node_ptr, struct vma, node)
 
-struct vma *vma_create(virt_addr_t start, virt_addr_t end, vma_flags_t flags) {
+struct vma *vma_create(virt_addr_t start, virt_addr_t end, pgprot_t flags) {
     struct vma *vma = kmalloc(sizeof(struct vma));
     if (!vma) {
         return NULL;
@@ -28,7 +28,7 @@ void vma_destroy(struct vma *vma) {
 
 struct vma *vma_find(struct mm_struct *mm, virt_addr_t va) {
     struct vma *vma;
-    list_for_each_entry(vma, &mm->vma_list, struct vma, node) {
+    list_for_each_entry(vma, &mm->vma_list.node, struct vma, node) {
         if (vma->start <= va && vma->end > va && vma->flags) {
             return vma;
         }
@@ -76,13 +76,13 @@ static int vma_insert(struct mm_struct *mm, struct vma *new) {
         return -1;
     }
 
-    if (list_empty(&mm->vma_list)) {
-        list_add_after(&mm->vma_list, &new->node);
+    if (list_empty(&mm->vma_list.node)) {
+        list_add_after(&mm->vma_list.node, &new->node);
         return 0;
     }
 
     struct vma *pos;
-    list_for_each_entry_prev(pos, &mm->vma_list, struct vma, node) {
+    list_for_each_entry_prev(pos, &mm->vma_list.node, struct vma, node) {
         if (pos->end <= new->start) {
             list_add_after(&pos->node, &new->node);
             vma_merge(mm, pos, new);
@@ -103,7 +103,7 @@ static int vma_remove(struct mm_struct *mm, struct vma *vma) {
     return 0;
 }
 
-int vma_add(struct mm_struct *mm, virt_addr_t start, size_t len, vma_flags_t flags) {
+int vma_add(struct mm_struct *mm, virt_addr_t start, size_t len, pgprot_t flags) {
     if (!mm || len == 0) {
         return -1;
     }
@@ -133,10 +133,10 @@ int vma_delete(struct mm_struct *mm, virt_addr_t start, size_t len) {
 
     virt_addr_t end = start + len;
     virt_addr_t addr = start;
-    struct vma *vma = node_to_vma(mm->vma_list.next);
+    struct vma *vma = node_to_vma(mm->vma_list.node.next);
 
     // 这一步是将所有和删除范围有交集的vma进行拆分，拆分成多个vma，每个vma要么完全在删除范围内，要么完全在删除范围外
-    list_for_each_entry(vma, &mm->vma_list, struct vma, node) {
+    list_for_each_entry(vma, &mm->vma_list.node, struct vma, node) {
         if (vma->end <= addr) {
             // 当前vma在删除范围之前，跳过
             continue;
@@ -159,7 +159,7 @@ int vma_delete(struct mm_struct *mm, virt_addr_t start, size_t len) {
     }
 
     // 删除所有完全在删除范围内的vma
-    list_for_each_entry(vma, &mm->vma_list, struct vma, node) {
+    list_for_each_entry(vma, &mm->vma_list.node, struct vma, node) {
         if (vma->end <= start) {
             // 当前vma在删除范围之前，跳过
             continue;
@@ -178,46 +178,14 @@ int vma_delete(struct mm_struct *mm, virt_addr_t start, size_t len) {
     return 0;
 }
 
-pgprot_t vm_flags_to_pgprot(vma_flags_t flags) {
-    pgprot_t prot = 0;
-    if (flags & VMA_R) {
-        prot |= PROT_READ;
-    }
-    if (flags & VMA_W) {
-        prot |= PROT_WRITE;
-    }
-    if (flags & VMA_X) {
-        prot |= PROT_EXEC;
-    }
-    if (flags & VMA_U) {
-        prot |= PROT_USER;
-    }
-  
-    return prot;
-}
 
 void vma_dump(struct mm_struct *mm) {
     struct vma *vma;
     printk("VMA Dump:\n");
-    list_for_each_entry(vma, &mm->vma_list, struct vma, node) {
+    list_for_each_entry(vma, &mm->vma_list.node, struct vma, node) {
         printk("VMA: start=%x, end=%x, flags=%x\n", vma->start, vma->end, vma->flags);
     }
 }
 
-void vma_test() {
-    struct mm_struct mm;
-    INIT_LIST_HEAD(&mm.vma_list);
-
-    vma_add(&mm, 0, 1, 0);
-    vma_dump(&mm);
-    vma_add(&mm, 0x1000, 0x1000, VMA_R | VMA_W);
-    vma_dump(&mm);
-    vma_add(&mm, 0x2000, 0x1000, VMA_R | VMA_W); 
-    vma_dump(&mm);
-    vma_add(&mm, 0x3000, 0x1000, VMA_R);
-    vma_dump(&mm);
-    vma_delete(&mm, 0x1400, 0x1440);
-    vma_dump(&mm);
-}
 
 

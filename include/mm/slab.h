@@ -12,7 +12,7 @@
 
 #include <os/types.h>
 #include <os/bitmap.h>
-#include <asm/spinlock.h>
+#include <os/spinlock.h>
 
 struct page;
 

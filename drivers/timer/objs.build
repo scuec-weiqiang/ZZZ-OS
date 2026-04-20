@@ -1,2 +1,0 @@
-OBJ_Y += timer_chip.o
-OBJ_Y += arm/

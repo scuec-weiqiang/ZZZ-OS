@@ -66,9 +66,6 @@ struct device_node {
     struct device_prop *properties;
 
     unsigned int _flags;
-
-    // optional: if necessary,you can make nodes tree flat, so we can traverse nodes you need easily
-    struct list_head node;
 };
 
 extern struct device_node *fdt_root_node;

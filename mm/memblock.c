@@ -48,7 +48,7 @@ static void memblock_region_free(struct memblock_region* region) {
     INIT_LIST_HEAD(&region->node);
 
     free_idx_top++;
-    free_idx_stack[free_idx_top] = region->__idx;
+    free_idx_stack[free_idx_top] = region->idx;
 }
 
 static struct memblock_region* memblock_get(int idx) {
@@ -66,7 +66,7 @@ phys_addr_t mem_end;
 
 static void memblock_sort_one(struct memblock_type *type, struct memblock_region *region) {
     struct memblock_region *pos = NULL, *tmp = NULL;
-    list_for_each_entry_safe(pos, tmp, &type->regions, struct memblock_region, node) {
+    list_for_each_entry_safe(pos, tmp, &type->region_head.node, struct memblock_region, node) {
         if (region != pos && region->base < pos->base) {
             list_del(&region->node);
             list_add_before(&pos->node ,&region->node);
@@ -77,7 +77,7 @@ static void memblock_sort_one(struct memblock_type *type, struct memblock_region
 
 static void memblock_sort(struct memblock_type *type) {
     struct memblock_region *region = NULL, *tmp = NULL;
-    list_for_each_entry_safe(region, tmp, &type->regions, struct memblock_region, node) {
+    list_for_each_entry_safe(region, tmp, &type->region_head.node, struct memblock_region, node) {
         memblock_sort_one(type, region);
     }
 }
@@ -92,9 +92,9 @@ static unsigned long memblock_addrs_continue(phys_addr_t base1, size_t size1, ph
 
 static int memblock_overlaps_region(struct memblock_type *type, phys_addr_t base, size_t size) {
     struct memblock_region* pos = NULL, *n = NULL;
-    list_for_each_entry_safe(pos, n, &type->regions, struct memblock_region, node) {
+    list_for_each_entry_safe(pos, n, &type->region_head.node, struct memblock_region, node) {
         if (memblock_addrs_overlap(base, size, pos->base, pos->size)) {
-            return pos->__idx;
+            return pos->idx;
         }
     }
     return -1;
@@ -106,7 +106,7 @@ static void memblock_merge_regions(struct memblock_type *type, struct memblock_r
 
     struct memblock_region *pos = NULL, *tmp = NULL;
 
-    list_for_each_entry_safe(pos, tmp, &type->regions, struct memblock_region, node) {
+    list_for_each_entry_safe(pos, tmp, &type->region_head.node, struct memblock_region, node) {
         if (pos != region) {
             phys_addr_t rgnbase = pos->base;
             size_t rgnsize = pos->size;
@@ -139,7 +139,7 @@ static int memblock_add_region(struct memblock_type *type, phys_addr_t base, siz
     region->size = size;
     region->flags = flags;
 
-    list_add_tail(&type->regions, &region->node);
+    list_add_tail(&type->region_head.node, &region->node);
 
     memblock_sort_one(type, region);
     // memblock_merge_regions(type, region);
@@ -154,7 +154,7 @@ int memblock_add(phys_addr_t base, size_t size) {
 
 static int memblock_remove_region(struct memblock_type *type, phys_addr_t base, size_t size) {
     struct memblock_region *pos = NULL, *tmp = NULL;
-    list_for_each_entry_safe(pos, tmp, &type->regions, struct memblock_region, node) {
+    list_for_each_entry_safe(pos, tmp, &type->region_head.node, struct memblock_region, node) {
         if (memblock_addrs_overlap(base, size, pos->base, pos->size)) {
             phys_addr_t pos_end = pos->base + pos->size;
             phys_addr_t end = base + size;
@@ -178,7 +178,7 @@ static int memblock_remove_region(struct memblock_type *type, phys_addr_t base, 
                 new_region->base = left_base;
                 new_region->size = left_size;
                 new_region->flags = flags;
-                list_add(&type->regions, &new_region->node);
+                list_add(&type->region_head.node, &new_region->node);
                 // memblock_merge_regions(type, new_region);
             }
             
@@ -187,7 +187,7 @@ static int memblock_remove_region(struct memblock_type *type, phys_addr_t base, 
                 new_region->base = right_base;
                 new_region->size = right_size;
                 new_region->flags = flags;
-                list_add(&type->regions, &new_region->node);
+                list_add(&type->region_head.node, &new_region->node);
                 // memblock_merge_regions(type, new_region);
             }
             memblock_sort(type);
@@ -208,7 +208,7 @@ int memblock_reserve(phys_addr_t base, size_t size) {
 void memblock_mark_nomap(phys_addr_t base, size_t size) {
     struct memblock_type *type = &memblock.memory;
     struct memblock_region *pos = NULL, *tmp = NULL;
-    list_for_each_entry_safe(pos, tmp, &type->regions, struct memblock_region, node) {
+    list_for_each_entry_safe(pos, tmp, &type->region_head.node, struct memblock_region, node) {
         if (memblock_addrs_overlap(base, size, pos->base, pos->size)) {
             phys_addr_t pos_end = pos->base + pos->size;
             phys_addr_t end = base + size;
@@ -236,7 +236,7 @@ void memblock_mark_nomap(phys_addr_t base, size_t size) {
                 new_region->base = left_base;
                 new_region->size = left_size;
                 new_region->flags = flags;
-                list_add(&type->regions, &new_region->node);
+                list_add(&type->region_head.node, &new_region->node);
                 // memblock_merge_regions(type, new_region);
             }
             if (mid_size >0) {
@@ -244,7 +244,7 @@ void memblock_mark_nomap(phys_addr_t base, size_t size) {
                 new_region->base = mid_base;
                 new_region->size = mid_size;
                 new_region->flags = flags | MEMBLOCK_NOMAP;
-                list_add(&type->regions, &new_region->node);
+                list_add(&type->region_head.node, &new_region->node);
                 // memblock_merge_regions(type, new_region);
             }
             if (right_size >0) {
@@ -252,7 +252,7 @@ void memblock_mark_nomap(phys_addr_t base, size_t size) {
                 new_region->base = right_base;
                 new_region->size = right_size;
                 new_region->flags = flags;
-                list_add(&type->regions, &new_region->node);
+                list_add(&type->region_head.node, &new_region->node);
                 // memblock_merge_regions(type, new_region);
             }
             memblock_sort(type);
@@ -266,9 +266,9 @@ void memblock_mark_reusable(phys_addr_t base, size_t size) {
 struct memblock_region* memblock_is_reserved(phys_addr_t base, size_t size) {
     struct memblock_type *type = &memblock.reserved;
     struct memblock_region *pos = NULL, *n = NULL;
-    list_for_each_entry_safe(pos, n, &type->regions, struct memblock_region, node) {
+    list_for_each_entry_safe(pos, n, &type->region_head.node, struct memblock_region, node) {
         if (memblock_addrs_overlap(base, size, pos->base, pos->size)) {
-            return &memblock_regions_pool[pos->__idx];
+            return &memblock_regions_pool[pos->idx];
         }
     }
     return NULL;
@@ -276,7 +276,7 @@ struct memblock_region* memblock_is_reserved(phys_addr_t base, size_t size) {
 
 void *memblock_alloc(size_t size, int align) {
     struct memblock_region *m;
-    list_for_each_entry(m, &memblock.memory.regions, struct memblock_region, node) {
+    list_for_each_entry(m, &memblock.memory.region_head.node, struct memblock_region, node) {
         phys_addr_t m_start = m->base;
         phys_addr_t m_end   = m->base + m->size;
 
@@ -284,7 +284,7 @@ void *memblock_alloc(size_t size, int align) {
         phys_addr_t gap_start = m_start;
 
         struct memblock_region *r;
-        list_for_each_entry(r, &memblock.reserved.regions, struct memblock_region, node) {
+        list_for_each_entry(r, &memblock.reserved.region_head.node, struct memblock_region, node) {
             phys_addr_t r_start = r->base;
             phys_addr_t r_end   = r->base + r->size;
 
@@ -321,7 +321,7 @@ void *memblock_alloc(size_t size, int align) {
 void memblock_free(phys_addr_t addr) {
     addr = KERNEL_PA(addr);
     struct memblock_region *pos = NULL;
-    list_for_each_entry(pos, &memblock.reserved.regions, struct memblock_region, node) {
+    list_for_each_entry(pos, &memblock.reserved.region_head.node, struct memblock_region, node) {
         if (addr >= pos->base && addr < pos->base + pos->size) {
             break;
         }
@@ -339,18 +339,18 @@ void print_nomap_regions(void) {
     struct memblock_type *type = &memblock.memory;
     struct memblock_region *pos = NULL, *tmp = NULL;
     printk("Nomap Regions:\n");
-    list_for_each_entry_safe(pos, tmp, &type->regions, struct memblock_region, node) {
+    list_for_each_entry_safe(pos, tmp, &type->region_head.node, struct memblock_region, node) {
         if (pos->flags & MEMBLOCK_NOMAP) {
-            printk("  Region %d: Start: %xu, Size: %xu\n", pos->__idx,
+            printk("  Region %d: Start: %xu, Size: %xu\n", pos->idx,
                    pos->base,
                    pos->size);
         }
     }
 
     type = &memblock.reserved;
-    list_for_each_entry_safe(pos, tmp, &type->regions, struct memblock_region, node) {
+    list_for_each_entry_safe(pos, tmp, &type->region_head.node, struct memblock_region, node) {
         if (pos->flags & MEMBLOCK_NOMAP) {
-            printk("  Region %d: Start: %xu, Size: %xu", pos->__idx,
+            printk("  Region %d: Start: %xu, Size: %xu", pos->idx,
                    pos->base,
                    pos->size);
         }
@@ -361,13 +361,13 @@ void print_nomap_regions(void) {
 void memblock_dump(void) {
     printk("\n\nMemory Regions:\n");
     struct memblock_region *region = NULL;
-    list_for_each_entry(region, &memblock.memory.regions, struct memblock_region, node) {
-        printk(GREEN("  Region %d: Start: %xu, Size: %xu Nomap:%xu\n"), region->__idx, region->base, region->size, region->flags & MEMBLOCK_NOMAP);
+    list_for_each_entry(region, &memblock.memory.region_head.node, struct memblock_region, node) {
+        printk(GREEN("  Region %d: Start: %xu, Size: %xu Nomap:%xu\n"), region->idx, region->base, region->size, region->flags & MEMBLOCK_NOMAP);
     }
-    // print_nomap_regions();
+
     printk("Reserved Regions: %xu\n", memblock.reserved.total_size);
-    list_for_each_entry(region, &memblock.reserved.regions, struct memblock_region, node) {
-        printk(RED("  Region %d: Start: %xu, Size: %xu\n"), region->__idx,
+    list_for_each_entry(region, &memblock.reserved.region_head.node, struct memblock_region, node) {
+        printk(RED("  Region %d: Start: %xu, Size: %xu\n"), region->idx,
                region->base,
                region->size);
     }
@@ -375,12 +375,13 @@ void memblock_dump(void) {
     printk("end\n\n");
 }
 
+
 void memblock_init(void) {
     for (int i = 0; i < INIT_MEMBLOCK_REGIONS; i++) {
         memblock_regions_pool[i].base = 0;
         memblock_regions_pool[i].size = 0;
         memblock_regions_pool[i].flags = 0;
-        memblock_regions_pool[i].__idx = i;
+        memblock_regions_pool[i].idx = i;
         INIT_LIST_HEAD(&memblock_regions_pool[i].node);
 
         free_idx_stack[i] = i;
@@ -388,10 +389,10 @@ void memblock_init(void) {
     free_idx_top = INIT_MEMBLOCK_REGIONS - 1;
     
     memblock.memory.total_size = 0;
-    INIT_LIST_HEAD(&memblock.memory.regions);
+    INIT_LIST_HEAD(&memblock.memory.region_head.node);
 
     memblock.reserved.total_size = 0;
-    INIT_LIST_HEAD(&memblock.reserved.regions);
+    INIT_LIST_HEAD(&memblock.reserved.region_head.node);
     of_scan_memory();
 	of_scan_reserved_memory();
 	memblock_reserve(KERNEL_PA(kernel_start), kernel_size);

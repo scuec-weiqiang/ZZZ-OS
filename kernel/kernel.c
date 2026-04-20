@@ -7,84 +7,61 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-// #include "os/pfn.h"
+
 #include <os/kmalloc.h>
 #include <os/printk.h>
-
-// #include <os/time.h>
 #include <os/mm.h>
-
-// #include <asm/arch_timer.h>
+#include <os/sched.h>
 #include <os/fdt.h>
 #include <os/of_platform.h>
-// #include <fs/fs_init.h>
-// #include <fs/vfs.h>
+#include <fs/fs.h>
 // #include <os/elf.h>
 #include <os/irq.h>
 #include <os/timer_chip.h>
-#include <os/time.h>
+#include <os/timekeeping.h>
 #include <mm/memblock.h>
 #include <mm/symbols.h>
 #include <mm/early_malloc.h>
 #include <os/device.h>
-// #include <os/of.h>
-// #include <mm/page.h>
-// #include <os/proc.h>
-// #include <os/sched.h>
-// #include <os/string.h>
-// #include <mm/physmem.h>
-// #include <mm/buddy.h>
-// #include <mm/slab.h>
+#include <os/timerqueue.h>
+#include <os/cpu.h>
+#include <os/completion.h>
+
+int kernel_init(void *arg) {
+    printk("kernel init \n");
+    of_platform_populate(NULL,of_default_bus_match_table,NULL);
+    driver_init();
+    fs2_init();
+    sched_kthread_test(); // 创建两个测试进程
+    return 0;
+}
 
 uint8_t is_init = 0;
 
-// void set_cpu_stack() {
-//     char *cpu_stack = (char *)page_alloc(1);
-//     memset(cpu_stack, 0, PAGE_SIZE);
-//     asm volatile("csrw sscratch,%0" ::"r"(cpu_stack + PAGE_SIZE));
-// }
-
-void init_kernel(int cpuid,void *dtb) {
+void start_kernel(int cpuid,void *dtb) {
+    local_irq_disable();
     if (cpuid == 0) {
+        printk("kernel init start\n");
         symbols_init();
 		early_malloc_init();
-
-        printk("kernel init start\n");
-        printk("dtb address = %xu\n", (uintptr_t)dtb);
-        
 		fdt_init(dtb);
         memblock_init();
-        mm_init();
-    
+        initial_mm_init();
         kmalloc_init();
-
-        of_platform_populate(NULL,of_default_bus_match_table,NULL);
-
         irq_init();
-        timer_chip_init();
-        driver_init();
-        timekeeping_init();
-
-        // fs_init();
-
+        
+        time_init();
+        sched_init();
+        kernel_thread(kernel_init, "kernel_init", CLONE_FS);
+        pid_t pid= kernel_thread(kthreadd, "kthreadd", CLONE_FS);
+        kthreadd_task = find_task_by_pid(pid); 
+        
+       
+        while(1) {
+            sched();
+            cpu_idle();
+        }
         // is_init = 1;
     }
 
-
-
-    printk("kernel init end\n");
-
-    // set_cpu_stack();
-    // arch_timer_init(SYS_HZ_1);
-    // irq_enable(GLOBAL_IRQ);
-
-    // proc_init();
-
-    // proc_create("/proc2.elf");
-    // proc_create("/proc1.elf");
-
-    // sched_init(cpuid);
-    // sched();
-
-    while(1);
 }

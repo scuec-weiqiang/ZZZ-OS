@@ -1,0 +1,4 @@
+OBJ_Y += timekeeping.o
+OBJ_Y += timerqueue.o
+OBJ_Y += timer_chip.o
+

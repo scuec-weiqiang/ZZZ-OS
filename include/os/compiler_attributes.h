@@ -42,6 +42,7 @@
 #define __aligned(x)                    __attribute__((__aligned__(x)))
 #define __aligned_largest               __attribute__((__aligned__))
 
+#define notrace __attribute__((no_instrument_function))
 /*
  * Note: do not use this directly. Instead, use __alloc_size() since it is conditionally
  * available and includes other attributes. For GCC < 9.1, __alloc_size__ gets undefined

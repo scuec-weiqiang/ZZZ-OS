@@ -1,25 +1,17 @@
-/**
- * @FilePath: /ZZZ-OS/fs/fs/dcache.h
- * @Description:  
- * @Author: scuec_weiqiang scuec_weiqiang@qq.com
- * @Date: 2025-09-07 14:26:49
- * @LastEditTime: 2025-10-06 18:49:35
- * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
- * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
-*/
-#ifndef VFS_DCACHE_H
-#define VFS_DCACHE_H
+#ifndef FS2_DCACHE_H
+#define FS2_DCACHE_H
 
-#include <os/types.h>
-#include <fs/vfs_types.h>
+#include <fs/types.h>
 
-extern int dcache_init();
-extern void dcache_destroy();
-
-extern struct dentry* create_dentry(const char *name);
-
-extern struct dentry* dnew(struct dentry *parent, const char *name, struct inode *inode);
-extern struct dentry *dget(struct dentry *parent, const char *name);
-extern int dput(struct dentry *dentry);
+int dcache_init(void);
+void dcache_destroy(void);
+struct dentry *d_lookup(struct dentry *parent, const struct qstr *name);
+struct dentry *d_alloc(struct dentry *parent, const char *name);
+struct dentry *d_alloc_qstr(struct dentry *parent, const struct qstr *name);
+void d_add(struct dentry *dentry, struct inode *inode);
+void d_destroy(struct dentry *dentry);
+struct dentry *d_make_root(struct inode *root_inode);
+struct dentry *dget(struct dentry *dentry);
+void dput(struct dentry *dentry);
 
 #endif

@@ -12,13 +12,18 @@
 
 #include <os/types.h>
 #include <mm/pgtbl_types.h>
+#include <mm/vma.h>
 
 struct mm_struct {
     pgtable_t *pgdir;          // 页表根目录
 
     // 内核不需要用户空间相关的信息
-    struct list_head vma_list;      // 进程的虚拟内存区域链表
+    struct vma vma_list; // 虚拟内存区域链表头
     int vma_count;           // 虚拟内存区域数量
+    unsigned long start_brk, brk;
+    unsigned long start_stack;
+    unsigned long start_code, end_code;
+    unsigned long start_data, end_data;
 };
 
 #endif /* __KERNEL_MM_TYPES_H__ */

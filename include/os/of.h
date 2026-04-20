@@ -46,6 +46,7 @@ extern struct device_node* of_find_node_by_compatible(const char* compatible_pro
 extern struct device_prop* of_get_property_by_name(const struct device_node* node, const char* name);
 extern void *of_get_property(const struct device_node *node, const char *name, uint32_t *lenp);
 extern struct device_node* of_find_node_by_phandle(uint32_t phandle);
+extern int of_get_child_node_count(const struct device_node *node);
 extern int of_get_address_cells(const struct device_node *node);
 extern int of_get_size_cells(const struct device_node *node);
 extern uint32_t* of_get_reg(const struct device_node *node);

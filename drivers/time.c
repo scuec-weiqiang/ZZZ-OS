@@ -7,7 +7,7 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include <os/time.h>
+#include <os/timekeeping.h>
 #include <os/bswap.h>
 #include <os/types.h>
 #include <fs/vfs.h>

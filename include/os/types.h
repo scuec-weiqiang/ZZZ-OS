@@ -35,22 +35,28 @@
     typedef signed short        int16_t;       
     typedef signed int          int32_t;
     typedef signed long long    int64_t;
-    typedef signed long         ssize_t;
+    typedef signed int          ssize_t;
     typedef int32_t             intptr_t;
 
     typedef unsigned char       uint8_t;    
     typedef unsigned short      uint16_t;       
     typedef unsigned int        uint32_t;
     typedef unsigned long long  uint64_t;
-    typedef unsigned long       size_t;
+    typedef unsigned int        size_t;
     typedef uint32_t            uintptr_t;
     #define UINT_MAX            (0xffffffff)
+    #define INT_MAX             (0x7fffffff)
 #endif
 
 #define UINT8_MAX     (0xff)
 #define UINT16_MAX    (0xffff)
 #define UINT32_MAX    (0xffffffff)
 #define UINT64_MAX    (0xffffffffffffffff)
+
+#define INT8_MAX      (0x7f)
+#define INT16_MAX     (0x7fff)
+#define INT32_MAX     (0x7fffffff)
+#define INT64_MAX     (0x7fffffffffffffff)
 
 typedef uintptr_t     reg_t;
 typedef uintptr_t     phys_addr_t;
@@ -82,6 +88,17 @@ typedef uint32_t  __le32;
 typedef uint32_t  __be32;
 typedef uint64_t  __le64;
 typedef uint64_t  __be64;
+
+
+typedef struct {
+	int counter;
+} atomic_t;
+
+#if SYS_BITS == 64
+typedef struct {
+	long counter;
+} atomic64_t;
+#endif
 
 struct list_head
 {

@@ -112,9 +112,11 @@ struct page* alloc_pages(unsigned int order) {
         // 将拆分出的两个块加入到较小阶的空闲链表中
         buddy_page->order = new_order;
         buddy_page->flags = PAGE_FREE;
+        buddy_page->slab = NULL;
         add_to_free_area(buddy_page, new_order);
         page->order = new_order;
         page->flags = PAGE_FREE;
+        page->slab = NULL;
         add_to_free_area(page, new_order);
 
         current--;
@@ -124,6 +126,7 @@ struct page* alloc_pages(unsigned int order) {
     page = get_first_page(current);
     remove_from_free_area(page, order);
     page->flags = PAGE_RESERVED;  // 标记为已分配
+    page->slab = NULL;
     return page;
 }
 
@@ -168,7 +171,7 @@ void* alloc_pages_kva(size_t npages) {
 
 void free_pages_kva(void *kaddr) {
     phys_addr_t addr = KERNEL_PA(kaddr);
-    struct page* page = phys_to_page(KERNEL_PA(addr));
+    struct page* page = phys_to_page(addr);
     free_pages(page);
 }
 
@@ -180,7 +183,7 @@ void buddy_init(void) {
     }
 
     struct memblock_region *pos = NULL;
-    list_for_each_entry(pos, &memblock.memory.regions, struct memblock_region, node) {
+    list_for_each_entry(pos, &memblock.memory.region_head.node, struct memblock_region, node) {
         phys_addr_t base = pos->base;
         phys_addr_t end  = pos->base + pos->size;
 
@@ -191,6 +194,7 @@ void buddy_init(void) {
             struct page *page = phys_to_page(addr);
             page->order = 0;
             page->flags = PAGE_FREE;
+            page->slab = NULL;
             INIT_LIST_HEAD(&page->buddy_node);
             list_add_tail(&free_area[0].free_list, &page->buddy_node);
             free_area[0].nr_free++;
@@ -301,4 +305,3 @@ void check_free_area(void) {
 
 //     printk("=== Buddy Allocator Test END ===\n");
 // }
-

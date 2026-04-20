@@ -7,7 +7,7 @@
 #include <os/printk.h>
 #include <os/mm.h>
 #include <os/platform_device.h>
-#include <os/time.h>
+#include <os/timekeeping.h>
 
 #define SNVS_LPCR      0x38
 #define SNVS_LPSRTCMR  0x50
@@ -46,7 +46,7 @@ static uint32_t imx6ull_rtc_read_seconds(void) {
     return (uint32_t)(ticks >> 15);
 }
 
-static int imx6ull_rtc_read_boot_seconds(uint64_t *sec) {
+static int imx6ull_rtc_read(uint64_t *sec) {
     if (!snvs_ready || sec == NULL) {
         return -1;
     }
@@ -72,10 +72,9 @@ static int imx6ull_rtc_probe(struct platform_device *pdev) {
 
     imx6ull_rtc_enable();
     snvs_ready = 1;
-    if (timekeeping_register_rtc(imx6ull_rtc_read_boot_seconds) < 0) {
-        printk("imx6ull_rtc: register rtc callback failed\n");
-        return -1;
-    }
+    // if (rtc_register(imx6ull_rtc_read) < 0) {
+    //     printk("imx6ull_rtc: register rtc callback failed\n");
+    // }
     now = imx6ull_rtc_read_seconds();
     printk("imx6ull_rtc: unix=%du\n", now);
     return 0;

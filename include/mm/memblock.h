@@ -28,17 +28,14 @@ struct memblock_region {
     size_t size;
     int flags;
     struct list_head node;
-    union {
-        const int idx;
-        int __idx;
-    };
+    int idx;
 };
 
 struct memblock_type {
     // unsigned long cnt;	/* number of regions */
 	// unsigned long max;	/* size of the allocated array */
 	size_t total_size;	/* size of all regions */
-    struct list_head regions;
+    struct memblock_region region_head;
 };
 
 struct memblock {

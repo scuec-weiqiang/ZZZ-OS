@@ -17,7 +17,7 @@ typedef struct spinlock {
 #define SPINLOCK_INIT \
     { 0 }
 
-static inline void spinlock_init(spinlock_t *lock) {
+static inline void spin_lock_init(spinlock_t *lock) {
     lock->lock = 0;
 }
 
