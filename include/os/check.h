@@ -42,5 +42,26 @@ static inline void __check_fail(const char *expr, const char *file, int line, co
         }while(0)
 #endif
 
+#define RETURN_ERR_IF(cond, err) \
+    do { \
+        if (cond) { \
+            return (err); \
+        } \
+    } while (0)
+
+#define RETURN_VAL_IF(cond, val) \
+    do { \
+        if (cond) { \
+            return (val); \
+        } \
+    } while (0)
+
+#define GOTO_ERR_IF(cond, errvar, err, label) \
+    do { \
+        if (cond) { \
+            (errvar) = (err); \
+            goto label; \
+        } \
+    } while (0)
 
 #endif

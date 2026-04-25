@@ -11,7 +11,7 @@
 #include <os/bswap.h>
 #include <os/types.h>
 #include <fs/vfs.h>
-#include <fs/vfs_types.h>
+#include <fs/types.h>
 #include <fs/chrdev.h>
 #include <os/string.h>
 #include <os/of.h>

@@ -11,7 +11,7 @@
 #define VFS_DCACHE_H
 
 #include <os/types.h>
-#include <fs/vfs_types.h>
+#include <fs/types.h>
 
 extern int dcache_init();
 extern void dcache_destroy();

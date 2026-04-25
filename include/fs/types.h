@@ -56,6 +56,7 @@
 
 typedef long long loff_t;
 typedef int32_t ino_t;
+typedef uintptr_t pgoff_t;
 
 struct file_system_type;
 struct fs_context;
@@ -63,11 +64,15 @@ struct super_block;
 struct inode;
 struct dentry;
 struct file;
+struct page;
 struct vfsmount;
 struct path;
 struct super_operations;
 struct inode_operations;
 struct file_operations;
+struct address_space;
+struct address_space_operations;
+struct block_device;
 
 struct qstr {
     char *name;
@@ -113,10 +118,23 @@ struct super_block {
     struct file_system_type *s_type;
     const struct super_operations *s_op;
     struct dentry *s_root;
+    struct block_device *s_bdev;
     void *s_fs_info;
     spinlock_t s_lock;
     int s_active;
     struct list_head s_instances;
+};
+
+struct address_space_operations {
+    int (*readpage)(struct page *page);
+    int (*writepage)(struct page *page);
+};
+
+struct address_space {
+    struct inode *host;
+    const struct address_space_operations *a_ops;
+    spinlock_t lock;
+    uint32_t nrpages;
 };
 
 #define I_NEW 0x00 // inode 是新创建的，还没有被填充数据
@@ -127,7 +145,7 @@ struct inode {
     ino_t i_ino;
     uint16_t i_mode;
     uint32_t i_nlink;
-    uint32_t i_size;
+    size_t i_size;
     dev_t i_rdev;
     timespec_t i_atime;
     timespec_t i_mtime;
@@ -136,6 +154,8 @@ struct inode {
     struct super_block *i_sb;
     const struct inode_operations *i_op;
     const struct file_operations *i_fop;
+    struct address_space *i_mapping;
+    struct address_space i_data;
     spinlock_t i_lock;
     int i_count;
     uint8_t i_state;

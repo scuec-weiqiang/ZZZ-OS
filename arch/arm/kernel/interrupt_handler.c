@@ -10,7 +10,11 @@
 #include <os/types.h>
 #include <os/printk.h>
 #include <os/sched.h>
+#include <os/syscall.h>
 #include <asm/irq.h>
+#include <asm/ptrace.h>
+
+extern void _puts(char *s);
 
 static inline uint32_t read_dfar(void)
 {
@@ -88,33 +92,41 @@ void undef_handler(void)
    exception("undef");
 }
 
-void swi_handler(void)
+void swi_handler(struct pt_regs *regs)
 {
-    exception("swi");
+    printk("swi_handler called\n");
+    if (regs == NULL) {
+        return;
+    }
+
+    do_syscall(regs);
 }
 
-void prefetch_abort_handler(void) {
+
+void prefetch_abort_handler(unsigned long spsr) {
+    _puts("PABT\n");
 
     uint32_t ifar = read_ifar();
     uint32_t ifsr = read_ifsr();
     uint32_t fs = ((ifsr & 0xF) | ((ifsr >> 6) & 0x10));
-    printk("PREFETCH ABORT ifar=%xu ifsr=%xu fs=%xu\n",  ifar, ifsr, fs);
+    printk("PREFETCH ABORT ifar=%xu ifsr=%xu fs=%xu spsr=%xu mode=%xu\n",
+           ifar, ifsr, fs, spsr, spsr & 0x1f);
     exception("prefetch");
 }
 
 void irq_exit(void)
 {
     
-    dprintk("pid = %x\n",this_rq()->curr->pid);
-    here;
+    // dprintk("pid = %x\n",this_rq()->curr->pid);
+    // 
     
     if (this_rq()->curr->need_resched) {
-        printk("need resched\n");
+        // printk("need resched\n");
         this_rq()->curr->need_resched = 0;
         sched();
     }
 
-    here;
+    // 
 }
 
 reg_t irq_handler(reg_t ctx) {

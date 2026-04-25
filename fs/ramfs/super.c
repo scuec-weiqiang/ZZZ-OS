@@ -1,4 +1,5 @@
 #include <fs/dcache.h>
+#include <fs/fs.h>
 #include <fs/file.h>
 #include <fs/fs_context.h>
 #include <fs/inode.h>

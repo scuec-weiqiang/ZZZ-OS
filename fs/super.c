@@ -9,9 +9,9 @@ struct super_block *alloc_super(struct file_system_type *type) {
 
     CHECK(type != NULL, "fs: invalid super type", return NULL;);
 
-    sb = kmalloc(sizeof(*sb));
+    sb = kmalloc(sizeof(struct super_block));
     CHECK(sb != NULL, "fs: alloc super failed", return NULL;);
-    memset(sb, 0, sizeof(*sb));
+    memset(sb, 0, sizeof(struct super_block));
 
     sb->s_type = type;
     spin_lock_init(&sb->s_lock);

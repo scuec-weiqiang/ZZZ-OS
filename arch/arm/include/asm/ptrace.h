@@ -49,6 +49,16 @@ struct pt_regs{
     reg_t pc;
     reg_t cpsr;
 };
+#include <os/printk.h>
+static inline void pt_regs_dump(struct pt_regs *regs)
+{
+    printk("pc: %xu lr: %xu sp: %xu cpsr: %xu\n",
+           regs->pc, regs->lr, regs->sp, regs->cpsr);
+    for (int i = 0; i < 13; i++) {
+        printk("r%d: %xu ", i, regs->r[i]);
+    }
+    printk("\n");
+}
 
 #define processor_mode(regs) \
 	((regs)->cpsr & MODE_MASK)

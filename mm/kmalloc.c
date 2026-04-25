@@ -15,6 +15,7 @@
 #include <mm/slab.h>
 #include <os/kva.h>
 #include <os/utils.h>
+#include <os/string.h>
 
 enum alloc_state {
     EARLY_ALLOC,
@@ -100,4 +101,12 @@ void *kmalloc(size_t size) {
         return __kmalloc(size);
     }
 
+}
+
+void *kzalloc(size_t size) {
+    void *p = kmalloc(size);
+    if (p) {
+        memset(p, 0, size);
+    }
+    return p;
 }

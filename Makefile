@@ -183,13 +183,21 @@ move:
 
 .PHONY: u
 u:
-	$(MAKE) -C user_proc/proc1 all
-	$(MAKE) -C user_proc/proc2 all
+	@set -e; \
+	for d in user_proc/proc*; do \
+		if [ -d "$$d" ] && [ -f "$$d/Makefile" ]; then \
+			$(MAKE) -C "$$d" all; \
+		fi; \
+	done
 
 .PHONY: uc
 uc:
-	$(MAKE) -C user_proc/proc1 clean
-	$(MAKE) -C user_proc/proc2 clean
+	@set -e; \
+	for d in user_proc/proc*; do \
+		if [ -d "$$d" ] && [ -f "$$d/Makefile" ]; then \
+			$(MAKE) -C "$$d" clean; \
+		fi; \
+	done
 	rm -rf user_proc/user/
 
 #********************************************************************************

@@ -11,7 +11,7 @@
 #define EXT2_INODE_H
 
 #include <os/types.h>
-#include <fs/vfs_types.h>
+#include <fs/types.h>
 
 extern uint32_t ext2_ino_group(struct superblock *vfs_sb,uint32_t ino);
 extern struct super_ops ext2_s_ops;

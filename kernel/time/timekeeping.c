@@ -102,17 +102,13 @@ void program_next_event(uint64_t next, uint64_t now) {
 void timekeeping_timer_interrupt(void)
 {
     uint64_t now = monotonic_ns();
-    dprintk("timer interrupt at %duns\n", now);
+    dprintk("timer interrupt at %du ns\r", now);
     timerqueue_run_expired(now);
 
     uint64_t next = timerqueue_next_deadline();
     // dprintk("next timer deadline at %dns\n", next);
     
     program_next_event(next, now);
-}
-
-static void default_timer_callback(struct timer *t, void *arg) {
-    
 }
 
 

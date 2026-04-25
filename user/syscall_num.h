@@ -18,6 +18,8 @@
 #define   SYSCALL_WRITE   5
 #define   SYSCALL_CREAT   6
 #define   SYSCALL_MKDIR   7
-#define   SYSCALL_END     8
+#define   SYSCALL_GETPID  8
+#define   SYSCALL_EXIT    9
+#define   SYSCALL_END     10
 
 #endif

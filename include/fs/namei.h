@@ -5,6 +5,10 @@
 
 int path_lookup(const char *path, struct path *out);
 int path_parentat(const char *path, struct path *parent, struct qstr *last);
+struct dentry *vfs_lookup(const char *path);
+struct dentry *vfs_mkdir(const char *path, uint16_t mode);
+struct dentry *vfs_create(const char *path, uint16_t mode);
+struct dentry *vfs_mknod(const char *path, uint16_t mode, dev_t dev);
 
 void path_get(const struct path *path);
 void path_put(const struct path *path);

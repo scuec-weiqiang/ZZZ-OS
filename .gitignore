@@ -1,5 +1,8 @@
 build/
 .cache/
+./fs(legacy)/
+./include/fs3/
 compile_commands.json
 ./disk.img
+.codex
 .gitignore

@@ -11,7 +11,7 @@
 #define VFS_PCACHE_H
 
 #include <os/types.h>
-#include <fs/vfs_types.h>
+#include <fs/types.h>
 
 extern int pcache_init(void);
 extern void pcache_destory(void);

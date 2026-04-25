@@ -10,7 +10,7 @@
 #ifndef EXT2_BLOCK_H
 #define EXT2_BLOCK_H
 #include <os/types.h>
-#include <fs/vfs_types.h>
+#include <fs/types.h>
 
 extern int ext2_bno_group(struct superblock *vfs_sb,uint64_t bno);
 extern int ext2_alloc_bno(struct superblock *vfs_sb);

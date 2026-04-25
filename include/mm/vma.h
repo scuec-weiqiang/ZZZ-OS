@@ -13,7 +13,8 @@ struct vma {
     struct list_head node; // 链表指针
 };
 
-
+int vma_insert(struct mm_struct *mm, struct vma *new);
+int vma_remove(struct mm_struct *mm, struct vma *vma);
 struct vma *vma_create(virt_addr_t start, virt_addr_t end, pgprot_t flags);
 struct vma *vma_clone(struct vma *vma);
 void vma_destroy(struct vma *vma);

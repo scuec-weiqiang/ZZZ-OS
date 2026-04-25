@@ -1,4 +1,5 @@
 OBJ_Y += ramfs/
+OBJ_Y += ext2/
 
 OBJ_Y += fs2_init.o
 OBJ_Y += registry.o
@@ -6,8 +7,13 @@ OBJ_Y += fs_context.o
 OBJ_Y += fs_struct.o
 OBJ_Y += super.o
 OBJ_Y += namespace.o
+OBJ_Y += blkdev.o
+OBJ_Y += pagecache.o
 OBJ_Y += dcache.o
 OBJ_Y += inode.o
 OBJ_Y += namei.o
 OBJ_Y += file.o
 OBJ_Y += test.o
+OBJ_Y += exec.o
+OBJ_Y += elf.o
+OBJ_Y += elf_binfmt.o

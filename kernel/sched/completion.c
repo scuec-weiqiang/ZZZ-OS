@@ -13,10 +13,10 @@ void wait_for_completion(struct completion *x)
     while (1) {
         if (x->done > 0) {
             x->done--;
-            here;
+            
             return;
         }
-        here;
+        
         sleep_on(&x->wait);
     }
 }

@@ -16,6 +16,7 @@
 #include <os/string.h>
 #include <mm/symbols.h>
 #include <os/kva.h>
+#include <os/lru.h>
 
 struct page *mem_map;   // base of page array
 pfn_t total_pages;
@@ -40,6 +41,14 @@ phys_addr_t page_to_phys(struct page *page) {
     if (!page) return 0;
     pfn_t pfn = page_to_pfn(page);
     return pfn_to_phys(pfn);
+}
+
+void *page_address(struct page *page) {
+    return (void*)KERNEL_VA(page_to_phys(page));
+}
+
+struct page* address_page(void *va) {
+    return phys_to_page(KERNEL_PA(va));
 }
 
 static void mark_reserved_page_by_range(phys_addr_t base, phys_addr_t size) {
@@ -88,6 +97,10 @@ void physmem_init(void) {
         pg->flags = 0;
         pg->order = 0xFFFF;
         pg->refcount = 0;
+        pg->mapping = NULL;
+        pg->index = 0;
+        pg->private = NULL;
+        lru_node_reset(&pg->cache_lru_node);
         pg->slab = NULL;
         INIT_LIST_HEAD(&pg->buddy_node);
     }

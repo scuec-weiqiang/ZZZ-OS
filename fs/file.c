@@ -3,9 +3,10 @@
 #include <fs/inode.h>
 #include <fs/namei.h>
 #include <os/check.h>
+#include <os/err.h>
 #include <os/kmalloc.h>
 #include <os/string.h>
-#include <os/errno-base.h>
+#include <os/errno.h>
 #include <os/atomic.h>
 #include <os/spinlock.h>
 #include <os/sched.h>
@@ -16,11 +17,19 @@ struct file *filp_open(const char *path, uint32_t flags) {
     int ret = 0;
 
     ret = path_lookup(path, &resolved);
-    CHECK(ret == 0, "fs: path lookup failed", return NULL;);
-    CHECK(resolved.dentry != NULL && resolved.dentry->d_inode != NULL, "fs: negative dentry", return NULL;);
+    if (ret < 0) {
+        return ERR_PTR(-ENOENT);
+    }
+    if (resolved.dentry == NULL || resolved.dentry->d_inode == NULL) {
+        ret = -ENOENT;
+        goto err_put_path;
+    }
 
     file = kmalloc(sizeof(*file));
-    CHECK(file != NULL, "fs: alloc file failed", return NULL;);
+    if (file == NULL) {
+        ret = -ENOMEM;
+        goto err_put_path;
+    }
     memset(file, 0, sizeof(*file));
 
     file->f_path = resolved;
@@ -32,10 +41,28 @@ struct file *filp_open(const char *path, uint32_t flags) {
 
     if (file->f_op != NULL && file->f_op->open != NULL) {
         ret = file->f_op->open(file->f_inode, file);
-        CHECK(ret == 0, "fs: file open op failed", kfree(file); return NULL;);
+        if (ret != 0) {
+            if (ret > 0) {
+                ret = -EIO;
+            }
+            goto err_free_file;
+        }
     }
 
     return file;
+
+err_free_file:
+    kfree(file);
+err_put_path:
+    file = NULL;
+    if (resolved.dentry != NULL) {
+        struct inode *inode = resolved.dentry->d_inode;
+        dput(resolved.dentry);
+        if (inode != NULL) {
+            iput(inode);
+        }
+    }
+    return ERR_PTR(ret);
 }
 
 void filp_close(struct file *file) {
@@ -51,14 +78,29 @@ void filp_close(struct file *file) {
 }
 
 ssize_t kernel_read(struct file *file, char *buf, size_t len) {
-    CHECK(file != NULL, "fs: invalid file", return -1;);
-    CHECK(file->f_op != NULL && file->f_op->read != NULL, "fs: read op missing", return -1;);
+    RETURN_ERR_IF(file == NULL, -EBADF);
+    RETURN_ERR_IF(file->f_op == NULL || file->f_op->read == NULL, -EINVAL);
     return file->f_op->read(file, buf, len, &file->f_pos);
 }
 
+ssize_t kernel_read_at(struct file *file, loff_t pos, char *buf, size_t len) {
+    loff_t saved_pos;
+    ssize_t ret;
+
+    RETURN_ERR_IF(file == NULL, -EBADF);
+    RETURN_ERR_IF(file->f_op == NULL || file->f_op->read == NULL, -EINVAL);
+
+    saved_pos = file->f_pos;
+    file->f_pos = pos;
+    ret = file->f_op->read(file, buf, len, &file->f_pos);
+    file->f_pos = saved_pos;
+
+    return ret;
+}
+
 ssize_t kernel_write(struct file *file, const char *buf, size_t len) {
-    CHECK(file != NULL, "fs: invalid file", return -1;);
-    CHECK(file->f_op != NULL && file->f_op->write != NULL, "fs: write op missing", return -1;);
+    RETURN_ERR_IF(file == NULL, -EBADF);
+    RETURN_ERR_IF(file->f_op == NULL || file->f_op->write == NULL, -EINVAL);
     return file->f_op->write(file, buf, len, &file->f_pos);
 }
 

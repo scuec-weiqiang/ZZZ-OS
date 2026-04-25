@@ -124,7 +124,9 @@ int lru_cache_add(struct lru_cache *cache, struct lru_node *node)
     CHECK(list_empty(&node->lnode), "ptr <struct lru_node *node> already linked", return -1;);
 
     ret = hashtable_insert(cache->ht, &node->hnode);
-    CHECK(ret >= 0, "", return -1;);
+    if (ret != 0) {
+        return ret;
+    }
 
     list_add(&cache->lhead, &node->lnode);
     cache->node_count++;

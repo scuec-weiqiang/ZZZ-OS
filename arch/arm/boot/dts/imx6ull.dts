@@ -16,6 +16,10 @@
         boot: reserved@80000000 {
             reg = <0x80000000 0x200000>; // 保留内存区域
         };
+        memdisk_reserved: reserved@90000000 {
+            reg = <0x90000000 0x01000000>; // 给 mem_disk 预留 16MB
+            no-map;
+        };
     };
 
     cpus {
@@ -49,7 +53,7 @@
         //     compatible = "wq,time";
         //     reg = <0x50000000 0x1c>;
         // };
-  
+  // setenv kernel_addr_r 0x80200000; tftp ${kernel_addr_r} uImage; setexpr kernel_end ${kernel_addr_r} + ${filesize}; setexpr fdt_addr_r ${kernel_end} + 0x400000; setexpr fdt_addr_r ${fdt_addr_r} + 0x1fffff; setexpr fdt_addr_r ${fdt_addr_r} "&" 0xffe00000; tftp ${fdt_addr_r} imx6ull.dtb; tftp 0x90000000 rootfs.ext2 bootm ${kernel_addr_r} - ${fdt_addr_r}
         uart0: uart@02020000 {
             compatible = "imx6ull,uart";
             reg = <0x02020000 0xbc>;
@@ -59,6 +63,12 @@
         rtc: rtc@020cc000 {
             compatible = "fsl,imx6ull-snvs-rtc";
             reg = <0x020cc000 0x4000>;
+        };
+
+        mem_disk: mem_disk@90000000 {
+            compatible = "wq,mem-disk";
+            reg = <0x90000000 0x0100000>;
+            status = "okay";
         };
 
         // virt_disk: virt_disk@10001000 {

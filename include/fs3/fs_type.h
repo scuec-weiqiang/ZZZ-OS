@@ -11,7 +11,7 @@
 #define _VFS_FS_TYPE_H
 
 #include <os/types.h>
-#include <fs/vfs_types.h>
+#include <fs/types.h>
 
 extern int          fs_register(struct fs_type *fs_type);
 extern int          fs_unregister(struct fs_type *fs_type);

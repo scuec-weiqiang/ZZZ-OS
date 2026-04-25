@@ -3,7 +3,7 @@
 
 #include <os/types.h>
 #include <os/bitmap.h>
-#include <fs/vfs_types.h>
+#include <fs/types.h>
 
 typedef uint32_t ext2_ino_t;
 typedef uint32_t ext2_bno_t;

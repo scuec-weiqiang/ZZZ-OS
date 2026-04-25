@@ -1,60 +1,24 @@
-/**
- * @FilePath: /ZZZ/kernel/usys.c
- * @Description:  
- * @Author: scuec_weiqiang scuec_weiqiang@qq.com
- * @Date: 2025-04-19 14:01:28
- * @LastEditTime: 2025-05-02 18:56:52
- * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
- * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
-*/
 #include <syscall_num.h>
 
-.global print
-print:
-    li a7, SYSCALL_PRINT
-    ecall
-    ret
-    
-.global yield
-yield:
-    li a7, SYSCALL_YIELD
-    ecall
-    ret
+.syntax unified
+.text
+.align 4
 
+.macro DO_SYSCALL name, nr
+.global \name
+\name:
+    mov r7, #\nr
+    svc #0
+    bx lr
+.endm
 
-.global open
-open:
-    li a7, SYSCALL_OPEN
-    ecall
-    ret
-
-.global close
-close:
-    li a7, SYSCALL_CLOSE
-    ecall   
-    ret
-
-.global read
-read:
-    li a7, SYSCALL_READ
-    ecall
-    ret
-
-.global write
-write:
-    li a7, SYSCALL_WRITE
-    ecall   
-    ret
-
-.global creat
-creat:
-    li a7, SYSCALL_CREAT
-    ecall
-    ret
-
-.global mkdir
-mkdir:
-    li a7, SYSCALL_MKDIR
-    ecall
-    ret
-
+DO_SYSCALL print,  SYSCALL_PRINT
+DO_SYSCALL yield,  SYSCALL_YIELD
+DO_SYSCALL open,   SYSCALL_OPEN
+DO_SYSCALL close,  SYSCALL_CLOSE
+DO_SYSCALL read,   SYSCALL_READ
+DO_SYSCALL write,  SYSCALL_WRITE
+DO_SYSCALL creat,  SYSCALL_CREAT
+DO_SYSCALL mkdir,  SYSCALL_MKDIR
+DO_SYSCALL getpid, SYSCALL_GETPID
+DO_SYSCALL exit,   SYSCALL_EXIT

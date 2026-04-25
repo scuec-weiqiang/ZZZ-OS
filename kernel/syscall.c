@@ -1,181 +1,297 @@
-/**
- * @FilePath: /ZZZ-OS/kernel/syscall.c
- * @Description:  
- * @Author: scuec_weiqiang scuec_weiqiang@qq.com
- * @Date: 2025-05-02 18:11:27
- * @LastEditTime: 2025-10-29 22:29:00
- * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
- * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
-*/
-#include <os/types.h>
+#include <asm/ptrace.h>
+#include <fs/file.h>
+#include <fs/namei.h>
+#include <os/err.h>
+#include <os/console.h>
+#include <os/errno.h>
+#include <os/kmalloc.h>
+#include <os/mm.h>
+#include <os/sched.h>
+#include <os/string.h>
 #include <os/syscall.h>
 #include <os/syscall_num.h>
 
-#include <asm/riscv.h>
-#include <os/printk.h>
-#include <os/task.h>
-#include <os/sched.h>
-#include <fs/vfs.h>
-#include <os/kmalloc.h>
-#include <os/mm.h>
+#define SYSCALL_PATH_MAX 256
+#define SYSCALL_IO_CHUNK 512
 
-int sys_printf(struct pt_regs *ctx)
+static int copy_user_string(char *dst, size_t dst_len, uintptr_t user_ptr)
 {
-    char *s = kmalloc(ctx->a1); // 获取字符串指针
-    copyin(current_proc()->mm->pgdir, s, (uintptr_t)ctx->a0, (uintptr_t)ctx->a1);
-    int n = printk("%s", s);
-    kfree(s);
-    return n;
-}
+    size_t i;
 
-int sys_yield(struct pt_regs *ctx)
-{
-    // printk("sys_yield called by %xu\n", ctx->a0);
-    yield(); // 调用调度函数，切换到其他线程
-    return 0;
-}
+    if (dst == NULL || dst_len == 0 || user_ptr == 0 || current->mm == NULL) {
+        return -EINVAL;
+    }
 
-int sys_open(struct pt_regs *ctx)
-{
-    char path[128];
-    char *s = path;
-    char *d = (char*)ctx->a0;
-    struct proc *p = current_proc();
-    for(;;)
-    {
-        copyin(p->mm->pgdir, s, (uintptr_t)d, 1);
-        if(*s == '\0' || s - path >= 127)
-        {
-            break;
+    if (copyin(current->mm->pgdir, dst, user_ptr, dst_len) < 0) {
+        return -EFAULT;
+    }
+
+    for (i = 0; i < dst_len; i++) {
+        if (dst[i] == '\0') {
+            return 0;
         }
-        s++;
-        d++;
     }
-    int flags = ctx->a1;
-    struct file *file = open(path, flags);
-    return alloc_fd(p, file);
+
+    dst[dst_len - 1] = '\0';
+    return -ENAMETOOLONG;
 }
 
-int sys_close(struct pt_regs *ctx)
+static struct file *sys_fdget(int fd)
 {
-    struct proc *p = current_proc();
-    int fd = ctx->a0;
-    close(p->fd_table[fd]);
-    free_fd(p, fd);
+    struct files_struct *files;
+    struct fdtable *fdt;
+
+    if (fd < 0) {
+        return NULL;
+    }
+
+    files = current->files;
+    if (files == NULL) {
+        return NULL;
+    }
+
+    fdt = &files->fdtab;
+    if (fd >= fdt->max_fds) {
+        return NULL;
+    }
+
+    return fdt->fd[fd];
+}
+
+static long sys_print(uintptr_t user_buf, size_t len)
+{
+    char *kbuf;
+    size_t chunk;
+    size_t done;
+
+    if (len == 0) {
+        return 0;
+    }
+    if (current->mm == NULL) {
+        return -EFAULT;
+    }
+
+    kbuf = kmalloc(SYSCALL_IO_CHUNK + 1);
+    if (kbuf == NULL) {
+        return -ENOMEM;
+    }
+
+    done = 0;
+    while (done < len) {
+        chunk = len - done;
+        if (chunk > SYSCALL_IO_CHUNK) {
+            chunk = SYSCALL_IO_CHUNK;
+        }
+
+        if (copyin(current->mm->pgdir, kbuf, user_buf + done, chunk) < 0) {
+            kfree(kbuf);
+            return -EFAULT;
+        }
+
+        kbuf[chunk] = '\0';
+        console_puts(kbuf);
+        done += chunk;
+    }
+    console_flush();
+    kfree(kbuf);
+    return (long)len;
+}
+
+static long sys_getpid(void)
+{
+    return current->pid;
+}
+
+static long sys_yield(void)
+{
+    yield();
     return 0;
 }
 
-int sys_read(struct pt_regs *ctx)
+static long sys_open(uintptr_t user_path, int flags)
 {
-    struct proc *p = current_proc();
-    int fd = ctx->a0;
-    char *buf = (char*)ctx->a1;
-    size_t count = ctx->a2;
-    if(fd < 0 || fd >= 256 || p->fd_table[fd] == NULL)
-    {
-        return -1;
+    char path[SYSCALL_PATH_MAX];
+    struct file *file;
+    int fd;
+
+    if (copy_user_string(path, sizeof(path), user_path) < 0) {
+        return -EFAULT;
     }
-    char *kbuf = (char*)kmalloc(count);
-    ssize_t ret = read(p->fd_table[fd], kbuf, count);
-    if(ret >= 0)
-    {
-        copyout(p->mm->pgdir, (uintptr_t)buf, kbuf, ret);
+
+    file = filp_open(path, (uint32_t)flags);
+    if (IS_ERR(file)) {
+        if ((flags & O_CREAT) == 0) {
+            return PTR_ERR(file);
+        }
+
+        if (vfs_create(path, 0644) == NULL) {
+            return -ENOENT;
+        }
+
+        file = filp_open(path, (uint32_t)flags);
+        if (IS_ERR(file)) {
+            return PTR_ERR(file);
+        }
     }
+
+    fd = __alloc_fd(current->files, 0, MAX_OPEN_FILES_NUM, (unsigned)flags);
+    if (fd < 0) {
+        filp_close(file);
+        return fd;
+    }
+
+    current->files->fdtab.fd[fd] = file;
+    return fd;
+}
+
+static long sys_close(int fd)
+{
+    return __close_fd(current->files, (unsigned)fd);
+}
+
+static long sys_read(int fd, uintptr_t user_buf, size_t len)
+{
+    struct file *file;
+    char *kbuf;
+    ssize_t ret;
+
+    if (len == 0) {
+        return 0;
+    }
+
+    file = sys_fdget(fd);
+    if (file == NULL) {
+        return -EBADF;
+    }
+
+    kbuf = kmalloc(len);
+    if (kbuf == NULL) {
+        return -ENOMEM;
+    }
+
+    ret = kernel_read(file, kbuf, len);
+    if (ret >= 0) {
+        if (copyout(current->mm->pgdir, user_buf, kbuf, (size_t)ret) < 0) {
+            kfree(kbuf);
+            return -EFAULT;
+        }
+    }
+
     kfree(kbuf);
     return ret;
 }
 
-int sys_write(struct pt_regs *ctx)
+static long sys_write(int fd, uintptr_t user_buf, size_t len)
 {
-    struct proc *p = current_proc();
-    int fd = ctx->a0;
-    char *buf = (char*)ctx->a1;
-    size_t count = ctx->a2;
-    if(fd < 0 || fd >= 256 || p->fd_table[fd] == NULL)
-    {
-        return -1;
+    struct file *file;
+    char *kbuf;
+    ssize_t ret;
+
+    if (fd == 1 || fd == 2) {
+        return sys_print(user_buf, len);
     }
-    char *kbuf = (char*)kmalloc(count);
-    copyin(p->mm->pgdir, kbuf, (uintptr_t)buf, count);
-    ssize_t ret = write(p->fd_table[fd], kbuf, count);
+
+    if (len == 0) {
+        return 0;
+    }
+
+    file = sys_fdget(fd);
+    if (file == NULL) {
+        return -EBADF;
+    }
+
+    kbuf = kmalloc(len);
+    if (kbuf == NULL) {
+        return -ENOMEM;
+    }
+
+    if (copyin(current->mm->pgdir, kbuf, user_buf, len) < 0) {
+        kfree(kbuf);
+        return -EFAULT;
+    }
+
+    ret = kernel_write(file, kbuf, len);
     kfree(kbuf);
     return ret;
 }
 
-int sys_creat(struct pt_regs *ctx)
+static long sys_creat(uintptr_t user_path, int mode)
 {
-    char path[128];
-    char *s = path;
-    char *d = (char*)ctx->a0;
-    struct proc *p = current_proc();
-    for(;;)
-    {
-        copyin(p->mm->pgdir, s, (uintptr_t)d, 1);
-        if(*s == '\0' || s - path >= 127)
-        {
-            break;
-        }
-        s++;
-        d++;
+    char path[SYSCALL_PATH_MAX];
+
+    if (copy_user_string(path, sizeof(path), user_path) < 0) {
+        return -EFAULT;
     }
-    int mode = (int)ctx->a1;
-    struct dentry *dentry = mkdir(path, mode);
-    if(dentry == NULL || dentry->d_inode == NULL)
-    {
-        return -1;
+
+    if (vfs_create(path, (uint16_t)mode) == NULL) {
+        return -EIO;
     }
-    struct file *file = open(path, 0);
-    return alloc_fd(p, file);
+
+    return sys_open(user_path, O_WRONLY);
 }
 
-int sys_mkdir(struct pt_regs *ctx)
+static long sys_mkdir(uintptr_t user_path, int mode)
 {
-    char path[128];
-    char *s = path;
-    char *d = (char*)ctx->a0;
-    struct proc *p = current_proc();
-    for(;;)
-    {
-        copyin(p->mm->pgdir, s, (uintptr_t)d, 1);
-        if(*s == '\0' || s - path >= 127)
-        {
-            break;
-        }
-        s++;
-        d++;
+    char path[SYSCALL_PATH_MAX];
+
+    if (copy_user_string(path, sizeof(path), user_path) < 0) {
+        return -EFAULT;
     }
-    int mode = ctx->a1;
-    struct dentry *dentry = mkdir(path, mode);
-    if(dentry == NULL || dentry->d_inode == NULL)
-    {
-        return -1;
+
+    if (vfs_mkdir(path, (uint16_t)mode) == NULL) {
+        return -EIO;
     }
+
     return 0;
 }
-
-typedef int (*sysfuncPtr)(struct pt_regs *ctx); // 定义函数指针类型 FuncPtr
-
-static sysfuncPtr syscalls[] = {
-    [SYSCALL_PRINT] = sys_printf,
-    [SYSCALL_YIELD] = sys_yield,
-    [SYSCALL_OPEN]  = sys_open,
-    [SYSCALL_CLOSE] = sys_close,
-    [SYSCALL_READ]  = sys_read,
-    [SYSCALL_WRITE] = sys_write,
-    [SYSCALL_CREAT] = sys_creat,
-    [SYSCALL_MKDIR] = sys_mkdir,
-};
 
 void do_syscall(struct pt_regs *ctx)
 {
-    uint64_t num = ctx->a7; // 获取系统调用号
-    if (num < SYSCALL_END)
-    {
-        ctx->a0 = syscalls[num](ctx); // 执行对应的处理函数，并将返回值存入 a0 中
+    long ret;
+    uint32_t nr;
+
+    if (ctx == NULL) {
+        return;
     }
-    else
-    {
-        // printk("syscall %l not implemented\n", num);
-        ctx->a0 = -1; // 如果系统调用号超出范围，则返回错误码 -1
+
+    nr = ctx->r[7];
+    current_thread_info()->syscall = nr;
+    ret = -ENOSYS;
+
+    switch (nr) {
+    case SYSCALL_PRINT:
+        ret = sys_print(ctx->r[0], ctx->r[1]);
+        break;
+    case SYSCALL_YIELD:
+        ret = sys_yield();
+        break;
+    case SYSCALL_OPEN:
+        ret = sys_open(ctx->r[0], (int)ctx->r[1]);
+        break;
+    case SYSCALL_CLOSE:
+        ret = sys_close((int)ctx->r[0]);
+        break;
+    case SYSCALL_READ:
+        ret = sys_read((int)ctx->r[0], ctx->r[1], ctx->r[2]);
+        break;
+    case SYSCALL_WRITE:
+        ret = sys_write((int)ctx->r[0], ctx->r[1], ctx->r[2]);
+        break;
+    case SYSCALL_CREAT:
+        ret = sys_creat(ctx->r[0], (int)ctx->r[1]);
+        break;
+    case SYSCALL_MKDIR:
+        ret = sys_mkdir(ctx->r[0], (int)ctx->r[1]);
+        break;
+    case SYSCALL_GETPID:
+        ret = sys_getpid();
+        break;
+    case SYSCALL_EXIT:
+        do_exit((int)ctx->r[0]);
+        break;
+    default:
+        break;
     }
+
+    ctx->r[0] = (reg_t)ret;
 }

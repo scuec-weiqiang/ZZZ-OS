@@ -64,6 +64,14 @@ void show_regs(struct pt_regs *regs) {
 
 extern void ret_from_fork(void);
 
+void start_thread(struct pt_regs *regs, unsigned long entry, unsigned long sp)
+{
+    memset(regs, 0, sizeof(*regs));
+    regs->pc = entry;
+    regs->sp = sp;
+    regs->cpsr = USR_MODE;
+}
+
 int copy_thread(unsigned long clone_flags, unsigned long stack_start,
 	    unsigned long stk_sz, struct task_struct *p)
 {

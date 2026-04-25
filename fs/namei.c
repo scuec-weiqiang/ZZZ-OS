@@ -99,6 +99,7 @@ int path_lookup(const char *path, struct path *out) {
         if (cached != NULL) {
             child_dir = dget(cached);
         } else {
+            
             dentry = d_alloc_qstr(parent_dir, &name);
             child_dir = parent_dir->d_inode->i_op->lookup(parent_dir->d_inode, dentry, 0);
         }

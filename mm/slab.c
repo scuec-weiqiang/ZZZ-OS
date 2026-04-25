@@ -114,7 +114,7 @@ static struct slab* init_slab(struct kmem_cache *cache) {
     }
     // next->next = NULL;
 
-    struct page *pg = phys_to_page(KERNEL_PA(mem));
+    struct page *pg = address_page(mem);
     pg->slab = slab;
     slab->magic = SLAB_MAGIC;
 

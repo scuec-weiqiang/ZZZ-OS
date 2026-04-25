@@ -24,21 +24,21 @@ static int sched_kthread_test_worker(void *arg)
     CHECK(cfg != NULL, "sched test: worker arg is NULL", panic("sched test worker failed\n"););
     CHECK(task != NULL, "sched test: current task is NULL", panic("sched test worker failed\n"););
 
-    // for (int i = 0; i < cfg->rounds; i++) {
-    //     printk("[sched-test] cpu=%du pid=%xu task=%s round=%d/%d\n",
-    //            get_cpuid(), (unsigned long)task->pid, cfg->name, i + 1, cfg->rounds);
-    //     yield();
-    // }
-
-    while(1) {
-        printk("[sched-test] cpu=%du pid=%xu task=%s round=%d\n",
-               get_cpuid(), (unsigned long)task->pid, cfg->name, cfg->rounds);
-        int a = 0;
-        for (int i = 0; i < 20000000; i++) {
-            a += i;
-        }
-        
+    for (int i = 0; i < cfg->rounds; i++) {
+        printk("[sched-test] cpu=%du pid=%xu task=%s round=%d/%d\n",
+               get_cpuid(), (unsigned long)task->pid, cfg->name, i + 1, cfg->rounds);
+        yield();
     }
+
+    // while(1) {
+    //     printk("[sched-test] cpu=%du pid=%xu task=%s round=%d\n",
+    //            get_cpuid(), (unsigned long)task->pid, cfg->name, cfg->rounds);
+    //     int a = 0;
+    //     for (int i = 0; i < 20000000; i++) {
+    //         a += i;
+    //     }
+        
+    // }
 
     return 0;
 }
@@ -59,5 +59,5 @@ void sched_kthread_test(void)
     sched_kthread_test_started = 1;
     printk("[sched-test] created kernel threads: A pid=%xu, B pid=%xu\n",
            task_a->pid, task_b->pid);
-    here;
+    
 }

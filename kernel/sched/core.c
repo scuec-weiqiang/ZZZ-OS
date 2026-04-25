@@ -186,11 +186,11 @@ void __sched sched(void) {
     rq->sched_timer.expires_ns = monotonic_ns() + next->se.time_slice;
     prev = rq->curr;
     rq->curr = next;
-    timer_start(&rq->sched_timer);
+    // timer_start(&rq->sched_timer);
     
     spin_unlock_irqrestore(&rq->lock, flags);
     sched_switch_mm(next);
-    printk(BLUE("switch from pid=%du to pid=%du\n"), prev->pid, next->pid);
+    // printk(BLUE("switch from pid=%du to pid=%du\n"), prev->pid, next->pid);
     switch_to(prev, next, last);
     sched_tail(last);
 }
@@ -241,7 +241,7 @@ void wake_up_all(struct wait_queue_head *wq_head) {
         }
     }
 }
-
+// sk-c5765c5aa4e14cb19aefca18c7067d05
 void sched_init(void) {
     int cpu_num = of_get_cpu_num();
     CHECK(cpu_num > 0, "scheduler: invalid cpu count", return;);

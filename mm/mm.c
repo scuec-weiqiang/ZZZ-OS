@@ -137,9 +137,9 @@ struct mm_struct *mm_alloc() {
         kfree(mm);
         return NULL;
     }
-    mm->vma_list = (struct vma){0, 0, 0, mm, {NULL, NULL}}; // 初始化哨兵节点  
+    mm->vma_list = (struct vma){0, 0, 0, mm, LIST_HEAD_INIT(mm->vma_list.node)}; // 初始化哨兵节点  
     mm->vma_count = 0;
-    vma_add(mm, 0, 1, 0); // 添加哨兵节点
+    // vma_add(mm, 0, 1, 0); // 添加哨兵节点
     return mm;
 }
 
@@ -215,9 +215,31 @@ void iounmap(virt_addr_t va, size_t size) {
 }
 
 void copy_kernel_mapping(struct mm_struct *dest_mm) {
-    int kernel_start_index = pgtbl_level_index(init_mm.pgdir, 0, KERNEL_VA_BASE);
-    int kernel_end_index = init_mm.pgdir->features->level[0].table_size - sizeof(pte_t);
-    pgtbl_copy(dest_mm->pgdir, init_mm.pgdir, 0, kernel_start_index, kernel_end_index - kernel_start_index);
+    int root_entries;
+    int kernel_start_index;
+
+    CHECK(dest_mm != NULL, "copy_kernel_mapping: dest_mm is NULL", return;);
+    CHECK(dest_mm->pgdir != NULL, "copy_kernel_mapping: dest pgdir is NULL", return;);
+    CHECK(init_mm.pgdir != NULL, "copy_kernel_mapping: init pgdir is NULL", return;);
+
+    root_entries = init_mm.pgdir->features->level[0].table_size / sizeof(pte_t);
+    kernel_start_index = pgtbl_level_index(init_mm.pgdir, 0, KERNEL_VA_BASE);
+
+    /*
+     * Temporary bring-up mode:
+     * copy the whole root page table so we can rule out missing inherited
+     * mappings while debugging user-mode page-table switches.
+     */
+    pgtbl_copy(dest_mm->pgdir, init_mm.pgdir, 0, 0, root_entries);
+
+    /*
+     * Original Linux-like behavior: only inherit the kernel half.
+     *
+     * CHECK(kernel_start_index >= 0 && kernel_start_index < root_entries,
+     *       "copy_kernel_mapping: invalid kernel start index", return;);
+     * pgtbl_copy(dest_mm->pgdir, init_mm.pgdir, 0,
+     *            kernel_start_index, root_entries - kernel_start_index);
+     */
 }
 
 
@@ -246,26 +268,26 @@ void initial_mm_init() {
     struct memblock_region *region = NULL;
 
     list_for_each_entry(region, &memblock.memory.region_head.node, struct memblock_region, node) {
-        map(init_mm.pgdir, KERNEL_VA(region->base), region->base, region->size, PAGE_KERNEL);
+        map(init_mm.pgdir, KERNEL_VA(region->base), region->base, region->size, PAGE_KERNEL|PROT_EXEC);
     }
 
     map(init_mm.pgdir, 0xffff0000,KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
     map(init_mm.pgdir, 0x02020000,0x02020000, PAGE_SIZE, PAGE_DEVICE);
 
-    remap(init_mm.pgdir, trap_start, trap_size, PAGE_KERNEL_EXEC);
-    remap(init_mm.pgdir, text_start, text_size, PAGE_KERNEL_EXEC);
+    // remap(init_mm.pgdir, trap_start, trap_size, PAGE_KERNEL_EXEC);
+    // remap(init_mm.pgdir, text_start, text_size, PAGE_KERNEL_EXEC);
 
-    remap(init_mm.pgdir, data_start, data_size, PAGE_KERNEL);
-    remap(init_mm.pgdir, rodata_start, rodata_size, PAGE_KERNEL_RO);
-    remap(init_mm.pgdir, bss_start, bss_size, PAGE_KERNEL);
-    remap(init_mm.pgdir, initcall_start, initcall_size, PAGE_KERNEL_EXEC);
-    remap(init_mm.pgdir, exitcall_start, exitcall_size, PAGE_KERNEL_EXEC);
-    remap(init_mm.pgdir, irqinitcall_start, irqinitcall_size, PAGE_KERNEL_EXEC);
-    remap(init_mm.pgdir, irqexitcall_start, irqexitcall_size, PAGE_KERNEL_EXEC);
-    remap(init_mm.pgdir, early_stack_start, early_stack_size, PAGE_KERNEL);
-    here;
+    // remap(init_mm.pgdir, data_start, data_size, PAGE_KERNEL);
+    // remap(init_mm.pgdir, rodata_start, rodata_size, PAGE_KERNEL_RO);
+    // remap(init_mm.pgdir, bss_start, bss_size, PAGE_KERNEL);
+    // remap(init_mm.pgdir, initcall_start, initcall_size, PAGE_KERNEL_EXEC);
+    // remap(init_mm.pgdir, exitcall_start, exitcall_size, PAGE_KERNEL_EXEC);
+    // remap(init_mm.pgdir, irqinitcall_start, irqinitcall_size, PAGE_KERNEL_EXEC);
+    // remap(init_mm.pgdir, irqexitcall_start, irqexitcall_size, PAGE_KERNEL_EXEC);
+    // remap(init_mm.pgdir, early_stack_start, early_stack_size, PAGE_KERNEL);
+    
     pgtbl_switch_to(init_mm.pgdir);
-    here;
+    
     
 }
 

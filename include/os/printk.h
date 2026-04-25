@@ -18,7 +18,7 @@ extern void panic(const char* s, ...);
 
 #ifdef PRINTK_DEBUG
 #define dprintk(fmt, ...) \
-    printk("[DBG] %s:%d:%s: " fmt, __FILE__, __LINE__, __func__, ##__VA_ARGS__)
+    printk(YELLOW("[DBG] %s:%d:%s: ") fmt, __FILE__, __LINE__, __func__, ##__VA_ARGS__)
 #else
 #define dprintk(fmt, ...) do { } while (0)
 #endif

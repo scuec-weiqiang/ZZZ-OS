@@ -5,5 +5,5 @@ OBJ_Y += clocksource/
 OBJ_Y += imx6ull_uart.o
 # OBJ_Y += imx6ull_rtc.o
 # OBJ_Y += plic/
-# OBJ_Y += virt_disk/
-
+OBJ_Y += mem_disk/
+OBJ_Y += virt_disk/

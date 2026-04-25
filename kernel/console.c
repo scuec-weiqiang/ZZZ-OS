@@ -18,14 +18,25 @@ static size_t log_tail = 0;
 
 static void (*fn_putc)(char c) = NULL; // 由外部注册
 
+static int ring_is_empty(void) {
+    return log_head == log_tail;
+}
+
+static int ring_is_full(void) {
+    return ((log_head + 1) % _LOG_BUF_SIZE) == log_tail;
+}
+
 static void ring_putc(char c) {
-    size_t next = (log_head +1) % _LOG_BUF_SIZE;
-    log_buf[next] = c;
-    log_head = next;
+    if (ring_is_full()) {
+        log_tail = (log_tail + 1) % _LOG_BUF_SIZE;
+    }
+
+    log_buf[log_head] = c;
+    log_head = (log_head + 1) % _LOG_BUF_SIZE;
 }
 
 static int ring_getc(void) {
-    if (log_head == log_tail) {
+    if (ring_is_empty()) {
         return -1;
     }
     char c = log_buf[log_tail];
@@ -44,13 +55,8 @@ void console_puts(char *str) {
     int i = 0;
     while(str[i]) {
         ring_putc(str[i]);
-        // if (str[i] == '\r') {
-        //     ring_putc('\n');
-        // } 
-
         i++;
     }
-    ring_putc(0);
 }
 
 void console_flush(void) {

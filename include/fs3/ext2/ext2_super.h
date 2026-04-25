@@ -11,7 +11,7 @@
 #define EXT2_SUPER_H
 
 #include <os/types.h>
-#include <fs/vfs_types.h>
+#include <fs/types.h>
 
 extern struct fs_type ext2_fs_type;
 extern int ext2_sync_super(struct superblock *sb);

@@ -71,7 +71,7 @@ static int vma_merge(struct mm_struct *mm, struct vma *vma1, struct vma *vma2) {
     return 0;
 }
 
-static int vma_insert(struct mm_struct *mm, struct vma *new) {
+int vma_insert(struct mm_struct *mm, struct vma *new) {
     if (!mm || !new) {
         return -1;
     }
@@ -92,7 +92,7 @@ static int vma_insert(struct mm_struct *mm, struct vma *new) {
     return 0;
 }
 
-static int vma_remove(struct mm_struct *mm, struct vma *vma) {
+int vma_remove(struct mm_struct *mm, struct vma *vma) {
     if (!mm || !vma) {
         return -1;
     }

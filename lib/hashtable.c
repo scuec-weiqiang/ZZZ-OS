@@ -13,7 +13,7 @@
 #include <os/utils.h>
 #include <os/kmalloc.h>
 #include <os/hashtable.h>
-
+#include <os/err.h>
 
 /* 哈希表初始化函数 */
 struct hashtable* hashtable_init(size_t num_buckets, struct hash_ops *ops) {
@@ -72,8 +72,8 @@ struct hlist_node *hashtable_lookup(struct hashtable *ht, struct hlist_node *nod
 
 /* 插入节点到哈希表 */
 int hashtable_insert(struct hashtable *ht,struct hlist_node *node) {
-    CHECK(ht != NULL, "Hashtable must not be NULL", return -1;);
-    CHECK(node != NULL, "Key must not be NULL", return -1;);
+    CHECK(ht != NULL, "Hashtable must not be NULL", return -EINVAL;);
+    CHECK(node != NULL, "Key must not be NULL", return -EINVAL;);
 
     // 计算哈希值，并找到对应的桶
     hval_t hval = ht->ops->hash_func(node);

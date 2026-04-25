@@ -187,7 +187,7 @@ static int uart_probe(struct platform_device *pdev) {
     }
 
     uart_base = platform_ioremap_resource(pdev, 0);
-
+    dprintk("uart base = %xu\n",uart_base);
     uart_reg_init();
 
     // 打开串口中断

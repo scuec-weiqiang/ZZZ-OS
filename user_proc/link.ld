@@ -1,11 +1,11 @@
 /* 链接器脚本：linker.ld */
-OUTPUT_ARCH(riscv)
+OUTPUT_ARCH(arm)  /* 指定目标架构 */
 ENTRY(main)  /* 指定入口点符号 */
 
 SECTIONS
 {
     /* 文本段 */
-    . = 0x40000;        /* 设置当前位置为 0x10000 */
+    . = 0x40000;        
     .text : {
         *(.text .text.*) /* 所有文本段 */
     }

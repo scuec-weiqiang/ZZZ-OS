@@ -21,7 +21,7 @@ struct mm_struct {
     struct vma vma_list; // 虚拟内存区域链表头
     int vma_count;           // 虚拟内存区域数量
     unsigned long start_brk, brk;
-    unsigned long start_stack;
+    unsigned long start_stack, stack_top, stack_prot;
     unsigned long start_code, end_code;
     unsigned long start_data, end_data;
 };

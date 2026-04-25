@@ -120,8 +120,10 @@ void pgtbl_split(pgtable_t *pgtbl, pte_t *pte, int level) {
         // printk("pgtbl_split: set child entry %d at level %d to pa=%xu with flags %xu\n", i, level+1, child_pa, flags);
         arch_pgtbl_set_entry(pgtbl, level+1, PGTBL_DESC_PAGE,&child_table[i], child_pa, flags); // 继承权限位
     }
+    arch_pgtbl_sync_range(child_table, pgtbl->features->level[level+1].table_size);
  
     arch_pgtbl_set_entry(pgtbl,level,PGTBL_DESC_TABLE,pte, KERNEL_PA(child_table), 0);
+    arch_pgtbl_sync_range(pte, sizeof(*pte));
 }
 
 /*
@@ -145,6 +147,7 @@ void pgtbl_merge(pgtable_t *pgtbl, int level, pte_t *table, pte_t *table_entry) 
     index /= sizeof(pte_t);
 
     arch_pgtbl_set_entry(pgtbl,level-1,PGTBL_DESC_PAGE,&table_base[index], first_pa, flags);
+    arch_pgtbl_sync_range(&table_base[index], sizeof(table_base[index]));
  
     free_table_va(table);
 }
@@ -160,6 +163,7 @@ pgtable_t *new_pgtbl() {
     tbl->asid = 0; // TODO: 分配 ASID
     arch_pgtbl_init(tbl);
     int npages = div_u32(tbl->features->level[0].table_size + PAGE_SIZE - 1, PAGE_SIZE);
+    // printk("alloc %du pages for root\n", npages);
     tbl->root = page_alloc(npages);
     if (!tbl->root) {
         kfree(tbl);
@@ -246,6 +250,7 @@ walk_action_t map_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, vo
         pte->val = 0; // 先清空原有映射
         // printk("map_cb: set entry at level %d, va=%xu to pa=%xu with flags %xu\n", level, va, ctx->pa, ctx->flags);
         arch_pgtbl_set_entry(pgtbl,level, type,pte, ctx->pa, ctx->flags);
+        arch_pgtbl_sync_range(pte, sizeof(*pte));
         for (int l = level; l > 0; l--) {
             pte_t *table = ctx->table[l];
             pte_t *table_entry = ctx->pte[l-1];
@@ -272,6 +277,7 @@ walk_action_t map_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, vo
         memset(child_table, 0, PAGE_SIZE);
         arch_pgtbl_set_entry(pgtbl,level,PGTBL_DESC_TABLE,pte, KERNEL_PA(child_table), PROT_NONE);
         arch_pgtbl_sync_range(child_table, pgtbl->features->level[level+1].table_size); // 确保新表的内容被写回内存
+        arch_pgtbl_sync_range(pte, sizeof(*pte));
         // printk("create pte = %xu\n", pte->val);
     }
     return WALK_CONTINUE;
@@ -294,6 +300,7 @@ walk_action_t remap_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, 
         pte->val = 0; // 先清空原有映射
         // printk("map_cb: set entry at level %d, va=%xu to pa=%xu with flags %xu\n", level, va, ctx->pa, ctx->flags);
         arch_pgtbl_set_entry(pgtbl,level, type,pte, ctx->pa, ctx->flags);
+        arch_pgtbl_sync_range(pte, sizeof(*pte));
         for (int l = level; l > 0; l--) {
             pte_t *table = ctx->table[l];
             pte_t *table_entry = ctx->pte[l-1];
@@ -503,6 +510,8 @@ int pgtbl_copy(pgtable_t *dest, pgtable_t *src, int level, int index_start, int 
             dest_table[i] = *pte;
         }
     }
+
+    arch_pgtbl_sync_range(&dest_table[index_start], index_num * sizeof(pte_t));
     
     return 0;
 }

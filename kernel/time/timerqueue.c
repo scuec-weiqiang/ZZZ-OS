@@ -150,10 +150,9 @@ int timer_start(struct timer *t) {
     t->active = true;
     heap_push(t);
     if (t == heap_top()) {
-        printk("newest timer expires at %d\n", t->expires_ns&0xffffffff);
         program_next_event(t->expires_ns, monotonic_ns());
     }
-    here;
+
     return 0;
 }
 

@@ -7,7 +7,7 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#include "os/kva.h"
+
 #include "os/types.h"
 #include <mm/buddy.h>
 #include <mm/physmem.h>
@@ -15,6 +15,7 @@
 #include <os/printk.h>
 #include <os/rand.h>
 #include <os/string.h>
+#include <os/lru.h>
 #include <os/utils.h>
 
 #define list_to_page(ptr)               list_entry((ptr), struct page, buddy_node)
@@ -126,6 +127,11 @@ struct page* alloc_pages(unsigned int order) {
     page = get_first_page(current);
     remove_from_free_area(page, order);
     page->flags = PAGE_RESERVED;  // 标记为已分配
+    page->refcount = 0;
+    page->mapping = NULL;
+    page->index = 0;
+    page->private = NULL;
+    lru_node_reset(&page->cache_lru_node);
     page->slab = NULL;
     return page;
 }
@@ -157,6 +163,11 @@ void free_pages(struct page *page) {
 
     curr_page->order = order;
     curr_page->flags = PAGE_FREE;
+    curr_page->refcount = 0;
+    curr_page->mapping = NULL;
+    curr_page->index = 0;
+    curr_page->private = NULL;
+    lru_node_reset(&curr_page->cache_lru_node);
     curr_page->slab = NULL;
     add_to_free_area(curr_page, order);
 }
@@ -166,12 +177,11 @@ void* alloc_pages_kva(size_t npages) {
     n = n_to_order(n);
     struct page* page = alloc_pages(n);
     if (!page) return NULL;
-    return (void*)KERNEL_VA(page_to_phys(page));
+    return (void*)page_address(page);
 }
 
 void free_pages_kva(void *kaddr) {
-    phys_addr_t addr = KERNEL_PA(kaddr);
-    struct page* page = phys_to_page(addr);
+    struct page* page = address_page(kaddr);
     free_pages(page);
 }
 

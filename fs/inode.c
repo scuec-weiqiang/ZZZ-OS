@@ -1,9 +1,11 @@
 #include <fs/inode.h>
+#include <fs/pagecache.h>
 #include <os/check.h>
 #include <os/container_of.h>
 #include <os/kmalloc.h>
 #include <os/lru.h>
 #include <os/string.h>
+#include <os/err.h>
 
 static struct lru_cache *g_icache;
 
@@ -52,6 +54,7 @@ static int inode_cache_free(struct lru_node *node)
     struct inode *inode = container_of(node, struct inode, d_lru_cache_node);
 
     inode_cache_sync(node);
+    pagecache_invalidate_mapping(inode->i_mapping);
     if (inode->i_sb != NULL && inode->i_sb->s_op != NULL &&
         inode->i_sb->s_op->destroy_inode != NULL) {
         inode->i_sb->s_op->destroy_inode(inode);
@@ -87,16 +90,24 @@ void icache_destroy(void) {
 struct inode *new_inode(struct super_block *sb) {
     struct inode *inode = NULL;
 
-    CHECK(sb != NULL, "fs: invalid super for inode", return NULL;);
+    CHECK(sb != NULL, "fs: invalid super for inode", return ERR_PTR(-EINVAL););
     if (sb->s_op != NULL && sb->s_op->alloc_inode != NULL) {
         inode = sb->s_op->alloc_inode(sb);
+        if (IS_ERR(inode)) {
+            return inode;
+        }
     } else {
         inode = kmalloc(sizeof(*inode));
-        CHECK(inode != NULL, "fs: alloc inode failed", return NULL;);
+        CHECK(inode != NULL, "fs: alloc inode failed", return ERR_PTR(-ENOMEM););
         memset(inode, 0, sizeof(*inode));
     }
 
     inode->i_sb = sb;
+    inode->i_mapping = &inode->i_data;
+    inode->i_data.host = inode;
+    inode->i_data.a_ops = NULL;
+    spin_lock_init(&inode->i_data.lock);
+    inode->i_data.nrpages = 0;
     inode->i_count = 1;
     spin_lock_init(&inode->i_lock);
     lru_node_reset(&inode->d_lru_cache_node);
@@ -108,8 +119,8 @@ struct inode *iget(struct super_block *sb, ino_t ino) {
     struct lru_node *found = NULL;
     struct inode *inode = NULL;
 
-    CHECK(sb != NULL, "fs: invalid super for iget", return NULL;);
-    CHECK(g_icache != NULL, "fs: icache is not initialized", return NULL;);
+    CHECK(sb != NULL, "fs: invalid super for iget", return ERR_PTR(-EINVAL););
+    CHECK(g_icache != NULL, "fs: icache is not initialized", return ERR_PTR(-EINVAL););
 
     memset(&key, 0, sizeof(key));
     key.i_sb = sb;
@@ -126,17 +137,19 @@ struct inode *iget(struct super_block *sb, ino_t ino) {
 
     inode = new_inode(sb);
 
-    CHECK(inode != NULL, "fs: new inode failed", return NULL;);
+    CHECK(inode != NULL, "fs: new inode failed", return ERR_PTR(-ENOMEM););
     inode->i_ino = ino;
     inode->i_state = I_NEW;
+    int ret = lru_cache_add(g_icache, &inode->d_lru_cache_node);
 
-    CHECK(lru_cache_add(g_icache, &inode->d_lru_cache_node) == 0, "fs: cache inode failed",
+    if(ret != 0) {
           if (sb->s_op != NULL && sb->s_op->destroy_inode != NULL) {
               sb->s_op->destroy_inode(inode);
           } else {
               kfree(inode);
           }
-          return NULL;);
+          return ERR_PTR(ret);
+    }
 
     return inode;
 }

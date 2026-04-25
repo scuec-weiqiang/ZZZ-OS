@@ -3,7 +3,6 @@
 #include <os/check.h>
 #include <os/compiler_attributes.h>
 #include <os/cpu.h>
-#include <os/elf.h>
 #include <os/irq.h>
 #include <os/kmalloc.h>
 #include <os/kva.h>
@@ -18,7 +17,7 @@
 #include <mm/symbols.h>
 #include <asm/atomic.h>
 #include <fs/file.h>
-#include <os/errno-base.h>
+#include <os/errno.h>
 #include <fs/fs_struct.h>
 #include <os/list.h>
 #include <os/err.h>
@@ -96,6 +95,43 @@ void set_task_stack_end_magic(struct task_struct *tsk) {
 	stackend = end_of_stack(tsk);
 	*stackend = STACK_END_MAGIC;	/* for overflow detection */
 }
+/*
+ * Unshare file descriptor table if it is being shared
+ */
+ static int unshare_fd(unsigned long unshare_flags, struct files_struct **new_fdp)
+ {
+     struct files_struct *fd = current->files;
+     int error = 0;
+ 
+     if ((unshare_flags & CLONE_FILES) &&
+         (fd && atomic_read(&fd->refcount) > 1)) {
+         *new_fdp = dup_fd(fd, &error);
+         if (!*new_fdp)
+             return error;
+     }
+ 
+     return 0;
+ }
+
+
+int unshare_files(struct files_struct **displaced)
+{
+	struct task_struct *task = current;
+	struct files_struct *copy = NULL;
+	int error;
+
+	error = unshare_fd(CLONE_FILES, &copy);
+	if (error || !copy) {
+		*displaced = NULL;
+		return error;
+	}
+	*displaced = task->files;
+	spin_lock(&task->lock);
+	task->files = copy;
+	spin_unlock(&task->lock);
+	return 0;
+}
+
 
 /*
 do_fork 

@@ -3,7 +3,7 @@
 
 #include <os/types.h>
 
-#include <asm/errno.h>
+#include <os/errno.h>
 
 /*
  * Kernel pointers have redundant information, so we can use a

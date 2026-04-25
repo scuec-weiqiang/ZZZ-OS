@@ -21,9 +21,12 @@ static inline struct file *get_file(struct file *f) {
 struct file *filp_open(const char *path, uint32_t flags);
 void filp_close(struct file *file);
 ssize_t kernel_read(struct file *file, char *buf, size_t len);
+ssize_t kernel_read_at(struct file *file, loff_t pos, char *buf, size_t len);
 ssize_t kernel_write(struct file *file, const char *buf, size_t len);
+int __alloc_fd(struct files_struct *files, unsigned start, unsigned end, unsigned flags);
+int __close_fd(struct files_struct *files, unsigned fd);
 struct files_struct *dup_fd(struct files_struct *oldf, int *errorp);
-
+int unshare_files(struct files_struct **displaced);
 extern struct files_struct init_files ;
 
 #endif

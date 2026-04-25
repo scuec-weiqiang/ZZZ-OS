@@ -2,7 +2,7 @@
 #include <fs/namei.h>
 #include <os/kmalloc.h>
 #include <os/sched.h>
-#include <os/errno-base.h>
+#include <os/errno.h>
 
 /*
  * Replace the fs->{rootmnt,root} with {mnt,dentry}. Put the old values.

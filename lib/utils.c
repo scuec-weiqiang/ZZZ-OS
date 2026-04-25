@@ -8,6 +8,7 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include <os/config.h>
+#include <os/utils.h>
 
 unsigned int next_power_of_two(unsigned int n) {
     if (n == 0) return 1;

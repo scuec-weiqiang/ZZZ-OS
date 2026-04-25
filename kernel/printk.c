@@ -112,6 +112,7 @@ int _vsprint(char *out_buff, const char *fmt, va_list vl) {
  * vprintf: 先计算长度，再格式化
  */
 
+extern void _puts(char *s);
 
 int _vprint(const char *fmt, va_list vl) {
     
@@ -120,16 +121,16 @@ int _vprint(const char *fmt, va_list vl) {
     
     int n = _vsprint(NULL, fmt, vl);
     if (n >= __PBUFF_SIZE) {
-        // console_puts("printk overflow!\n");
+        _puts("printk overflow!\n");
         while (1) {
         } // 死机
     }
     
     _vsprint(print_buff, fmt, vl_copy);
     va_end(vl_copy);
-#define DEBUG
+// #define DEBUG
 #ifdef DEBUG
-   extern void _puts(char *s);
+  
     _puts(print_buff);
 #else
     console_puts(print_buff);
@@ -159,13 +160,13 @@ void panic(const char *fmt, ...) {
     va_start(vl, fmt);
     _vsprint(print_buff, fmt, vl);
     va_end(vl);
-    
+
 #ifdef DEBUG
     extern void _puts(char *s);
     _puts(print_buff);
 #else
     console_puts(print_buff);
-    console_puts("\n");
+    // console_puts("\n");
     console_flush();
 #endif
 

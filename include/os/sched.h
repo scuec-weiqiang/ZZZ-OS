@@ -106,6 +106,7 @@ struct task_struct {
     unsigned int flags;
     void *stack;      // 内核栈基址
     enum task_status status;         //进程状态
+    int in_execve;        // 是否正在执行 execve 系统调用
 
     int on_rq;            // 是否在 runnable 队列中
     int exit_code;

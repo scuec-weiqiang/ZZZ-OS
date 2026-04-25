@@ -12,6 +12,8 @@
 
 extern void yield();
 extern void print(const char *str,int len);
+extern int getpid(void);
+extern void exit(int code);
 extern int open(const char *path, int flags);
 extern int close(int fd);
 extern int read(int fd, char *buf, int len);
