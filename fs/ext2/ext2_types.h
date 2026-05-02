@@ -267,9 +267,9 @@ static inline struct ext2_sb_info *EXT2_SB(struct super_block *sb) {
 	return (struct ext2_sb_info *) sb->s_fs_info;
 }
 
-extern struct inode* ext2_iget(struct super_block *sb, uint32_t ino);
+extern struct inode* ext2_iget(struct super_block *sb, u32 ino);
 extern struct dentry* ext2_lookup(struct inode *dir, struct dentry *child, unsigned int flags);
-extern struct page *ext2_get_page(struct inode *inode, uint32_t index);
+extern struct page *ext2_get_page(struct inode *inode, u32 index);
 extern void ext2_put_page(struct page *page);
 
 /* dir.c */

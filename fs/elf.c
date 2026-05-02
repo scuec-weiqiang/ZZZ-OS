@@ -55,7 +55,7 @@ static int elf_load32(struct file *file, struct elf_info *info)
     nread = kernel_read_at(file, 0, (char *)&ehdr, sizeof(ehdr));
     CHECK(nread == sizeof(ehdr), "elf32: header truncated", return -1;);
 
-    dump_elf32_ehdr(&ehdr);
+    // dump_elf32_ehdr(&ehdr);
 
     CHECK(ehdr.e_type == ET_EXEC, "elf32: only ET_EXEC supported", return -1;);
     CHECK(ehdr.e_phoff != 0, "elf32: missing phdr table", return -1;);
@@ -65,7 +65,7 @@ static int elf_load32(struct file *file, struct elf_info *info)
     CHECK(ehdr.e_entry != 0, "elf32: entry is 0", return -1;);
 
     phdr_bytes = (size_t)ehdr.e_phnum * sizeof(struct Elf32_Phdr);
-    CHECK((uint64_t)ehdr.e_phoff + phdr_bytes <= file->f_inode->i_size,
+    CHECK((u64)ehdr.e_phoff + phdr_bytes <= file->f_inode->i_size,
           "elf32: phdr table out of range", return -1;);
 
     phdrs = kmalloc(phdr_bytes);
@@ -93,12 +93,12 @@ static int elf_load32(struct file *file, struct elf_info *info)
         info->segs[i].type = phdrs[i].p_type;
         info->segs[i].vaddr = phdrs[i].p_vaddr;
         info->segs[i].filesz = phdrs[i].p_filesz;
-        info->segs[i].memsz = phdrs[i].p_memsz;
+        info->segs[i].memsz = (u64)phdrs[i].p_memsz;
         info->segs[i].offset = phdrs[i].p_offset;
         info->segs[i].flags = phdrs[i].p_flags;
-        dprintk("phdr[%d]: type=%xu vaddr=%xu filesz=%xu memsz=%xu offset=%xu flags=%xu\n",
-               i, phdrs[i].p_type, phdrs[i].p_vaddr, phdrs[i].p_filesz,
-               phdrs[i].p_memsz, phdrs[i].p_offset, phdrs[i].p_flags);
+        // dprintk("phdr[%d]: type=%xu vaddr=%xu filesz=%xu memsz=%xu offset=%xu flags=%xu\n",
+        //        i, phdrs[i].p_type, phdrs[i].p_vaddr, phdrs[i].p_filesz,
+        //        phdrs[i].p_memsz, phdrs[i].p_offset, phdrs[i].p_flags);
     }
 
     kfree(phdrs);
@@ -122,7 +122,7 @@ static int elf_load64(struct file *file, struct elf_info *info)
     CHECK(ehdr.e_phentsize == sizeof(struct Elf64_Phdr),
           "elf64: unexpected phdr size", return -1;);
     CHECK(ehdr.e_entry != 0, "elf64: entry is 0", return -1;);
-    CHECK(ehdr.e_phoff + (uint64_t)ehdr.e_phnum * sizeof(struct Elf64_Phdr) <= file->f_inode->i_size,
+    CHECK(ehdr.e_phoff + (u64)ehdr.e_phnum * sizeof(struct Elf64_Phdr) <= file->f_inode->i_size,
           "elf64: phdr table out of range", return -1;);
 
     phdr_bytes = (size_t)ehdr.e_phnum * sizeof(struct Elf64_Phdr);
@@ -186,8 +186,8 @@ struct elf_info *elf_parse_file(struct file *file)
         return NULL;
     }
 
-    dprintk("entry=%xu, machine=%xu, phnum=%xu\n",
-           info->entry, info->machine, info->phnum);
+    // dprintk("entry=%xu, machine=%xu, phnum=%xu\n",
+    //        info->entry, info->machine, info->phnum);
     return info;
 }
 

@@ -39,7 +39,7 @@
         free_area[order].nr_free--; \
     )
 
-static int n_to_order(uint32_t n) {
+static int n_to_order(u32 n) {
     unsigned int order = 0;
     unsigned int size = 1;
     while (size < n) {
@@ -173,7 +173,7 @@ void free_pages(struct page *page) {
 }
 
 void* alloc_pages_kva(size_t npages) {
-    uint32_t n = next_power_of_two(npages);
+    u32 n = next_power_of_two(npages);
     n = n_to_order(n);
     struct page* page = alloc_pages(n);
     if (!page) return NULL;

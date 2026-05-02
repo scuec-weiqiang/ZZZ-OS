@@ -21,7 +21,7 @@ extern virt_addr_t plic_base;
 #define PLIC_COMPLETE_BASE            (PLIC_BASE + (0x200004))
 
 
-static inline uint32_t plic_get_context(uint32_t cpu)
+static inline u32 plic_get_context(u32 cpu)
 {
     // unsigned long sstatus;
     // asm volatile("csrr %0, sstatus" : "=r"(sstatus));
@@ -32,94 +32,94 @@ static inline uint32_t plic_get_context(uint32_t cpu)
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} irqn [in/out]:  
- * @param {uint32_t} priority [in/out]:  
+ * @param {u32} irqn [in/out]:  
+ * @param {u32} priority [in/out]:  
  * @return {*}
 ***************************************************************/
-static  inline void __plic_priority_set(uint32_t irqn,uint32_t priority)
+static  inline void __plic_priority_set(u32 irqn,u32 priority)
 {
-    volatile uint32_t *plic_priority = (volatile uint32_t *)PLIC_PRIORITY_BASE;
+    volatile u32 *plic_priority = (volatile u32 *)PLIC_PRIORITY_BASE;
     plic_priority[irqn] = priority;  // 直接数组访问，编译器自动计算偏移
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} irqn [in/out]:  
+ * @param {u32} irqn [in/out]:  
  * @return {*}
 ***************************************************************/
-static  inline uint32_t __plic_priority_get(uint32_t irqn)
+static  inline u32 __plic_priority_get(u32 irqn)
 {
-    volatile uint32_t *plic_priority = (volatile uint32_t *)PLIC_PRIORITY_BASE;
+    volatile u32 *plic_priority = (volatile u32 *)PLIC_PRIORITY_BASE;
     return plic_priority[irqn];
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} irqn [in/out]:  
+ * @param {u32} irqn [in/out]:  
  * @return {*}
 ***************************************************************/
-static  inline uint32_t __plic_pending_get(uint32_t irqn)
+static  inline u32 __plic_pending_get(u32 irqn)
 {
-    volatile uint32_t *plic_pending = (volatile uint32_t *)PLIC_PENDING_BASE;
+    volatile u32 *plic_pending = (volatile u32 *)PLIC_PENDING_BASE;
     return plic_pending[irqn/32] & (1<<(irqn%32)) ?1:0;
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} cpu [in/out]:  
- * @param {uint32_t} irqn [in/out]:  
+ * @param {u32} cpu [in/out]:  
+ * @param {u32} irqn [in/out]:  
  * @return {*}
 ***************************************************************/
-static inline void __plic_interrupt_enable(uint32_t cpu,uint32_t irqn)
+static inline void __plic_interrupt_enable(u32 cpu,u32 irqn)
 {
-    volatile uint32_t *plic_int_en = (volatile uint32_t *)PLIC_INT_EN_BASE;
+    volatile u32 *plic_int_en = (volatile u32 *)PLIC_INT_EN_BASE;
     plic_int_en[plic_get_context(cpu) * 0x80/4 + 4*(irqn/32)] |= (1<<(irqn%32));
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} cpu [in/out]:  
- * @param {uint32_t} irqn [in/out]:  
+ * @param {u32} cpu [in/out]:  
+ * @param {u32} irqn [in/out]:  
  * @return {*}
 ***************************************************************/
-static  inline void __plic_interrupt_disable(uint32_t cpu,uint32_t irqn)
+static  inline void __plic_interrupt_disable(u32 cpu,u32 irqn)
 {
-    volatile uint32_t *plic_int_en = (volatile uint32_t *)PLIC_INT_EN_BASE;
+    volatile u32 *plic_int_en = (volatile u32 *)PLIC_INT_EN_BASE;
     plic_int_en[plic_get_context(cpu) * 0x80/4 + 4*(irqn/32)]  &= ~(1<<(irqn%32));
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} cpu [in/out]:  
- * @param {uint32_t} threshold [in/out]:  
+ * @param {u32} cpu [in/out]:  
+ * @param {u32} threshold [in/out]:  
  * @return {*}
 ***************************************************************/
-static  inline void __plic_threshold_set(uint32_t cpu,uint32_t threshold)
+static  inline void __plic_threshold_set(u32 cpu,u32 threshold)
 {
-    volatile uint32_t *plic_int_thrshold = (volatile uint32_t *)PLIC_INT_THRSHOLD_BASE;
+    volatile u32 *plic_int_thrshold = (volatile u32 *)PLIC_INT_THRSHOLD_BASE;
     plic_int_thrshold[plic_get_context(cpu) * 0x1000] = threshold;
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} cpu [in/out]:  
+ * @param {u32} cpu [in/out]:  
  * @return {*}
 ***************************************************************/
-static  inline uint32_t __plic_claim(uint32_t cpu)
+static  inline u32 __plic_claim(u32 cpu)
 {
-    volatile uint32_t *plic_claim = (volatile uint32_t *)PLIC_CLAIM_BASE ;
+    volatile u32 *plic_claim = (volatile u32 *)PLIC_CLAIM_BASE ;
     return  plic_claim[plic_get_context(cpu) * 0x1000/4];
 }
 
 /***************************************************************
  * @description: 
- * @param {uint32_t} cpu [in/out]:  
- * @param {uint32_t} irqn [in/out]:  
+ * @param {u32} cpu [in/out]:  
+ * @param {u32} irqn [in/out]:  
  * @return {*}
 ***************************************************************/
-static  inline void __plic_complete(uint32_t cpu,uint32_t irqn)
+static  inline void __plic_complete(u32 cpu,u32 irqn)
 {
-    volatile uint32_t *plic_complete = (volatile uint32_t *)PLIC_COMPLETE_BASE;
+    volatile u32 *plic_complete = (volatile u32 *)PLIC_COMPLETE_BASE;
     plic_complete[plic_get_context(cpu) * 0x1000/4]= irqn;
 }
 

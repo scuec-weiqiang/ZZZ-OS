@@ -6,6 +6,7 @@
 int vfs_kern_mount(struct fs_context *fc, struct vfsmount **mnt_out);
 int vfs_kern_unmount(struct vfsmount *mnt);
 int init_mount_tree(struct vfsmount *mnt);
+int vfs_mount_fs(const char *fs_name, const char *source, const char *target, u32 sb_flags);
 int vfs_search_mount(struct dentry *dentry, struct vfsmount **mnt_out);
 extern void mntput(struct vfsmount *mnt);
 extern struct vfsmount *mntget(struct vfsmount *mnt);

@@ -68,7 +68,7 @@ struct pgtable_features {
 };
 
 typedef struct pgtable{
-    uint32_t asid;          // 地址空间 id 
+    u32 asid;          // 地址空间 id 
     void* root;           // 根页表虚拟地址
     phys_addr_t root_pa;   // 根页表物理地址
     const struct pgtable_features *features;

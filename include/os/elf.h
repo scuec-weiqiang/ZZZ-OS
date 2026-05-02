@@ -33,22 +33,23 @@ struct file;
 #define PF_W 0x2
 #define PF_R 0x4
 
+
 struct elf_segment
 {
-    uint32_t type;
-    uint64_t vaddr;
-    uint64_t filesz;
-    uint64_t memsz;
-    uint64_t offset;
-    uint32_t flags;
+    u32 type;
+    u64 vaddr;
+    u64 filesz;
+    u64 memsz;
+    u64 offset;
+    u32 flags;
 };
-  
+
 struct elf_info
 {
-    uint8_t elf_class;
-    uint16_t machine;
+    u8 elf_class;
+    u16 machine;
     uintptr_t entry;
-    uint16_t phnum;
+    u16 phnum;
     size_t file_size;
     struct elf_segment *segs;
 };
@@ -56,62 +57,62 @@ struct elf_info
 struct __attribute__((packed)) Elf32_Ehdr
 {
   char     e_ident[EI_NIDENT];
-  uint16_t e_type;
-  uint16_t e_machine;
-  uint32_t e_version;
-  uint32_t e_entry;
-  uint32_t e_phoff;
-  uint32_t e_shoff;
-  uint32_t e_flags;
-  uint16_t e_ehsize;
-  uint16_t e_phentsize;
-  uint16_t e_phnum;
-  uint16_t e_shentsize;
-  uint16_t e_shnum;
-  uint16_t e_shstrndx;
+  u16 e_type;
+  u16 e_machine;
+  u32 e_version;
+  u32 e_entry;
+  u32 e_phoff;
+  u32 e_shoff;
+  u32 e_flags;
+  u16 e_ehsize;
+  u16 e_phentsize;
+  u16 e_phnum;
+  u16 e_shentsize;
+  u16 e_shnum;
+  u16 e_shstrndx;
 };
 
 struct __attribute__((packed)) Elf32_Phdr
 {
-  uint32_t p_type;
-  uint32_t p_offset;
-  uint32_t p_vaddr;
-  uint32_t p_paddr;
-  uint32_t p_filesz;
-  uint32_t p_memsz;
-  uint32_t p_flags;
-  uint32_t p_align;
+  u32 p_type;
+  u32 p_offset;
+  u32 p_vaddr;
+  u32 p_paddr;
+  u32 p_filesz;
+  u32 p_memsz;
+  u32 p_flags;
+  u32 p_align;
 };
 
 
 struct __attribute__((packed)) Elf64_Ehdr
 {
   char e_ident[EI_NIDENT];
-  uint16_t e_type;
-  uint16_t e_machine;
-  uint32_t e_version;
-  uint64_t e_entry;
-  uint64_t e_phoff;
-  uint64_t e_shoff;
-  uint32_t e_flags;
-  uint16_t e_ehsize;
-  uint16_t e_phentsize;
-  uint16_t e_phnum;
-  uint16_t e_shentsize;
-  uint16_t e_shnum; // 节头表项数量
-  uint16_t e_shstrndx;
+  u16 e_type;
+  u16 e_machine;
+  u32 e_version;
+  u64 e_entry;
+  u64 e_phoff;
+  u64 e_shoff;
+  u32 e_flags;
+  u16 e_ehsize;
+  u16 e_phentsize;
+  u16 e_phnum;
+  u16 e_shentsize;
+  u16 e_shnum; // 节头表项数量
+  u16 e_shstrndx;
 };
 
 struct __attribute__((packed)) Elf64_Phdr 
 {
-  uint32_t p_type;
-  uint32_t p_flags;
-  uint64_t p_offset;
-  uint64_t p_vaddr;
-  uint64_t p_paddr;
-  uint64_t p_filesz;
-  uint64_t p_memsz;
-  uint64_t p_align;
+  u32 p_type;
+  u32 p_flags;
+  u64 p_offset;
+  u64 p_vaddr;
+  u64 p_paddr;
+  u64 p_filesz;
+  u64 p_memsz;
+  u64 p_align;
 } ;
 
 extern struct elf_info *elf_parse_file(struct file *file);

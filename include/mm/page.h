@@ -27,8 +27,8 @@
 struct address_space;
 
 struct page {
-    uint32_t flags;
-    uint32_t refcount;
+    u32 flags;
+    u32 refcount;
     spinlock_t lock;
     struct address_space *mapping;
     uintptr_t index;
@@ -51,19 +51,19 @@ extern phys_addr_t page_to_phys(struct page *page);
 extern void *page_address(struct page *page);
 extern struct page* address_page(void *va);
 
-static inline int page_test_flag(struct page *page, uint32_t flag)
+static inline int page_test_flag(struct page *page, u32 flag)
 {
     return page != NULL && (page->flags & flag) != 0;
 }
 
-static inline void page_set_flag(struct page *page, uint32_t flag)
+static inline void page_set_flag(struct page *page, u32 flag)
 {
     if (page != NULL) {
         page->flags |= flag;
     }
 }
 
-static inline void page_clear_flag(struct page *page, uint32_t flag)
+static inline void page_clear_flag(struct page *page, u32 flag)
 {
     if (page != NULL) {
         page->flags &= ~flag;

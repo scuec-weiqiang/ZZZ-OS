@@ -44,7 +44,7 @@ void kmalloc_init() {
 
 /***************************************************************
  * @description:
- * @param {uint32_t} npages [in/out]:
+ * @param {u32} npages [in/out]:
  * @return {*}
  ***************************************************************/
 void *page_alloc(size_t npages) {
@@ -100,7 +100,7 @@ void *kmalloc(size_t size) {
     case NORMAL_ALLOC:
         return __kmalloc(size);
     }
-
+    return NULL;
 }
 
 void *kzalloc(size_t size) {

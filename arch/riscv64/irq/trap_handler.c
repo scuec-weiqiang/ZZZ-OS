@@ -32,7 +32,7 @@ irqreturn_t s_timer_interrupt_handler(int virq, void *dev_id) {
     arch_timer_reload();
     systick_up();
     if (scheduler[tp_r()].current->expire_time >= systick()) {
-        printk("\n");
+        // printk("\n");
         yield();
     }
     // printk("tick:%du\n",systick());
@@ -43,8 +43,8 @@ reg_t trap_handler(reg_t _ctx) {
     // printk("trap handler enter\n");
     struct pt_regs *ctx = (struct pt_regs *)_ctx;
     reg_t return_epc = ctx->sepc;
-    uint64_t cause_code = ctx->scause & MCAUSE_MASK_CAUSECODE;
-    uint64_t is_interrupt = (ctx->scause & MCAUSE_MASK_INTERRUPT);
+    u64 cause_code = ctx->scause & MCAUSE_MASK_CAUSECODE;
+    u64 is_interrupt = (ctx->scause & MCAUSE_MASK_INTERRUPT);
     if (is_interrupt) {
         struct irq_chip *chip = irq_chip_lookup("riscv64_clint", tp_r());
         if (chip) {

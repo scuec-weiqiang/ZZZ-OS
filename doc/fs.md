@@ -9,8 +9,8 @@
 第一层首先是根据上面的创建一个挂载上下文。在文件系统注册时，我们有了`struct file_system_type`，在这里，`s_context_for_mount()`会给某个 `file_system_type` 分配一个 
 ```c
 struct file_system_type {
-    uint32_t sb_flags;
-    uint32_t purpose;
+    u32 sb_flags;
+    u32 purpose;
     const char *source;
     void *fs_private;
     struct dentry *root;

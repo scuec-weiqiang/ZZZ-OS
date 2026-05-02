@@ -20,8 +20,8 @@ struct of_bus {
 	const char	*addresses;
 	int	(*match)(struct device_node *parent);
 	void (*count_cells)(struct device_node *child, int *addrc, int *sizec);
-	// uint64_t (*map)(__be32 *addr, const __be32 *range, int na, int ns, int pna);
-	// int		(*translate)(__be32 *addr, uint64_t offset, int na);
+	// u64 (*map)(__be32 *addr, const __be32 *range, int na, int ns, int pna);
+	// int		(*translate)(__be32 *addr, u64 offset, int na);
 	unsigned int	(*get_flags)(const addr_t *addr);
 };
 

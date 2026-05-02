@@ -67,7 +67,7 @@ static hval_t vfs_global_page_lru_hash(const struct hlist_node *node)
     uintptr_t sb_ptr = (uintptr_t)page->inode;
 
     // 使用黄金比例相关的魔数
-    const uint32_t golden_ratio = 0x9E3779B9U;
+    const u32 golden_ratio = 0x9E3779B9U;
 
     // 混合两个值
     hval_t hash = (hval_t)sb_ptr * golden_ratio;
@@ -133,7 +133,7 @@ void pcache_destory()
     lru_cache_destroy(global_page_cache);
 }
 
-struct page_cache *pget(struct inode *inode, uint32_t index)
+struct page_cache *pget(struct inode *inode, u32 index)
 {
     struct page_cache page;
     page.inode = inode;

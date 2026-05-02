@@ -14,8 +14,8 @@
 #include <os/types.h>
 
 struct timer {
-    uint64_t expires_ns;              // 到期时间，基于 monotonic
-    uint64_t period_ns;   // 0 表示 one-shot
+    u64 expires_ns;              // 到期时间，基于 monotonic
+    u64 period_ns;   // 0 表示 one-shot
     int cpu; // 记录现在运行在哪个cpu上，方便调度器迁移
     int pinned; // 是否绑定到特定 CPU，-1 表示不绑定，其他值表示绑定的 CPU ID
     void (*callback)(struct timer *t, void *arg);
@@ -28,9 +28,10 @@ struct timer {
 
 extern int timerqueue_init(void);
 extern int timer_start(struct timer *t);
+extern int timer_mod(struct timer *t, u64 expires_ns);
 extern int timer_cancel(struct timer *t);
-extern uint64_t timerqueue_next_deadline(void);
-extern void timerqueue_run_expired(uint64_t now);
+extern u64 timerqueue_next_deadline(void);
+extern void timerqueue_run_expired(u64 now);
 extern int timerqueue_empty(void);
 extern void timerqueue_test(void);
 

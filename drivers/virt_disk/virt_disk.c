@@ -71,8 +71,8 @@ static void free_disk_desc(int index)
 static void free_disk_chain(int index)
 {
     while (1) {
-        uint16_t next = virt_disk.disk_queue.desc[index].next;
-        uint16_t flags = virt_disk.disk_queue.desc[index].flags;
+        u16 next = virt_disk.disk_queue.desc[index].next;
+        u16 flags = virt_disk.disk_queue.desc[index].flags;
 
         free_disk_desc(index);
         if (flags & VIRTQ_DESC_F_NEXT) {
@@ -137,7 +137,7 @@ out_unlock:
     return ret;
 }
 
-static int virt_disk_submit_bio(struct block_device *bdev, struct bio *bio)
+static int virt_disk_submit_bio(struct blkdev *bdev, struct bio *bio)
 {
     sector_t sector = 0;
 
@@ -147,8 +147,8 @@ static int virt_disk_submit_bio(struct block_device *bdev, struct bio *bio)
     sector = bdev_sector_offset(bdev, bio->bi_sector);
     for (int i = 0; i < bio->bi_vcnt; i++) {
         struct bio_vec *bvec = &bio->bi_io_vec[i];
-        uint8_t *base = NULL;
-        uint32_t done = 0;
+        u8 *base = NULL;
+        u32 done = 0;
 
         CHECK(bvec->page != NULL, "virt_disk: bio_vec page is NULL", return -1;);
         if (bvec->len == 0) {
@@ -160,7 +160,7 @@ static int virt_disk_submit_bio(struct block_device *bdev, struct bio *bio)
         CHECK((bvec->offset % SECTOR_SIZE) == 0, "virt_disk: unaligned bio offset", return -1;);
         CHECK((bvec->len % SECTOR_SIZE) == 0, "virt_disk: unaligned bio length", return -1;);
 
-        base = (uint8_t *)KERNEL_VA(page_to_phys(bvec->page)) + bvec->offset;
+        base = (u8 *)KERNEL_VA(page_to_phys(bvec->page)) + bvec->offset;
         while (done < bvec->len) {
             int ret = virt_disk_rw(base + done, sector,
                                    bio->op == REQ_OP_READ ? VIRT_DISK_READ : VIRT_DISK_WRITE);
@@ -199,16 +199,16 @@ static int virt_disk_init(void)
 
     virtio->queue_num = QUEUE_NUM;
     {
-        uint64_t desc_pa = (uint64_t)KERNEL_PA(virt_disk.disk_queue.desc);
-        uint64_t avail_pa = (uint64_t)KERNEL_PA(virt_disk.disk_queue.avail);
-        uint64_t used_pa = (uint64_t)KERNEL_PA(virt_disk.disk_queue.used);
+        u64 desc_pa = (u64)KERNEL_PA(virt_disk.disk_queue.desc);
+        u64 avail_pa = (u64)KERNEL_PA(virt_disk.disk_queue.avail);
+        u64 used_pa = (u64)KERNEL_PA(virt_disk.disk_queue.used);
 
-        virtio->queue_desc_low = (uint32_t)(desc_pa & 0xFFFFFFFFU);
-        virtio->queue_desc_high = (uint32_t)(desc_pa >> 32);
-        virtio->queue_avail_low = (uint32_t)(avail_pa & 0xFFFFFFFFU);
-        virtio->queue_avail_high = (uint32_t)(avail_pa >> 32);
-        virtio->queue_used_low = (uint32_t)(used_pa & 0xFFFFFFFFU);
-        virtio->queue_used_high = (uint32_t)(used_pa >> 32);
+        virtio->queue_desc_low = (u32)(desc_pa & 0xFFFFFFFFU);
+        virtio->queue_desc_high = (u32)(desc_pa >> 32);
+        virtio->queue_avail_low = (u32)(avail_pa & 0xFFFFFFFFU);
+        virtio->queue_avail_high = (u32)(avail_pa >> 32);
+        virtio->queue_used_low = (u32)(used_pa & 0xFFFFFFFFU);
+        virtio->queue_used_high = (u32)(used_pa >> 32);
     }
     virtio->queue_ready = 1;
     if (!virtio->queue_ready) {
@@ -218,7 +218,7 @@ static int virt_disk_init(void)
     virtio->status |= VIRTIO_CONFIG_S_DRIVER_OK;
     __sync_synchronize();
 
-    for (uint32_t i = 0; i < QUEUE_NUM; i++) {
+    for (u32 i = 0; i < QUEUE_NUM; i++) {
         virt_disk.kfree[i] = 1;
     }
 
@@ -245,7 +245,14 @@ static int virt_disk_init(void)
     }
 
     printk("virtio = %xu\n", virtio);
-    return register_blkdev(&virt_disk_gendisk);
+    {
+        dev_t devnr;
+
+        if (alloc_blkdev_region(&devnr, 1) != 0) {
+            return -1;
+        }
+        return blkdev_register("virt_disk", devnr, &virt_disk_gendisk, NULL);
+    }
 }
 
 static int virt_disk_probe(struct platform_device *pdev)
@@ -258,7 +265,7 @@ static int virt_disk_probe(struct platform_device *pdev)
     }
 
     {
-        uint32_t *reg = of_read_u32_array(node, "reg", 2);
+        u32 *reg = of_read_u32_array(node, "reg", 2);
         virtio = ioremap(reg[0], reg[1]);
     }
     return virt_disk_init();

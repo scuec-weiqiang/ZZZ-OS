@@ -80,35 +80,71 @@ unsigned int divmod_u32(unsigned int num, unsigned int div_num, unsigned int *re
     return q;
 }
 
+static unsigned long long do_divmod_u64(unsigned long long num,
+                                        unsigned int div_num,
+                                        unsigned int *rem)
+{
+    unsigned int num_hi = (unsigned int)(num >> 32);
+    unsigned int num_lo = (unsigned int)num;
+    unsigned int q_hi = 0;
+    unsigned int q_lo = 0;
+    unsigned int r = 0;
+    int i;
+
+    if (div_num == 0) {
+        if (rem) {
+            *rem = 0;
+        }
+        return 0;
+    }
+
+    /*
+     * Divide a 64-bit dividend by a 32-bit divisor using only 32-bit shifts.
+     * This avoids the broken variable-width 64-bit shift sequence generated
+     * for ARM32 in the previous bit-by-bit implementation.
+     */
+    for (i = 31; i >= 0; i--) {
+        unsigned int tmp_hi = r >> 31;
+        unsigned int tmp_lo = (r << 1) | ((num_hi >> i) & 1U);
+
+        if (tmp_hi || tmp_lo >= div_num) {
+            tmp_lo -= div_num;
+            q_hi |= (1U << i);
+        }
+        r = tmp_lo;
+    }
+
+    for (i = 31; i >= 0; i--) {
+        unsigned int tmp_hi = r >> 31;
+        unsigned int tmp_lo = (r << 1) | ((num_lo >> i) & 1U);
+
+        if (tmp_hi || tmp_lo >= div_num) {
+            tmp_lo -= div_num;
+            q_lo |= (1U << i);
+        }
+        r = tmp_lo;
+    }
+
+    if (rem) {
+        *rem = r;
+    }
+
+    return ((unsigned long long)q_hi << 32) | q_lo;
+}
 
 unsigned long long div_u64(unsigned long long num, unsigned int div_num) {
-    unsigned long long q = 0;
-    unsigned long long r = 0;
-    for (int i = 63; i >= 0; i--) {
-        r = (r << 1) | ((num >> i) & 1);
-        if (r >= div_num) {
-            r -= div_num;
-            q |= (1ULL << i);
-        }
-    }
-    return q;
+    return do_divmod_u64(num, div_num, 0);
 }
 
 unsigned long long mod_u64(unsigned long long num, unsigned int div_num) {
-    unsigned long long r = 0;
-    for (int i = 63; i >= 0; i--) {
-        r = (r << 1) | ((num >> i) & 1);
-        if (r >= div_num) {
-            r -= div_num;
-        }
-    }
-    return r;
+    unsigned int rem = 0;
+
+    do_divmod_u64(num, div_num, &rem);
+    return rem;
 }
 
 // 返回 num / div，rem 保存余数
 unsigned long long divmod_u64(unsigned long long num, unsigned int div_num, unsigned int *rem) {
-    unsigned long long q = div_u64(num, div_num);
-    if (rem) *rem = mod_u64(num, div_num);
-    return q;
+    return do_divmod_u64(num, div_num, rem);
 }
 #endif

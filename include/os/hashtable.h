@@ -24,7 +24,7 @@
 #include <os/hlist.h>
 #include <os/types.h>
 
-typedef uint64_t hval_t;
+typedef u64 hval_t;
 
 struct hash_ops
 {

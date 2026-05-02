@@ -1,7 +1,7 @@
 OBJ_Y += ext2/
 
 OBJ_Y += block_adapter.o
-OBJ_Y += block_device.o
+OBJ_Y += blkdev.o
 OBJ_Y += chrdev.o
 OBJ_Y += dcache.o
 OBJ_Y += fs_init.o

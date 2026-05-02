@@ -1,11 +1,13 @@
 #include <fs/types.h>
 #include <fs/super.h>
 #include <fs/dcache.h>
+#include <fs/fs.h>
 #include <fs/inode.h>
 #include <fs/fs_context.h>
 #include <os/kmalloc.h>
 #include <fs/blkdev.h>
 #include <os/err.h>
+#include <os/init.h>
 #include <os/string.h>
 #include <os/printk.h>
 #include <os/utils.h>
@@ -13,16 +15,28 @@
 
 static struct inode* ext2_alloc_inode(struct super_block *sb) {
     struct ext2_inode_info *ei;
-    	ei = kmalloc(sizeof(struct ext2_inode_info));
+    ei = kmalloc(sizeof(struct ext2_inode_info));
 	if (!ei)
 		return ERR_PTR(-ENOMEM);
 
     memset(ei, 0, sizeof(struct ext2_inode_info));
+    // printk("ext2_alloc_inode: ei=%xu vfs_inode=%xu offset=%xu size=%xu\n",
+    //        ei, &ei->vfs_inode,
+    //        (u32)((uintptr_t)&ei->vfs_inode - (uintptr_t)ei),
+    //        sizeof(struct ext2_inode_info));
     return &ei->vfs_inode;
+}
+
+static void ext2_destroy_inode(struct inode *inode) {
+    if (!inode) {
+        return;
+    }
+    kfree(EXT2_I(inode));
 }
 
 struct super_operations ext2_super_ops = {
     .alloc_inode = ext2_alloc_inode,
+    .destroy_inode = ext2_destroy_inode,
 };
 
 static int ext2_init_fs_context(struct fs_context *fc) {
@@ -57,10 +71,10 @@ static int ext2_get_tree(struct fs_context *fc) {
     struct inode *root_inode = NULL;
     struct dentry *root_dentry = NULL;
 
-    struct block_device *bdev = NULL;
+    struct blkdev *bdev = NULL;
     int ret = 0;
-    uint32_t block_size = 0;
-    uint32_t blocks_after_first = 0;
+    u32 block_size = 0;
+    u32 blocks_after_first = 0;
 
     bdev = blkdev_get_by_path(fc->source);
     if (IS_ERR(bdev)) {
@@ -141,7 +155,7 @@ static int ext2_get_tree(struct fs_context *fc) {
         ret = -ENOMEM;
         goto fail_gdt;
     }
-    uint32_t gdt_offset = (sbi->s_first_data_block + 1) * block_size; //块描述符表起始位置
+    u32 gdt_offset = (sbi->s_first_data_block + 1) * block_size; //块描述符表起始位置
 
     if (blkdev_read(bdev, raw_gdt, sbi->s_gdb_count * block_size, gdt_offset) < 0) {
         ret = -EIO;
@@ -207,3 +221,10 @@ struct file_system_type ext2_fs_type = {
     .get_tree = ext2_get_tree,
     .kill_sb = ext2_kill_sb,
 };
+
+static int ext2_register_filesystem_init(void)
+{
+    return register_filesystem(&ext2_fs_type);
+}
+
+fs_initcall(ext2_register_filesystem_init);

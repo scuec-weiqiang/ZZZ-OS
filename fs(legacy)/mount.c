@@ -28,7 +28,7 @@ int mount(const char *type_name, const char *bdev_name, int flags)
     CHECK((fs_type != NULL), "Invalid fs type", return -1;);
     CHECK((fs_type->mount != NULL), "Invalid mount function", return -1;);
 
-    struct block_device *bdev = block_device_open(bdev_name);
+    struct blkdev *bdev = block_device_open(bdev_name);
     CHECK((bdev != NULL), "Invalid block device", return -1;);
 
     struct superblock *sb = fs_type->mount(fs_type, bdev, flags);

@@ -9,10 +9,19 @@
 #include <os/string.h>
 #include <os/timekeeping.h>
 #include <os/preempt.h>
+#include <os/syscall_num.h>
 #include <mm/pgtbl.h>
 #include <asm/switch_to.h>
+#include <asm/ptrace.h>
 
 struct rq *global_rq;
+
+// static inline unsigned long sched_read_cpsr(void)
+// {
+//     unsigned long cpsr;
+//     asm volatile("mrs %0, cpsr" : "=r"(cpsr));
+//     return cpsr;
+// }
 
 struct rq *this_rq(void) {
     CHECK(global_rq != NULL, "scheduler: runqueue is not initialized", return NULL;);
@@ -49,15 +58,15 @@ static struct task_struct *pick_next_task(struct rq *rq) {
     return NULL;
 }
 
-static void task_attach_to_rq(struct task_struct *task) {
+void task_attach_to_rq(struct task_struct *task) {
     struct rq *rq;
     struct thread_info *ti = task_thread_info(task);
     unsigned long flags;
-
     if (task == NULL || global_rq == NULL) {
+        
         return;
     }
-
+    
     rq = &global_rq[ti->cpu];
     flags = spin_lock_irqsave(&rq->lock);
     if (list_empty(&task->task_node)) {
@@ -67,7 +76,7 @@ static void task_attach_to_rq(struct task_struct *task) {
     spin_unlock_irqrestore(&rq->lock, flags);
 }
 
-static void task_detach_from_rq(struct task_struct *task) {
+void task_detach_from_rq(struct task_struct *task) {
     struct rq *rq;
     struct thread_info *ti = task_thread_info(task);
     unsigned long flags;
@@ -88,86 +97,65 @@ static void task_detach_from_rq(struct task_struct *task) {
     spin_unlock_irqrestore(&rq->lock, flags);
 }
 #define RR_TIME_SLICE_NS 10000000 // 10ms
+
 /*
- * Perform scheduler related setup for a newly forked process p.
- * p is forked by current.
- *
- * __sched_fork() is basic setup used by init_idle() too:
- */
+    设置调度器相关的字段
+*/
 static void __sched_fork(struct task_struct *p) {
 	p->on_rq			= 0;
-	p->se.exec_start		= 0;
+	p->se.exec_start		= monotonic_ns();
 	p->se.sum_exec_runtime		= 0;
-	p->se.time_slice			= NSEC_PER_SEC;
+	p->se.time_slice			= current->se.time_slice;
 	INIT_LIST_HEAD(&p->se.sched_node);
 }
 
-int sched_fork(struct task_struct *p) {
+/* 复制并初始化task的调度器 */
+void sched_fork(struct task_struct *p) {
 	unsigned long flags;
 	int cpu = get_cpuid();
 
 	__sched_fork(p);
-	/*
-	 * We mark the process as running here. This guarantees that
-	 * nobody will actually run it, and a signal or other external
-	 * event cannot wake it up and insert it on the runqueue either.
-	 */
-	p->status = TASK_RUNNING;
-    INIT_LIST_HEAD(&p->task_node);
-	/*
-	 * Make sure we do not leak PI boosting priority to the child.
-	 */
-	p->prio = current->normal_prio;
 
+	p->status = TASK_SLEEPING;
+    p->prio = current->prio;
 	p->sched_class = &rr_sched_class;
 
-	flags = spin_lock_irqsave(&p->lock);
-    task_thread_info(p)->cpu = cpu;
-    task_attach_to_rq(p);
-	spin_unlock_irqrestore(&p->lock, flags);
+    INIT_LIST_HEAD(&p->task_node);
+    INIT_LIST_HEAD(&p->wait.list);
+    INIT_LIST_HEAD(&p->wait_child.head);
+    p->wait.private = p;
 
-	return 0;
+	flags = spin_lock_irqsave(&p->lock);
+
+    task_thread_info(p)->cpu = cpu;
+
+	spin_unlock_irqrestore(&p->lock, flags);
 }
 
-static void sched_switch_mm(struct task_struct *next) {
-    struct mm_struct *next_mm;
-
-    if (next != NULL && next->active_mm != NULL) {
-        next_mm = next->active_mm;
+static void sched_switch_mm(struct task_struct *prev, struct task_struct *next) {
+    if (next->mm == NULL) {
+        // 考虑线程没有属于自己的地址空间，那就借用上一个进程的地址空间
+        // printk("borrow mm of pid=%d for pid=%d\n", prev->pid, next->pid);
+        next->active_mm = prev->active_mm;
     } else {
-        next_mm = this_rq()->curr->active_mm;
-    }
-
-    if (this_rq()->curr->active_mm != next_mm) {
-        pgtbl_switch_to(next_mm->pgdir);
+        // 有的话就直接切页表
+        next->active_mm = next->mm;
+        pgtbl_switch_to(next->active_mm->pgdir);
         pgtbl_flush();
     }
-    
 }
 
-static void sched_finish_prev(struct rq *rq, struct task_struct *prev) {
-    if (rq == NULL || prev == NULL) {
-        return;
-    }
-
-    if (prev->status == TASK_ZOMBIE || prev->status == TASK_DEAD) {
-        // dprintk("task pid=%xu exit with code %d, clean up\n", (unsigned long)prev->pid, prev->exit_code);
-        task_detach_from_rq(prev);
-        task_destroy(prev);
-    }
-}
 
 void sched_tail(struct task_struct *prev) {
-    struct rq *rq = this_rq();
-    if (rq == NULL || prev == NULL) {
-        return;
+    prev->se.sum_exec_runtime += monotonic_ns() - prev->se.exec_start;
+}
+
+void sched_handle_user_return(void)
+{
+    if (current != NULL && current->need_resched) {
+        current->need_resched = 0;
+        sched();
     }
-    preempt_disable();
-    if (prev->status == TASK_ZOMBIE || prev->status == TASK_DEAD) {
-        sched_finish_prev(rq, prev);
-    }
-    preempt_enable(); 
-    local_irq_enable();
 }
 
 void __sched sched(void) {
@@ -177,20 +165,22 @@ void __sched sched(void) {
     struct task_struct *last = NULL;
     unsigned long flags;
 
-    // 会在sched_finish_prev中打开
     local_irq_disable();
+
     flags = spin_lock_irqsave(&rq->lock);
     next = pick_next_task(rq);
 
-    next->status = TASK_RUNNING;    
-    rq->sched_timer.expires_ns = monotonic_ns() + next->se.time_slice;
+    u64 now = monotonic_ns();
+    
+    next->se.exec_start =  now;
     prev = rq->curr;
     rq->curr = next;
-    // timer_start(&rq->sched_timer);
-    
     spin_unlock_irqrestore(&rq->lock, flags);
-    sched_switch_mm(next);
+    timer_mod(&rq->sched_timer, now + next->se.time_slice);
+    sched_switch_mm(prev, next);
+
     // printk(BLUE("switch from pid=%du to pid=%du\n"), prev->pid, next->pid);
+
     switch_to(prev, next, last);
     sched_tail(last);
 }
@@ -203,17 +193,32 @@ void yield() {
     sched();
 }
 
+long sys_getpid(struct pt_regs *ctx)
+{
+    (void)ctx;
+    return current->pid;
+}
+
 void sleep_on(struct wait_queue_head *wq_head) {
-    struct task_struct *current_task = this_rq()->curr;
+    // struct task_struct *current_task = this_rq()->curr;
+    struct task_struct *current_task = current;
     if (current_task->status != TASK_RUNNING) {
         return;
     }
+    if (current_task->status == TASK_SLEEPING) {
+        return;
+    }
     current_task->status = TASK_SLEEPING;
+
+    int flags = spin_lock_irqsave(&current_task->lock);
+
     // 从当前 CPU 的运行队列中移除当前任务，放入等待队列
     current_task->sched_class->dequeue_task(this_rq(), current_task);
     current_task->wait.private = current_task;
     wait_queue_add(wq_head, &current_task->wait);
-    
+
+    spin_unlock_irqrestore(&current_task->lock, flags);
+    // dprintk("sleep task:%d\n",current_task->pid);
     sched();
 }
 
@@ -222,7 +227,7 @@ void wake_up_one(struct wait_queue_head *wq_head) {
     list_for_each_entry_safe(wq, tmp, &wq_head->head, struct wait_queue, list) {
         struct task_struct *task = wq->private;
         if (task->status == TASK_SLEEPING) {
-            task->status = TASK_RUNNING;
+            // dprintk("wake up task:%d\n",task->pid);
             wait_queue_remove(wq_head, wq);
             wake_up_process(task);
             break; // 只唤醒一个
@@ -235,7 +240,6 @@ void wake_up_all(struct wait_queue_head *wq_head) {
     list_for_each_entry_safe(wq, tmp, &wq_head->head, struct wait_queue, list) {
         struct task_struct *task = wq->private;
         if (task->status == TASK_SLEEPING) {
-            task->status = TASK_RUNNING;
             wait_queue_remove(wq_head, wq);
             wake_up_process(task);
         }

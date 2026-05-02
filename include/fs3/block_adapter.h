@@ -11,11 +11,11 @@
 #define BLOCK_ADAPTER_H
 
 #include <os/types.h>
-#include <fs/block_device.h>
+#include <fs/blkdev.h>
 
 struct block_adapter;
 
-extern int block_adapter_register(const char* adap_name,const char* bdev_name, uint32_t fs_block_size, int gpt_offset);
+extern int block_adapter_register(const char* adap_name,const char* bdev_name, u32 fs_block_size, int gpt_offset);
 extern void block_adapter_destory(struct block_adapter* adap);
 
 extern struct block_adapter* block_adapter_open(const char *name);

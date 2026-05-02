@@ -10,7 +10,7 @@
 #include <os/types.h>
 #include <os/compiler_attributes.h>
 
-#define _LOG_BUF_SIZE 4096
+#define _LOG_BUF_SIZE 0x4000
 
 static char log_buf[_LOG_BUF_SIZE] __aligned(8);
 static size_t log_head = 0;
@@ -51,7 +51,7 @@ void console_register(void (*fn)(char c)) {
     fn_putc = fn;
 }
 
-void console_puts(char *str) {
+void console_puts(const char *str) {
     int i = 0;
     while(str[i]) {
         ring_putc(str[i]);

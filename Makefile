@@ -1,7 +1,8 @@
 #--------------架构---------------#
 ARCH ?= arm
 # CROSS_COMPILE ?= riscv64-unknown-elf-
-CROSS_COMPILE ?= arm-linux-gnueabihf-
+# CROSS_COMPILE ?= arm-linux-gnueabihf-
+CROSS_COMPILE ?= arm-none-eabi-
 BOARD ?= imx6ull
 
 DISK = ./disk.img
@@ -20,7 +21,8 @@ LD := $(CROSS_COMPILE)ld
 OBJDUMP :=$(CROSS_COMPILE)objdump
 OBJCOPY := $(CROSS_COMPILE)objcopy
 
-CFLAGS = -g -Wall -fno-builtin -std=c11 -ffreestanding -fno-pic -fno-pie -no-pie
+CFLAGS = -g -Wall -fno-builtin -std=c11 -ffreestanding -fno-pic -fno-pie -no-pie 
+
 -include arch/$(ARCH)/config/config.mk
 CFLAGS += -Iinclude 
 CFLAGS += -MMD -MP
@@ -43,8 +45,9 @@ KBUILD = $(KBUILD_PATH)/kbuild
 SRC_ROOT ?=  ./
 # Kbuild 输出文件
 KBUILD_FILE = objs.mk
+KBUILD_SOURCES := $(shell find . -name objs.build)
 # 若不存在 objs.mk，则生成
-$(KBUILD_FILE):$(KBUILD)
+$(KBUILD_FILE):$(KBUILD) $(KBUILD_SOURCES)
 	@$(KBUILD) $(SRC_ROOT) > $@
 $(KBUILD):
 	$(MAKE) -C $(KBUILD_PATH)

@@ -29,13 +29,13 @@
 #define PHANDLE_MAX 1024
 
 struct fdt_header {
-    uint32_t magic;             // 0xd00dfeed
-    uint32_t totalsize;
-    uint32_t off_dt_struct;     // structure block 偏移
-    uint32_t off_dt_strings;    // strings block 偏移
-    uint32_t off_mem_rsvmap;
-    uint32_t version;
-    uint32_t last_comp_version;
+    u32 magic;             // 0xd00dfeed
+    u32 totalsize;
+    u32 off_dt_struct;     // structure block 偏移
+    u32 off_dt_strings;    // strings block 偏移
+    u32 off_mem_rsvmap;
+    u32 version;
+    u32 last_comp_version;
 };
 
 enum fdt_token {
@@ -50,7 +50,7 @@ enum fdt_token {
 // 属性结构
 struct device_prop {
     char *name;
-    uint32_t length;
+    u32 length;
     void *value;
     struct device_prop *next;
 };
@@ -73,7 +73,7 @@ extern struct device_node *phandle_table[PHANDLE_MAX];
 
 extern struct device_node *fdt_new_node(const char *name, struct device_node *parent);
 extern void fdt_free_node(struct device_node *node);
-extern struct device_prop *fdt_new_prop(const char *name, uint32_t len, const void *value);
+extern struct device_prop *fdt_new_prop(const char *name, u32 len, const void *value);
 extern void fdt_free_prop(struct device_prop *prop);
 extern int fdt_add_prop(struct device_node *node, struct device_prop *prop);
 extern int fdt_add_child(struct device_node *parent, struct device_node *child);

@@ -17,6 +17,7 @@ struct irq_chip;
 struct irq_domain;
 
 typedef irqreturn_t (*irq_handler_t)(int virq, void *dev_id);
+typedef void (*irq_deferred_fn_t)(void *arg);
 
 #ifndef IRQ_PERCPU_MAX_CPUS
 #define IRQ_PERCPU_MAX_CPUS 4
@@ -34,6 +35,16 @@ struct irq_data {
     void *percpu_dev_id[IRQ_PERCPU_MAX_CPUS];
 };
 
+#ifndef IRQ_DEFERRED_WORK_MAX
+#define IRQ_DEFERRED_WORK_MAX 16
+#endif
+
+struct irq_deferred_work {
+    irq_deferred_fn_t fn;
+    void *arg;
+    volatile int pending;
+};
+
 extern void irq_init(void);
 extern struct irq_data *irq_data_get(int virq);
 extern int irq_request(int virq, irq_handler_t handler, const char *name, void *dev_id);
@@ -44,6 +55,10 @@ extern reg_t do_irq(reg_t ctx,void *arg);
 extern void irq_set_priority(int virq, int priority);
 extern int irq_get_priority(int virq);
 extern void irq_send_ipi(int cpu_id, int ipi_id);
+extern int irq_deferred_work_register(struct irq_deferred_work *work,
+                                      irq_deferred_fn_t fn, void *arg);
+extern void irq_deferred_work_queue(struct irq_deferred_work *work);
+extern void irq_run_deferred_works(void);
 
 
 #endif // __KERNEL_IRQ_H

@@ -3,18 +3,21 @@
 #include <os/list.h>
 #include <os/kmalloc.h>
 #include <os/printk.h>
+#include <os/err.h>
 
 #define node_to_vma(node_ptr) list_entry(node_ptr, struct vma, node)
 
 struct vma *vma_create(virt_addr_t start, virt_addr_t end, pgprot_t flags) {
     struct vma *vma = kmalloc(sizeof(struct vma));
     if (!vma) {
-        return NULL;
+        return ERR_PTR(-ENOMEM);
     }
     vma->start = start;
     vma->end = end;
     vma->flags = flags;
     INIT_LIST_HEAD(&vma->node);
+
+    vma->mm = NULL; // 需要在插入到mm_struct时设置
     return vma;
 }
 
@@ -33,7 +36,7 @@ struct vma *vma_find(struct mm_struct *mm, virt_addr_t va) {
             return vma;
         }
     }
-    return NULL;
+    return ERR_PTR(-EFAULT);
 }
 
 static int vma_split(struct mm_struct *mm, struct vma *vma, virt_addr_t split_addr) {
@@ -48,7 +51,7 @@ static int vma_split(struct mm_struct *mm, struct vma *vma, virt_addr_t split_ad
 
     struct vma *new_vma = vma_create(split_addr, vma->end, vma->flags);
     if (!new_vma) {
-        return -1; // Memory allocation failed
+        return -ENOMEM;
     }
 
     vma->end = split_addr;
@@ -58,11 +61,11 @@ static int vma_split(struct mm_struct *mm, struct vma *vma, virt_addr_t split_ad
 
 static int vma_merge(struct mm_struct *mm, struct vma *vma1, struct vma *vma2) {
     if (!mm || !vma1 || !vma2) {
-        return -1;
+        return -EINVAL;
     }
 
     if (vma1->end != vma2->start || vma1->flags != vma2->flags) {
-        return -1; // Cannot merge
+        return -EINVAL; // Cannot merge
     }
 
     vma1->end = vma2->end;
@@ -72,29 +75,50 @@ static int vma_merge(struct mm_struct *mm, struct vma *vma1, struct vma *vma2) {
 }
 
 int vma_insert(struct mm_struct *mm, struct vma *new) {
-    if (!mm || !new) {
-        return -1;
-    }
-
-    if (list_empty(&mm->vma_list.node)) {
-        list_add_after(&mm->vma_list.node, &new->node);
-        return 0;
-    }
-
+    struct list_head *head;
     struct vma *pos;
-    list_for_each_entry_prev(pos, &mm->vma_list.node, struct vma, node) {
-        if (pos->end <= new->start) {
-            list_add_after(&pos->node, &new->node);
-            vma_merge(mm, pos, new);
-            break;
+
+    if (!mm || !new) {
+        return -EINVAL;
+    }
+    head = &mm->vma_list.node;
+    new->mm = mm;
+
+    if (list_empty(head)) {
+        list_add_after(head, &new->node);
+    } else {
+        list_for_each_entry(pos, head, struct vma, node) {
+            if (new->end <= pos->start) {
+                list_add_before(&pos->node, &new->node);
+                goto merged;
+            }
+            if (new->start < pos->end) {
+                return -EFAULT;
+            }
+        }
+
+        list_add_tail(head, &new->node);
+    }
+
+merged:
+    if (new->node.prev != head) {
+        struct vma *prev = list_entry(new->node.prev, struct vma, node);
+        if (vma_merge(mm, prev, new) == 0) {
+            new = prev;
         }
     }
+
+    if (new->node.next != head) {
+        struct vma *next = list_entry(new->node.next, struct vma, node);
+        vma_merge(mm, new, next);
+    }
+
     return 0;
 }
 
 int vma_remove(struct mm_struct *mm, struct vma *vma) {
     if (!mm || !vma) {
-        return -1;
+        return -EINVAL;
     }
 
     list_del(&vma->node);
@@ -105,18 +129,18 @@ int vma_remove(struct mm_struct *mm, struct vma *vma) {
 
 int vma_add(struct mm_struct *mm, virt_addr_t start, size_t len, pgprot_t flags) {
     if (!mm || len == 0) {
-        return -1;
+        return -EINVAL;
     }
 
     // 有重叠直接报错
     struct vma *tmp = vma_find(mm, start);
-    if (tmp) {
-        return -1;
+    if (!IS_ERR(tmp)) {
+        return -EFAULT;
     }
 
     struct vma *new_vma = vma_create(start, start + len, flags);
     if (!new_vma) {
-        return -1;
+        return -ENOMEM;
     }
     int ret = vma_insert(mm, new_vma);
     if (ret != 0) {
@@ -128,7 +152,7 @@ int vma_add(struct mm_struct *mm, virt_addr_t start, size_t len, pgprot_t flags)
 
 int vma_delete(struct mm_struct *mm, virt_addr_t start, size_t len) {
     if (!mm || len == 0) {
-        return -1;
+        return -EINVAL;
     }
 
     virt_addr_t end = start + len;
@@ -186,6 +210,3 @@ void vma_dump(struct mm_struct *mm) {
         printk("VMA: start=%x, end=%x, flags=%x\n", vma->start, vma->end, vma->flags);
     }
 }
-
-
-

@@ -17,7 +17,7 @@
             reg = <0x80000000 0x200000>; // 保留内存区域
         };
         memdisk_reserved: reserved@90000000 {
-            reg = <0x90000000 0x01000000>; // 给 mem_disk 预留 16MB
+            reg = <0x90000000 0x0100000>; // 给 mem_disk 预留 1MB
             no-map;
         };
     };

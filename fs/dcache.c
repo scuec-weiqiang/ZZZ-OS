@@ -34,9 +34,9 @@ static hval_t dentry_cache_hash(const struct hlist_node *node)
 #define FNV_OFFSET 2166136261u
     struct dentry *dentry = container_of(node, struct dentry, d_lru_cache_node);
     uintptr_t parent_ptr = (uintptr_t)dentry->d_parent;
-    uint64_t h = FNV_OFFSET ^ parent_ptr;
+    u64 h = FNV_OFFSET ^ parent_ptr;
 
-    for (uint32_t i = 0; i < dentry->d_name.len; i++) {
+    for (u32 i = 0; i < dentry->d_name.len; i++) {
         h ^= (unsigned char)dentry->d_name.name[i];
         h *= FNV_PRIME;
     }
@@ -117,7 +117,7 @@ struct dentry *d_lookup(struct dentry *parent, const struct qstr *name) {
     return container_of(found, struct dentry, d_lru_cache_node);
 }
 
-static struct dentry *d_alloc_n(struct dentry *parent, const char *name, uint32_t len) {
+static struct dentry *d_alloc_n(struct dentry *parent, const char *name, u32 len) {
     struct dentry *dentry = NULL;
 
     CHECK(name != NULL, "fs: invalid dentry name", return NULL;);
@@ -207,9 +207,9 @@ struct dentry *d_make_root(struct inode *root_inode) {
 struct dentry *dget(struct dentry *dentry) {
     CHECK(dentry != NULL, "fs: invalid dget dentry", return NULL;);
 
-    dentry_lock(dentry);
+    // dentry_lock(dentry);
     dentry->d_count++;
-    dentry_unlock(dentry);
+    // dentry_unlock(dentry);
     if (g_dcache != NULL) {
         lru_cache_touch(g_dcache, &dentry->d_lru_cache_node);
     }

@@ -19,7 +19,7 @@
 #include <os/pfn.h>
 
 typedef long long loff_t;
-typedef int64_t ino_t;
+typedef s64 ino_t;
 
 
 struct superblock;
@@ -35,7 +35,7 @@ struct statfs;
 struct fs_type
 {
     const char *name;
-    struct superblock *(*mount)(struct fs_type *fs_type, struct block_device *adap, int flags);
+    struct superblock *(*mount)(struct fs_type *fs_type, struct blkdev *adap, int flags);
     void (*kill_sb)(struct superblock *sb);
     struct super_ops *s_ops;
     int fs_flag;
@@ -55,14 +55,14 @@ struct super_ops
 };
 struct statfs
 {
-    uint64_t f_type;    // 文件系统类型
-    uint64_t f_bsize;   // 块大小
-    uint64_t f_blocks;  // 总数据块数
-    uint64_t f_bfree;   // 空闲块数
-    uint64_t f_bavail;  // 可用块数
-    uint64_t f_files;   // 总 inode 数
-    uint64_t f_ffree;   // 空闲 inode 数
-    uint64_t f_namelen; // 最大文件名长度
+    u64 f_type;    // 文件系统类型
+    u64 f_bsize;   // 块大小
+    u64 f_blocks;  // 总数据块数
+    u64 f_bfree;   // 空闲块数
+    u64 f_bavail;  // 可用块数
+    u64 f_files;   // 总 inode 数
+    u64 f_ffree;   // 空闲 inode 数
+    u64 f_namelen; // 最大文件名长度
 };
 
 struct superblock
@@ -72,11 +72,11 @@ struct superblock
 #define VFS_SB_DIRTY 0x0002  // 超级块需要写回磁盘
 #define VFS_SB_RDONLY 0x0004 // 只读文件系统
     struct list_head s_list;
-    uint64_t s_block_size;
+    u64 s_block_size;
     struct fs_type *s_type;
     struct block_adapter *adap;
     struct super_ops *s_ops;
-    uint32_t s_magic;
+    u32 s_magic;
     struct inode *s_root; // 根目录的inode
     struct statfs statfs; // 获取文件系统统计信息
     void *s_private;
@@ -116,10 +116,10 @@ struct address_space
 struct inode_ops
 {
     int (*lookup)(struct inode *dir, struct dentry *dentry);
-    int (*mkdir)(struct inode *dir, struct dentry *dentry, uint32_t i_mode);
+    int (*mkdir)(struct inode *dir, struct dentry *dentry, u32 i_mode);
     int (*rmdir)(struct inode *dir, struct dentry *dentry);
-    int (*creat)(struct inode *dir, struct dentry *dentry, uint32_t i_mode);
-    int (*mknod)(struct inode *i_parent, struct dentry *dentry, uint32_t i_mode, dev_t devnr);
+    int (*creat)(struct inode *dir, struct dentry *dentry, u32 i_mode);
+    int (*mknod)(struct inode *i_parent, struct dentry *dentry, u32 i_mode, dev_t devnr);
 };
 // 文件类型位掩码 注意这是8进制，不是16进制
 #define S_IFMT 00170000  // 文件类型位掩码（八进制）
@@ -170,12 +170,12 @@ struct inode_ops
 struct inode
 {
     // 公共字段
-    uint32_t i_ino;
-    uint16_t i_mode;
-    uint32_t i_size;
-    uint16_t i_uid;
-    uint16_t i_gid;
-    uint32_t i_nlink;        // 链接数
+    u32 i_ino;
+    u16 i_mode;
+    u32 i_size;
+    u16 i_uid;
+    u16 i_gid;
+    u32 i_nlink;        // 链接数
     dev_t i_rdev;      // 设备号（如果是设备文件）
     timespec_t i_atime; // 最后访问时间
     timespec_t i_mtime; // 最后修改时间
@@ -188,7 +188,7 @@ struct inode
     struct address_space *i_mapping;  // 地址空间
     spinlock_t i_lock;           // 保护inode的锁
     struct lru_node i_lru_cache_node; // 缓存节点，用于LRU算法管理
-    uint16_t i_flags;                      // inode 标志位
+    u16 i_flags;                      // inode 标志位
     bool dirty;                       // 是否被修改，需要写回磁盘
     int i_refcount;                 // 引用计数
 
@@ -199,7 +199,7 @@ struct inode
 struct qstr
 {
     char *name; // 文件名
-    uint32_t len;    // 文件名长度
+    u32 len;    // 文件名长度
 };
 
 // dentry 状态标志
@@ -245,8 +245,8 @@ struct file
     struct inode *f_inode;        // 指向文件对应的 inode
     struct dentry *f_dentry; // 打开的 dentry (路径)
     loff_t f_pos;            // 文件读写偏移
-    uint32_t f_flags;             // 打开模式 (O_RDONLY, O_WRONLY, O_RDWR, O_CREAT...)
-    uint32_t f_mode;              // 权限（一般拷贝自inode->i_mode，但可在open时限制）
+    u32 f_flags;             // 打开模式 (O_RDONLY, O_WRONLY, O_RDWR, O_CREAT...)
+    u32 f_mode;              // 权限（一般拷贝自inode->i_mode，但可在open时限制）
     int f_refcount;          // 引用计数 (多少进程共享这个 file)
     void *private_data;      // 私有数据，具体fs可以存东西
 };

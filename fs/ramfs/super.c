@@ -4,7 +4,9 @@
 #include <fs/fs_context.h>
 #include <fs/inode.h>
 #include <fs/namei.h>
+#include <fs/fs.h>
 #include <fs/ramfs.h>
+#include <os/init.h>
 #include <fs/super.h>
 #include <os/check.h>
 #include <os/container_of.h>
@@ -12,6 +14,7 @@
 #include <os/list.h>
 #include <os/printk.h>
 #include <os/string.h>
+#include <os/err.h>
 
 #define RAMFS_MAGIC 0x52414d32U
 
@@ -25,9 +28,9 @@ struct ramfs_dentry {
 
 struct ramfs_node {
     ino_t ino;
-    uint16_t mode;
-    uint32_t nlink;
-    uint32_t size;
+    u16 mode;
+    u32 nlink;
+    u32 size;
     dev_t rdev;
     timespec_t atime;
     timespec_t mtime;
@@ -40,7 +43,7 @@ struct ramfs_node {
         } dir;
         struct {
             char *data;
-            uint32_t capacity;
+            u32 capacity;
         } reg;
     } u;
 };
@@ -48,6 +51,17 @@ struct ramfs_node {
 struct ramfs_sb_info {
     ino_t next_ino;
     struct list_head nodes;
+};
+
+#define S_SHIFT 12
+static unsigned char ramfs_type_by_mode[S_IFMT >> S_SHIFT] = {
+	[S_IFREG >> S_SHIFT]	= DT_REG,
+	[S_IFDIR >> S_SHIFT]	= DT_DIR,
+	[S_IFCHR >> S_SHIFT]	= DT_CHR,
+	[S_IFBLK >> S_SHIFT]	= DT_BLK,
+	[S_IFIFO >> S_SHIFT]	= DT_FIFO,
+	[S_IFSOCK >> S_SHIFT]	= DT_SOCK,
+	[S_IFLNK >> S_SHIFT]	= DT_LNK,
 };
 
 static struct ramfs_sb_info *RAMFS_SB(struct super_block *sb)
@@ -78,7 +92,7 @@ static struct ramfs_node *ramfs_find_node_by_ino(struct super_block *sb, ino_t i
     return NULL;
 }
 
-static struct ramfs_dentry *ramfs_find_child(struct ramfs_node *dir, const char *name, uint16_t len) {
+static struct ramfs_dentry *ramfs_find_child(struct ramfs_node *dir, const char *name, u16 len) {
     struct list_head *pos = NULL;
 
     if (dir == NULL || !S_ISDIR(dir->mode)) {
@@ -115,7 +129,7 @@ static int ramfs_inode_refresh(struct inode *inode) {
 
 static struct inode *ramfs_iget(struct super_block *sb, ino_t ino);
 
-static struct ramfs_node *ramfs_node_create(struct super_block *sb, struct ramfs_node *parent, uint16_t mode, dev_t rdev) {
+static struct ramfs_node *ramfs_node_create(struct super_block *sb, struct ramfs_node *parent, u16 mode, dev_t rdev) {
     struct ramfs_sb_info *sbi = RAMFS_SB(sb);
     struct ramfs_node *node = NULL;
 
@@ -169,7 +183,7 @@ static int ramfs_dir_add_child(struct ramfs_node *dir, const char *name, struct 
     return 0;
 }
 
-static struct inode *ramfs_new_inode(struct inode *dir, uint16_t mode, struct qstr *name) {
+static struct inode *ramfs_new_inode(struct inode *dir, u16 mode, struct qstr *name) {
     struct super_block *sb = dir->i_sb;
     struct ramfs_node *dir_node = RAMFS_NODE(dir);
     struct ramfs_node *new_node = NULL;
@@ -240,11 +254,11 @@ static ssize_t ramfs_file_read(struct file *file, char *buf, size_t len, loff_t 
     CHECK(node != NULL && S_ISREG(node->mode), "fs: invalid ramfs file read", return -1;);
     CHECK(buf != NULL && ppos != NULL, "fs: invalid ramfs file read args", return -1;);
 
-    if ((uint32_t)(*ppos) >= node->size) {
+    if ((u32)(*ppos) >= node->size) {
         return 0;
     }
 
-    avail = node->size - (uint32_t)(*ppos);
+    avail = node->size - (u32)(*ppos);
     if (len > avail) {
         len = avail;
     }
@@ -258,14 +272,14 @@ static ssize_t ramfs_file_read(struct file *file, char *buf, size_t len, loff_t 
 
 static ssize_t ramfs_file_write(struct file *file, const char *buf, size_t len, loff_t *ppos) {
     struct ramfs_node *node = RAMFS_NODE(file->f_inode);
-    uint32_t end = 0;
-    uint32_t new_cap = 0;
+    u32 end = 0;
+    u32 new_cap = 0;
     char *new_data = NULL;
 
     CHECK(node != NULL && S_ISREG(node->mode), "fs: invalid ramfs file write", return -1;);
     CHECK(buf != NULL && ppos != NULL, "fs: invalid ramfs file write args", return -1;);
 
-    end = (uint32_t)(*ppos) + (uint32_t)len;
+    end = (u32)(*ppos) + (u32)len;
     if (end > node->u.reg.capacity) {
         new_cap = node->u.reg.capacity ? node->u.reg.capacity : 64;
         while (new_cap < end) {
@@ -292,10 +306,26 @@ static ssize_t ramfs_file_write(struct file *file, const char *buf, size_t len, 
     return (ssize_t)len;
 }
 
+static int ramfs_readdir (struct file *fp, struct dir_context *ctx) {
+    struct ramfs_node *node = RAMFS_NODE(fp->f_inode);
+    struct list_head *pos = NULL;
+
+    CHECK(node != NULL && S_ISDIR(node->mode), "fs: invalid ramfs readdir", return -ENOTDIR;);
+
+    list_for_each(pos, &node->u.dir.children) {
+        struct ramfs_dentry *entry = container_of(pos, struct ramfs_dentry, sibling);
+        unsigned int d_type = ramfs_type_by_mode[(entry->node->mode & S_IFMT) >> S_SHIFT];
+        ctx->actor(ctx, entry->name, strlen(entry->name), ctx->pos, entry->node->ino, d_type);
+    }
+    return 0;
+}
+
+
 static struct file_operations ramfs_file_ops = {
     .open = ramfs_file_open,
     .read = ramfs_file_read,
     .write = ramfs_file_write,
+    .iterate = ramfs_readdir,
 };
 
 struct inode_operations ramfs_dir_iops;
@@ -342,6 +372,7 @@ static struct dentry *ramfs_lookup(struct inode *dir, struct dentry *dentry, uns
     
     entry = ramfs_find_child(dir_node, dentry->d_name.name, dentry->d_name.len);
     if (entry == NULL || entry->node == NULL) {
+        here;
         return NULL;
     }
     
@@ -354,7 +385,7 @@ static struct dentry *ramfs_lookup(struct inode *dir, struct dentry *dentry, uns
     return dentry;
 }
 
-static int ramfs_do_create(struct inode *dir, struct dentry *dentry, uint16_t mode, dev_t dev) {
+static int ramfs_do_create(struct inode *dir, struct dentry *dentry, u16 mode, dev_t dev) {
     struct ramfs_node *dir_node = RAMFS_NODE(dir);
 
     struct inode *new_inode = NULL;
@@ -363,23 +394,24 @@ static int ramfs_do_create(struct inode *dir, struct dentry *dentry, uint16_t mo
     CHECK(ramfs_find_child(dir_node, dentry->d_name.name, dentry->d_name.len) == NULL, "fs: ramfs entry exists", return -1;);
 
     new_inode = ramfs_new_inode(dir, mode, &dentry->d_name);
+    new_inode->i_rdev = dev;
     d_add(dentry, new_inode);
     
     ramfs_inode_refresh(dir);
     return 0;
 }
 
-static int ramfs_create(struct inode *dir, struct dentry *dentry, uint16_t mode)
+static int ramfs_create(struct inode *dir, struct dentry *dentry, u16 mode)
 {
     return ramfs_do_create(dir, dentry, S_IFREG | mode, 0);
 }
 
-static int ramfs_mkdir(struct inode *dir, struct dentry *dentry, uint16_t mode)
+static int ramfs_mkdir(struct inode *dir, struct dentry *dentry, u16 mode)
 {
     return ramfs_do_create(dir, dentry, S_IFDIR | mode, 0);
 }
 
-static int ramfs_mknod(struct inode *dir, struct dentry *dentry, uint16_t mode, dev_t dev)
+static int ramfs_mknod(struct inode *dir, struct dentry *dentry, u16 mode, dev_t dev)
 {
     return ramfs_do_create(dir, dentry, mode, dev);
 }
@@ -391,14 +423,12 @@ struct inode_operations ramfs_dir_iops = {
     .mknod = ramfs_mknod,
 };
 
-static int ramfs_init_fs_context(struct fs_context *fc)
-{
+static int ramfs_init_fs_context(struct fs_context *fc) {
     CHECK(fc != NULL, "fs: invalid ramfs fs_context", return -1;);
     return 0;
 }
 
-static int ramfs_get_tree(struct fs_context *fc)
-{
+static int ramfs_get_tree(struct fs_context *fc) {
     struct super_block *sb = NULL;
     struct ramfs_sb_info *sbi = NULL;
     struct ramfs_node *root_node = NULL;
@@ -440,8 +470,7 @@ static int ramfs_get_tree(struct fs_context *fc)
     return 0;
 }
 
-static void ramfs_kill_sb(struct super_block *sb)
-{
+static void ramfs_kill_sb(struct super_block *sb) {
     struct ramfs_sb_info *sbi = RAMFS_SB(sb);
     struct list_head *pos = NULL;
     struct list_head *n = NULL;
@@ -477,6 +506,13 @@ struct file_system_type ramfs_fs_type = {
     .kill_sb = ramfs_kill_sb,
 };
 
+static int ramfs_register_filesystem_init(void)
+{
+    return register_filesystem(&ramfs_fs_type);
+}
+
+fs_initcall(ramfs_register_filesystem_init);
+
 int ramfs_debug_ls(const char *path)
 {
     struct dentry *dentry = NULL;
@@ -496,7 +532,7 @@ int ramfs_debug_ls(const char *path)
         struct ramfs_dentry *entry = container_of(pos, struct ramfs_dentry, sibling);
         printk("%s  ", entry->name);
     }
-    printk("\n");
+    // printk("\n");
 
     dput(dentry);
     return 0;

@@ -24,6 +24,7 @@
 #include <os/mm.h>
 #include <mm/symbols.h>
 #include <os/utils.h>
+#include <os/err.h>
 
 static int highest_possible_level(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size) {
     if (pgtbl == NULL||pgtbl->features == NULL) {
@@ -58,14 +59,15 @@ int map(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, pgp
     uintptr_t pa = ALIGN_DOWN(paddr, PAGE_SIZE);
     uintptr_t end = va + size;
 
-    #include <os/color.h>
+    
     while (va < end) {
         int target_level = highest_possible_level(pgtbl, va, pa, end - va);
         int map_size = pgtbl_level_page_size(pgtbl, target_level);
         // printk("map: va=%xu to pa=%xu with flags %xu at level %d, map_size=%xu\n", va, pa, flags, target_level, map_size);
-        if (pgtbl_map(pgtbl, va, pa, target_level, flags) < 0) {
+        int ret = pgtbl_map(pgtbl, va, pa, target_level, flags);
+        if (ret < 0) {
             printk(RED("error: failed to map va=%xu to pa=%xu at level %d\n"), va, pa, target_level);
-            return -1;
+            return ret;
         }
 
         va += map_size;
@@ -132,6 +134,7 @@ struct mm_struct *mm_alloc() {
     if (!mm) {
         return NULL;
     }
+    memset(mm, 0, sizeof(*mm));
     mm->pgdir = new_pgtbl();
     if (!mm->pgdir) {
         kfree(mm);
@@ -139,7 +142,6 @@ struct mm_struct *mm_alloc() {
     }
     mm->vma_list = (struct vma){0, 0, 0, mm, LIST_HEAD_INIT(mm->vma_list.node)}; // 初始化哨兵节点  
     mm->vma_count = 0;
-    // vma_add(mm, 0, 1, 0); // 添加哨兵节点
     return mm;
 }
 
@@ -246,31 +248,24 @@ void copy_kernel_mapping(struct mm_struct *dest_mm) {
 
 void initial_mm_init() {
     extern char _early_pgtbl_start[];
-
     pgtable_t old_pgdir = {
         .root = (void *)(&_early_pgtbl_start),
         .root_pa = KERNEL_PA(&_early_pgtbl_start),
     };
-    printk("old_pgdir root=%xu, root_pa=%xu\n", old_pgdir.root, old_pgdir.root_pa);
     extern void arch_pgtbl_init(pgtable_t *tbl);
     arch_pgtbl_init(&old_pgdir);
-
     map(&old_pgdir, 0xffff0000,KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
 
     pgtbl_switch_to(&old_pgdir);
     
     init_mm.pgdir = new_pgtbl();
-
     if (!init_mm.pgdir) {
         panic("failed to create kernel pgtable");
     }
-
     struct memblock_region *region = NULL;
-
     list_for_each_entry(region, &memblock.memory.region_head.node, struct memblock_region, node) {
         map(init_mm.pgdir, KERNEL_VA(region->base), region->base, region->size, PAGE_KERNEL|PROT_EXEC);
     }
-
     map(init_mm.pgdir, 0xffff0000,KERNEL_PA(trap_start), trap_size, PAGE_KERNEL_EXEC);
     map(init_mm.pgdir, 0x02020000,0x02020000, PAGE_SIZE, PAGE_DEVICE);
 
@@ -291,24 +286,3 @@ void initial_mm_init() {
     
 }
 
-int copyin(pgtable_t *pagetable, char *dst, uintptr_t src_va, size_t len) {
-    size_t n = 0;
-
-    uintptr_t src = KERNEL_VA(pgtbl_lookup(pagetable, src_va));
-    if (src == 0) {
-        return -1;
-    }
-
-    memcpy(dst + n, (char *)src, len);
-    return n;
-}
-
-int copyout(pgtable_t *pagetable, uintptr_t dst_va, char *src, size_t len) {
-    size_t n = 0;
-    uintptr_t dst = KERNEL_VA(pgtbl_lookup(pagetable, dst_va));
-    if (dst == 0) {
-        return -1;
-    }
-    memcpy((char *)dst, src + n, len);
-    return n;
-}

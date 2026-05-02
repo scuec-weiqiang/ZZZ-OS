@@ -6,10 +6,10 @@
 
 // 解析普通内存节点（只给 /memory 使用）
 static int parse_memory_reg(struct device_node *node) {
-    uint32_t address_cells, size_cells;
+    u32 address_cells, size_cells;
     struct device_prop *reg_prop;
-    uint32_t *reg;
-    uint32_t len, i;
+    u32 *reg;
+    u32 len, i;
     phys_addr_t start;
     size_t size;
 
@@ -28,7 +28,7 @@ static int parse_memory_reg(struct device_node *node) {
     reg = of_get_reg(node);
     if (!reg) return -1;
  
-    len = reg_prop->length / sizeof(uint32_t);
+    len = reg_prop->length / sizeof(u32);
 
     for (i = 0; i + address_cells + size_cells <= len; i += address_cells + size_cells) {
         // 解析地址
@@ -56,10 +56,10 @@ static int parse_memory_reg(struct device_node *node) {
 
 // 解析保留内存（只给 /reserved-memory 使用）
 static int parse_reserved_memory_reg(struct device_node *node) {
-    uint32_t address_cells, size_cells;
+    u32 address_cells, size_cells;
     struct device_prop *reg_prop;
-    uint32_t *reg;
-    uint32_t len, i;
+    u32 *reg;
+    u32 len, i;
     phys_addr_t start;
     size_t size;
 
@@ -76,7 +76,7 @@ static int parse_reserved_memory_reg(struct device_node *node) {
     if (!reg) return -1;
         printk("reg prop length: %xu bytes,\n", reg_prop->length);
 
-    len = reg_prop->length / sizeof(uint32_t);
+    len = reg_prop->length / sizeof(u32);
 
     for (i = 0; i + address_cells + size_cells <= len; i += address_cells + size_cells) {
         if (address_cells == 1)

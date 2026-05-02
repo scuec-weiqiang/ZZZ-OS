@@ -17,7 +17,7 @@
 #define ALIGN_UP(x, align) (((x) + (align) - 1) & ~((align) - 1))
 #define ALIGN_DOWN(x, align) ((x) & ~((align) - 1))
 #define GET_NEXT_TOKEN(x, len) \
-    __PROTECT((x) = (uint32_t *)((uintptr_t)x + ALIGN_UP(len, 4));)
+    __PROTECT((x) = (u32 *)((uintptr_t)x + ALIGN_UP(len, 4));)
 
 static struct fdt_header *fdt;
 static const char *struct_block;
@@ -72,7 +72,7 @@ void fdt_free_node(struct device_node *node) {
     kfree(node);
 }
 
-struct device_prop *fdt_new_prop(const char *name, uint32_t len, const void *value) {
+struct device_prop *fdt_new_prop(const char *name, u32 len, const void *value) {
     if (!name || !value)
         return NULL;
     struct device_prop *prop = (struct device_prop *)kmalloc(sizeof(struct device_prop));
@@ -123,10 +123,10 @@ int fdt_add_child(struct device_node *parent, struct device_node *child) {
 // struct device_node *parse_struct_block(const char *struct_block, char *strings) {
 //     struct device_node *root = NULL;
 //     struct device_node *curr = NULL;
-//     uint32_t *p = (uint32_t *)struct_block;
+//     u32 *p = (u32 *)struct_block;
 
 //     while (1) {
-//         uint32_t token = be32_to_cpu(*p);
+//         u32 token = be32_to_cpu(*p);
 //         p++;
 //         switch (token) {
 //         case FDT_BEGIN_NODE: {
@@ -144,14 +144,14 @@ int fdt_add_child(struct device_node *parent, struct device_node *child) {
 //             break;
 //         }
 //         case FDT_PROP: {
-//             uint32_t len = be32_to_cpu(*p);
+//             u32 len = be32_to_cpu(*p);
 //             p++;
-//             uint32_t nameoff = be32_to_cpu(*p);
+//             u32 nameoff = be32_to_cpu(*p);
 //             p++;
 //             const char *prop_name = strings + nameoff;
 //             struct device_prop *new_prop = fdt_new_prop(prop_name, len, p);
 //             if (strcmp(new_prop->name, "phandle") == 0) {
-//                 uint32_t phandle = be32_to_cpu(*(uint32_t *)new_prop->value);
+//                 u32 phandle = be32_to_cpu(*(u32 *)new_prop->value);
 //                 if (phandle < PHANDLE_MAX - 1) {
 //                     phandle_table[phandle] = curr; // 只存一定数值的phandle，超出的部分等到要用的时候再解析
 //                 }
@@ -179,18 +179,18 @@ int fdt_add_child(struct device_node *parent, struct device_node *child) {
 struct device_node *parse_struct_block(const char *struct_block, char *strings) {
     struct device_node *root = NULL;
     struct device_node *curr = NULL;
-    uint32_t *p = (uint32_t *)struct_block;
+    u32 *p = (u32 *)struct_block;
 
     while (1) {
-        uint32_t token = be32_to_cpu(*p);
+        u32 token = be32_to_cpu(*p);
         p++;
 
         switch (token) {
         case FDT_BEGIN_NODE: {
             const char *name = (const char *)p;
             // ====================== 修复 1：节点名必须 4 字节对齐 ======================
-            uint32_t name_len = strlen(name) + 1;
-            p = (uint32_t *)((uintptr_t)p + ALIGN_UP(name_len, 4));
+            u32 name_len = strlen(name) + 1;
+            p = (u32 *)((uintptr_t)p + ALIGN_UP(name_len, 4));
 
             struct device_node *new_node = fdt_new_node(name, curr);
             if (root == NULL)
@@ -204,21 +204,21 @@ struct device_node *parse_struct_block(const char *struct_block, char *strings) 
         }
 
         case FDT_PROP: {
-            uint32_t len = be32_to_cpu(*p); p++;
-            uint32_t nameoff = be32_to_cpu(*p); p++;
+            u32 len = be32_to_cpu(*p); p++;
+            u32 nameoff = be32_to_cpu(*p); p++;
             const char *prop_name = strings + nameoff;
 
             struct device_prop *new_prop = fdt_new_prop(prop_name, len, p);
  
             if (new_prop && strcmp(new_prop->name, "phandle") == 0) {
-                uint32_t phandle = be32_to_cpu(*(uint32_t *)new_prop->value);
+                u32 phandle = be32_to_cpu(*(u32 *)new_prop->value);
                 if (phandle < PHANDLE_MAX)
                     phandle_table[phandle] = curr;
             }
             fdt_add_prop(curr, new_prop);
 
             // ====================== 修复 2：属性值必须按 4 字节对齐跳过 ======================
-            p = (uint32_t *)((uintptr_t)p + ALIGN_UP(len, 4));
+            p = (u32 *)((uintptr_t)p + ALIGN_UP(len, 4));
             break;
         }
 
@@ -275,8 +275,8 @@ int fdt_walk_node(const struct device_node *node, int level) {
             printk("  ");
         }
         printk("- %s: ", prop->name);
-        for (uint32_t i = 0; i < prop->length; i++) {
-            printk("%xu ", ((uint8_t *)prop->value)[i]);
+        for (u32 i = 0; i < prop->length; i++) {
+            printk("%xu ", ((u8 *)prop->value)[i]);
         }
         printk("\n");
         prop = prop->next;

@@ -15,7 +15,7 @@
 
 #define ALIGN(x, a)	(((x) + ((a) - 1)) & ~((a) - 1))
 #define PALIGN(p, a)	((void *)(ALIGN((unsigned long)(p), (a))))
-#define GET_CELL(p)	(p += 4, *((const uint32_t *)(p-4)))
+#define GET_CELL(p)	(p += 4, *((const u32 *)(p-4)))
 
 static void print_data(const char *data, int len)
 {
@@ -45,20 +45,20 @@ static void print_data(const char *data, int len)
 static void dump_blob(void *blob)
 {
 	struct fdt_header *bph = blob;
-	uint32_t off_mem_rsvmap = fdt32_to_cpu(bph->off_mem_rsvmap);
-	uint32_t off_dt = fdt32_to_cpu(bph->off_dt_struct);
-	uint32_t off_str = fdt32_to_cpu(bph->off_dt_strings);
+	u32 off_mem_rsvmap = fdt32_to_cpu(bph->off_mem_rsvmap);
+	u32 off_dt = fdt32_to_cpu(bph->off_dt_struct);
+	u32 off_str = fdt32_to_cpu(bph->off_dt_strings);
 	struct fdt_reserve_entry *p_rsvmap =
 		(struct fdt_reserve_entry *)((char *)blob + off_mem_rsvmap);
 	const char *p_struct = (const char *)blob + off_dt;
 	const char *p_strings = (const char *)blob + off_str;
-	uint32_t version = fdt32_to_cpu(bph->version);
-	uint32_t totalsize = fdt32_to_cpu(bph->totalsize);
-	uint32_t tag;
+	u32 version = fdt32_to_cpu(bph->version);
+	u32 totalsize = fdt32_to_cpu(bph->totalsize);
+	u32 tag;
 	const char *p, *s, *t;
 	int depth, sz, shift;
 	int i;
-	uint64_t addr, size;
+	u64 addr, size;
 
 	depth = 0;
 	shift = 4;

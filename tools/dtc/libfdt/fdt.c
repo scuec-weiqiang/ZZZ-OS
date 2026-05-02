@@ -90,10 +90,10 @@ const void *fdt_offset_ptr(const void *fdt, int offset, unsigned int len)
 	return p;
 }
 
-uint32_t fdt_next_tag(const void *fdt, int startoffset, int *nextoffset)
+u32 fdt_next_tag(const void *fdt, int startoffset, int *nextoffset)
 {
-	const uint32_t *tagp, *lenp;
-	uint32_t tag;
+	const u32 *tagp, *lenp;
+	u32 tag;
 	int offset = startoffset;
 	const char *p;
 
@@ -161,7 +161,7 @@ int _fdt_check_prop_offset(const void *fdt, int offset)
 int fdt_next_node(const void *fdt, int offset, int *depth)
 {
 	int nextoffset = 0;
-	uint32_t tag;
+	u32 tag;
 
 	if (offset >= 0)
 		if ((nextoffset = _fdt_check_node_offset(fdt, offset)) < 0)

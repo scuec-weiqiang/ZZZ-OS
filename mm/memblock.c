@@ -331,7 +331,7 @@ void memblock_free(phys_addr_t addr) {
     }
 }
 
-uint64_t memblock_phys_total(void) {
+u64 memblock_phys_total(void) {
     return memblock.memory.total_size;
 }
 
@@ -357,7 +357,7 @@ void print_nomap_regions(void) {
     }
 }
 
-#include <os/color.h>
+
 void memblock_dump(void) {
     printk("\n\nMemory Regions:\n");
     struct memblock_region *region = NULL;

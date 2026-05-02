@@ -13,7 +13,7 @@
 #include <os/utils.h>
 
 struct arm_arch_timer_data {
-    uint32_t cntfrq;
+    u32 cntfrq;
     bool active;
     int virq;
 };
@@ -23,33 +23,33 @@ static struct arm_arch_timer_data arm_timer = {
     .virq = -1,
 };
 
-static inline uint32_t arm_cntfrq_read(void) {
-    uint32_t v = 0;
+static inline u32 arm_cntfrq_read(void) {
+    u32 v = 0;
     asm volatile("mrc p15, 0, %0, c14, c0, 0" : "=r"(v));
     return v;
 }
 
-static inline void arm_cntp_tval_write(uint32_t v) {
+static inline void arm_cntp_tval_write(u32 v) {
     asm volatile("mcr p15, 0, %0, c14, c2, 0" : : "r"(v));
 }
 
-static inline uint64_t arm_cntpct_read(void) {
-    uint32_t lo, hi;
+static inline u64 arm_cntpct_read(void) {
+    u32 lo, hi;
     asm volatile("mrrc p15, 0, %0, %1, c14" : "=r"(lo), "=r"(hi));
-    return ((uint64_t)hi << 32) | (uint64_t)lo;
+    return ((u64)hi << 32) | (u64)lo;
 }
 
-static inline uint32_t arm_cntp_ctl_read(void) {
-    uint32_t v = 0;
+static inline u32 arm_cntp_ctl_read(void) {
+    u32 v = 0;
     asm volatile("mrc p15, 0, %0, c14, c2, 1" : "=r"(v));
     return v;
 }
 
-static inline void arm_cntp_ctl_write(uint32_t v) {
+static inline void arm_cntp_ctl_write(u32 v) {
     asm volatile("mcr p15, 0, %0, c14, c2, 1" : : "r"(v));
 }
 
-// static uint32_t arch_timer_frequency(void) {
+// static u32 arch_timer_frequency(void) {
 //     if (arm_timer.cntfrq == 0) {
 //         arm_timer.cntfrq = arm_cntfrq_read();
 //     }
@@ -61,12 +61,12 @@ static irqreturn_t arm_arch_timer_irq_handler(int virq, void *dev_id) {
     (void)dev_id;
 
     timekeeping_timer_interrupt();
-  
+
     return IRQ_HANDLED;
 }
 
-// void arch_timer_period(uint32_t hz) {
-//     uint32_t rate = arm_timer.cntfrq;
+// void arch_timer_period(u32 hz) {
+//     u32 rate = arm_timer.cntfrq;
 
 //     if (rate == 0) {
 //         rate = arm_cntfrq_read();
@@ -83,9 +83,9 @@ static irqreturn_t arm_arch_timer_irq_handler(int virq, void *dev_id) {
 // }
 
 
-static void arch_timer_set_next_event(uint64_t delta_ns) {
+static void arch_timer_set_next_event(u64 delta_ns) {
     if (arm_timer.active==false) {
-        uint32_t ctl = arm_cntp_ctl_read();
+        u32 ctl = arm_cntp_ctl_read();
         ctl &= ~(1U << 1); /* IMASK = 0 */
         ctl |= 1U;         /* ENABLE = 1 */
         arm_cntp_ctl_write(ctl);
@@ -101,14 +101,14 @@ static void arch_timer_set_next_event(uint64_t delta_ns) {
         delta_ns = 1;
     }
 
-    uint32_t freq = arm_timer.cntfrq;
-    uint64_t cycles = ns_to_cycles(delta_ns, freq);
+    u32 freq = arm_timer.cntfrq;
+    u64 cycles = ns_to_cycles(delta_ns, freq);
     arm_cntp_tval_write(cycles);
 }
 
 static void arch_timer_shutdown(void) {
     arm_timer.active = false;
-    uint32_t ctl = arm_cntp_ctl_read();
+    u32 ctl = arm_cntp_ctl_read();
     ctl &= ~1U; /* ENABLE = 0 */
     arm_cntp_ctl_write(ctl);
 
@@ -117,7 +117,7 @@ static void arch_timer_shutdown(void) {
     }
 }
 
-static uint64_t arch_timer_read_counter(void) {
+static u64 arch_timer_read_counter(void) {
     return arm_cntpct_read();
 }
 

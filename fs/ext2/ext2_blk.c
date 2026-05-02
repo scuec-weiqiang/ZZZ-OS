@@ -16,16 +16,16 @@
  *
  * @return 映射得到的块地址，如果映射失败则返回 -1
  */
-int ext2_block_mapping(struct inode *inode, uint32_t index) {
+int ext2_block_mapping(struct inode *inode, u32 index) {
     struct ext2_inode_info *ei = EXT2_I(inode);
-    struct block_device *bdev = inode->i_sb->s_bdev;
+    struct blkdev *bdev = inode->i_sb->s_bdev;
 
-    uint32_t block_size = inode->i_sb->s_blocksize;
-    uint32_t per_block = block_size / sizeof(uint32_t);
+    u32 block_size = inode->i_sb->s_blocksize;
+    u32 per_block = block_size / sizeof(u32);
 
-    uint32_t first_index = 0;
-    uint32_t second_index = 0;
-    uint32_t third_index = 0;
+    u32 first_index = 0;
+    u32 second_index = 0;
+    u32 third_index = 0;
     int next_level_index = 0;
     int ret = -ENOMEM;
 
@@ -45,8 +45,8 @@ int ext2_block_mapping(struct inode *inode, uint32_t index) {
     index -= 12;
     if (index < per_block)
     {
-        blkdev_read(bdev, buf, block_size, (uint64_t)ei->i_data[12] * block_size);
-        ret = ((uint32_t*)buf)[index];
+        blkdev_read(bdev, buf, block_size, (u64)ei->i_data[12] * block_size);
+        ret = ((u32*)buf)[index];
         goto got;
     }
 
@@ -56,13 +56,13 @@ int ext2_block_mapping(struct inode *inode, uint32_t index) {
     {
         // 计算索引的过程类似于把数字245提取出百位数字2,十位数字4,个位数字5，道理是一样的
         first_index = index / per_block;
-        blkdev_read(bdev, buf, block_size, (uint64_t)ei->i_data[13] * block_size);
-        next_level_index = ((uint32_t*)buf)[first_index];
+        blkdev_read(bdev, buf, block_size, (u64)ei->i_data[13] * block_size);
+        next_level_index = ((u32*)buf)[first_index];
 
         second_index = index % per_block;
-        blkdev_read(bdev, buf, block_size, (uint64_t)next_level_index * block_size);
+        blkdev_read(bdev, buf, block_size, (u64)next_level_index * block_size);
 
-        ret = ((uint32_t*)buf)[second_index];
+        ret = ((u32*)buf)[second_index];
     
         return ret;
     }
@@ -72,16 +72,16 @@ int ext2_block_mapping(struct inode *inode, uint32_t index) {
     if (index < per_block * per_block * per_block) {
         // 计算索引的过程类似于把数字245提取出百位数字2,十位数字4,个位数字5，道理是一样的
         first_index = index / (per_block * per_block);
-        blkdev_read(bdev, buf, block_size, (uint64_t)ei->i_data[14] * block_size);
-        next_level_index = ((uint32_t*)buf)[first_index];
+        blkdev_read(bdev, buf, block_size, (u64)ei->i_data[14] * block_size);
+        next_level_index = ((u32*)buf)[first_index];
 
         second_index = (index % (per_block * per_block) ) / per_block;
-        blkdev_read(bdev, buf, block_size, (uint64_t)next_level_index * block_size);
+        blkdev_read(bdev, buf, block_size, (u64)next_level_index * block_size);
 
         third_index = index % per_block;
-        blkdev_read(bdev, buf, block_size, (uint64_t)next_level_index * block_size);
+        blkdev_read(bdev, buf, block_size, (u64)next_level_index * block_size);
 
-        ret = ((uint32_t*)buf)[third_index];
+        ret = ((u32*)buf)[third_index];
         goto got;
     }
     got:

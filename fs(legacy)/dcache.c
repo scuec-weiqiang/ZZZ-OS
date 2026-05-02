@@ -16,7 +16,7 @@ struct dentry *create_dentry(const char *name)
 
     memset(dentry, 0, sizeof(struct dentry));
 
-    uint32_t name_len = strlen(name);
+    u32 name_len = strlen(name);
     dentry->name.name = kmalloc(name_len + 1);
     CHECK(dentry->name.name != NULL, "vfs_dentry_create: Memory allocation for name failed",
           kfree(dentry);
@@ -55,7 +55,7 @@ static hval_t dentry_cache_hash(const struct hlist_node *node)
     struct dentry *dentry = container_of(node, struct dentry, d_lru_cache_node);
     ino_t parent_ino = dentry->d_parent ? dentry->d_parent->d_inode->i_ino : 0;
 
-    uint64_t h = FNV_OFFSET ^ parent_ino;
+    u64 h = FNV_OFFSET ^ parent_ino;
 
     for (size_t i = 0; i < dentry->name.len; i++)
     {

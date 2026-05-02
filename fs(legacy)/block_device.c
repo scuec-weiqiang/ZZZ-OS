@@ -1,5 +1,5 @@
 /**
- * @FilePath: /vboot/fs/block_device.c
+ * @FilePath: /vboot/fs/blkdev.c
  * @Description:
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-12 17:41:28
@@ -7,27 +7,27 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
-#include <fs/block_device.h>
+#include <fs/blkdev.h>
 #include <os/string.h>
 
 #define MAX_BLOCK_DEVICE_NUM 8
 
-struct block_device bdev_registry[MAX_BLOCK_DEVICE_NUM];
+struct blkdev bdev_registry[MAX_BLOCK_DEVICE_NUM];
 
-int block_device_register(struct block_device *bdev)
+int block_device_register(struct blkdev *bdev)
 {
     for (int i = 0; i < MAX_BLOCK_DEVICE_NUM; i++)
     {
         if (bdev_registry[i].name[0] == 0)
         {
-            memcpy(&bdev_registry[i], bdev, sizeof(struct block_device));
+            memcpy(&bdev_registry[i], bdev, sizeof(struct blkdev));
             return i;
         }
     }
     return -1;
 }
 
-struct block_device* block_device_open(const char* name)
+struct blkdev* block_device_open(const char* name)
 {
     for (int i = 0; i < MAX_BLOCK_DEVICE_NUM; i++)
     {

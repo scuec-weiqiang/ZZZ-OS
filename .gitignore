@@ -5,4 +5,7 @@ build/
 compile_commands.json
 ./disk.img
 .codex
+.claude/
+.vscode/
+user_proc/
 .gitignore

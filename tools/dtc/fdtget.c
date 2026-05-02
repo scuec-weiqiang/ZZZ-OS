@@ -67,7 +67,7 @@ static void report_error(const char *where, int err)
 static int show_data(struct display_info *disp, const char *data, int len)
 {
 	int i, size;
-	const uint8_t *p = (const uint8_t *)data;
+	const u8 *p = (const u8 *)data;
 	const char *s;
 	int value;
 	int is_string;
@@ -105,7 +105,7 @@ static int show_data(struct display_info *disp, const char *data, int len)
 	for (i = 0; i < len; i += size, p += size) {
 		if (i)
 			printf(" ");
-		value = size == 4 ? fdt32_to_cpu(*(const uint32_t *)p) :
+		value = size == 4 ? fdt32_to_cpu(*(const u32 *)p) :
 			size == 2 ? (*p << 8) | p[1] : *p;
 		printf(fmt, value);
 	}
@@ -150,7 +150,7 @@ static int list_properties(const void *blob, int node)
 static int list_subnodes(const void *blob, int node)
 {
 	int nextoffset;		/* next node offset from libfdt */
-	uint32_t tag;		/* current tag */
+	u32 tag;		/* current tag */
 	int level = 0;		/* keep track of nesting level */
 	const char *pathp;
 	int depth = 1;		/* the assumed depth of this node */

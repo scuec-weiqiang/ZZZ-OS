@@ -37,21 +37,21 @@ static inline void of_node_clear_flag(struct device_node *n, unsigned long flag)
 struct of_phandle_args {
 	struct device_node *np;
 	int args_count;
-	uint32_t args[MAX_PHANDLE_ARGS];
+	u32 args[MAX_PHANDLE_ARGS];
 };
 
 extern struct device_node* of_get_next_child(const struct device_node *node,struct device_node *prev);
 extern struct device_node* of_find_node_by_path(const char* path);
 extern struct device_node* of_find_node_by_compatible(const char* compatible_prop);
 extern struct device_prop* of_get_property_by_name(const struct device_node* node, const char* name);
-extern void *of_get_property(const struct device_node *node, const char *name, uint32_t *lenp);
-extern struct device_node* of_find_node_by_phandle(uint32_t phandle);
+extern void *of_get_property(const struct device_node *node, const char *name, u32 *lenp);
+extern struct device_node* of_find_node_by_phandle(u32 phandle);
 extern int of_get_child_node_count(const struct device_node *node);
 extern int of_get_address_cells(const struct device_node *node);
 extern int of_get_size_cells(const struct device_node *node);
-extern uint32_t* of_get_reg(const struct device_node *node);
-extern uint32_t *of_read_u32_array(const struct device_node *node, const char *prop_name, int count);
-extern uint64_t *of_read_u64_array(const struct device_node *node, const char *prop_name, int count);
+extern u32* of_get_reg(const struct device_node *node);
+extern u32 *of_read_u32_array(const struct device_node *node, const char *prop_name, int count);
+extern u64 *of_read_u64_array(const struct device_node *node, const char *prop_name, int count);
 extern struct device_node* of_get_interrupt_parent(const struct device_node *node);
 extern int of_device_is_available(const struct device_node *node);
 extern int of_device_is_type(const struct device_node *node, const char *type);
@@ -76,8 +76,8 @@ static inline struct device_node *of_find_matching_node(struct device_node *from
 	for (dn = of_find_matching_node(NULL, matches); dn; \
 	     dn = of_find_matching_node(dn, matches))
 
-static inline uint64_t of_read_number(const __be32 *cell, int size) {
-	uint64_t r = 0;
+static inline u64 of_read_number(const __be32 *cell, int size) {
+	u64 r = 0;
 	while (size--)
 		r = (r << 32) | be32_to_cpu(*(cell++));
 	return r;

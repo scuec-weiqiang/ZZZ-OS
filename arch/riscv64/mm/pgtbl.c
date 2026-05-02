@@ -34,11 +34,11 @@
 struct satp {
     union {
         struct {
-            uint64_t ppn : 44;        // 根页表物理页号
-            uint64_t asid : 16;       // 地址空间标识符
-            uint64_t mode : 4;        // 模式
+            u64 ppn : 44;        // 根页表物理页号
+            u64 asid : 16;       // 地址空间标识符
+            u64 mode : 4;        // 模式
         };
-        uint64_t val;
+        u64 val;
     };
 };
 
@@ -62,15 +62,15 @@ static const struct pgtable_features riscv_features = {
 };
 
 
-static pteval_t arch_pgtbl_entry_set_pa(pgtable_t *tbl, uint32_t level, pgdesc_type_t type, phys_addr_t pa) {
+static pteval_t arch_pgtbl_entry_set_pa(pgtable_t *tbl, u32 level, pgdesc_type_t type, phys_addr_t pa) {
     return (pteval_t)(((pa) >> 12) << 10);
 }
 
-phys_addr_t arch_pgtbl_entry_get_pa(pgtable_t *tbl, uint32_t level, pgdesc_type_t type, pteval_t  val) {
+phys_addr_t arch_pgtbl_entry_get_pa(pgtable_t *tbl, u32 level, pgdesc_type_t type, pteval_t  val) {
     return ((val >> 10) << 12);
 }
 
-uint32_t arch_pgtbl_level_index(pgtable_t *tbl, uint32_t level, virt_addr_t va) {
+u32 arch_pgtbl_level_index(pgtable_t *tbl, u32 level, virt_addr_t va) {
     int shift = tbl->features->page_shift+ ((tbl->features->support_levels -1 - level) * tbl->features->level[level].bits);
     return (va >> shift) & ((1<<tbl->features->level[level].bits)-1);
 }
@@ -100,7 +100,7 @@ pgprot_t arch_pgtbl_entry_get_flags(pgtable_t *tbl, int level, pte_t* entry) {
 
 void arch_pgtbl_set_entry(pgtable_t *tbl, int level, pgdesc_type_t type, pte_t* entry, phys_addr_t pa, pgprot_t flags) {
     pteval_t val = arch_pgtbl_entry_set_pa(tbl, level, type, pa);
-    uint32_t _flags = 0;
+    u32 _flags = 0;
 
     if (flags & PROT_READ) _flags |= PTE_R;
     if (flags & PROT_WRITE) _flags |= PTE_W;

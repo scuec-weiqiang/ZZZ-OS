@@ -44,7 +44,7 @@ int ext2_lookup(struct inode *dir,struct dentry *dentry)
 }
 
 
-static int ext2_add(struct inode *i_parent, struct dentry *dentry, uint32_t i_mode) 
+static int ext2_add(struct inode *i_parent, struct dentry *dentry, u32 i_mode) 
 { 
     CHECK(i_parent != NULL, "", return -1;);
 
@@ -88,7 +88,7 @@ static int ext2_add(struct inode *i_parent, struct dentry *dentry, uint32_t i_mo
 } 
 
 
-int ext2_mkdir(struct inode *i_parent, struct dentry *dentry, uint32_t i_mode) 
+int ext2_mkdir(struct inode *i_parent, struct dentry *dentry, u32 i_mode) 
 { 
     return ext2_add(i_parent, dentry, EXT2_S_IFDIR|i_mode);
 } 
@@ -99,7 +99,7 @@ int ext2_rmdir(struct inode *i_parent, struct dentry *dentry)
    return 0;
 }
 
-int ext2_mknod(struct inode *i_parent, struct dentry *dentry, uint32_t i_mode, dev_t devnr)
+int ext2_mknod(struct inode *i_parent, struct dentry *dentry, u32 i_mode, dev_t devnr)
 {
     CHECK(i_parent != NULL, "", return -1;);
 
@@ -133,7 +133,7 @@ int ext2_mknod(struct inode *i_parent, struct dentry *dentry, uint32_t i_mode, d
     return 0; 
 }
 
-int ext2_creat(struct inode *i_parent, struct dentry *dentry, uint32_t i_mode) 
+int ext2_creat(struct inode *i_parent, struct dentry *dentry, u32 i_mode) 
 { 
     return ext2_add(i_parent, dentry, EXT2_S_IFREG|i_mode);
 } 

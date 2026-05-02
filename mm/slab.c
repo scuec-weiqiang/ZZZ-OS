@@ -50,8 +50,66 @@ static struct {
 #define SLAB_MAX_SIZE 2048
 #define SLAB_MIN_ALIGN 8
 
+static inline int slab_debug_size(size_t size) {
+    return size == 128 || size == 136 || size == 232;
+}
+
+static inline size_t slab_objects_offset(const struct kmem_cache *cache) {
+    return ALIGN_UP(sizeof(struct slab), cache->align);
+}
+
+static inline uintptr_t slab_objects_start(const struct kmem_cache *cache,
+                                           const struct slab *slab) {
+    return (uintptr_t)slab + slab_objects_offset(cache);
+}
+
+static inline uintptr_t slab_objects_end(const struct kmem_cache *cache,
+                                         const struct slab *slab) {
+    return slab_objects_start(cache, slab) +
+           (uintptr_t)cache->objects_per_slab * cache->object_size;
+}
+
+static int slab_obj_is_valid(const struct kmem_cache *cache,
+                             const struct slab *slab,
+                             const struct free_obj *obj) {
+    uintptr_t start;
+    uintptr_t end;
+    uintptr_t addr;
+
+    if (!obj) {
+        return 1;
+    }
+
+    start = slab_objects_start(cache, slab);
+    end = slab_objects_end(cache, slab);
+    addr = (uintptr_t)obj;
+
+    if (addr < start || addr >= end) {
+        return 0;
+    }
+
+    return ((addr - start) % cache->object_size) == 0;
+}
+
+static void slab_panic_bad_obj(const char *tag,
+                               const struct kmem_cache *cache,
+                               const struct slab *slab,
+                               const struct free_obj *obj) {
+    panic("%s: cache=%xu obj_size=%xu slab=%xu obj=%xu start=%xu end=%xu inuse=%xu objs=%xu\n",
+          tag, cache, cache->object_size, slab, obj,
+          slab_objects_start(cache, slab), slab_objects_end(cache, slab),
+          slab->inuse, cache->objects_per_slab);
+}
+
 static inline size_t round_up_align(size_t sz, size_t align) {
     return (sz + (align - 1)) & ~(align - 1);
+}
+
+static inline size_t cache_object_size(size_t size, size_t align) {
+    if (size < sizeof(struct free_obj)) {
+        size = sizeof(struct free_obj);
+    }
+    return round_up_align(size, align);
 }
 
 static int size_to_index(size_t size) {
@@ -64,11 +122,6 @@ static int size_to_index(size_t size) {
     return -1;
 }
 
-static size_t index_to_size(int idx) {
-    if (idx < 0 || idx >= (int)SLAB_SIZE_TYPES_NUM) return 0;
-    return round_up_align(size_types[idx], SLAB_MIN_ALIGN);
-}
-
 struct kmem_cache* kmem_cache_create(const char *name, size_t size, size_t align) {
     if (!name) return NULL;
 
@@ -78,13 +131,25 @@ struct kmem_cache* kmem_cache_create(const char *name, size_t size, size_t align
     }
 
     strcpy(cache->name, name);
-    cache->align = round_up_align(align, 8);
-    cache->object_size = size;
-    cache->objects_per_slab = div_u32((PAGE_SIZE - sizeof(struct slab)) , size);
+    cache->align = round_up_align(align ? align : SLAB_MIN_ALIGN, SLAB_MIN_ALIGN);
+    cache->object_size = cache_object_size(size, cache->align);
+
+    size_t obj_offset = slab_objects_offset(cache);
+    if (obj_offset >= PAGE_SIZE) {
+        free_pages_kva(cache);
+        return NULL;
+    }
+
+    cache->objects_per_slab = div_u32(PAGE_SIZE - obj_offset, cache->object_size);
+    if (cache->objects_per_slab == 0) {
+        free_pages_kva(cache);
+        return NULL;
+    }
 
     INIT_LIST_HEAD(&cache->free_slabs);
     INIT_LIST_HEAD(&cache->full_slabs);
     INIT_LIST_HEAD(&cache->partial_slabs);
+    spin_lock_init(&cache->lock);
 
     cache->total_slabs = 0;
 
@@ -103,16 +168,15 @@ static struct slab* init_slab(struct kmem_cache *cache) {
     INIT_LIST_HEAD(&slab->list);
     list_add(&cache->free_slabs, &slab->list);
 
-    struct free_obj* obj = (struct free_obj*)ALIGN_UP((phys_addr_t)slab + (phys_addr_t)sizeof(struct slab),cache->object_size);
+    struct free_obj* obj = (struct free_obj*)((size_t)slab + slab_objects_offset(cache));
     slab->free_object.next = obj;
-    struct free_obj* next = (struct free_obj*)((size_t)obj + cache->object_size);
-    
-    for (int i = 0; i < cache->objects_per_slab - 1; i++) {
+
+    for (unsigned int i = 0; i < cache->objects_per_slab - 1; i++) {
+        struct free_obj* next = (struct free_obj*)((size_t)obj + cache->object_size);
         obj->next = next;
         obj = next;
-        next =  (struct free_obj*)((size_t)obj + cache->object_size);
     }
-    // next->next = NULL;
+    obj->next = NULL;
 
     struct page *pg = address_page(mem);
     pg->slab = slab;
@@ -121,7 +185,7 @@ static struct slab* init_slab(struct kmem_cache *cache) {
     return slab;
 }
 
-static void *kmem_cache_alloc(struct kmem_cache *cache) {
+void *kmem_cache_alloc(struct kmem_cache *cache) {
     struct slab *slab = NULL;
     struct list_head *node = NULL;
 
@@ -134,7 +198,9 @@ static void *kmem_cache_alloc(struct kmem_cache *cache) {
     }
     else {
         slab = init_slab(cache);
-        // list_add(&cache->free_slabs, &slab->list);
+        if (!slab) {
+            return NULL;
+        }
         cache->total_slabs++;
     }
 
@@ -145,19 +211,32 @@ static void *kmem_cache_alloc(struct kmem_cache *cache) {
 
     alloc_obj:
     slab = get_slab(cache->partial_slabs.next);
+    struct free_obj *obj = slab->free_object.next;
+    phys_addr_t ret;
+
+    if (!obj) {
+        panic("kmem_cache_alloc: slab free list is empty");
+    }
+    if (!slab_obj_is_valid(cache, slab, obj)) {
+        slab_panic_bad_obj("kmem_cache_alloc: invalid free head", cache, slab, obj);
+    }
+
+    slab->free_object.next = obj->next;
+    if (!slab_obj_is_valid(cache, slab, slab->free_object.next)) {
+        slab_panic_bad_obj("kmem_cache_alloc: invalid next head", cache, slab,
+                           slab->free_object.next);
+    }
     slab->inuse++;
-    phys_addr_t ret = (phys_addr_t)slab->free_object.next;
+    ret = (phys_addr_t)obj;
     if (slab->inuse >= cache->objects_per_slab) {
         list_del(&slab->list);
         list_add(&cache->full_slabs, &slab->list);
-    } else {
-        slab->free_object.next = ((struct free_obj*)slab->free_object.next)->next;
     }
   
     return (void*)ret;
 }
 
-static void kmem_cache_free(void *obj) {
+void kmem_cache_free(void *obj) {
     if (!obj) return;
 
     phys_addr_t slab_base = (phys_addr_t)obj & PAGE_MASK;
@@ -166,6 +245,9 @@ static void kmem_cache_free(void *obj) {
         panic("kmem_cache_free: invalid slab magic");
     }
     struct free_obj *free_obj = (struct free_obj*)obj;
+    if (!slab_obj_is_valid(slab->parent, slab, free_obj)) {
+        slab_panic_bad_obj("kmem_cache_free: invalid object", slab->parent, slab, free_obj);
+    }
     free_obj->next = slab->free_object.next;
     slab->free_object.next = free_obj;
     slab->inuse--;
@@ -173,9 +255,10 @@ static void kmem_cache_free(void *obj) {
     struct kmem_cache *cache = slab->parent;
     if (slab->inuse == 0) {
         list_del(&slab->list);
-        // list_add(&cache->free_slabs, &slab->list);
         slab->magic = 0;
+        cache->total_slabs--;
         free_pages_kva(slab);
+        return;
     }
 
     if (slab->inuse == cache->objects_per_slab - 1) {
@@ -186,17 +269,33 @@ static void kmem_cache_free(void *obj) {
 }
 
 void* __kmalloc(size_t size) {
+    void *ptr;
+
     if (size == 0) return NULL;
 
     if (size > SLAB_MAX_SIZE) {
         size_t npages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
-        return alloc_pages_kva(npages);
+        ptr = alloc_pages_kva(npages);
+        if (slab_debug_size(size)) {
+            printk("kmalloc large: req=%xu pages=%xu ptr=%xu\n",
+                   size, npages, ptr);
+        }
+        return ptr;
     }
 
     int idx = size_to_index(size);
     if (idx < 0) return NULL;
 
-    return kmem_cache_alloc(kmalloc_caches[idx].cache);
+    ptr = kmem_cache_alloc(kmalloc_caches[idx].cache);
+    // if (slab_debug_size(size) && ptr) {
+    //     struct kmem_cache *cache = kmalloc_caches[idx].cache;
+    //     printk("kmalloc slab: req=%xu cache=%xu obj=%xu ptr=%xu slab=%xu inuse=%xu total=%xu\n",
+    //            size, cache, cache->object_size, ptr,
+    //            (void *)((phys_addr_t)ptr & PAGE_MASK),
+    //            ((struct slab *)((phys_addr_t)ptr & PAGE_MASK))->inuse,
+    //            cache->total_slabs);
+    // }
+    return ptr;
 }
 
 void __kfree(void *ptr) {
@@ -221,6 +320,21 @@ void slab_init() {
         if (!kmalloc_caches[i].cache) {
             panic("__kmalloc cache create failed");
         }
+    }
+
+    extern struct task_struct *alloc_task_struct_init(void);
+    if (alloc_task_struct_init() < 0) {
+        panic("task_struct cache create failed");
+    }
+
+    extern int alloc_files_struct_init(void);
+    if (alloc_files_struct_init() < 0) {
+        panic("files_struct cache create failed");
+    }
+
+    extern int alloc_fs_struct_init(void);
+    if (alloc_fs_struct_init() < 0) {
+        panic("fs_struct cache create failed");
     }
 }
 

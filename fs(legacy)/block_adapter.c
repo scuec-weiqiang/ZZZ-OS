@@ -23,7 +23,7 @@
 struct block_adapter
 {
     char name[16];
-    struct block_device *bdev;
+    struct blkdev *bdev;
     int fs_block_size;
     int sectors_per_block;
     int gpt_offset;
@@ -32,7 +32,7 @@ struct block_adapter
 #define MAX_BLOCK_ADAPTER_NUM 8
 struct block_adapter block_adapter_registry[MAX_BLOCK_ADAPTER_NUM];
 
-int block_adapter_register(const char* adap_name,const char* bdev_name, uint32_t fs_block_size, int gpt_offset)
+int block_adapter_register(const char* adap_name,const char* bdev_name, u32 fs_block_size, int gpt_offset)
 {
     // 检查文件系统块大小是否为磁盘扇区大小的整数倍
     if (adap_name == NULL || bdev_name == NULL || fs_block_size%512!=0)
@@ -40,7 +40,7 @@ int block_adapter_register(const char* adap_name,const char* bdev_name, uint32_t
         return ADAP_INVALID_ARG;
     }
 
-    struct block_device *bdev = block_device_open(bdev_name);
+    struct blkdev *bdev = block_device_open(bdev_name);
     if(bdev == NULL)
     {
         return ADAP_BDEV_NULL;

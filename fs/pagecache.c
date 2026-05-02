@@ -17,7 +17,7 @@ static hval_t pagecache_hash(const struct hlist_node *node)
 {
     const struct page *page = container_of(node, struct page, cache_lru_node.hnode);
     uintptr_t mapping_ptr = (uintptr_t)page->mapping;
-    const uint32_t golden_ratio = 0x9E3779B9U;
+    const u32 golden_ratio = 0x9E3779B9U;
     hval_t hash = (hval_t)mapping_ptr * golden_ratio;
 
     hash ^= (hval_t)page->index * golden_ratio;
@@ -168,7 +168,7 @@ void pagecache_destroy(void)
     }
 }
 
-struct page *pagecache_get_page(struct address_space *mapping, pgoff_t index, uint32_t flags)
+struct page *pagecache_get_page(struct address_space *mapping, pgoff_t index, u32 flags)
 {
     struct page *page = NULL;
     int ret = 0;

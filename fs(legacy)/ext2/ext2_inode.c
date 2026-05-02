@@ -24,7 +24,7 @@
 #include <fs/ext2/ext2_super.h>
 #include <os/utils.h>
 
-uint32_t ext2_ino_group(struct superblock *vfs_sb,uint32_t ino)
+u32 ext2_ino_group(struct superblock *vfs_sb,u32 ino)
 {
     struct ext2_fs_info *fs_info = (struct ext2_fs_info*)vfs_sb->s_private;
     // return (ino) / fs_info->s_inodes_per_group;
@@ -45,7 +45,7 @@ int ext2_alloc_ino(struct superblock *vfs_sb)
     CHECK(vfs_sb !=NULL && vfs_sb->s_private != NULL, "", return -1;);
     struct ext2_fs_info *fs_info = (struct ext2_fs_info*)vfs_sb->s_private;
 
-    uint32_t group = ext2_select_inode_group(vfs_sb);
+    u32 group = ext2_select_inode_group(vfs_sb);
 
     // 加载缓存
     ext2_load_inode_bitmap_cache(vfs_sb,group);
@@ -65,15 +65,15 @@ int ext2_alloc_ino(struct superblock *vfs_sb)
     return free_idx;
 }
 
-int ext2_release_ino(struct superblock *vfs_sb, uint32_t ino)
+int ext2_release_ino(struct superblock *vfs_sb, u32 ino)
 {
     CHECK(vfs_sb != NULL && vfs_sb->s_private != NULL,"",return -1;);
     struct ext2_fs_info *fs_info = (struct ext2_fs_info*)vfs_sb->s_private;
     CHECK(ino <= fs_info->super->s_inodes_count,"",return -1;);
 
-    uint32_t group = ext2_ino_group(vfs_sb,ino);
-    // uint32_t index = ino % fs_info->s_inodes_per_group - 1;
-    uint32_t index = mod_u32(ino, fs_info->s_inodes_per_group) - 1;
+    u32 group = ext2_ino_group(vfs_sb,ino);
+    // u32 index = ino % fs_info->s_inodes_per_group - 1;
+    u32 index = mod_u32(ino, fs_info->s_inodes_per_group) - 1;
 
     // 清除位图缓存，并更新inode总数和空闲数
     ext2_load_inode_bitmap_cache(vfs_sb,group);
@@ -142,9 +142,9 @@ int ext2_read_inode(struct inode *inode_ret)
 
     struct superblock *vfs_sb = inode_ret->i_sb;
     struct ext2_fs_info *fs_info = (struct ext2_fs_info *)vfs_sb->s_private;
-    uint32_t group = ext2_ino_group(vfs_sb,inode_ret->i_ino);
-    // uint32_t index = inode_ret->i_ino % fs_info->s_inodes_per_group -1;
-    uint32_t index = mod_u32(inode_ret->i_ino, fs_info->s_inodes_per_group) - 1;
+    u32 group = ext2_ino_group(vfs_sb,inode_ret->i_ino);
+    // u32 index = inode_ret->i_ino % fs_info->s_inodes_per_group -1;
+    u32 index = mod_u32(inode_ret->i_ino, fs_info->s_inodes_per_group) - 1;
 
 
     // 确保 inode table 已经在内存中
@@ -195,9 +195,9 @@ int ext2_write_inode(struct inode *inode)
     ext2_inode->i_mtime = inode->i_mtime.tv_sec;
 
     struct ext2_fs_info *fs_info = (struct ext2_fs_info *)vfs_sb->s_private;
-    uint32_t group = ext2_ino_group(vfs_sb,inode->i_ino);
-    // uint32_t index = inode->i_ino % fs_info->s_inodes_per_group - 1;
-    uint32_t index = mod_u32(inode->i_ino, fs_info->s_inodes_per_group) - 1;
+    u32 group = ext2_ino_group(vfs_sb,inode->i_ino);
+    // u32 index = inode->i_ino % fs_info->s_inodes_per_group - 1;
+    u32 index = mod_u32(inode->i_ino, fs_info->s_inodes_per_group) - 1;
 
     // 确保 inode table 已经在内存中
     int ret = ext2_load_inode_table_cache(vfs_sb, group);

@@ -17,7 +17,7 @@ static void set_clocksource(struct clocksource *cs) {
     } 
 }
 
-int clocksource_register(char *name, uint64_t (*read_counter)(void), uint32_t freq_hz, void* data) {
+int clocksource_register(char *name, u64 (*read_counter)(void), u32 freq_hz, void* data) {
     if (name == NULL || read_counter == NULL || freq_hz == 0) {
         return -1;
     }
@@ -70,12 +70,12 @@ struct clockevent *sys_clockevent(void) {
     return __clockevent;
 }
 
-uint64_t monotonic_ns(void) {
-    uint64_t cnt;
-    uint32_t freq;
-    uint64_t sec;
-    uint64_t rem_ns;
-    uint32_t rem;
+u64 monotonic_ns(void) {
+    u64 cnt;
+    u32 freq;
+    u64 sec;
+    u64 rem_ns;
+    u32 rem;
 
     if (sys_clocksource()->read_counter == NULL || sys_clocksource()->freq_hz == 0) {
         return 0;
@@ -88,24 +88,24 @@ uint64_t monotonic_ns(void) {
     }
 
     sec = divmod_u64(cnt, freq, &rem);
-    rem_ns = div_u64((uint64_t)rem * NSEC_PER_SEC, freq);
+    rem_ns = div_u64((u64)rem * NSEC_PER_SEC, freq);
     return sec * NSEC_PER_SEC + rem_ns;
 }
 
-void program_next_event(uint64_t next, uint64_t now) {
+void program_next_event(u64 next, u64 now) {
     if (sys_clockevent() && sys_clockevent()->ops->set_next_event) {
-        uint64_t delta_ns = next > now ? next - now : 0;
+        u64 delta_ns = next > now ? next - now : 0;
         sys_clockevent()->ops->set_next_event(delta_ns);
     }
 }
 
 void timekeeping_timer_interrupt(void)
 {
-    uint64_t now = monotonic_ns();
-    dprintk("timer interrupt at %du ns\r", now);
+    u64 now = monotonic_ns();
+    // dprintk("timer interrupt at %du ns\r", now);
     timerqueue_run_expired(now);
 
-    uint64_t next = timerqueue_next_deadline();
+    u64 next = timerqueue_next_deadline();
     // dprintk("next timer deadline at %dns\n", next);
     
     program_next_event(next, now);

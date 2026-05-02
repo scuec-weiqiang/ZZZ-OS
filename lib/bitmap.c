@@ -13,7 +13,7 @@
 
 typedef struct bitmap {
     size_t size;    // bitmap大小（位数）
-    uint64_t arr[]; // bitmap数组
+    u64 arr[]; // bitmap数组
 } bitmap_t;
 
 bitmap_t *bitmap_create(size_t size) {
@@ -22,7 +22,7 @@ bitmap_t *bitmap_create(size_t size) {
         return NULL;
     }
 
-    uint64_t bytes_num = (size + 7) / 8;
+    u64 bytes_num = (size + 7) / 8;
 
     bitmap_t *bm = (bitmap_t *)kmalloc(sizeof(bitmap_t) + bytes_num);
     if (bm == NULL) {
@@ -41,7 +41,7 @@ void bitmap_destory(bitmap_t *bm) {
     kfree(bm);
 }
 
-int bitmap_set_bit(bitmap_t *bm, uint64_t index) {
+int bitmap_set_bit(bitmap_t *bm, u64 index) {
 
     if (bm == NULL) {
         printk("bitmap: bitmap is not created\n");
@@ -53,15 +53,15 @@ int bitmap_set_bit(bitmap_t *bm, uint64_t index) {
         return -1;
     }
 
-    uint64_t uint64_index = index / 64;
-    uint64_t bit_index = index % 64;
+    u64 uint64_index = index / 64;
+    u64 bit_index = index % 64;
 
     bm->arr[uint64_index] |= (1ULL << bit_index);
 
     return 0;
 }
 
-int bitmap_clear_bit(bitmap_t *bm, uint64_t index) {
+int bitmap_clear_bit(bitmap_t *bm, u64 index) {
     if (bm == NULL) {
         printk("bitmap: bitmap is not created\n");
         return 0;
@@ -71,8 +71,8 @@ int bitmap_clear_bit(bitmap_t *bm, uint64_t index) {
         return -1;
     }
 
-    uint64_t uint64_index = index / 64;
-    uint64_t bit_index = index % 64;
+    u64 uint64_index = index / 64;
+    u64 bit_index = index % 64;
     bm->arr[uint64_index] &= ~(1ULL << bit_index);
     return 0;
 }
@@ -89,7 +89,7 @@ int bitmap_clear_bit(bitmap_t *bm, uint64_t index) {
  *         - 如果位图为空（bm为NULL），返回0，并打印错误信息 "bitmap: bitmap is not created"
  *         - 如果索引超出位图范围，返回-1，并打印错误信息 "bitmap: index out of range"
  */
-int bitmap_test_bit(bitmap_t *bm, uint64_t index) {
+int bitmap_test_bit(bitmap_t *bm, u64 index) {
     if (bm == NULL) {
         printk("bitmap: bitmap is not created\n");
         return 0;
@@ -99,8 +99,8 @@ int bitmap_test_bit(bitmap_t *bm, uint64_t index) {
         printk(("bitmap: index out of range\n"));
         return -1;
     }
-    uint64_t uint64_index = index / 64;
-    uint64_t bit_index = index % 64;
+    u64 uint64_index = index / 64;
+    u64 bit_index = index % 64;
     return (bm->arr[uint64_index] & (1ULL << bit_index)) == 0 ? 0 : 1;
 }
 
@@ -112,7 +112,7 @@ size_t bitmap_get_size(bitmap_t *bm) {
     return bm->size;
 }
 
-size_t bitmap_update_size(bitmap_t *bm, uint64_t size) {
+size_t bitmap_update_size(bitmap_t *bm, u64 size) {
     if (bm == NULL) {
         printk("bitmap: bitmap is not created\n");
         return 0;
@@ -144,7 +144,7 @@ int bitmap_scan_0(bitmap_t *bm) {
         return -1;
     }
 
-    for (uint64_t i = 0; i < bm->size; i++) {
+    for (u64 i = 0; i < bm->size; i++) {
         if (bm->arr[i] != UINT64_MAX) {
             char *arr = (char *)&bm->arr[i];
             for (int j = 0; j < 8; j++) {

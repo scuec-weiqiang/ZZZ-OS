@@ -115,7 +115,7 @@ static int encode_value(struct display_info *disp, char **arg, int arg_count,
 			if (len == 4)
 				*iptr = cpu_to_fdt32(ival);
 			else
-				*ptr = (uint8_t)ival;
+				*ptr = (u8)ival;
 			if (disp->verbose) {
 				fprintf(stderr, "\t%s: %d\n",
 					disp->size == 1 ? "byte" :

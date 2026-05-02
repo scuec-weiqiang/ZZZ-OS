@@ -145,7 +145,7 @@ int of_get_child_node_count(const struct device_node *node) {
     return count;
 }
 
-void *of_get_property(const struct device_node *node, const char *name, uint32_t *lenp) {
+void *of_get_property(const struct device_node *node, const char *name, u32 *lenp) {
     struct device_prop *prop = of_get_property_by_name(node, name);
     if (prop) {
         if (lenp) {
@@ -156,57 +156,57 @@ void *of_get_property(const struct device_node *node, const char *name, uint32_t
     return NULL;
 }
 
-uint32_t fdt_get_phandle(const struct device_node *node) {
+u32 fdt_get_phandle(const struct device_node *node) {
     if (!node)
         return 0;
     struct device_prop *prop = of_get_property_by_name(node, "phandle");
     if (prop) {
-        return be32_to_cpu(*(uint32_t *)prop->value);
+        return be32_to_cpu(*(u32 *)prop->value);
     }
     return 0;
 }
 
-uint32_t *of_get_reg(const struct device_node *node) {
+u32 *of_get_reg(const struct device_node *node) {
     if (!node)
         return 0;
     struct device_prop *prop = of_get_property_by_name(node, "reg");
     if (prop) {
-        return (uint32_t *)prop->value;
+        return (u32 *)prop->value;
     }
     return 0;
 }
 
-uint32_t *of_read_u32_array(const struct device_node *node, const char *prop_name, int count) {
+u32 *of_read_u32_array(const struct device_node *node, const char *prop_name, int count) {
     if (!node || !prop_name || count <= 0)
         return NULL;
 
     struct device_prop *prop = of_get_property_by_name(node, prop_name);
-    if (!prop || prop->length < count * sizeof(uint32_t))
+    if (!prop || prop->length < count * sizeof(u32))
         return NULL;
 
-    uint32_t *array = (uint32_t *)kmalloc(count * sizeof(uint32_t));
+    u32 *array = (u32 *)kmalloc(count * sizeof(u32));
     for (int i = 0; i < count; i++) {
-        array[i] = be32_to_cpu(((uint32_t *)prop->value)[i]);
+        array[i] = be32_to_cpu(((u32 *)prop->value)[i]);
     }
     return array;
 }
 
-uint64_t *of_read_u64_array(const struct device_node *node, const char *prop_name, int count) {
+u64 *of_read_u64_array(const struct device_node *node, const char *prop_name, int count) {
     if (!node || !prop_name || count <= 0)
         return NULL;
 
     struct device_prop *prop = of_get_property_by_name(node, prop_name);
-    if (!prop || prop->length < count * sizeof(uint64_t))
+    if (!prop || prop->length < count * sizeof(u64))
         return NULL;
 
-    uint64_t *array = (uint64_t *)kmalloc(count * sizeof(uint64_t));
+    u64 *array = (u64 *)kmalloc(count * sizeof(u64));
     for (int i = 0; i < count; i++) {
-        array[i] = be64_to_cpu(((uint64_t *)prop->value)[i]);
+        array[i] = be64_to_cpu(((u64 *)prop->value)[i]);
     }
     return array;
 }
 
-struct device_node *of_find_node_by_phandle(uint32_t phandle) {
+struct device_node *of_find_node_by_phandle(u32 phandle) {
     if (!fdt_root_node)
         return NULL;
 
@@ -224,7 +224,7 @@ struct device_node *of_find_node_by_phandle(uint32_t phandle) {
         struct device_node *curr = queue[front];
         front++;
 
-        uint32_t curr_phandle = fdt_get_phandle(curr);
+        u32 curr_phandle = fdt_get_phandle(curr);
         if (phandle == curr_phandle) {
             return curr;
         }
@@ -280,7 +280,7 @@ struct device_node *of_get_interrupt_parent(const struct device_node *node) {
         return NULL;
     }
 
-    uint32_t phandle = be32_to_cpu(*(uint32_t *)prop->value);
+    u32 phandle = be32_to_cpu(*(u32 *)prop->value);
     return of_find_node_by_phandle(phandle);
 }
 

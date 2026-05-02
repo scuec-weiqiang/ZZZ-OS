@@ -2,6 +2,10 @@
 .align 4
 .global vector_table
 
+.equ USR_MODE, 0x10
+.equ SVC_MODE, 0x13
+.equ MODE_MASK, 0x1f
+
 vector_table:
     ldr pc, 1f
     ldr pc, 2f
@@ -33,6 +37,7 @@ __undef_handler:
 
 .global __swi_handler
 __swi_handler:
+    cpsid i
     sub   sp, sp, #68
     stmia sp, {r0-r12}
     add   r1, sp, #52
@@ -53,14 +58,33 @@ __swi_handler:
 
 .global __prefetch_abort_handler
 __prefetch_abort_handler:
-    mrs r0, spsr
-    b prefetch_abort_handler
+    stmdb sp!, {r0-r12, lr}
+    mrs   r0, spsr
+    stmdb sp!, {r0}
+    sub   sp, sp, #4
+    bl    prefetch_abort_handler
+    add   sp, sp, #4
+    cmp   r0, #0
+    bne   .
+    ldmia sp!, {r0}
+    msr   spsr_cxsf, r0
+    ldmia sp!, {r0-r12, lr}
+    subs  pc, lr, #4
 
 .global __data_abort_handler
 __data_abort_handler:
-    sub sp, sp, #64
     stmdb sp!, {r0-r12, lr}
-    b data_abort_handler   @ 加载符号地址，链接器会填入最低位 1
+    mrs   r0, spsr
+    stmdb sp!, {r0}
+    sub   sp, sp, #4
+    bl    data_abort_handler
+    add   sp, sp, #4
+    cmp   r0, #0
+    bne   .
+    ldmia sp!, {r0}
+    msr   spsr_cxsf, r0
+    ldmia sp!, {r0-r12, lr}
+    subs  pc, lr, #8
 
 
 .global __reserved_handler
@@ -70,27 +94,43 @@ __reserved_handler:
 
 .global __irq_handler
 __irq_handler:
-    stmdb sp!, {r0-r12, lr}
+    cpsid i
+    sub   sp, sp, #68
+    stmia sp, {r0-r12}
+    add   r1, sp, #52
+    stmia r1, {sp, lr}^
+    str   lr, [sp, #60]
     mrs   r0, spsr
-    stmdb sp!, {r0}
+    str   r0, [sp, #64]
 
-    sub   sp, sp, #4        @ 补齐到 8-byte 对齐
     mov   r0, #0
-    ldr   r1, =irq_handler   @ 加载符号地址，链接器会填入最低位 1
+    ldr   r1, =irq_handler 
     blx   r1
 
+    ldr   r0, [sp, #64]
     ldr   r1, =irq_exit
     blx   r1
-    
-    add   sp, sp, #4
 
-    ldmia sp!, {r0}
+    ldr   r0, [sp, #64]
+    and   r0, r0, #MODE_MASK
+    cmp   r0, #USR_MODE
+    beq   1f
+
+    ldr   r0, [sp, #64]
     msr   spsr_cxsf, r0
-    ldmia sp!, {r0-r12, lr}
+    ldr   lr, [sp, #60]
+    ldmia sp, {r0-r12}
+    add   sp, sp, #68
     subs  pc, lr, #4
+
+1:
+    mov   r0, sp
+    ldr   r1, =irq_prepare_user_return 
+    blx   r1 @因为irq和scv模式下不是一个栈，这个函数把irq保存的内容复制到svc模式下的栈中
+    cps   #SVC_MODE @切换到svc模式，irq_prepare_user_return函数已经把svc模式下的栈准备好了
+    mov   sp, r0 @切换到svc模式后，就可以正常恢复
+    b     ret_to_user_from_irq
 
 .global __fiq_handler
 __fiq_handler:      
     b fiq_handler
-
-

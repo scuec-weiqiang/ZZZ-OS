@@ -17,6 +17,11 @@ extern char _rodata_start[], _rodata_end[];
 extern char _data_start[], _data_end[];
 extern char _bss_start[], _bss_end[];
 extern char _initcall_start[],_initcall_end[];
+extern char _archinitcall_start[],_archinitcall_end[];
+extern char _coreinitcall_start[],_coreinitcall_end[];
+extern char _fsinitcall_start[],_fsinitcall_end[];
+extern char _deviceinitcall_start[],_deviceinitcall_end[];
+extern char _lateinitcall_start[],_lateinitcall_end[];
 extern char _exitcall_start[],_exitcall_end[];
 extern char _irqinitcall_start[],_irqinitcall_end[];
 extern char _irqexitcall_start[],_irqexitcall_end[];
@@ -52,6 +57,26 @@ phys_addr_t initcall_start;
 phys_addr_t initcall_end;
 size_t initcall_size;
 
+phys_addr_t archinitcall_start;
+phys_addr_t archinitcall_end;
+size_t archinitcall_size;
+
+phys_addr_t coreinitcall_start;
+phys_addr_t coreinitcall_end;
+size_t coreinitcall_size;
+
+phys_addr_t fsinitcall_start;
+phys_addr_t fsinitcall_end;
+size_t fsinitcall_size;
+
+phys_addr_t deviceinitcall_start;
+phys_addr_t deviceinitcall_end;
+size_t deviceinitcall_size;
+
+phys_addr_t lateinitcall_start;
+phys_addr_t lateinitcall_end;
+size_t lateinitcall_size;
+
 phys_addr_t exitcall_start;
 phys_addr_t exitcall_end;
 size_t exitcall_size;
@@ -83,6 +108,11 @@ void print_section() {
     printk("data:        start= %xu, end=  %xu, size=  %xu\n", data_start, data_end, data_size);
     printk("bss:         start= %xu, end=  %xu, size=  %xu\n", bss_start, bss_end, bss_size);
     printk("initcall:    start= %xu, end=  %xu, size=  %xu\n", initcall_start, initcall_end, initcall_size);
+    printk("archinit:    start= %xu, end=  %xu, size=  %xu\n", archinitcall_start, archinitcall_end, archinitcall_size);
+    printk("coreinit:    start= %xu, end=  %xu, size=  %xu\n", coreinitcall_start, coreinitcall_end, coreinitcall_size);
+    printk("fsinitcall:  start= %xu, end=  %xu, size=  %xu\n", fsinitcall_start, fsinitcall_end, fsinitcall_size);
+    printk("deviceinit:  start= %xu, end=  %xu, size=  %xu\n", deviceinitcall_start, deviceinitcall_end, deviceinitcall_size);
+    printk("lateinit:    start= %xu, end=  %xu, size=  %xu\n", lateinitcall_start, lateinitcall_end, lateinitcall_size);
     printk("irqinitcall: start= %xu, end=  %xu, size=  %xu\n", irqinitcall_start, irqinitcall_end, irqinitcall_size);
     printk("exitcall:    start= %xu, end=  %xu, size=  %xu\n", exitcall_start, exitcall_end, exitcall_size);
     printk("irqexitcall: start= %xu, end=  %xu, size=  %xu\n", irqexitcall_start, irqexitcall_end, irqexitcall_size);
@@ -130,6 +160,26 @@ void symbols_init()
     initcall_start = (phys_addr_t)&_initcall_start;
     initcall_end = (phys_addr_t)&_initcall_end;
     initcall_size = (initcall_end - initcall_start);
+
+    archinitcall_start = (phys_addr_t)&_archinitcall_start;
+    archinitcall_end = (phys_addr_t)&_archinitcall_end;
+    archinitcall_size = (archinitcall_end - archinitcall_start);
+
+    coreinitcall_start = (phys_addr_t)&_coreinitcall_start;
+    coreinitcall_end = (phys_addr_t)&_coreinitcall_end;
+    coreinitcall_size = (coreinitcall_end - coreinitcall_start);
+
+    fsinitcall_start = (phys_addr_t)&_fsinitcall_start;
+    fsinitcall_end = (phys_addr_t)&_fsinitcall_end;
+    fsinitcall_size = (fsinitcall_end - fsinitcall_start);
+
+    deviceinitcall_start = (phys_addr_t)&_deviceinitcall_start;
+    deviceinitcall_end = (phys_addr_t)&_deviceinitcall_end;
+    deviceinitcall_size = (deviceinitcall_end - deviceinitcall_start);
+
+    lateinitcall_start = (phys_addr_t)&_lateinitcall_start;
+    lateinitcall_end = (phys_addr_t)&_lateinitcall_end;
+    lateinitcall_size = (lateinitcall_end - lateinitcall_start);
 
 
     irqinitcall_start = (phys_addr_t)&_irqinitcall_start;

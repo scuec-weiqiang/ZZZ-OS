@@ -10,6 +10,8 @@
 #include <mm/pgtbl.h>
 #include <mm/pgprot.h>
 #include <os/utils.h>
+#include <os/err.h>
+#include <os/kva.h>
 
 pte_t *entry_to_next_table(pgtable_t *tbl, int level, pgdesc_type_t type, pte_t *pte) {
     phys_addr_t pa = arch_pgtbl_entry_get_pa(tbl,level, type, pte);
@@ -22,12 +24,12 @@ pte_t *entry_get_table_base(pgtable_t *tbl, int level, pgdesc_type_t type, pte_t
 }
 
 static pte_t *alloc_table_va(pgtable_t *tbl, int level) {
-    uint32_t npages = (tbl->features->level[level].table_size) >> PAGE_SHIFT;
+    u32 npages = (tbl->features->level[level].table_size) >> PAGE_SHIFT;
     if (npages == 0) {
         npages = 1; // 最小分配一页
     }
     pte_t *p = (pte_t*)page_alloc(npages);
-    printk("alloc_table_va:%xu,level=%d,  npages=%xu\n",p, level, npages);
+    // printk("alloc_table_va:%xu,level=%d,  npages=%xu\n",p, level, npages);
     return p; // 一页
 }
 
@@ -176,10 +178,9 @@ pgtable_t *new_pgtbl() {
     return tbl;
 }
 
-static void pgtbl_destroy_table(pgtable_t *pgtbl, pte_t *table, int level)
+static void pgtbl_destroy_table_range(pgtable_t *pgtbl, pte_t *table,
+                                      int level, size_t start, size_t end)
 {
-    size_t entries;
-
     if (pgtbl == NULL || table == NULL || pgtbl->features == NULL) {
         return;
     }
@@ -188,8 +189,7 @@ static void pgtbl_destroy_table(pgtable_t *pgtbl, pte_t *table, int level)
         return;
     }
 
-    entries = pgtbl->features->level[level].table_size / sizeof(pte_t);
-    for (size_t i = 0; i < entries; i++) {
+    for (size_t i = start; i < end; i++) {
         pte_t *entry = &table[i];
         pte_t *child_table;
 
@@ -206,7 +206,8 @@ static void pgtbl_destroy_table(pgtable_t *pgtbl, pte_t *table, int level)
             continue;
         }
 
-        pgtbl_destroy_table(pgtbl, child_table, level + 1);
+        pgtbl_destroy_table_range(pgtbl, child_table, level + 1, 0,
+                                  pgtbl->features->level[level + 1].table_size / sizeof(pte_t));
         arch_pgtbl_clear_entry(pgtbl, level, PGTBL_DESC_TABLE, entry);
         free_table_va(child_table);
     }
@@ -214,12 +215,27 @@ static void pgtbl_destroy_table(pgtable_t *pgtbl, pte_t *table, int level)
 
 void pgtbl_destroy(pgtable_t *pgtbl)
 {
+    size_t root_entries;
+    size_t kernel_start_index;
+
     if (pgtbl == NULL) {
         return;
     }
 
     if (pgtbl->root != NULL && pgtbl->features != NULL) {
-        pgtbl_destroy_table(pgtbl, (pte_t *)pgtbl->root, 0);
+        root_entries = pgtbl->features->level[0].table_size / sizeof(pte_t);
+        kernel_start_index = arch_pgtbl_level_index(pgtbl, 0, KERNEL_VA_BASE);
+        if (kernel_start_index > root_entries) {
+            kernel_start_index = root_entries;
+        }
+
+        /*
+         * User page tables shallow-copy the kernel half from init_mm.
+         * Only destroy the user half here, otherwise we free shared
+         * kernel/MMIO page tables and later IRQ access faults on
+         * addresses like KERNEL_MMIO_BASE.
+         */
+        pgtbl_destroy_table_range(pgtbl, (pte_t *)pgtbl->root, 0, 0, kernel_start_index);
     }
 
     arch_pgtbl_deinit(pgtbl);
@@ -402,7 +418,7 @@ walk_action_t unmap_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, 
 }
 
 int pgtbl_walk(pgtable_t *pgtbl, virt_addr_t va, int target_level, pgtbl_walk_cb cb, void *arg) {
-    CHECK(pgtbl != NULL && pgtbl->root != NULL, "pgtbl is NULL", return 0;);
+    CHECK(pgtbl != NULL && pgtbl->root != NULL, "pgtbl is NULL", return -EINVAL;);
 
     pte_t *table = (pte_t*)pgtbl->root;
  
@@ -422,7 +438,7 @@ int pgtbl_walk(pgtable_t *pgtbl, virt_addr_t va, int target_level, pgtbl_walk_cb
     
         if (arch_pgtbl_entry_is_leaf(pte)) {
             printk("pgtbl_walk: hit leaf at level %d, but target level is %d ,problem pte = %xu\n", level, target_level,pte->val);
-            return -1;
+            return -EINVAL;
         }
         table = entry_to_next_table(pgtbl,level,PGTBL_DESC_TABLE, pte); // 还没有到最底层，继续往下找
     }

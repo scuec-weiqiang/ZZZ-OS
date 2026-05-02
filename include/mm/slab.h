@@ -37,7 +37,7 @@ struct free_obj {
 #define SLAB_MAGIC 0x5A5A5A5A
 
 struct slab {
-    uint32_t magic;
+    u32 magic;
     struct list_head list;   // 挂在 cache 的 partial/full/kfree 链表上
     struct kmem_cache *parent;
     struct free_obj free_object; // 指向下一个空闲对象
@@ -45,7 +45,11 @@ struct slab {
 };
 
 extern void slab_init();
+
 extern struct kmem_cache* kmem_cache_create(const char *name, size_t size, size_t align);
+extern void *kmem_cache_alloc(struct kmem_cache *cache);
+extern void kmem_cache_free(void *obj);
+
 extern void* __kmalloc(size_t size);
 extern void __kfree(void *obj);
 

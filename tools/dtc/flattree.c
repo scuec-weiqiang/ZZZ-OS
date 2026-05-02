@@ -518,7 +518,7 @@ void dt_to_asm(FILE *f, struct boot_info *bi, int version)
 	/*
 	 * Reserve map entries.
 	 * Align the reserve map to a doubleword boundary.
-	 * Each entry is an (address, size) pair of uint64_t values.
+	 * Each entry is an (address, size) pair of u64 values.
 	 * Always supply a zero-sized temination entry.
 	 */
 	asm_emit_align(f, 8);
@@ -703,7 +703,7 @@ static struct reserve_info *flat_read_mem_reserve(struct inbuf *inb)
 	struct fdt_reserve_entry re;
 
 	/*
-	 * Each entry is a pair of uint64_t (addr, size) values for 4 cell_t's.
+	 * Each entry is a pair of u64 (addr, size) values for 4 cell_t's.
 	 * List terminates at an entry with size equal to zero.
 	 *
 	 * First pass, count entries.

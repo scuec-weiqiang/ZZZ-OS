@@ -10,7 +10,7 @@ struct timer_base {
     spinlock_t lock;
     struct timer *heap[MAX_TIMERS];
     int heap_size;
-    uint64_t next_deadline;
+    u64 next_deadline;
 };
 
 static struct timer_base *timer_bases;
@@ -94,6 +94,22 @@ static void heapify_up(struct timer_base *tb, int idx) {
     }
 }
 
+static void heap_reorder_node(struct timer_base *tb, int idx) {
+    if (tb == NULL || idx < 0 || idx >= tb->heap_size) {
+        return;
+    }
+
+    if (idx > 0) {
+        int parent_idx = get_parent_idx(idx);
+        if (tb->heap[idx]->expires_ns < tb->heap[parent_idx]->expires_ns) {
+            heapify_up(tb, idx);
+            return;
+        }
+    }
+
+    heapify_down(tb, idx);
+}
+
 static int heap_push(struct timer *t) {
     struct timer_base *tb;
     int cpuid = -1;
@@ -156,6 +172,33 @@ int timer_start(struct timer *t) {
     return 0;
 }
 
+int timer_mod(struct timer *t, u64 expires_ns) {
+    struct timer_base *tb;
+
+    if (t == NULL) {
+        return -1;
+    }
+
+    if (!t->active) {
+        t->expires_ns = expires_ns;
+        return timer_start(t);
+    }
+
+    tb = get_timer_base(t->cpu);
+    if (tb == NULL) {
+        return -1;
+    }
+
+    t->expires_ns = expires_ns;
+    heap_reorder_node(tb, t->heap_idx);
+
+    if (tb->heap_size > 0) {
+        program_next_event(tb->heap[0]->expires_ns, monotonic_ns());
+    }
+
+    return 0;
+}
+
 int timer_cancel(struct timer *t) {
     if (!t->active) {
         return -1;
@@ -172,8 +215,11 @@ int timer_cancel(struct timer *t) {
     if (idx < tb->heap_size) {
         tb->heap[idx] = tb->heap[tb->heap_size];
         tb->heap[idx]->heap_idx = idx;
+        heap_reorder_node(tb, idx);
+    }
 
-        heapify_up(tb, idx);
+    if (tb->heap_size > 0) {
+        program_next_event(tb->heap[0]->expires_ns, monotonic_ns());
     }
 
     return 0;
@@ -181,15 +227,16 @@ int timer_cancel(struct timer *t) {
 
 
 
-uint64_t timerqueue_next_deadline(void) {
+u64 timerqueue_next_deadline(void) {
     struct timer *t = heap_top();
     if (t) {
         return t->expires_ns;
     }
+
     return UINT64_MAX; // 没有定时器时，设置一个较短的默认超时时间，避免长时间不响应新定时器的设置
 }
 
-void timerqueue_run_expired(uint64_t now) {
+void timerqueue_run_expired(u64 now) {
     while (true) {
         struct timer *t = heap_top();
         if (!t || t->expires_ns > now) {
@@ -208,34 +255,4 @@ void timerqueue_run_expired(uint64_t now) {
 
 int timerqueue_empty(void) {
     return heap_top() == NULL;
-}
-
-static void timer1_callback(struct timer *t, void *arg) {
-    printk("Timer 1 expired\n");
-}
-
-static void timer2_callback(struct timer *t, void *arg) {
-    printk("Timer 2 expired\n");
-}
-
-struct timer t1 = {
-    .callback = timer1_callback,
-    .arg = NULL,
-    .active = 0,
-};
-
-struct timer t2 = {
-    .callback = timer2_callback,
-    .arg = NULL,
-    .active = 0,
-};
-
-void timerqueue_test(void) {
-    t1.expires_ns = monotonic_ns() + 1000000000; // 1秒后到期
-    t1.period_ns = 0; // one-shot
-
-    t2.expires_ns = monotonic_ns() + 2000000000; // 2秒后到期
-    t2.period_ns = 0; // 2s周期
-    timer_start(&t1);
-    timer_start(&t2);
 }

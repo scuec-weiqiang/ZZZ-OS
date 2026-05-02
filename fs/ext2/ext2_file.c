@@ -7,13 +7,20 @@
 
 #include "ext2_types.h"
 
+int ext2_file_open(struct inode *inode, struct file *file) {
+    return 0;
+}
 
-ssize_t ext2_file_read(struct file *fp, char *buf, size_t size, loff_t *ppos) {
+static ssize_t ext2_file_write(struct file *file, const char *buf, size_t len, loff_t *ppos) {
+    return -EROFS; // 只读文件系统，不支持写操作
+}
+
+static ssize_t ext2_file_read(struct file *fp, char *buf, size_t size, loff_t *ppos) {
     ssize_t bytes_read = 0;
     pgoff_t start_page = (*ppos) / PAGE_SIZE;
     pgoff_t end_page = ((*ppos) + size - 1) / PAGE_SIZE;
-    uint32_t page_offset = 0;
-    uint32_t bytes_to_copy = 0;
+    u32 page_offset = 0;
+    u32 bytes_to_copy = 0;
 
     if (size == 0) {
         return 0;
@@ -55,5 +62,7 @@ ssize_t ext2_file_read(struct file *fp, char *buf, size_t size, loff_t *ppos) {
 }
 
 const struct file_operations ext2_file_operations = {
+    .open = ext2_file_open,
+    .write = ext2_file_write,
     .read = ext2_file_read,
 };

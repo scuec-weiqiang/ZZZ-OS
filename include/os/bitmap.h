@@ -18,11 +18,11 @@ typedef struct bitmap bitmap_t ;
 bitmap_t* bitmap_create(size_t size);
 void bitmap_destory(bitmap_t *bm);
 
-int bitmap_set_bit(bitmap_t *bm, uint64_t index);
-int bitmap_clear_bit(bitmap_t *bm, uint64_t index);
-int bitmap_test_bit(bitmap_t *bm, uint64_t index);
+int bitmap_set_bit(bitmap_t *bm, u64 index);
+int bitmap_clear_bit(bitmap_t *bm, u64 index);
+int bitmap_test_bit(bitmap_t *bm, u64 index);
 size_t  bitmap_get_size(bitmap_t *bm);
-size_t  bitmap_update_size(bitmap_t *bm,uint64_t size);
+size_t  bitmap_update_size(bitmap_t *bm,u64 size);
 size_t  bitmap_get_bytes_num(bitmap_t *bm);
 size_t  bitmap_get_size_in_bytes(bitmap_t *bm);
 int bitmap_scan_0(bitmap_t *bm);

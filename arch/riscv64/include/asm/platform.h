@@ -21,6 +21,6 @@
 #define CLINT_MTIME                 (CLINT_BASE + (0xbff8))
 #define CLINT_MTIMECMP_BASE         (CLINT_BASE + (0x4000))
 #define CLINT_MSIP(cpuid)          (CLINT_BASE + 4*(cpuid))
-#define RELEASE_CORE(cpuid)        (*(uint32_t*)CLINT_MSIP(cpuid)=1)
+#define RELEASE_CORE(cpuid)        (*(u32*)CLINT_MSIP(cpuid)=1)
 
 #endif

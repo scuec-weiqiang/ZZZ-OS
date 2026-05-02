@@ -19,6 +19,7 @@ extern void save_stack_trace_tsk(struct task_struct *tsk,
 				struct stack_trace *trace);
 
 extern void print_stack_trace(struct stack_trace *trace);
+extern void dump_stack(void);
 
 
 

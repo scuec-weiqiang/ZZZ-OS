@@ -107,7 +107,7 @@ int fdt_create(void *buf, int bufsize)
 	return 0;
 }
 
-int fdt_add_reservemap_entry(void *fdt, uint64_t addr, uint64_t size)
+int fdt_add_reservemap_entry(void *fdt, u64 addr, u64 size)
 {
 	struct fdt_reserve_entry *re;
 	int offset;
@@ -153,7 +153,7 @@ int fdt_begin_node(void *fdt, const char *name)
 
 int fdt_end_node(void *fdt)
 {
-	uint32_t *en;
+	u32 *en;
 
 	FDT_SW_CHECK_HEADER(fdt);
 
@@ -213,9 +213,9 @@ int fdt_property(void *fdt, const char *name, const void *val, int len)
 int fdt_finish(void *fdt)
 {
 	char *p = (char *)fdt;
-	uint32_t *end;
+	u32 *end;
 	int oldstroffset, newstroffset;
-	uint32_t tag;
+	u32 tag;
 	int offset, nextoffset;
 
 	FDT_SW_CHECK_HEADER(fdt);

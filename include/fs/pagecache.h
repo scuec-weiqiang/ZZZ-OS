@@ -11,7 +11,7 @@
 int pagecache_init(void);
 void pagecache_destroy(void);
 
-struct page *pagecache_get_page(struct address_space *mapping, pgoff_t index, uint32_t flags);
+struct page *pagecache_get_page(struct address_space *mapping, pgoff_t index, u32 flags);
 void pagecache_put_page(struct page *page);
 int pagecache_read_page(struct address_space *mapping, pgoff_t index, struct page **page_out);
 int pagecache_write_page(struct page *page);

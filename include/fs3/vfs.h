@@ -13,14 +13,14 @@
 #include <fs/types.h>
 
 extern struct dentry* lookup(const char* path);
-extern struct dentry* mkdir(const char* path,uint16_t mode);
+extern struct dentry* mkdir(const char* path,u16 mode);
 extern struct dentry* rmdir(const char* path);
-extern struct dentry* mknod(const char* path,uint16_t mode, dev_t dev);
-extern struct dentry* creat(const char* path,uint16_t mode);
+extern struct dentry* mknod(const char* path,u16 mode, dev_t dev);
+extern struct dentry* creat(const char* path,u16 mode);
 extern void close(struct file *file);
 extern ssize_t read(struct file *file, char *buf, size_t read_size);
 extern ssize_t write(struct file *file, const char *buf, size_t count);
-extern struct file* open(const char *path, uint32_t flags);
+extern struct file* open(const char *path, u32 flags);
 extern void vfs_test();
 
 #endif

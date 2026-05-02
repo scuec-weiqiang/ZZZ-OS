@@ -19,7 +19,7 @@
 #include <os/utils.h>
 
 
-struct superblock* ext2_fill_super(struct fs_type *fs_type, struct block_device *bdev, int flags)
+struct superblock* ext2_fill_super(struct fs_type *fs_type, struct blkdev *bdev, int flags)
 {
     CHECK(fs_type!=NULL && bdev!=NULL,"ext2_fill_super error!",return NULL;);
 
@@ -29,45 +29,45 @@ struct superblock* ext2_fill_super(struct fs_type *fs_type, struct block_device 
     struct gpt_header *gpt_hdr = kmalloc(512);
     CHECK(gpt_hdr!=NULL,"ext2_fill_super error: kmalloc memory failed!",return NULL;);
     struct gpt_part_entry *gpt_part = kmalloc(512);
-    bdev->read((uint8_t*)gpt_hdr, 1); 
-    bdev->read((uint8_t*)gpt_part, gpt_hdr->part_entry_lba);
+    bdev->read((u8*)gpt_hdr, 1); 
+    bdev->read((u8*)gpt_part, gpt_hdr->part_entry_lba);
     
     int ret = 0;
     struct ext2_superblock *sb = kmalloc(EXT2_SUPERBLOCK_SIZE);
     CHECK(sb!=NULL,"ext2_fill_super error: kmalloc memory failed!",goto clean;);
     
-    // uint32_t read_cnt = (EXT2_SUPERBLOCK_SIZE + bdev->sector_size -1)/bdev->sector_size;
-    uint32_t read_cnt = div_u32((EXT2_SUPERBLOCK_SIZE + bdev->sector_size -1), bdev->sector_size);
-    // uint32_t read_pos = EXT2_SUPERBLOCK_OFFSET / bdev->sector_size + gpt_part->first_lba; 
-    uint32_t read_pos = div_u32(EXT2_SUPERBLOCK_OFFSET, bdev->sector_size) + gpt_part->first_lba;
-    for(uint32_t i=0;i<read_cnt;i++)
+    // u32 read_cnt = (EXT2_SUPERBLOCK_SIZE + bdev->sector_size -1)/bdev->sector_size;
+    u32 read_cnt = div_u32((EXT2_SUPERBLOCK_SIZE + bdev->sector_size -1), bdev->sector_size);
+    // u32 read_pos = EXT2_SUPERBLOCK_OFFSET / bdev->sector_size + gpt_part->first_lba; 
+    u32 read_pos = div_u32(EXT2_SUPERBLOCK_OFFSET, bdev->sector_size) + gpt_part->first_lba;
+    for(u32 i=0;i<read_cnt;i++)
     {
-        ret =  bdev->read((uint8_t*)sb+bdev->sector_size*i,read_pos+i); 
+        ret =  bdev->read((u8*)sb+bdev->sector_size*i,read_pos+i); 
         CHECK(ret>=0,"ext2_fill_super error: read disk failed!",goto clean;);
     }
 
     CHECK(sb->s_magic==EXT2_SUPER_MAGIC,"ext2_fill_super error: not ext2 filesystem!",goto clean;);
     
     // 获得文件系统块大小
-    uint32_t block_size = 1024<<sb->s_log_block_size;
+    u32 block_size = 1024<<sb->s_log_block_size;
 
     // 注册该文件系统对应的块适配器
     ret = block_adapter_register(fs_type->name,bdev->name,block_size, gpt_part->first_lba);
     CHECK(ret>=0,"ext2_fill_super error: block_adapter_register failed!",goto clean;);
 
-    // uint32_t group_cnt = (sb->s_blocks_count + sb->s_blocks_per_group -1)/sb->s_blocks_per_group;
-    uint32_t group_cnt = div_u32((sb->s_blocks_count + sb->s_blocks_per_group -1), sb->s_blocks_per_group);
-    uint32_t gdt_block = ((block_size==1024) ? 2:1); //块描述符表起始块号
-    // uint32_t gdt_lba = gpt_part->first_lba + (gdt_block * block_size) / bdev->sector_size;
-    uint32_t gdt_lba = gpt_part->first_lba + div_u32((gdt_block * block_size), bdev->sector_size);
-    // uint32_t gdb_count = (group_cnt*sizeof(struct ext2_groupdesc)+block_size-1)/bdev->sector_size;
-    uint32_t gdb_count = div_u32((group_cnt*sizeof(struct ext2_groupdesc)+block_size-1), bdev->sector_size);
+    // u32 group_cnt = (sb->s_blocks_count + sb->s_blocks_per_group -1)/sb->s_blocks_per_group;
+    u32 group_cnt = div_u32((sb->s_blocks_count + sb->s_blocks_per_group -1), sb->s_blocks_per_group);
+    u32 gdt_block = ((block_size==1024) ? 2:1); //块描述符表起始块号
+    // u32 gdt_lba = gpt_part->first_lba + (gdt_block * block_size) / bdev->sector_size;
+    u32 gdt_lba = gpt_part->first_lba + div_u32((gdt_block * block_size), bdev->sector_size);
+    // u32 gdb_count = (group_cnt*sizeof(struct ext2_groupdesc)+block_size-1)/bdev->sector_size;
+    u32 gdb_count = div_u32((group_cnt*sizeof(struct ext2_groupdesc)+block_size-1), bdev->sector_size);
     // gdt = page_alloc((gdb_count * block_size + PAGE_SIZE - 1) / PAGE_SIZE);
     gdt = page_alloc(div_u32((gdb_count * block_size + PAGE_SIZE - 1), PAGE_SIZE));
     //读取块描述符
     for (int i = 0; i < gdb_count; i++)
     {
-        ret = bdev->read((uint8_t*)gdt + i * bdev->sector_size, gdt_lba + i);
+        ret = bdev->read((u8*)gdt + i * bdev->sector_size, gdt_lba + i);
         CHECK(ret >= 0, "ext2_fill_super error: read group desc failed!", goto clean;);
     }
 
@@ -156,16 +156,16 @@ int ext2_sync_super(struct superblock *sb)
     struct ext2_fs_info *fs_info = (struct ext2_fs_info*)sb->s_private; 
     int ret;
     // 同步超级块
-    uint32_t block_size = sb->s_block_size;
-    //uint32_t write_offset = EXT2_SUPERBLOCK_OFFSET % block_size; 
-    uint32_t write_offset = mod_u32(EXT2_SUPERBLOCK_OFFSET, block_size);
+    u32 block_size = sb->s_block_size;
+    //u32 write_offset = EXT2_SUPERBLOCK_OFFSET % block_size; 
+    u32 write_offset = mod_u32(EXT2_SUPERBLOCK_OFFSET, block_size);
         
 
-    // uint32_t write_pos = EXT2_SUPERBLOCK_OFFSET / block_size; 
-    uint32_t write_pos = div_u32(EXT2_SUPERBLOCK_OFFSET, block_size);
-    // uint32_t write_cnt = EXT2_SUPERBLOCK_SIZE / block_size; 
-    uint32_t write_cnt = div_u32(EXT2_SUPERBLOCK_SIZE, block_size);
-    uint8_t *super_buf = kmalloc(block_size);
+    // u32 write_pos = EXT2_SUPERBLOCK_OFFSET / block_size; 
+    u32 write_pos = div_u32(EXT2_SUPERBLOCK_OFFSET, block_size);
+    // u32 write_cnt = EXT2_SUPERBLOCK_SIZE / block_size; 
+    u32 write_cnt = div_u32(EXT2_SUPERBLOCK_SIZE, block_size);
+    u8 *super_buf = kmalloc(block_size);
     //先读
     ret = block_adapter_read(sb->adap,super_buf,write_pos,write_cnt);
     CHECK(ret>=0,"ext2_sync_super error: read super block failed!",return -1;);
@@ -177,7 +177,7 @@ int ext2_sync_super(struct superblock *sb)
 
 
     // 同步块描述符
-    uint32_t gdt_block = (block_size==1024) ? 2:1 ;
+    u32 gdt_block = (block_size==1024) ? 2:1 ;
     ret = block_adapter_write(sb->adap,fs_info->group_desc,gdt_block,fs_info->s_gdb_count);
     CHECK(ret>=0,"ext2_sync_super error: write group desc failed!",return -1;);
 

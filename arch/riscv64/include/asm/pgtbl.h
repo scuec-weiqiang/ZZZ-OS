@@ -17,8 +17,8 @@
 
 void arch_pgtbl_init(pgtable_t *tbl); // 初始化页表
 
-phys_addr_t arch_pgtbl_entry_get_pa(pgtable_t *tbl, uint32_t level,pgdesc_type_t type, pteval_t val); // pte 值转物理地址
-uint32_t arch_pgtbl_level_index(pgtable_t *tbl, uint32_t level, virt_addr_t va); // 计算某层级索引
+phys_addr_t arch_pgtbl_entry_get_pa(pgtable_t *tbl, u32 level,pgdesc_type_t type, pteval_t val); // pte 值转物理地址
+u32 arch_pgtbl_level_index(pgtable_t *tbl, u32 level, virt_addr_t va); // 计算某层级索引
 
 void arch_pgtbl_entry_set_flags(pgtable_t *tbl, int level, pte_t* entry, pgprot_t flags);
 pgprot_t  arch_pgtbl_entry_get_flags(pgtable_t *tbl, int level, pte_t *entry);

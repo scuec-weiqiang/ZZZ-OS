@@ -111,10 +111,10 @@ static phys_addr_t get_level0_pa(pte_t *entry) {
     return pa;
 }
 static void set_level0_flags(pte_t *entry, pgprot_t flags) {
-    uint32_t val = entry->val;
+    u32 val = entry->val;
 
-    uint32_t ap = 0;
-    uint32_t apx = 0;
+    u32 ap = 0;
+    u32 apx = 0;
 
     /* ---------- access permission ---------- */
     if (flags & PROT_USER) {
@@ -186,8 +186,8 @@ static void set_level0_flags(pte_t *entry, pgprot_t flags) {
 static pgprot_t get_level0_flags(pte_t *entry) {
     pteval_t val = entry->val;
     pgprot_t flags = PROT_NONE;
-    uint32_t ap = 0;
-    uint32_t apx = 0;
+    u32 ap = 0;
+    u32 apx = 0;
 
     ap = GET_VAL(val, LEVEL0_SECTION_AP_MASK);
     apx = GET_VAL(val,LEVEL0_SECTION_APX_MASK);
@@ -299,10 +299,10 @@ static phys_addr_t get_level1_pa(pte_t *entry) {
     return pa;
 }
 static void set_level1_flags(pte_t *entry, pgprot_t flags) {
-     uint32_t val = entry->val;
+     u32 val = entry->val;
 
-    uint32_t ap = 0;
-    uint32_t apx = 0;
+    u32 ap = 0;
+    u32 apx = 0;
 
     /* ---------- access permission ---------- */
 
@@ -371,8 +371,8 @@ static void set_level1_flags(pte_t *entry, pgprot_t flags) {
 static pgprot_t get_level1_flags(pte_t *entry) {
     pteval_t val = entry->val;
     pgprot_t flags = PROT_NONE;
-    uint32_t ap = 0;
-    uint32_t apx = 0;
+    u32 ap = 0;
+    u32 apx = 0;
 
     ap = GET_VAL(val, LEVEL1_PAGE_AP_MASK);
     apx = GET_VAL(val,LEVEL1_PAGE_APX_MASK);
@@ -463,7 +463,7 @@ static inline void dcache_clean_mva_poc_range(uintptr_t start, uintptr_t end)
 
 }
 
-void arch_pgtbl_entry_set_pa(pgtable_t *tbl, uint32_t level, pgdesc_type_t type, pte_t *entry, phys_addr_t pa) {
+void arch_pgtbl_entry_set_pa(pgtable_t *tbl, u32 level, pgdesc_type_t type, pte_t *entry, phys_addr_t pa) {
     switch (level) {
         case 0:
             set_level0_pa(type, entry, pa);return;
@@ -474,7 +474,7 @@ void arch_pgtbl_entry_set_pa(pgtable_t *tbl, uint32_t level, pgdesc_type_t type,
     }
 }
 
-phys_addr_t arch_pgtbl_entry_get_pa(pgtable_t *tbl, uint32_t level, pgdesc_type_t type, pte_t *entry) {
+phys_addr_t arch_pgtbl_entry_get_pa(pgtable_t *tbl, u32 level, pgdesc_type_t type, pte_t *entry) {
     switch (level) {
         case 0:
             // printk("arch_pgtbl_entry_get_pa: level=0, entry val=%xu\n", entry->val);
@@ -487,7 +487,7 @@ phys_addr_t arch_pgtbl_entry_get_pa(pgtable_t *tbl, uint32_t level, pgdesc_type_
     }
 }
 
-uint32_t arch_pgtbl_level_index(pgtable_t *tbl, uint32_t level, virt_addr_t va) {
+u32 arch_pgtbl_level_index(pgtable_t *tbl, u32 level, virt_addr_t va) {
     switch (level) {
         case 0:
             return GET_VAL(va, GENMASK(31, 20)); 

@@ -4,7 +4,7 @@
 #include <os/string.h>
 
 /* 给某个 file_system_type 分配一个 fs_context */
-struct fs_context *fs_context_for_mount(struct file_system_type *fs_type, uint32_t sb_flags) {
+struct fs_context *fs_context_for_mount(struct file_system_type *fs_type, u32 sb_flags) {
     struct fs_context *fc = NULL;
     int ret = 0;
 

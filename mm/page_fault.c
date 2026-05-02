@@ -5,24 +5,50 @@
 #include <os/pfn.h>
 #include <os/kmalloc.h>
 #include <os/kva.h>
+#include <os/string.h>
+#include <mm/pgtbl.h>
 
 int do_page_fault(struct mm_struct *mm, virt_addr_t fault_addr, int fault_flags) {
-    if (!mm) {
-        panic("Invalid mm_struct pointer!\n");
-        return -1; // 无效的内存描述符
+    virt_addr_t page_va;
+    struct vma *vma;
+    void *kva;
+
+    if (!mm || mm->pgdir == NULL) {
+        return -1;
     }
 
-    struct vma *vma = vma_find(mm, fault_addr);
+    vma = vma_find(mm, fault_addr);
     if (!vma) {
-        panic("No valid VMA found for address: %xu\n", fault_addr);
-        return -1; // 找不到对应的VMA
+        return -1;
     }
 
-    virt_addr_t va = (virt_addr_t)page_alloc(1);
+    if ((fault_flags & PROT_EXEC) && !(vma->flags & PROT_EXEC)) {
+        return -1;
+    }
+    if ((fault_flags & PROT_WRITE) && !(vma->flags & PROT_WRITE)) {
+        return -1;
+    }
+    if ((fault_flags & PROT_READ) && !(vma->flags & PROT_READ)) {
+        return -1;
+    }
+    if ((fault_flags & PROT_USER) && !(vma->flags & PROT_USER)) {
+        return -1;
+    }
 
-    map(mm->pgdir, fault_addr, KERNEL_PA(va), PAGE_SIZE, vma->flags);
- 
-    // 根据VMA信息处理缺页异常
-    printk("Page fault at address: %xu, flags: %d\n", fault_addr, fault_flags);
-    return 0; // 返回0表示处理成功
+    page_va = ALIGN_DOWN(fault_addr, PAGE_SIZE);
+    if (pgtbl_lookup(mm->pgdir, page_va) != 0) {
+        return 0;
+    }
+
+    kva = page_alloc(1);
+    if (kva == NULL) {
+        return -1;
+    }
+    memset(kva, 0, PAGE_SIZE);
+
+    if (map(mm->pgdir, page_va, KERNEL_PA(kva), PAGE_SIZE, vma->flags) < 0) {
+        return -1;
+    }
+
+    return 0;
 }

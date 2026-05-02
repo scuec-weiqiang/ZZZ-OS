@@ -1,5 +1,5 @@
 /**
- * @FilePath: /vboot/fs/fs/block_device.h
+ * @FilePath: /vboot/fs/fs/blkdev.h
  * @Description:  
  * @Author: scuec_weiqiang scuec_weiqiang@qq.com
  * @Date: 2025-08-12 17:30:39
@@ -12,7 +12,7 @@
 
 #include <os/types.h>
 
-struct block_device {
+struct blkdev {
     char     name[16];       // 设备名，比如 "sda", "vda"
     int   dev;               // 设备号
     int sector_size;
@@ -23,7 +23,7 @@ struct block_device {
 };
 
 
-extern int block_device_register(struct block_device *bdev);
-extern struct block_device* block_device_open(const char* name);
+extern int block_device_register(struct blkdev *bdev);
+extern struct blkdev* block_device_open(const char* name);
 
 #endif

@@ -95,7 +95,9 @@ struct lru_node *lru_cache_find(struct lru_cache *cache, struct lru_node *node) 
     CHECK(node != NULL, "ptr <struct lru_node *node> is NULL", return NULL;);
 
     hnode = hashtable_lookup(cache->ht, &node->hnode);
-    CHECK(hnode != NULL, "", return NULL;);
+    if (hnode == NULL) {
+        return NULL;
+    }
 
     found = container_of(hnode, struct lru_node, hnode);
     lru_cache_touch(cache, found);

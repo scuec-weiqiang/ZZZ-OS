@@ -18,13 +18,13 @@
 static virt_addr_t snvs_base;
 static int snvs_ready;
 
-static inline uint32_t snvs_readl(uint32_t off) {
-    volatile uint32_t *addr = (volatile uint32_t *)(snvs_base + off);
+static inline u32 snvs_readl(u32 off) {
+    volatile u32 *addr = (volatile u32 *)(snvs_base + off);
     return *addr;
 }
 
-static inline void snvs_writel(uint32_t off, uint32_t val) {
-    volatile uint32_t *addr = (volatile uint32_t *)(snvs_base + off);
+static inline void snvs_writel(u32 off, u32 val) {
+    volatile u32 *addr = (volatile u32 *)(snvs_base + off);
     *addr = val;
 }
 
@@ -32,9 +32,9 @@ static inline void snvs_writel(uint32_t off, uint32_t val) {
  * SNVS SRTC counter is a 47-bit counter running at 32.768KHz.
  * Convert to seconds by right-shifting 15 bits.
  */
-static uint32_t imx6ull_rtc_read_seconds(void) {
-    uint32_t msb1, msb2, lsb;
-    uint64_t ticks;
+static u32 imx6ull_rtc_read_seconds(void) {
+    u32 msb1, msb2, lsb;
+    u64 ticks;
 
     do {
         msb1 = snvs_readl(SNVS_LPSRTCMR);
@@ -42,27 +42,27 @@ static uint32_t imx6ull_rtc_read_seconds(void) {
         msb2 = snvs_readl(SNVS_LPSRTCMR);
     } while (msb1 != msb2);
 
-    ticks = (((uint64_t)msb1) << 32) | (uint64_t)lsb;
-    return (uint32_t)(ticks >> 15);
+    ticks = (((u64)msb1) << 32) | (u64)lsb;
+    return (u32)(ticks >> 15);
 }
 
-static int imx6ull_rtc_read(uint64_t *sec) {
+static int imx6ull_rtc_read(u64 *sec) {
     if (!snvs_ready || sec == NULL) {
         return -1;
     }
 
-    *sec = (uint64_t)imx6ull_rtc_read_seconds();
+    *sec = (u64)imx6ull_rtc_read_seconds();
     return 0;
 }
 
 static void imx6ull_rtc_enable(void) {
-    uint32_t lpcr = snvs_readl(SNVS_LPCR);
+    u32 lpcr = snvs_readl(SNVS_LPCR);
     lpcr |= SNVS_LPCR_SRTC_ENV;
     snvs_writel(SNVS_LPCR, lpcr);
 }
 
 static int imx6ull_rtc_probe(struct platform_device *pdev) {
-    uint32_t now;
+    u32 now;
 
     snvs_base = platform_ioremap_resource(pdev, 0);
     printk("imx6ull_rtc: snvs_base=%xu\n", snvs_base);

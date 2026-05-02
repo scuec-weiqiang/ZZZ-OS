@@ -20,7 +20,7 @@ static inline void inode_unlock(struct inode *inode) {
 static hval_t inode_cache_hash(const struct hlist_node *node) {
     struct inode *inode = container_of(node, struct inode, d_lru_cache_node);
     uintptr_t sb_ptr = (uintptr_t)inode->i_sb;
-    const uint32_t golden_ratio = 0x9E3779B9U;
+    const u32 golden_ratio = 0x9E3779B9U;
     hval_t hash = (hval_t)sb_ptr * golden_ratio;
     hash ^= (hval_t)inode->i_ino * golden_ratio;
     hash ^= (hash >> 16);

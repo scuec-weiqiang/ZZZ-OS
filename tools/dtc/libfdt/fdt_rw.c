@@ -169,7 +169,7 @@ static int _fdt_find_add_string(void *fdt, const char *s)
 	return (new - strtab);
 }
 
-int fdt_add_mem_rsv(void *fdt, uint64_t address, uint64_t size)
+int fdt_add_mem_rsv(void *fdt, u64 address, u64 size)
 {
 	struct fdt_reserve_entry *re;
 	int err;
@@ -338,8 +338,8 @@ int fdt_add_subnode_namelen(void *fdt, int parentoffset,
 	int offset, nextoffset;
 	int nodelen;
 	int err;
-	uint32_t tag;
-	uint32_t *endtag;
+	u32 tag;
+	u32 *endtag;
 
 	FDT_RW_CHECK_HEADER(fdt);
 
@@ -366,7 +366,7 @@ int fdt_add_subnode_namelen(void *fdt, int parentoffset,
 	nh->tag = cpu_to_fdt32(FDT_BEGIN_NODE);
 	memset(nh->name, 0, FDT_TAGALIGN(namelen+1));
 	memcpy(nh->name, name, namelen);
-	endtag = (uint32_t *)((char *)nh + nodelen - FDT_TAGSIZE);
+	endtag = (u32 *)((char *)nh + nodelen - FDT_TAGSIZE);
 	*endtag = cpu_to_fdt32(FDT_END_NODE);
 
 	return offset;

@@ -10,6 +10,7 @@
 #include <os/kva.h>
 #include <os/string.h>
 #include <os/sched.h>
+#include <os/err.h>
 #include <asm/process.h>
 #include <asm/ptrace.h>
 
@@ -25,7 +26,7 @@ static int elf_check_arch(const struct elf_info *info) {
     return 0;
  }
 
-static pgprot_t elf_segment_prot(uint32_t elf_flags)
+static pgprot_t elf_segment_prot(u32 elf_flags)
 {
     pgprot_t prot = PROT_USER;
 
@@ -38,14 +39,17 @@ static pgprot_t elf_segment_prot(uint32_t elf_flags)
     if (elf_flags & PF_X) {
         prot |= PROT_EXEC;
     }
-    dprintk("elf: segment flags=%xu -> prot=%xu\n", elf_flags, prot);
+    // dprintk("elf: segment flags=%xu -> prot=%xu\n", elf_flags, prot);
     return prot;
 }
 
 static void mm_record_segment(struct mm_struct *mm, const struct elf_segment *seg)
 {
-    uint64_t seg_start = seg->vaddr;
-    uint64_t seg_end = seg->vaddr + seg->memsz;
+    u64 seg_start = seg->vaddr;
+    u64 seg_end = seg->vaddr + seg->memsz;
+
+    // printk("elf: record segment: vaddr=%x memsz=%x flags=%x\n",
+    //        (u32)seg->vaddr, (u32)seg->memsz, seg->flags);
 
     if (seg->flags & PF_X) {
         if (mm->start_code == 0 || seg_start < mm->start_code) {
@@ -64,8 +68,13 @@ static void mm_record_segment(struct mm_struct *mm, const struct elf_segment *se
     }
 
     if (seg_end > mm->brk) {
-        mm->brk = ALIGN_UP(seg_end, PAGE_SIZE);
-        mm->start_brk = mm->brk;
+        /*
+         * brk/start_brk track the logical end of the data/bss area.
+         * Page alignment belongs to the VMA / mapping boundary, not the
+         * user-visible program break itself.
+         */
+        mm->brk = seg_end;
+        mm->start_brk = seg_end;
     }
 }
 
@@ -75,13 +84,12 @@ static int elf_map_segment(struct linux_binprm *bprm,
                            size_t file_size)
 {
     pgprot_t prot;
-    uint64_t seg_start;
-    uint64_t seg_end;
-    uint64_t file_end;
+    u64 seg_start;
+    u64 seg_end;
+    u64 file_end;
     uintptr_t addr;
 
     if (seg->type != PT_LOAD || seg->memsz == 0) {
-        here;
         return 0;
     }
 
@@ -101,8 +109,8 @@ static int elf_map_segment(struct linux_binprm *bprm,
     }
 
     for (addr = seg_start; addr < seg_end; addr += PAGE_SIZE) {
-        uint64_t data_start;
-        uint64_t data_end;
+        u64 data_start;
+        u64 data_end;
         void *kva;
         size_t copy_len;
         size_t page_off;
@@ -149,7 +157,7 @@ static int load_elf_binary(struct linux_binprm *bprm) {
     int ret;
     int i;
 
-    CHECK(bprm != NULL, "elf: bprm is NULL", return -1;);
+    CHECK(bprm != NULL, "elf: bprm is NULL", return -EINVAL;);
     CHECK(bprm->file != NULL, "elf: file is NULL", return -1;);
     CHECK(bprm->file->f_inode != NULL, "elf: inode is NULL", return -1;);
     CHECK(bprm->mm != NULL, "elf: bprm->mm is NULL", return -1;);
@@ -162,8 +170,8 @@ static int load_elf_binary(struct linux_binprm *bprm) {
         goto out_fail;
     }
 
-    dprintk("entry=%xu, phnum=%du, size=%du\n",
-           elf_info->entry, elf_info->phnum, (int)elf_info->file_size);
+    // dprintk("entry=%xu, phnum=%du, size=%du\n",
+    //        elf_info->entry, elf_info->phnum, (int)elf_info->file_size);
 
     for (i = 0; i < elf_info->phnum; i++) {
         ret = elf_map_segment(bprm, bprm->mm, &elf_info->segs[i], elf_info->file_size);
@@ -180,21 +188,7 @@ static int load_elf_binary(struct linux_binprm *bprm) {
     current->mm->start_stack = bprm->p;
     regs = task_pt_regs(current);
 
-    {
-        phys_addr_t pa = pgtbl_lookup(current->mm->pgdir, elf_info->entry);
-        pgprot_t prot = pgtbl_lookup_prot(current->mm->pgdir, elf_info->entry);
-        pte_t *root = (pte_t *)current->mm->pgdir->root;
-        int l0 = pgtbl_level_index(current->mm->pgdir, 0, elf_info->entry);
-
-        dprintk("exec: root=%xu root_pa=%xu\n", current->mm->pgdir->root, current->mm->pgdir->root_pa);
-        dprintk("exec: entry=%xu lookup_pa=%xu prot=%xu l0=%du l0_pte=%xu\n",
-        elf_info->entry, pa, prot, l0, root[l0].val);
-
-    }
-
     start_thread(regs, elf_info->entry, bprm->p);
-
-    printk("elf: loaded, pc=%xu, sp=%xu\n", regs->pc, regs->sp);
 
     elf_free(elf_info);
     return 0;
@@ -214,5 +208,5 @@ static struct linux_binfmt elf_format = {
 
 void elf_binfmt_init(void) {
     register_binfmt(&elf_format);
-    printk("elf: binfmt registered\n");
+    // printk("elf: binfmt registered\n");
 }

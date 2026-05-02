@@ -13,7 +13,7 @@
 #include <os/types.h>
 #include <fs/types.h>
 
-extern uint32_t ext2_ino_group(struct superblock *vfs_sb,uint32_t ino);
+extern u32 ext2_ino_group(struct superblock *vfs_sb,u32 ino);
 extern struct super_ops ext2_s_ops;
 
 #endif

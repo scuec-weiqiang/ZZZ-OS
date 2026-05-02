@@ -88,7 +88,7 @@ static int _fdt_string_eq(const void *fdt, int stroffset,
 	return (strlen(p) == len) && (memcmp(p, s, len) == 0);
 }
 
-int fdt_get_mem_rsv(const void *fdt, int n, uint64_t *address, uint64_t *size)
+int fdt_get_mem_rsv(const void *fdt, int n, u64 *address, u64 *size)
 {
 	FDT_CHECK_HEADER(fdt);
 	*address = fdt64_to_cpu(_fdt_mem_rsv(fdt, n)->address);
@@ -107,7 +107,7 @@ int fdt_num_mem_rsv(const void *fdt)
 
 static int _nextprop(const void *fdt, int offset)
 {
-	uint32_t tag;
+	u32 tag;
 	int nextoffset;
 
 	do {
@@ -320,9 +320,9 @@ const void *fdt_getprop(const void *fdt, int nodeoffset,
 	return fdt_getprop_namelen(fdt, nodeoffset, name, strlen(name), lenp);
 }
 
-uint32_t fdt_get_phandle(const void *fdt, int nodeoffset)
+u32 fdt_get_phandle(const void *fdt, int nodeoffset)
 {
-	const uint32_t *php;
+	const u32 *php;
 	int len;
 
 	/* FIXME: This is a bit sub-optimal, since we potentially scan
@@ -490,7 +490,7 @@ int fdt_node_offset_by_prop_value(const void *fdt, int startoffset,
 	return offset; /* error from fdt_next_node() */
 }
 
-int fdt_node_offset_by_phandle(const void *fdt, uint32_t phandle)
+int fdt_node_offset_by_phandle(const void *fdt, u32 phandle)
 {
 	int offset;
 

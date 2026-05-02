@@ -11,10 +11,7 @@
 #define __KERNEL_DRIVER_H
 
 #include <os/module.h>
-#include <mm/symbols.h>
 
-
-#define driver_init() do_initcalls(initcall_start, initcall_end, initcall_t)
-#define driver_exit() do_exitcalls(exitcall_start, exitcall_end, initcall_t)
+#define driver_init() device_initcalls_run()
 
 #endif

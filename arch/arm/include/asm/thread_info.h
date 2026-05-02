@@ -23,17 +23,17 @@ struct task_struct;
 typedef unsigned long mm_segment_t;
 
 struct cpu_context_save {
-	uint32_t	r4;
-	uint32_t	r5;
-	uint32_t	r6;
-	uint32_t	r7;
-	uint32_t	r8;
-	uint32_t	r9;
-	uint32_t	sl;
-	uint32_t	fp;
-	uint32_t	sp;
-	uint32_t	pc;
-	uint32_t	extra[2];		/* Xscale 'acc' register, etc */
+	u32	r4;
+	u32	r5;
+	u32	r6;
+	u32	r7;
+	u32	r8;
+	u32	r9;
+	u32	sl;
+	u32	fp;
+	u32	sp;
+	u32	pc;
+	u32	extra[2];		/* Xscale 'acc' register, etc */
 };
 
 /*
@@ -44,8 +44,8 @@ struct thread_info {
 	struct cpu_context_save	cpu_context;	/* cpu context */
 	struct task_struct	*task;		/* main task structure */
 	int			preempt_count;/* 0 = 可抢占，>0 = 禁止抢占 */
-	uint32_t			cpu;		/* cpu */
-	uint32_t			syscall;	/* syscall number */
+	u32			cpu;		/* cpu */
+	u32			syscall;	/* syscall number */
 };
 
 #define INIT_THREAD_INFO(tsk)						\

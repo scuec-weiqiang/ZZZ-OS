@@ -3,13 +3,38 @@
 #include <os/kmalloc.h>
 #include <os/sched.h>
 #include <os/errno.h>
+#include <os/err.h>
+#include <os/printk.h>
+#include <mm/slab.h>
+
+static struct kmem_cache *fs_struct_cache = NULL;
+
+int alloc_fs_struct_init(void) {
+	fs_struct_cache = kmem_cache_create("fs_struct_cache", sizeof(struct fs_struct), 8);
+	if (!fs_struct_cache) {
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+struct fs_struct *alloc_fs_struct(void) {
+	struct fs_struct *fs = kmem_cache_alloc(fs_struct_cache);
+	if (!fs) {
+		return ERR_PTR(-ENOMEM);
+	}
+	fs->users = 1;
+	return fs;
+}
+
+void free_fs_struct(struct fs_struct *fs) {
+	kmem_cache_free(fs);
+}
 
 /*
  * Replace the fs->{rootmnt,root} with {mnt,dentry}. Put the old values.
  * It can block.
  */
-void set_fs_root(struct fs_struct *fs, const struct path *path)
-{
+void set_fs_root(struct fs_struct *fs, const struct path *path) {
 	struct path old_root;
 
 	path_get(path);
@@ -27,8 +52,7 @@ void set_fs_root(struct fs_struct *fs, const struct path *path)
  * Replace the fs->{pwdmnt,pwd} with {mnt,dentry}. Put the old values.
  * It can block.
  */
-void set_fs_pwd(struct fs_struct *fs, const struct path *path)
-{
+void set_fs_pwd(struct fs_struct *fs, const struct path *path) {
 	struct path old_pwd;
 
 	path_get(path);
@@ -49,43 +73,43 @@ void set_fs_pwd(struct fs_struct *fs, const struct path *path)
 // 	return 1;
 // }
 
-void free_fs_struct(struct fs_struct *fs) {
-	path_put(&fs->root);
-	path_put(&fs->pwd);
-	kfree(fs);
+struct fs_struct *get_fs_struct(struct fs_struct *fs) {
+	if (fs) {
+		spin_lock(&fs->lock);
+		fs->users ++;
+		spin_unlock(&fs->lock);
+	}
+	return fs;
 }
 
-void exit_fs(struct task_struct *tsk) {
-	struct fs_struct *fs = tsk->fs;
-
+void put_fs_struct(struct fs_struct *fs) {
 	if (fs) {
-		int kill;
-		spin_lock(&tsk->lock);
 		spin_lock(&fs->lock);
-		tsk->fs = NULL;
-		kill = !--fs->users;
-		spin_unlock(&fs->lock);
-		spin_unlock(&tsk->lock);
-		if (kill)
+		if (--fs->users == 0) {
+			spin_unlock(&fs->lock);
 			free_fs_struct(fs);
+			return;
+		}
+		spin_unlock(&fs->lock);
 	}
 }
 
+
+
 struct fs_struct *copy_fs_struct(struct fs_struct *old) {
-	struct fs_struct *fs = kmalloc(sizeof(struct fs_struct));
-	/* We don't need to lock fs - think why ;-) */
+	struct fs_struct *fs = alloc_fs_struct();
+
 	if (fs) {
 		fs->users = 1;
-		fs->in_exec = 0;
 		spin_lock_init(&fs->lock);
-		fs->umask = old->umask;
 
-		spin_lock(&old->lock);
+		fs->umask = old->umask;
+		
 		fs->root = old->root;
 		path_get(&fs->root);
+
 		fs->pwd = old->pwd;
 		path_get(&fs->pwd);
-		spin_unlock(&old->lock);
 	}
 	return fs;
 }

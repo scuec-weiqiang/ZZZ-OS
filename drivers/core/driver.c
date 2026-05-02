@@ -10,10 +10,9 @@
 #include <os/device.h>
 #include <os/bus.h>
 #include <os/list.h>
-#include <mm/symbols.h>
 
 void driver_init() {
-    do_initcalls(initcall_start, initcall_end)
+    device_initcalls_run();
 }
 
 int driver_register(struct device_driver *drv) {

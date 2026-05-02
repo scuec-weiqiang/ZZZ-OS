@@ -16,7 +16,7 @@
 #include <os/irq.h>
 
 //系统时钟以0核为基准
-static uint64_t arch_timer_tick[] = {0};
+static u64 arch_timer_tick[] = {0};
 static enum arch_timer_hz arch_timer_hz[] = {SYS_HZ_1,SYS_HZ_1};
 
 void arch_timer_period(enum arch_timer_hz hz)
@@ -28,12 +28,12 @@ void arch_timer_period(enum arch_timer_hz hz)
 void arch_timer_reload()
 {   
     int id = tp_r();
-    uint64_t temp = time_r();
+    u64 temp = time_r();
     temp +=  arch_timer_hz[id];
     stimecmp_w(temp);
 }
 
-uint64_t systick()
+u64 systick()
 {
     int id = tp_r();
     return arch_timer_tick[id];
@@ -45,14 +45,14 @@ void systick_up()
     arch_timer_tick[id]++;
 }
 
-uint64_t arch_timer_counter(void)
+u64 arch_timer_counter(void)
 {
     return time_r();
 }
 
-uint32_t arch_timer_frequency(void)
+u32 arch_timer_frequency(void)
 {
-    return (uint32_t)SYS_CLOCK_FREQ;
+    return (u32)SYS_CLOCK_FREQ;
 }
 
 void arch_timer_init( enum arch_timer_hz hz)

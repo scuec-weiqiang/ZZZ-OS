@@ -22,6 +22,13 @@ typedef void(*exitcall_t)(void);
     __section(section) __used\
     static initcall_t __initcall_##fn = fn##_initcall;
 
+#define arch_initcall(fn) module_init(fn, ".archinitcall")
+#define core_initcall(fn) module_init(fn, ".coreinitcall")
+#define fs_initcall(fn) module_init(fn, ".fsinitcall")
+#define device_initcall(fn) module_init(fn, ".deviceinitcall")
+#define driver_initcall(fn) device_initcall(fn)
+#define late_initcall(fn) module_init(fn, ".lateinitcall")
+
 #define module_exit(fn,section) \
     static int fn##_exitcall(void) { fn(); return 0;} \
     __section(section) __used\
@@ -38,6 +45,12 @@ typedef void(*exitcall_t)(void);
 #define do_initcalls(start, end) do_calls(start, end, initcall_t)
 
 #define do_exitcalls(start, end) do_calls(start, end, exitcall_t)\
+
+void arch_initcalls_run(void);
+void core_initcalls_run(void);
+void fs_initcalls_run(void);
+void device_initcalls_run(void);
+void late_initcalls_run(void);
 
    
 #endif

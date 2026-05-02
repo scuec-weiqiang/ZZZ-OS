@@ -8,10 +8,11 @@
 #include <os/kmalloc.h>
 #include <fs/inode.h>
 #include <os/sched.h>
+#include <os/err.h>
 
 struct path_cursor {
     const char *path;
-    uint32_t pos;
+    u32 pos;
 };
 /**
  * @brief 获取路径中的下一个组件
@@ -24,8 +25,8 @@ struct path_cursor {
  * @return 返回0表示成功，返回-1表示失败，返回1表示没有更多组件
  */
 int next_component(struct path_cursor *cur, struct qstr *name) {
-    uint32_t start;
-    uint32_t end;
+    u32 start;
+    u32 end;
 
     if (cur == NULL || name == NULL || cur->path == NULL) {
         return -1;
@@ -70,9 +71,9 @@ int path_lookup(const char *path, struct path *out) {
     if (path[1] == '\0') {
         out->mnt = current->fs->root.mnt;
         out->dentry = current->fs->root.dentry;
-        return out->dentry ? 0 : -1;
+        return out->dentry ? 0 : -EINVAL;
     }
-
+   
     struct path_cursor cur;
     struct dentry *parent_dir = current->fs->root.dentry;
     struct vfsmount *mnt = NULL;
@@ -81,36 +82,38 @@ int path_lookup(const char *path, struct path *out) {
     struct dentry *dentry;
     struct qstr name;
 
+    long ret = -EINVAL;
+
     cur.path = path;
     cur.pos = 1; // skip leading '/'
 
+    next_component(&cur, &name);
     while (1) {
-        int ret = next_component(&cur, &name);
-        if (ret < 0) {
-           goto err_out;
-        } else if (ret > 0) {
-            break;
-        }
-
-        
         cached = d_lookup(parent_dir, &name);
-
         // 先尝试在 dcache 中查找，否则才从磁盘找
         if (cached != NULL) {
             child_dir = dget(cached);
         } else {
-            
             dentry = d_alloc_qstr(parent_dir, &name);
             child_dir = parent_dir->d_inode->i_op->lookup(parent_dir->d_inode, dentry, 0);
         }
 
-        if (child_dir == NULL) {
+        if (IS_ERR(child_dir)) {
+            ret = PTR_ERR(child_dir);
             goto err_out;
         }
-
+    
         parent_dir = child_dir;
         if (vfs_search_mount(parent_dir, &mnt) == 0) {
             parent_dir = mnt->mnt_root;
+        }
+
+        int ret = next_component(&cur, &name);
+        if (ret < 0) {
+            ret = -EFAULT;
+            goto err_out;
+        } else if (ret > 0) {
+            break;
         }
     }
 
@@ -122,7 +125,7 @@ int path_lookup(const char *path, struct path *out) {
 err_out:
     out->mnt = NULL;
     out->dentry = NULL;
-    return -1;
+    return ret;
 }
 
 int path_parentat(const char *path, struct path *parent, struct qstr *last) {
@@ -155,7 +158,7 @@ int path_parentat(const char *path, struct path *parent, struct qstr *last) {
 
     while (1) {
         int ret = next_component(&cur, &name);
-        dprintk("next component: %d ,%s\n", name.len, name.name);
+        // dprintk("next component: %d ,%s\n", name.len, name.name);
         if (ret != 0) {
             goto err_out;
         }
@@ -165,7 +168,7 @@ int path_parentat(const char *path, struct path *parent, struct qstr *last) {
         struct qstr next_name;
         
         int next_ret = next_component(&save, &next_name);
-        dprintk("try next component: %d\n", next_ret);
+        // dprintk("try next component: %d\n", next_ret);
  
         // 如果后面没有更多 component
         // 当前 name 就是最后一个分量
@@ -179,10 +182,10 @@ int path_parentat(const char *path, struct path *parent, struct qstr *last) {
         cached = d_lookup(curr, &name);
         if (cached != NULL) {
             next = dget(cached);
-            dprintk("found cached dentry: %s\n", next->d_name.name);
+            // dprintk("found cached dentry: %s\n", next->d_name.name);
         } else {
             // 否则 current/name 还是中间路径，要继续 lookup
-            dprintk("lookup dentry:%d, %s\n", name.len, name.name);
+            // dprintk("lookup dentry:%d, %s\n", name.len, name.name);
             dentry = d_alloc_qstr(curr, &name);
             next = curr->d_inode->i_op->lookup(curr->d_inode, dentry, 0);
         }
@@ -192,7 +195,7 @@ int path_parentat(const char *path, struct path *parent, struct qstr *last) {
 
         curr = next;
         if (vfs_search_mount(curr, &mnt) == 0) {
-            dprintk("found mount at dentry: %s\n", curr->d_name.name);
+            // dprintk("found mount at dentry: %s\n", curr->d_name.name);
             curr = mnt->mnt_root;
         }
     }
@@ -215,7 +218,7 @@ struct dentry* vfs_lookup(const char* path) {
     return resolved.dentry;
 }
 
-struct dentry* vfs_mkdir(const char* path,uint16_t mode) {
+struct dentry* vfs_mkdir(const char* path,u16 mode) {
     CHECK(path != NULL, "", return NULL;);
     CHECK(mode > 0, "", return NULL;);
 
@@ -239,7 +242,7 @@ struct dentry* vfs_mkdir(const char* path,uint16_t mode) {
     return child_dentry;
 }
 
-struct dentry *vfs_create(const char *path, uint16_t mode) {
+struct dentry *vfs_create(const char *path, u16 mode) {
     struct path resolved_parent;
     struct qstr child_name;
     struct dentry *child_dentry = NULL;
@@ -262,7 +265,7 @@ struct dentry *vfs_create(const char *path, uint16_t mode) {
     return child_dentry;
 }
 
-struct dentry *vfs_mknod(const char *path, uint16_t mode, dev_t dev) {
+struct dentry *vfs_mknod(const char *path, u16 mode, dev_t dev) {
     struct path resolved_parent;
     struct qstr child_name;
     struct dentry *child_dentry = NULL;

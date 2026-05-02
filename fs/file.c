@@ -1,4 +1,6 @@
 #include <fs/file.h>
+#include <fs/blkdev.h>
+#include <fs/cdev.h>
 #include <fs/dcache.h>
 #include <fs/inode.h>
 #include <fs/namei.h>
@@ -10,8 +12,179 @@
 #include <os/atomic.h>
 #include <os/spinlock.h>
 #include <os/sched.h>
+#include <os/syscall_num.h>
+#include <os/uaccess.h>
 
-struct file *filp_open(const char *path, uint32_t flags) {
+#define SYSCALL_PATH_MAX 256
+/*
+    这里没有对用户空间地址有效性做核验
+    崩了直接就kernel panic了
+*/
+static int copy_user_string(char *dst, size_t dst_len, uintptr_t user_ptr) {
+    size_t i;
+
+    if (!dst || dst_len == 0 || user_ptr == 0 || current->mm == NULL)
+        return -EINVAL;
+
+    for (i = 0; i < dst_len; i++) {
+        if (copy_from_user(&dst[i], (char *)user_ptr + i, 1) < 0)
+            return -EFAULT;
+        if (dst[i] == '\0')
+            return 0;
+    }
+
+    dst[dst_len - 1] = '\0';
+    return -ENAMETOOLONG;
+}
+
+static struct file *sys_fdget(int fd) {
+    struct files_struct *files;
+    struct file *file = NULL;
+
+    if (fd < 0)
+        return NULL;
+
+    files = current->files;
+    if (files == NULL)
+        return NULL;
+
+    spin_lock(&files->file_lock);
+    if (fd < files->fdtab.max_fds && fd_is_open(fd, &files->fdtab))
+        file = files->fdtab.fd[fd];
+    spin_unlock(&files->file_lock);
+
+    return file;
+}
+
+long sys_read(struct pt_regs *ctx) {
+    int fd = (int)ctx->r[0];
+    uintptr_t user_buf = ctx->r[1];
+    size_t len = ctx->r[2];
+    struct file *file;
+    char *kbuf;
+    ssize_t ret;
+
+    if (len == 0)
+        return 0;
+
+    file = sys_fdget(fd);
+    if (file == NULL)
+        return -EBADF;
+
+    kbuf = kmalloc(len);
+    if (kbuf == NULL)
+        return -ENOMEM;
+
+    ret = kernel_read(file, kbuf, len);
+    if (ret >= 0) {
+        if (copy_to_user((char *)user_buf, kbuf, (size_t)ret) < 0) {
+            kfree(kbuf);
+            return -EFAULT;
+        }
+    }
+
+    kfree(kbuf);
+    return ret;
+}
+
+long sys_write(struct pt_regs *ctx) {
+    int fd = (int)ctx->r[0];
+    uintptr_t user_buf = ctx->r[1];
+    size_t len = ctx->r[2];
+    struct file *file;
+    char *kbuf;
+    ssize_t ret;
+
+    if (len == 0)
+        return 0;
+
+    file = sys_fdget(fd);
+    if (file == NULL)
+        return -EBADF;
+
+    kbuf = kmalloc(len);
+    if (kbuf == NULL)
+        return -ENOMEM;
+
+    if (copy_from_user(kbuf, (char *)user_buf, len) < 0) {
+        kfree(kbuf);
+        return -EFAULT;
+    }
+
+    ret = kernel_write(file, kbuf, len);
+    kfree(kbuf);
+    return ret;
+}
+
+long sys_open(struct pt_regs *ctx) {
+    uintptr_t user_path = ctx->r[0];
+    int flags = (int)ctx->r[1];
+    char path[SYSCALL_PATH_MAX];
+    struct file *file;
+    int fd;
+
+    memset(path, 0, SYSCALL_PATH_MAX);
+    if (copy_user_string(path, sizeof(path), user_path) < 0)
+        return -EFAULT;
+
+    file = filp_open(path, (u32)flags);
+    if (IS_ERR(file)) {
+        if ((flags & O_CREAT) == 0)
+            return PTR_ERR(file);
+
+        if (vfs_create(path, 0644) == NULL)
+            return -ENOENT;
+
+        file = filp_open(path, (u32)flags);
+        if (IS_ERR(file))
+            return PTR_ERR(file);
+    }
+
+    fd = alloc_fd(0, (unsigned)flags);
+    if (fd < 0) {
+        filp_close(file);
+        return fd;
+    }
+
+    attach_fd(fd, file);
+    return fd;
+}
+
+long sys_close(struct pt_regs *ctx) {
+    return close_fd((unsigned)ctx->r[0]);
+}
+
+long sys_creat(struct pt_regs *ctx) {
+    uintptr_t user_path = ctx->r[0];
+    int mode = (int)ctx->r[1];
+    char path[SYSCALL_PATH_MAX];
+
+    if (copy_user_string(path, sizeof(path), user_path) < 0)
+        return -EFAULT;
+
+    if (vfs_create(path, (u16)mode) == NULL)
+        return -EIO;
+
+    return sys_open(ctx);
+}
+
+long sys_mkdir(struct pt_regs *ctx) {
+    uintptr_t user_path = ctx->r[0];
+    int mode = (int)ctx->r[1];
+    char path[SYSCALL_PATH_MAX];
+
+    if (copy_user_string(path, sizeof(path), user_path) < 0)
+        return -EFAULT;
+
+    if (vfs_mkdir(path, (u16)mode) == NULL)
+        return -EIO;
+
+    return 0;
+}
+
+struct file *filp_open(const char *path, u32 flags) {
+    struct cdev *cdev = NULL;
+    struct blkdev *bdev = NULL;
     struct file *file = NULL;
     struct path resolved = {0};
     int ret = 0;
@@ -20,11 +193,12 @@ struct file *filp_open(const char *path, uint32_t flags) {
     if (ret < 0) {
         return ERR_PTR(-ENOENT);
     }
+
     if (resolved.dentry == NULL || resolved.dentry->d_inode == NULL) {
         ret = -ENOENT;
         goto err_put_path;
     }
-
+    
     file = kmalloc(sizeof(*file));
     if (file == NULL) {
         ret = -ENOMEM;
@@ -38,6 +212,30 @@ struct file *filp_open(const char *path, uint32_t flags) {
     file->f_flags = flags;
     atomic_set(&file->f_count, 1);
 
+    if (S_ISCHR(file->f_inode->i_mode)) {
+        cdev = cdev_get_by_devnr(file->f_inode->i_rdev);
+		
+        if (cdev == NULL) {
+            ret = -ENODEV;
+            goto err_free_file;
+        }
+        cdev->cd_openers++;
+        file->f_op = (struct file_operations *)cdev->node->fops;
+		// dprintk("filp_open: open char device %s, devnr=%u, fops=%xu\n",
+		// 		cdev->name, cdev->devnr, file->f_op);
+        file->private_data = cdev->private ? cdev->private : cdev;
+    } else if (S_ISBLK(file->f_inode->i_mode)) {
+        bdev = blkdev_get_by_devnr(file->f_inode->i_rdev);
+        if (bdev == NULL) {
+            ret = -ENODEV;
+            goto err_free_file;
+        }
+        bdev->bd_openers++;
+        if (bdev->bd_node != NULL) {
+            file->f_op = (struct file_operations *)bdev->bd_node->fops;
+        }
+        file->private_data = bdev;
+    }
 
     if (file->f_op != NULL && file->f_op->open != NULL) {
         ret = file->f_op->open(file->f_inode, file);
@@ -52,6 +250,12 @@ struct file *filp_open(const char *path, uint32_t flags) {
     return file;
 
 err_free_file:
+    if (cdev != NULL) {
+        cdev_put(cdev);
+    }
+    if (bdev != NULL) {
+        blkdev_put(bdev);
+    }
     kfree(file);
 err_put_path:
     file = NULL;
@@ -67,6 +271,15 @@ err_put_path:
 
 void filp_close(struct file *file) {
     if (file != NULL) {
+        if (file->f_inode != NULL) {
+            if (S_ISCHR(file->f_inode->i_mode)) {
+                struct cdev *cdev = cdev_get_by_devnr(file->f_inode->i_rdev);
+                cdev_put(cdev);
+            } else if (S_ISBLK(file->f_inode->i_mode)) {
+                struct blkdev *bdev = blkdev_get_by_devnr(file->f_inode->i_rdev);
+                blkdev_put(bdev);
+            }
+        }
         if (file->f_path.dentry != NULL) {
             dput(file->f_path.dentry);
         }
@@ -99,135 +312,100 @@ ssize_t kernel_read_at(struct file *file, loff_t pos, char *buf, size_t len) {
 }
 
 ssize_t kernel_write(struct file *file, const char *buf, size_t len) {
+	
     RETURN_ERR_IF(file == NULL, -EBADF);
+	
     RETURN_ERR_IF(file->f_op == NULL || file->f_op->write == NULL, -EINVAL);
+	
     return file->f_op->write(file, buf, len, &file->f_pos);
 }
 
-static inline void __set_close_on_exec(int fd, struct fdtable *fdt)
-{
+// close_on_exec 和 open_fds 都是位图，fd对应的位为1表示该fd被设置了close_on_exec或者是open的
+static inline void __set_close_on_exec(int fd, struct fdtable *fdt) {
 	__set_bit(fd, fdt->close_on_exec);
 }
 
-static inline void __clear_close_on_exec(int fd, struct fdtable *fdt)
-{
+static inline void __clear_close_on_exec(int fd, struct fdtable *fdt) {
 	__clear_bit(fd, fdt->close_on_exec);
 }
 
-static inline void __set_open_fd(int fd, struct fdtable *fdt)
-{
+static inline void __set_open_fd(int fd, struct fdtable *fdt) {
 	__set_bit(fd, fdt->open_fds);
 }
 
-static inline void __clear_open_fd(int fd, struct fdtable *fdt)
-{
+static inline void __clear_open_fd(int fd, struct fdtable *fdt) {
 	__clear_bit(fd, fdt->open_fds);
 }
 
-
-static int count_open_files(struct fdtable *fdt)
-{
-	int size = fdt->max_fds;
-	int i;
-
-	/* Find the last open fd */
-	for (i = size / BITS_PER_LONG; i > 0; ) {
-		if (fdt->open_fds[--i])
-			break;
-	}
-	i = (i + 1) * BITS_PER_LONG;
-	return i;
+static void init_files_struct(struct files_struct *files) {
+    memset(files, 0, sizeof(*files));
+    atomic_set(&files->refcount, 1);
+    spin_lock_init(&files->file_lock);
+    files->fdtab.max_fds = MAX_OPEN_FILES_NUM;
+    files->fdtab.close_on_exec = files->close_on_exec_init;
+    files->fdtab.open_fds = files->open_fds_init;
+    files->fdtab.fd = &files->fd_array[0];
+    files->next_fd = 0;
 }
 
+#include <mm/slab.h>
 
-/*
- * Allocate a new files structure and copy contents from the
- * passed in files structure.
- * errorp will be valid only when the returned files_struct is NULL.
- */
-struct files_struct *dup_fd(struct files_struct *oldf, int *errorp) {
+static struct kmem_cache *files_struct_cache = NULL;
+
+int alloc_files_struct_init(void) {
+    files_struct_cache = 
+    kmem_cache_create("files_struct_cache", sizeof(struct files_struct), 8);
+    if (!files_struct_cache) {
+        return -ENOMEM;
+    }
+    return 0;
+}
+
+struct files_struct *alloc_files_struct(void) {
+    struct files_struct *files = kmem_cache_alloc(files_struct_cache);
+    if (!files) {
+        return ERR_PTR(-ENOMEM);
+    }
+    init_files_struct(files);
+    return files;
+}
+
+void free_files_struct(struct files_struct *files) {
+    if (!files)
+        return;
+    kmem_cache_free(files);
+}
+
+struct files_struct *dup_fd(struct files_struct *oldf) {
 	struct files_struct *newf;
-	struct file **old_fds, **new_fds;
-	int open_files, size, i;
-	struct fdtable *old_fdt, *new_fdt;
+	int i;
 
-	newf = kmalloc(sizeof(struct files_struct));
-	if (!newf) {
-        *errorp = -ENOMEM;
+	newf = alloc_files_struct();
+	if (IS_ERR(newf)) {
         goto out;
     }
 
-
-	atomic_set(&newf->refcount, 1);
-
-	spin_lock_init(&newf->file_lock);
-	newf->next_fd = 0;
-	new_fdt = &newf->fdtab;
-	new_fdt->max_fds = MAX_OPEN_FILES_NUM;
-	new_fdt->close_on_exec = newf->close_on_exec_init;
-	new_fdt->open_fds = newf->open_fds_init;
-	new_fdt->fd = &newf->fd_array[0];
-
 	spin_lock(&oldf->file_lock);
-	old_fdt = &oldf->fdtab;
-	open_files = count_open_files(old_fdt);
+	for (i = 0; i < MAX_OPEN_FILES_NUM; i++) {
+        struct file *f;
 
-	old_fds = old_fdt->fd;
-	new_fds = new_fdt->fd;
+        // 只复制被打开的fd
+        if (!fd_is_open(i, &oldf->fdtab))
+            continue;
 
-	memcpy(new_fdt->open_fds, old_fdt->open_fds, open_files / 8);
-	memcpy(new_fdt->close_on_exec, old_fdt->close_on_exec, open_files / 8);
+        f = oldf->fdtab.fd[i];
+        if (!f)
+            continue;
 
-	for (i = open_files; i != 0; i--) {
-		struct file *f = *old_fds++;
-		if (f) {
-			get_file(f);
-		} else {
-			/*
-			 * The fd may be claimed in the fd bitmap but not yet
-			 * instantiated in the files array if a sibling thread
-			 * is partway through open().  So make sure that this
-			 * fd is available to the new process.
-			 */
-			__clear_open_fd(open_files - i, new_fdt);
-		}
-        *new_fds = f;
-        new_fds++;
+        newf->fdtab.fd[i] = get_file(f);
+        __set_open_fd(i, &newf->fdtab);
+        if (close_on_exec(i, &oldf->fdtab))
+            __set_close_on_exec(i, &newf->fdtab);
 	}
 	spin_unlock(&oldf->file_lock);
 
-	/* compute the remainder to be cleared */
-	size = (new_fdt->max_fds - open_files) * sizeof(struct file *);
-
-	/* This is long word aligned thus could use a optimized version */
-	memset(new_fds, 0, size);
-
-	if (new_fdt->max_fds > open_files) {
-		int left = (new_fdt->max_fds - open_files) / 8;
-		int start = open_files / BITS_PER_LONG;
-
-		memset(&new_fdt->open_fds[start], 0, left);
-		memset(&new_fdt->close_on_exec[start], 0, left);
-	} else {
-        *errorp = -EMFILE;
-    }
-
-	return newf;
-
 out:
-	return NULL;
-}
-
-struct files_struct *get_files_struct(struct task_struct *task) {
-	struct files_struct *files;
-
-	spin_lock(&task->lock);
-	files = task->files;
-	if (files)
-		atomic_inc(&files->refcount);
-	spin_lock(&task->lock);
-
-	return files;
+	return newf;
 }
 
 static struct fdtable *close_files(struct files_struct * files) {
@@ -249,7 +427,11 @@ static struct fdtable *close_files(struct files_struct * files) {
 			if (set & 1) {
 				struct file * file = fdt->fd[i];
 				if (file) {
-					filp_close(file);
+                    fdt->fd[i] = NULL;
+					put_file(file);
+                    if (file && atomic_read(&file->f_count) == 0) {
+                        filp_close(file);
+                    }
 				}
 			}
 			i++;
@@ -274,10 +456,7 @@ struct files_struct init_files = {
 #include <os/bitops.h>
 
 // 从 addr 指向的位图中，从 offset 开始找下一个 0 bit，返回其位置
-unsigned long find_next_zero_bit(const unsigned long *addr,
-                                 unsigned long size,
-                                 unsigned long offset)
-{
+unsigned long find_next_zero_bit(const unsigned long *addr, unsigned long size, unsigned long offset) {
     // 当前处理到第几个 unsigned long
     unsigned long k = offset / (8 * sizeof(unsigned long));
     // 在当前 unsigned long 内部的起始 bit 偏移
@@ -313,46 +492,6 @@ unsigned long find_next_zero_bit(const unsigned long *addr,
     return size;
 }
 
-
-/*
- * allocate a file descriptor, mark it busy.
- */
-int __alloc_fd(struct files_struct *files,
-	       unsigned start, unsigned end, unsigned flags)
-{
-	unsigned int fd;
-	int error;
-	struct fdtable *fdt;
-
-	spin_lock(&files->file_lock);
-	fdt = &files->fdtab;
-	fd = start;
-	if (fd < files->next_fd)
-		fd = files->next_fd;
-
-	if (fd < fdt->max_fds)
-		fd = find_next_zero_bit(fdt->open_fds, fdt->max_fds, fd);
-
-	/*
-	 * N.B. For clone tasks sharing a files structure, this test
-	 * will limit the total number of files that can be opened.
-	 */
-	error = -EMFILE;
-	if (fd >= end)
-		goto out;
-
-	__set_open_fd(fd, fdt);
-	if (flags & O_CLOEXEC)
-		__set_close_on_exec(fd, fdt);
-	else
-		__clear_close_on_exec(fd, fdt);
-	error = fd;
-
-out:
-	spin_unlock(&files->file_lock);
-	return error;
-}
-
 static void __put_unused_fd(struct files_struct *files, unsigned int fd) {
 	struct fdtable *fdt = &files->fdtab;
 	__clear_open_fd(fd, fdt);
@@ -360,11 +499,39 @@ static void __put_unused_fd(struct files_struct *files, unsigned int fd) {
 		files->next_fd = fd;
 }
 
-static int alloc_fd(unsigned start, unsigned flags) {
-	return __alloc_fd(current->files, start, MAX_OPEN_FILES_NUM, flags);
+static int __alloc_fd(struct files_struct *files, unsigned start, unsigned end, unsigned flags) {
+	unsigned int fd;
+
+	spin_lock(&files->file_lock);
+	fd = start > (unsigned)files->next_fd ? start : (unsigned)files->next_fd;
+    while (fd < end) {
+        if (!fd_is_open((int)fd, &files->fdtab))
+            break;
+        fd++;
+    }
+
+    if (fd >= end) {
+        spin_unlock(&files->file_lock);
+        return -EMFILE;
+    }
+
+	__set_open_fd(fd, &files->fdtab);
+	if (flags & O_CLOEXEC)
+		__set_close_on_exec(fd, &files->fdtab);
+	else
+		__clear_close_on_exec(fd, &files->fdtab);
+    files->fdtab.fd[fd] = NULL;
+    files->next_fd = fd + 1;
+	spin_unlock(&files->file_lock);
+	return (int)fd;
 }
 
-int __close_fd(struct files_struct *files, unsigned fd) {
+static int __close_fd(struct files_struct *files, unsigned fd) {
+	if (files == NULL || fd >= MAX_OPEN_FILES_NUM) {
+		
+		return -EBADF;
+	}
+
 	struct file *file;
 	struct fdtable *fdt;
 
@@ -379,7 +546,11 @@ int __close_fd(struct files_struct *files, unsigned fd) {
 	__clear_close_on_exec(fd, fdt);
 	__put_unused_fd(files, fd);
 	spin_unlock(&files->file_lock);
-	filp_close(file);
+	put_file(file);
+    if (file && atomic_read(&file->f_count) == 0) {
+        filp_close(file);
+    }
+	
     return 0;
 
 out_unlock:
@@ -387,38 +558,111 @@ out_unlock:
 	return -EBADF;
 }
 
-void do_close_on_exec(struct files_struct *files) {
-	unsigned i;
-	struct fdtable *fdt;
+int alloc_fd(unsigned start, unsigned flags) {
+	return __alloc_fd(current->files, start, MAX_OPEN_FILES_NUM, flags);
+}
 
-	/* exec unshares first */
+int close_fd(unsigned fd) {
+	return __close_fd(current->files, (unsigned)fd);
+}
+
+// 将文件描述符和文件绑定
+void attach_fd(unsigned int fd, struct file *file) {
+    struct files_struct *files = current->files;
+
+    spin_lock(&files->file_lock);
+
+    __set_open_fd((int)fd, &files->fdtab);
+    files->fdtab.fd[fd] = file;
+
+    spin_unlock(&files->file_lock);
+}
+static bool stdio_status = false;
+
+int setup_stdio(const char *path) {
+    static const unsigned stdio_fds[3] = {0, 1, 2};
+    struct files_struct *files = current->files;
+    unsigned i;
+
+    if (!path || !files)
+        return -EINVAL;
+
+    for (i = 0; i < 3; i++) {
+        struct file *file = filp_open(path, O_RDWR);
+
+        if (IS_ERR(file))
+            return PTR_ERR(file);
+
+        if (close_fd(stdio_fds[i]) < 0) {
+            /* Ignore EBADF for empty stdio slots in a fresh files table. */
+        }
+
+        spin_lock(&files->file_lock);
+
+        files->fdtab.fd[stdio_fds[i]] = file;
+        __set_open_fd((int)stdio_fds[i], &files->fdtab);
+        __clear_close_on_exec((int)stdio_fds[i], &files->fdtab);
+        if (files->next_fd <= (int)stdio_fds[i])
+            files->next_fd = (int)stdio_fds[i] + 1;
+
+        spin_unlock(&files->file_lock);
+    }
+
+    stdio_status = true;
+    return 0;
+}
+
+bool stdio_is_setup(void) {
+    return stdio_status;
+}
+
+struct file *fd_get_file(unsigned int fd) {
+	struct files_struct *files = current->files;
+	struct file *file = NULL;
+
 	spin_lock(&files->file_lock);
-	for (i = 0; ; i++) {
-		unsigned long set;
-		unsigned fd = i * BITS_PER_LONG;
-		fdt = &files->fdtab;
-		if (fd >= fdt->max_fds)
-			break;
-		set = fdt->close_on_exec[i];
-		if (!set)
-			continue;
-		fdt->close_on_exec[i] = 0;
-		for ( ; set ; fd++, set >>= 1) {
-			struct file *file;
-			if (!(set & 1))
-				continue;
-			file = fdt->fd[fd];
-			if (!file)
-				continue;
-			fdt->fd[fd] =  NULL;
-			__put_unused_fd(files, fd);
-			spin_unlock(&files->file_lock);
-			filp_close(file);
-			spin_lock(&files->file_lock);
-		}
-
+	if (fd < files->fdtab.max_fds && test_bit(fd, files->fdtab.open_fds)) {
+		file = files->fdtab.fd[fd];
+		if (file)
+			get_file(file);
 	}
 	spin_unlock(&files->file_lock);
+
+	return file;
+}
+
+void fd_put_file(struct file *file) {
+	if (file)
+		put_file(file);
+}
+
+void do_close_on_exec(struct files_struct *files) {
+	unsigned fd;
+
+	for (fd = 0; fd < MAX_OPEN_FILES_NUM; fd++) {
+        struct file *file;
+
+        spin_lock(&files->file_lock);
+
+        if (!fd_is_open((int)fd, &files->fdtab) ||
+            !close_on_exec((int)fd, &files->fdtab)) {
+            spin_unlock(&files->file_lock);
+            continue;
+        }
+
+        file = files->fdtab.fd[fd];
+        files->fdtab.fd[fd] = NULL;
+        __clear_close_on_exec((int)fd, &files->fdtab);
+        __put_unused_fd(files, fd);
+
+        spin_unlock(&files->file_lock);
+
+        put_file(file);
+
+        if (atomic_read(&files->refcount) == 0) {
+            filp_close(file);
+        }
+	}
 }
 
 void set_close_on_exec(unsigned int fd, int flag) {
@@ -431,4 +675,29 @@ void set_close_on_exec(unsigned int fd, int flag) {
 	else
 		__clear_close_on_exec(fd, fdt);
 	spin_unlock(&files->file_lock);
+}
+
+struct files_struct *get_files_struct(struct task_struct *task) {
+	struct files_struct *files;
+
+	spin_lock(&task->lock);
+	files = task->files;
+	if (files)
+		atomic_inc(&files->refcount);
+	spin_lock(&task->lock);
+
+	return files;
+}
+
+void put_files_struct(struct files_struct *files) {
+    if (!files || files == &init_files)
+        return;
+
+    if (atomic_read(&files->refcount) > 1) {
+        atomic_dec(&files->refcount);
+        return;
+    }
+
+    close_files(files);
+    kmem_cache_free(files);
 }

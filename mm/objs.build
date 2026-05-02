@@ -9,3 +9,5 @@ OBJ_Y += slab.o
 OBJ_Y += pgtbl.o
 OBJ_Y += vma.o
 OBJ_Y += page_fault.o
+OBJ_Y += uaccess.o
+OBJ_Y += brk.o

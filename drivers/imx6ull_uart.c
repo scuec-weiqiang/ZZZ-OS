@@ -8,7 +8,7 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2026.
 */
 
-// #include <fs/chrdev.h>
+#include <fs/cdev.h>
 // #include <fs/vfs.h>
 #include <os/console.h>
 #include <os/mm.h>
@@ -18,30 +18,34 @@
 #include <os/irq.h>
 #include <os/printk.h>
 #include <os/platform_device.h>
+#include <os/spinlock.h>
+#include <os/wait.h>
+#include <os/sched.h>   
+
 
 #define __IO volatile
 #define __I  volatile const
 
 typedef struct {
-    __I  uint32_t URXD;                              /**< UART Receiver Register, offset: 0x0 */
-         uint8_t RESERVED_0[60];
-    __IO uint32_t UTXD;                              /**< UART Transmitter Register, offset: 0x40 */
-         uint8_t RESERVED_1[60];
-    __IO uint32_t UCR1;                              /**< UART Control Register 1, offset: 0x80 */
-    __IO uint32_t UCR2;                              /**< UART Control Register 2, offset: 0x84 */
-    __IO uint32_t UCR3;                              /**< UART Control Register 3, offset: 0x88 */
-    __IO uint32_t UCR4;                              /**< UART Control Register 4, offset: 0x8C */
-    __IO uint32_t UFCR;                              /**< UART FIFO Control Register, offset: 0x90 */
-    __IO uint32_t USR1;                              /**< UART Status Register 1, offset: 0x94 */
-    __IO uint32_t USR2;                              /**< UART Status Register 2, offset: 0x98 */
-    __IO uint32_t UESC;                              /**< UART Escape Character Register, offset: 0x9C */
-    __IO uint32_t UTIM;                              /**< UART Escape Timer Register, offset: 0xA0 */
-    __IO uint32_t UBIR;                              /**< UART BRM Incremental Register, offset: 0xA4 */
-    __IO uint32_t UBMR;                              /**< UART BRM Modulator Register, offset: 0xA8 */
-    __I  uint32_t UBRC;                              /**< UART Baud Rate Count Register, offset: 0xAC */
-    __IO uint32_t ONEMS;                             /**< UART One Millisecond Register, offset: 0xB0 */
-    __IO uint32_t UTS;                               /**< UART Test Register, offset: 0xB4 */
-    __IO uint32_t UMCR;                              /**< UART RS-485 Mode Control Register, offset: 0xB8 */
+    __I  u32 URXD;                              /**< UART Receiver Register, offset: 0x0 */
+         u8 RESERVED_0[60];
+    __IO u32 UTXD;                              /**< UART Transmitter Register, offset: 0x40 */
+         u8 RESERVED_1[60];
+    __IO u32 UCR1;                              /**< UART Control Register 1, offset: 0x80 */
+    __IO u32 UCR2;                              /**< UART Control Register 2, offset: 0x84 */
+    __IO u32 UCR3;                              /**< UART Control Register 3, offset: 0x88 */
+    __IO u32 UCR4;                              /**< UART Control Register 4, offset: 0x8C */
+    __IO u32 UFCR;                              /**< UART FIFO Control Register, offset: 0x90 */
+    __IO u32 USR1;                              /**< UART Status Register 1, offset: 0x94 */
+    __IO u32 USR2;                              /**< UART Status Register 2, offset: 0x98 */
+    __IO u32 UESC;                              /**< UART Escape Character Register, offset: 0x9C */
+    __IO u32 UTIM;                              /**< UART Escape Timer Register, offset: 0xA0 */
+    __IO u32 UBIR;                              /**< UART BRM Incremental Register, offset: 0xA4 */
+    __IO u32 UBMR;                              /**< UART BRM Modulator Register, offset: 0xA8 */
+    __I  u32 UBRC;                              /**< UART Baud Rate Count Register, offset: 0xAC */
+    __IO u32 ONEMS;                             /**< UART One Millisecond Register, offset: 0xB0 */
+    __IO u32 UTS;                               /**< UART Test Register, offset: 0xB4 */
+    __IO u32 UMCR;                              /**< UART RS-485 Mode Control Register, offset: 0xB8 */
   } UART_Type;
 
 #if 1
@@ -66,11 +70,22 @@ phys_addr_t uart_base = 0;
 
 #define UART ((UART_Type*)uart_base)
 
+#define UART_RX_BUF_SIZE 256
+
+struct uart_rx_buffer {
+    spinlock_t lock;
+    unsigned int head;
+    unsigned int tail;
+    char data[UART_RX_BUF_SIZE];
+};
+
+static struct uart_rx_buffer uart_rxbuf;
+static struct wait_queue_head uart_wait_queue = WAIT_QUEUE_INIT(uart_wait_queue);
+static struct irq_deferred_work uart_rx_deferred_work;
 
 static void uart_disable() {
 	UART->UCR1 &= ~(1<<0);	
 }
-
 
 static void uart_enable() {
 	UART->UCR1 |= (1<<0);	
@@ -135,49 +150,140 @@ static void putc (char c) {
     UART->UTXD = c;
 }
 
-static char getc(void) {
-    while((UART->USR2 & 0x1) == 0);/* 等待接收完成 */
-	return UART->URXD;				/* 返回接收到的数据 */
+static int uart_rx_ready(void) {
+    return (UART->USR2 & 0x1) != 0;
 }
 
+static char uart_hw_getc(void) {
+    return (char)(UART->URXD & 0xff);
+}
 
+static char getc(void) {
+    while (!uart_rx_ready()) {
+    }
+	return uart_hw_getc();
+}
+
+static int uart_rxbuf_is_empty(void) {
+    return uart_rxbuf.head == uart_rxbuf.tail;
+}
+
+static int uart_rxbuf_is_full(void) {
+    return ((uart_rxbuf.head + 1) % UART_RX_BUF_SIZE) == uart_rxbuf.tail;
+}
+
+static void uart_rxbuf_push(char ch) {
+    unsigned long flags;
+
+    flags = spin_lock_irqsave(&uart_rxbuf.lock);
+    if (!uart_rxbuf_is_full()) {
+        uart_rxbuf.data[uart_rxbuf.head] = ch;
+        uart_rxbuf.head = (uart_rxbuf.head + 1) % UART_RX_BUF_SIZE;
+    }
+    spin_unlock_irqrestore(&uart_rxbuf.lock, flags);
+}
+
+static int uart_rxbuf_pop(char *ch) {
+    unsigned long flags;
+    int ok = 0;
+
+    flags = spin_lock_irqsave(&uart_rxbuf.lock);
+    if (!uart_rxbuf_is_empty()) {
+        *ch = uart_rxbuf.data[uart_rxbuf.tail];
+        uart_rxbuf.tail = (uart_rxbuf.tail + 1) % UART_RX_BUF_SIZE;
+        ok = 1;
+    }
+    spin_unlock_irqrestore(&uart_rxbuf.lock, flags);
+
+    return ok;
+}
+
+static void uart_rx_deferred(void *arg)
+{
+    (void)arg;
+
+    if (!wait_queue_empty(&uart_wait_queue) && !uart_rxbuf_is_empty()) {
+        wake_up_one(&uart_wait_queue);
+    }
+}
 
 irqreturn_t uart_iqr(int virq, void *dev_id) {
-    char a = getc();
-    printk("%c",a);
+    (void)virq;
+    (void)dev_id;
+
+    while (uart_rx_ready()) {
+        char ch = uart_hw_getc();
+        uart_rxbuf_push(ch);
+    }
+
+    if (!wait_queue_empty(&uart_wait_queue)&& !uart_rxbuf_is_empty()) {
+        irq_deferred_work_queue(&uart_rx_deferred_work);
+    }
+   
+
     return IRQ_HANDLED;
 }
 
-// static int uart_open(struct inode *inode, struct file *file) {
-//     return 0;
-// }
+static int uart_open(struct inode *inode, struct file *file) {
+    return 0;
+}
 
-// static ssize_t uart_write(struct inode *inode, const void *buf, size_t size, loff_t *offset) {
-    // if (inode == NULL || buf == NULL || offset == NULL) {
-    //     return -1;
-    // }
-    // if (*offset >= sizeof(struct system_time)) {
-    //     *offset = 0; // 重置偏移量
-    // }
+static ssize_t uart_write(struct file *fp, const char *buf, size_t size, loff_t *offset) {
+    size_t written = 0;
 
-    // size_t bytes_to_read = size;
-    // if (*offset + bytes_to_read > sizeof(struct system_time)) {
-    //     bytes_to_read = sizeof(struct system_time) - *offset; // 调整读取大小
-    // }
+    if (fp == NULL || buf == NULL || offset == NULL) {
+        return -1;
+    }
 
-    // uart_puts((char *)buf);
-    // *offset += bytes_to_read;
+    while (written < size) {
+        putc(buf[written]);
+        written++;
+    }
 
-    // return bytes_to_read;
-// }
+    *offset += written;
+    return (ssize_t)written;
+}
 
-// static struct file_ops uart_file_ops = {
-    // .open = uart_open,
-    // .read = uart_read,
-    // .write = uart_write,
-// };
+static ssize_t uart_read(struct file *fp, char *buf, size_t size, loff_t *offset) {
+    size_t read = 0;
 
+    if (fp == NULL || buf == NULL || offset == NULL) {
+        return -1;
+    }
 
+    while (read < size) {
+        char ch;
+
+        if(!uart_rx_ready() && uart_rxbuf_is_empty()) {
+            sleep_on(&uart_wait_queue);
+        }
+
+        if (uart_rxbuf_pop(&ch)) {
+            buf[read++] = ch;
+            continue;
+        }
+
+        if (uart_rx_ready()) {
+            buf[read++] = uart_hw_getc();
+            continue;
+        }
+
+        if (read > 0) {
+            break;
+        }
+
+        buf[read++] = getc();
+    }
+
+    *offset += read;
+    return (ssize_t)read;
+}
+
+static struct file_operations uart_file_ops = {
+    .open = uart_open,
+    .read = uart_read,
+    .write = uart_write,
+};
 
 
 static int uart_probe(struct platform_device *pdev) {
@@ -188,6 +294,10 @@ static int uart_probe(struct platform_device *pdev) {
 
     uart_base = platform_ioremap_resource(pdev, 0);
     dprintk("uart base = %xu\n",uart_base);
+    spin_lock_init(&uart_rxbuf.lock);
+    uart_rxbuf.head = 0;
+    uart_rxbuf.tail = 0;
+    irq_deferred_work_register(&uart_rx_deferred_work, uart_rx_deferred, NULL);
     uart_reg_init();
 
     // 打开串口中断
@@ -200,6 +310,12 @@ static int uart_probe(struct platform_device *pdev) {
 
     console_register(putc);
 
+    dev_t devnr;
+    alloc_chrdev_region(&devnr, 1);
+    
+    cdev_register("uart0", devnr, &uart_file_ops, NULL);
+
+    
     return 0;
 }
 

@@ -98,7 +98,7 @@ static int riscv_plic_probe(struct platform_device *pdev) {
     if (!node) {
         return -1;
     }
-    uint32_t *reg = of_read_u32_array(node, "riscv,ndev", 1);
+    u32 *reg = of_read_u32_array(node, "riscv,ndev", 1);
     int irq_count = (int)reg[0];
 
     reg = of_read_u32_array(node, "reg", 2);

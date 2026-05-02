@@ -32,7 +32,5 @@ int do_unmap(struct mm_struct *mm, virt_addr_t vaddr, size_t size);
 
 void copy_kernel_mapping(struct mm_struct *dest_mm);
 
-int copyin(pgtable_t *pagetable, char *dst, uintptr_t src_va, size_t len);
-int copyout(pgtable_t *pagetable, uintptr_t dst_va, char *src, size_t len);
 
 #endif

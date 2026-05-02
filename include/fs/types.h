@@ -55,7 +55,7 @@
 #define S_IDEFAULT 0x01ed
 
 typedef long long loff_t;
-typedef int32_t ino_t;
+typedef s32 ino_t;
 typedef uintptr_t pgoff_t;
 
 struct file_system_type;
@@ -72,11 +72,31 @@ struct inode_operations;
 struct file_operations;
 struct address_space;
 struct address_space_operations;
-struct block_device;
+struct blkdev;
 
 struct qstr {
     char *name;
-    uint16_t len;
+    u16 len;
+};
+
+/*
+ * This is the "filldir" function type, used by readdir() to let
+ * the kernel specify what kind of dirent layout it wants to have.
+ * This allows the kernel to read directories into kernel space or
+ * to have different dirent layouts depending on the binary type.
+ */
+struct dir_context;
+typedef int (*filldir_t)(struct dir_context *ctx, const char *name, int namelen, loff_t offset, u64 ino, unsigned d_type);
+
+struct dir_context {
+	const filldir_t actor;
+	loff_t pos;
+};
+
+struct dirent {
+    u32 d_ino;
+    u8  d_type;
+    char d_name[256];
 };
 
 struct super_operations {
@@ -92,15 +112,16 @@ struct super_operations {
 
 struct inode_operations {
     struct dentry * (*lookup) (struct inode *dir,struct dentry *, unsigned int);
-    int (*create)(struct inode *dir, struct dentry *dentry, uint16_t mode);
-    int (*mkdir)(struct inode *dir, struct dentry *dentry, uint16_t mode);
-    int (*mknod)(struct inode *dir, struct dentry *dentry, uint16_t mode, dev_t dev);
+    int (*create)(struct inode *dir, struct dentry *dentry, u16 mode);
+    int (*mkdir)(struct inode *dir, struct dentry *dentry, u16 mode);
+    int (*mknod)(struct inode *dir, struct dentry *dentry, u16 mode, dev_t dev);
 };
 
 struct file_operations {
     int (*open)(struct inode *inode, struct file *file);
     ssize_t (*read)(struct file *file, char *buf, size_t len, loff_t *ppos);
     ssize_t (*write)(struct file *file, const char *buf, size_t len, loff_t *ppos);
+    int (*iterate) (struct file *, struct dir_context *);
 };
 
 struct file_system_type {
@@ -112,13 +133,13 @@ struct file_system_type {
 };
 
 struct super_block {
-    uint32_t s_magic;
-    uint32_t s_blocksize;
-    uint32_t s_flags;
+    u32 s_magic;
+    u32 s_blocksize;
+    u32 s_flags;
     struct file_system_type *s_type;
     const struct super_operations *s_op;
     struct dentry *s_root;
-    struct block_device *s_bdev;
+    struct blkdev *s_bdev;
     void *s_fs_info;
     spinlock_t s_lock;
     int s_active;
@@ -134,7 +155,7 @@ struct address_space {
     struct inode *host;
     const struct address_space_operations *a_ops;
     spinlock_t lock;
-    uint32_t nrpages;
+    u32 nrpages;
 };
 
 #define I_NEW 0x00 // inode 是新创建的，还没有被填充数据
@@ -143,8 +164,8 @@ struct address_space {
 
 struct inode {
     ino_t i_ino;
-    uint16_t i_mode;
-    uint32_t i_nlink;
+    u16 i_mode;
+    u32 i_nlink;
     size_t i_size;
     dev_t i_rdev;
     timespec_t i_atime;
@@ -158,11 +179,27 @@ struct inode {
     struct address_space i_data;
     spinlock_t i_lock;
     int i_count;
-    uint8_t i_state;
+    u8 i_state;
 
     struct lru_node d_lru_cache_node; // inode 缓存
     void *i_private;
 };
+
+/*
+ * File types
+ *
+ * NOTE! These match bits 12..15 of stat.st_mode
+ * (ie "(i_mode >> 12) & 15").
+ */
+#define DT_UNKNOWN	0
+#define DT_FIFO		1
+#define DT_CHR		2
+#define DT_DIR		4
+#define DT_BLK		6
+#define DT_REG		8
+#define DT_LNK		10
+#define DT_SOCK		12
+#define DT_WHT		14
 
 struct dentry {
     struct qstr d_name;
@@ -190,8 +227,8 @@ struct vfsmount {
 
 struct fs_context {
     struct file_system_type *fs_type;
-    uint32_t sb_flags;
-    uint32_t purpose;
+    u32 sb_flags;
+    u32 purpose;
     const char *source;
     void *fs_private;
     struct dentry *root;
@@ -207,10 +244,15 @@ struct file {
     struct inode *f_inode;
     const struct file_operations *f_op;
     loff_t f_pos;
-    uint32_t f_flags;
+    u32 f_flags;
     atomic_t f_count;
     void *private_data;
 };
+
+static inline struct inode *file_inode(const struct file *f)
+{
+	return f->f_inode;
+}
 
 #define MAX_OPEN_FILES_NUM 64
 
@@ -221,14 +263,6 @@ struct fdtable {
     struct file **fd; // 数组：fd号 对应打开的文件
 };
 
-static inline bool close_on_exec(int fd, const struct fdtable *fdt) {
-	return test_bit(fd, fdt->close_on_exec);
-}
-
-static inline bool fd_is_open(int fd, const struct fdtable *fdt) {
-	return test_bit(fd, fdt->open_fds);
-}
-
 
 struct files_struct {
     atomic_t refcount;
@@ -238,17 +272,16 @@ struct files_struct {
 
     // 由于struct fdtable里的一些成员（例如位图）都是指针，用到时候需要给他们分配地址，不如直接在这个结构体里分配给它
     unsigned long close_on_exec_init[1];  // exec时要关掉的文件
-    unsigned long open_fds_init[1];       // 哪些抽屉正在用
+    unsigned long open_fds_init[1];       // 哪些正在用
     struct file *fd_array[MAX_OPEN_FILES_NUM];
 };
 
 struct fs_struct {
     int users; // 多少个进程共享这个目录环境
     int umask;              // 创建新文件/目录时的默认权限掩码
-	int in_exec;            // 进程正在执行 exec 吗？
+	// int in_exec;            // 进程正在执行 exec 吗？
     spinlock_t lock;        
     struct path root, pwd;
 };
-
 
 #endif

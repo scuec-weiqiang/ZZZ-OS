@@ -26,6 +26,41 @@ SECTIONS
         __initcall_end = .;
     }
 
+    .archinitcall : {
+        . = ALIGN(4096);
+        __archinitcall_start = .;
+        KEEP(*(.archinitcall))
+        __archinitcall_end = .;
+    }
+
+    .coreinitcall : {
+        . = ALIGN(4096);
+        __coreinitcall_start = .;
+        KEEP(*(.coreinitcall))
+        __coreinitcall_end = .;
+    }
+
+    .fsinitcall : {
+        . = ALIGN(4096);
+        __fsinitcall_start = .;
+        KEEP(*(.fsinitcall))
+        __fsinitcall_end = .;
+    }
+
+    .deviceinitcall : {
+        . = ALIGN(4096);
+        __deviceinitcall_start = .;
+        KEEP(*(.deviceinitcall))
+        __deviceinitcall_end = .;
+    }
+
+    .lateinitcall : {
+        . = ALIGN(4096);
+        __lateinitcall_start = .;
+        KEEP(*(.lateinitcall))
+        __lateinitcall_end = .;
+    }
+
     .exitcall : {
         . = ALIGN(4096);
         __exitcall_start = .;
@@ -103,6 +138,21 @@ SECTIONS
 
     PROVIDE_HIDDEN(_initcall_start = __initcall_start);
     PROVIDE_HIDDEN(_initcall_end = __initcall_end);
+
+    PROVIDE_HIDDEN(_archinitcall_start = __archinitcall_start);
+    PROVIDE_HIDDEN(_archinitcall_end = __archinitcall_end);
+
+    PROVIDE_HIDDEN(_coreinitcall_start = __coreinitcall_start);
+    PROVIDE_HIDDEN(_coreinitcall_end = __coreinitcall_end);
+
+    PROVIDE_HIDDEN(_fsinitcall_start = __fsinitcall_start);
+    PROVIDE_HIDDEN(_fsinitcall_end = __fsinitcall_end);
+
+    PROVIDE_HIDDEN(_deviceinitcall_start = __deviceinitcall_start);
+    PROVIDE_HIDDEN(_deviceinitcall_end = __deviceinitcall_end);
+
+    PROVIDE_HIDDEN(_lateinitcall_start = __lateinitcall_start);
+    PROVIDE_HIDDEN(_lateinitcall_end = __lateinitcall_end);
 
     PROVIDE_HIDDEN(_exitcall_start = __exitcall_start);
     PROVIDE_HIDDEN(_exitcall_end = __exitcall_end);

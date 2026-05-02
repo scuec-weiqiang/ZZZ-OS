@@ -59,23 +59,20 @@ struct files_struct;
 struct mm_struct;
 struct fs_struct;
 
-enum task_status
-{
+enum task_status {
     TASK_RUNNING,     // 正在运行
-    TASK_WAITING,     // 等待某事件/锁/完成量
-    TASK_SLEEPING,    // 等 timer
+    TASK_SLEEPING,   
     TASK_ZOMBIE,      // 退出未回收
-    TASK_DEAD,
 };
 
 struct sched_entity {
     struct list_head sched_node;
-    uint64_t exec_start; // 开始执行的时间
+    u64 exec_start; // 开始执行的时间
     union {
-        uint64_t time_slice; // 任务时间片
-        uint64_t vruntime; // 虚拟运行时
+        u64 time_slice; // 任务时间片
+        u64 vruntime; // 虚拟运行时
     };
-    uint64_t sum_exec_runtime; // 总共运行了多久
+    u64 sum_exec_runtime; // 总共运行了多久
 };
 
 struct sched_class {
@@ -85,8 +82,6 @@ struct sched_class {
     void (*enqueue_task)(struct rq *rq, struct task_struct *p);
     void (*dequeue_task)(struct rq *rq, struct task_struct *p);
     struct task_struct *(*pick_next_task)(struct rq *rq);
-    // void (*task_yield)(struct rq *rq, struct task_struct *curr);
-    // bool (*check_preempt_curr)(struct rq *rq, struct task_struct *p);
 };
 
 extern struct sched_class rr_sched_class;
@@ -102,7 +97,7 @@ union thread_union {
 
 struct task_struct {
     pid_t pid;            //进程ID
-    pid_t tgid;
+    // pid_t tgid;
     unsigned int flags;
     void *stack;      // 内核栈基址
     enum task_status status;         //进程状态
@@ -110,7 +105,7 @@ struct task_struct {
 
     int on_rq;            // 是否在 runnable 队列中
     int exit_code;
-    int prio, static_prio, normal_prio;
+    int prio;
 
     spinlock_t lock;
 
@@ -126,14 +121,10 @@ struct task_struct {
     struct wait_queue wait; // 进程等待队列头
     int need_resched;
 
-    // char *elf_image;
-    // size_t elf_size;
-    // struct elf_info *elf_info;
-    // void *segment_backing[8];
-
     struct task_struct *parent;
     struct list_head children;
     struct list_head sibling;
+    struct wait_queue_head wait_child; 
 
     struct timer sleep_timer; // 睡眠定时器
 };
@@ -168,24 +159,28 @@ struct rq {
     int nr_tasks;
 };
 
+extern void task_attach_to_rq(struct task_struct *task);
+extern void task_detach_from_rq(struct task_struct *task);
 extern void sleep_on(struct wait_queue_head *wq_head);
 extern void wake_up_one(struct wait_queue_head *wq_head);
 extern void wake_up_all(struct wait_queue_head *wq_head);
+extern int do_waitpid(pid_t pid, int *status);
+extern int do_wait(int *status);
 
 #define __sched		__attribute__((__section__(".text.sched.")))
 
 extern struct rq *this_rq(void);
 extern void sched_init();
 extern void sched();
+extern void sched_handle_user_return(void);
 extern void yield();
 extern void sched_tick(void);
 extern void sched_kthread_test(void);
 extern void __noreturn do_exit(int code);
 extern struct rq *global_rq;
-extern int sched_fork(struct task_struct *p);
-
+extern void sched_fork(struct task_struct *p);
 extern int kthreadd(void *arg);
-extern pid_t kernel_thread(int (*fn)(void *), void *arg, unsigned long flags);
+extern pid_t kernel_thread(int (*fn)(void *), void *arg);
 extern struct task_struct*  kthread_create(int (*fn)(void *), void *arg);
 extern void task_destroy(struct task_struct *task);
 extern void wake_up_process(struct task_struct *p);

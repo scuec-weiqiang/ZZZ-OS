@@ -1,4 +1,5 @@
 #include <fs/blkdev.h>
+#include <os/devnode.h>
 #include <os/check.h>
 #include <os/err.h>
 #include <os/errno.h>
@@ -13,7 +14,7 @@ static LIST_HEAD(g_blk_disks);
 
 static int blkdev_validate_bio(struct bio *bio)
 {
-    uint32_t block_size = 0;
+    u32 block_size = 0;
 
     CHECK(bio != NULL, "blkdev: invalid bio", return -EINVAL;);
     CHECK(bio->bi_bdev != NULL, "blkdev: bio missing block device", return -ENODEV;);
@@ -46,9 +47,20 @@ static int blkdev_validate_bio(struct bio *bio)
     return 0;
 }
 
-int register_blkdev(struct gendisk *disk) {
+int alloc_blkdev_region(dev_t *devt, unsigned int count) {
+    static dev_t next_devt = 1; // 从 1 开始分配，0 通常保留给特殊用途
+
+    if (!devt || count == 0)
+        return -EINVAL;
+
+    *devt = MKDEV(BLK_MAJOR_DISK, next_devt);
+    next_devt += count;
+    return 0;
+}
+
+int blkdev_register(char *name, dev_t devnr, struct gendisk *disk, struct file_operations *fops) {
     struct list_head *pos = NULL;
-    struct block_device *bdev = NULL;
+    struct blkdev *bdev = NULL;
 
     CHECK(disk != NULL, "blkdev: invalid disk", return -EINVAL;);
     CHECK(disk->disk_name[0] != '\0', "blkdev: empty disk name", return -EINVAL;);
@@ -73,32 +85,65 @@ int register_blkdev(struct gendisk *disk) {
     bdev->bd_nr_sectors = disk->capacity;
     bdev->bd_openers = 0;
     bdev->bd_fs_info = NULL;
+    bdev->bd_devnr = devnr; 
 
+    int ret = devnode_register(disk->disk_name, DEV_BLOCK, devnr, fops,bdev);
+    if (ret < 0) {
+        kfree(bdev);
+        return ret;
+    }
+    bdev->bd_node = devnode_lookup_by_name(disk->disk_name);
     disk->part0 = bdev;
     INIT_LIST_HEAD(&disk->disk_list);
     list_add_tail(&g_blk_disks, &disk->disk_list);
     return 0;
 }
 
-struct block_device *blkdev_get_by_path(const char *name) {
-    struct list_head *pos = NULL;
+struct blkdev *blkdev_get_by_path(const char *path) {
+    struct devnode *node;
+    struct blkdev *bdev;
 
-    RETURN_VAL_IF(name == NULL, ERR_PTR(-EINVAL));
+    if (!path)
+        return ERR_PTR(-EINVAL);
 
-    list_for_each(pos, &g_blk_disks) {
-        struct gendisk *disk = list_entry(pos, struct gendisk, disk_list);
+    if (strncmp(path, "/dev/", 5) == 0)
+        path += 5;
 
-        if (strcmp(disk->disk_name, name) == 0) {
-            RETURN_VAL_IF(disk->part0 == NULL, ERR_PTR(-ENODEV));
-            disk->part0->bd_openers++;
-            return disk->part0;
-        }
-    }
+    node = devnode_lookup_by_name(path);
+    if (!node)
+        return ERR_PTR(-ENODEV);
 
-    return ERR_PTR(-ENODEV);
+    if (node->type != DEV_BLOCK)
+        return ERR_PTR(-ENOTBLK);
+
+    bdev = node->private;
+    if (!bdev)
+        return ERR_PTR(-ENODEV);
+
+    bdev->bd_openers++;
+    return bdev;
 }
 
-void blkdev_put(struct block_device *bdev) {
+struct blkdev *blkdev_get_by_devnr(dev_t devnr)
+{
+    struct devnode *node;
+    struct blkdev *bdev;
+
+    node = devnode_lookup_by_devnr(devnr);
+    if (!node)
+        return NULL;
+
+    if (node->type != DEV_BLOCK)
+        return NULL;
+
+    bdev = node->private;
+    if (!bdev)
+        return NULL;
+
+    return bdev;
+}
+
+void blkdev_put(struct blkdev *bdev) {
     if (bdev == NULL) {
         return;
     }
@@ -157,14 +202,14 @@ int submit_bio_wait(struct bio *bio) {
 }
 
 
-int blkdev_read(struct block_device *bdev, void *buf, size_t len, uint64_t pos) {
+int blkdev_read(struct blkdev *bdev, void *buf, size_t len, u64 pos) {
     struct bio *bio = NULL;
     void *base = NULL;
     struct page *temp = NULL;
-    uint8_t *dst = buf;
-    uint32_t sector_size = 0;
-    uint32_t sectors_per_page = 0;
-    uint32_t sector = 0;
+    u8 *dst = buf;
+    u32 sector_size = 0;
+    u32 sectors_per_page = 0;
+    u32 sector = 0;
     size_t done = 0;
     int ret = 0;
 
@@ -200,8 +245,8 @@ int blkdev_read(struct block_device *bdev, void *buf, size_t len, uint64_t pos) 
     while (done < len) {
         size_t offset_in_sector = mod_u64(pos, sector_size);
         size_t copy_len = len - done;
-        uint32_t sector_offset_in_page = mod_u32(sector, sectors_per_page) * sector_size;
-        uint8_t *src = (uint8_t *)base + sector_offset_in_page + offset_in_sector;
+        u32 sector_offset_in_page = mod_u32(sector, sectors_per_page) * sector_size;
+        u8 *src = (u8 *)base + sector_offset_in_page + offset_in_sector;
 
         if (copy_len > sector_size - offset_in_sector) {
             copy_len = sector_size - offset_in_sector;
@@ -231,14 +276,14 @@ out_bio:
 }
 
 
-int blkdev_write(struct block_device *bdev, const void *buf, size_t len, uint64_t pos) {
+int blkdev_write(struct blkdev *bdev, const void *buf, size_t len, u64 pos) {
     struct bio *bio = NULL;
     void *base = NULL;
     struct page *temp = NULL;
-    const uint8_t *src = buf;
-    uint32_t sector_size = 0;
-    uint32_t sectors_per_page = 0;
-    uint32_t sector = 0;
+    const u8 *src = buf;
+    u32 sector_size = 0;
+    u32 sectors_per_page = 0;
+    u32 sector = 0;
     size_t done = 0;
     int ret = 0;
 
@@ -272,8 +317,8 @@ int blkdev_write(struct block_device *bdev, const void *buf, size_t len, uint64_
     while (done < len) {
         size_t offset_in_sector = mod_u64(pos, sector_size);
         size_t copy_len = len - done;
-        uint32_t sector_offset_in_page = mod_u32(sector, sectors_per_page) * sector_size;
-        uint8_t *dst = (uint8_t *)base + sector_offset_in_page;
+        u32 sector_offset_in_page = mod_u32(sector, sectors_per_page) * sector_size;
+        u8 *dst = (u8 *)base + sector_offset_in_page;
 
         if (copy_len > sector_size - offset_in_sector) {
             copy_len = sector_size - offset_in_sector;

@@ -16,9 +16,9 @@
 #include <os/irq_domain.h>
 
 static int __of_irq_parse_one(struct device_node *np, int index, struct of_phandle_args *out) {
-    uint32_t size = 0;
+    u32 size = 0;
     __be32 *cells;
-    uint32_t offset = 0;
+    u32 offset = 0;
     int current = 0;
 
     if (!np || !out || index < 0) {
@@ -31,11 +31,11 @@ static int __of_irq_parse_one(struct device_node *np, int index, struct of_phand
     }
 
     while (offset < size / sizeof(__be32)) {
-        uint32_t phandle;
+        u32 phandle;
         struct device_node *intc;
         void *prop;
-        uint32_t prop_size = 0;
-        uint32_t irq_cells;
+        u32 prop_size = 0;
+        u32 irq_cells;
 
         phandle = be32_to_cpu(cells[offset]);
         intc = of_find_node_by_phandle(phandle);
@@ -60,7 +60,7 @@ static int __of_irq_parse_one(struct device_node *np, int index, struct of_phand
         if (current == index) {
             out->np = intc;
             out->args_count = irq_cells;
-            for (uint32_t i = 0; i < irq_cells; i++) {
+            for (u32 i = 0; i < irq_cells; i++) {
                 out->args[i] = be32_to_cpu(cells[offset + 1 + i]);
                 // printk("  - arg[%d] = %d\n", i, out->args[i]);
             }
@@ -75,9 +75,9 @@ static int __of_irq_parse_one(struct device_node *np, int index, struct of_phand
 }
 
 int of_irq_count(struct device_node *np) {
-    uint32_t size = 0;
+    u32 size = 0;
     __be32 *cells;
-    uint32_t offset = 0;
+    u32 offset = 0;
     int count = 0;
 
     if (!np) {
@@ -91,11 +91,11 @@ int of_irq_count(struct device_node *np) {
     }
 
     while (offset < size / sizeof(__be32)) {
-        uint32_t phandle;
+        u32 phandle;
         struct device_node *intc;
         void *prop;
-        uint32_t prop_size = 0;
-        uint32_t irq_cells;
+        u32 prop_size = 0;
+        u32 irq_cells;
 
         phandle = be32_to_cpu(cells[offset]);
         intc = of_find_node_by_phandle(phandle);

@@ -75,7 +75,7 @@ extern int driver_attach(struct device_driver *drv);
     { \
         __unregister(&(__driver)); \
     } \
-    module_init(__driver##_init,".initcall"); \
+    device_initcall(__driver##_init); \
     module_exit(__driver##_exit,".exitcall");
 
 extern void driver_init();

@@ -3,3 +3,4 @@ OBJ_Y += platform.o
 OBJ_Y += device.o
 OBJ_Y += driver.o
 OBJ_Y += dd.o
+OBJ_Y += devnode.o

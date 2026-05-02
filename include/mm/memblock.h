@@ -54,7 +54,7 @@ extern void memblock_mark_nomap(phys_addr_t base, size_t size);
 extern struct memblock_region* memblock_is_reserved(phys_addr_t base, size_t size);
 extern void *memblock_alloc(size_t size, int align);
 extern void memblock_free(phys_addr_t addr);
-extern uint64_t memblock_phys_total(void);
+extern u64 memblock_phys_total(void);
 extern void memblock_dump(void);
 
 #endif

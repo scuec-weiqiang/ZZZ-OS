@@ -44,10 +44,10 @@ static struct task_struct *rr_pick_next_task(struct rq *rq) {
         // 非空闲任务被抢占，放回队列尾部
         list_mov_tail(&rq->runnable, &this_rq()->curr->se.sched_node);
     }
-    
+
+    struct task_struct *p = NULL;
     node = rq->runnable.next;
-    struct task_struct *p = list_entry(node, struct task_struct, se.sched_node);
-    // printk("rr_pick_next_task: pick task pid %du\n", p->pid);
+    p = list_entry(node, struct task_struct, se.sched_node);
     return p;
 }
 

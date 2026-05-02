@@ -6,68 +6,30 @@
 #include <fs/pagecache.h>
 #include <fs/ramfs.h>
 #include <fs/binfmt.h>
+#include <os/devnode.h>
+#include <os/init.h>
 #include <os/check.h>
-extern struct file_system_type ext2_fs_type;
-int fs2_init(void)
+
+int mount_root(const char *dev, const char *fs_type)
 {
-//     struct fs_context *fc = NULL;
-//     struct vfsmount *root_mnt = NULL;
-//     int ret = 0;
-
-//     ret = icache_init();
-//     CHECK(ret == 0, "fs: failed to init icache", return -1;);
-
-//     ret = dcache_init();
-//     CHECK(ret == 0, "fs: failed to init dcache", return -1;);
-
-//     ret = pagecache_init();
-//     CHECK(ret == 0, "fs: failed to init pagecache", return -1;);
-
-//     ret = register_filesystem(&ramfs_fs_type);
-//     CHECK(ret == 0, "fs: failed to register ramfs", return -1;);
-
-//     fc = fs_context_for_mount(&ramfs_fs_type, 0);
-//     CHECK(fc != NULL, "fs: failed to alloc fs_context", return -1;);
-
-//     ret = vfs_get_tree(fc);
-//     CHECK(ret == 0, "fs: failed to build root tree",
-//           put_fs_context(fc);
-//           return -1;);
-
-//     ret = vfs_kern_mount(fc, &root_mnt);
-//     CHECK(ret == 0, "fs: failed to create root mount",
-//           put_fs_context(fc);
-//           return -1;);
-
-//     ret = init_mount_tree(root_mnt);
-//     CHECK(ret == 0, "fs: failed to install mount tree",
-//           put_fs_context(fc);
-//           return -1;);
-
-//     put_fs_context(fc);
-    // ret = fs2_selftest();
-    // CHECK(ret == 0, "fs: selftest failed", return -1;);
-
-
     struct fs_context *fc = NULL;
     struct vfsmount *root_mnt = NULL;
     int ret = 0;
 
     ret = icache_init();
     CHECK(ret == 0, "fs: failed to init icache", return -1;);
-
     ret = dcache_init();
     CHECK(ret == 0, "fs: failed to init dcache", return -1;);
-
     ret = pagecache_init();
     CHECK(ret == 0, "fs: failed to init pagecache", return -1;);
 
-    ret = register_filesystem(&ext2_fs_type);
-    CHECK(ret == 0, "fs: failed to register ramfs", return -1;);
+    struct file_system_type *rootfs = get_fs_type(fs_type);
+    CHECK(rootfs != NULL, "fs: ext2 filesystem is not registered", return -1;);
 
-    fc = fs_context_for_mount(&ext2_fs_type, 0);
+    fc = fs_context_for_mount(rootfs, 0);
     CHECK(fc != NULL, "fs: failed to alloc fs_context", return -1;);
-    fc->source = "ram_disk";
+
+    fc->source = dev;
     ret = vfs_get_tree(fc);
     if (ret < 0) {
         printk("failed to get tree for root fs:%d\n",ret);
@@ -85,33 +47,32 @@ int fs2_init(void)
 
     put_fs_context(fc);
 
+    ret = vfs_mount_fs("ramfs", NULL, "/dev", 0);
+    CHECK(ret == 0,
+          "fs: failed to mount ramfs on /dev, make sure /dev exists in the ext2 rootfs image",
+          return -1;);
+
+    ret = devtmpfs_mount("/dev");
+    CHECK(ret == 0, "fs: failed to populate /dev from devnodes", return -1;);
+
     elf_binfmt_init();
 
-    struct dentry *find = NULL;
+//     struct dentry *find = NULL;
+//     find = vfs_lookup("/dev/uart0");
 
-    find = vfs_lookup("/proc1");
-    if (find) {
-        printk("lookup /proc1, found dentry %s, inode = %xu, size = %xu\n", find->d_name.name, find->d_inode->i_ino, find->d_inode->i_size);
-    }
+//     if (find != NULL) {
+//         printk("found /dev/uart0\n");
+//     } else {
+//         printk("failed to find /dev/uart0\n");
+//     }
 
-    char buf[64];
-    extern void *memset(void *s, int c, size_t n);
-    memset(buf, 0, sizeof(buf));
-    struct file *fp = filp_open("/hello.txt", O_RDONLY);
-    if (fp) {
-        ssize_t bytes = kernel_read_at(fp, 0, buf, 64);
-        if (bytes > 0) {
-            printk("read %d bytes from /hello.txt: %s\n", bytes, (char*)buf);
-            here;
-        } else {    
-            printk("failed to read from /hello.txt, ret=%d\n", bytes);
-        }
-        filp_close(fp);
-    } else {
-        printk("failed to open /hello.txt\n");
-    }
-
-
-
+//     struct file *f = filp_open("/dev/uart0", O_RDWR);
+//     if (f != NULL) {
+//         printk("opened /dev/uart0 successfully\n");
+//     } else {
+//         printk("failed to open /dev/uart0\n");
+//     }
+// 
+//     kernel_write(f, "hello!\n", 7);
     return 0;
 }

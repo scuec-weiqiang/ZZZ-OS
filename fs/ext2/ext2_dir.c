@@ -7,19 +7,19 @@
 #include <os/string.h>
 #include "ext2_types.h"
 
-extern int ext2_block_mapping(struct inode *inode, uint32_t index);
+extern int ext2_block_mapping(struct inode *inode, u32 index);
 
 static int ext2_readpage(struct page *page) {
     struct inode *inode= page->mapping->host;
-    struct block_device *bdev = page->mapping->host->i_sb->s_bdev;
-    uint8_t *page_buf = (uint8_t*)page_address(page);
+    struct blkdev *bdev = page->mapping->host->i_sb->s_bdev;
+    u8 *page_buf = (u8*)page_address(page);
 
-    uint32_t block_size = inode->i_sb->s_blocksize;
-    uint32_t blocks_per_page = PAGE_SIZE / block_size;
-    uint32_t first_file_block = page->index * blocks_per_page;
+    u32 block_size = inode->i_sb->s_blocksize;
+    u32 blocks_per_page = PAGE_SIZE / block_size;
+    u32 first_file_block = page->index * blocks_per_page;
 
-    uint32_t file_block = 0;
-    uint32_t disk_block = 0;
+    u32 file_block = 0;
+    u32 disk_block = 0;
 
     int ret = -EIO;
 
@@ -32,7 +32,7 @@ static int ext2_readpage(struct page *page) {
             continue;
         }
 
-        uint64_t pos = (uint64_t)disk_block * block_size;
+        u64 pos = (u64)disk_block * block_size;
         ret = blkdev_read(bdev, page_buf + i * block_size, block_size, pos);
         if (ret < 0) {
             return ret;
@@ -51,7 +51,7 @@ const struct address_space_operations ext2_aops = {
     .writepage = ext2_writepage,
 };
 
-struct page *ext2_get_page(struct inode *inode, uint32_t index) {
+struct page *ext2_get_page(struct inode *inode, u32 index) {
     struct page *page = NULL;
     int ret = 0;
 
@@ -94,13 +94,8 @@ void ext2_put_page(struct page *page) {
     pagecache_put_page(page);
 }
 
-static struct ext2_dir_entry_2 *find_next_entry(struct ext2_dir_entry_2 *curr) {
-    return (struct ext2_dir_entry_2 *)((char *)curr + curr->rec_len);
-}
-
-
-static uint32_t last_valid_byte(struct inode *inode, uint32_t page_nr) {
-    uint32_t last_byte = inode->i_size;
+static u32 last_valid_byte(struct inode *inode, u32 page_nr) {
+    u32 last_byte = inode->i_size;
     last_byte -= page_nr * PAGE_SIZE;
     if (last_byte > PAGE_SIZE) {
         last_byte = PAGE_SIZE;
@@ -110,8 +105,8 @@ static uint32_t last_valid_byte(struct inode *inode, uint32_t page_nr) {
 }
 
 static struct ext2_dir_entry_2 *ext2_find_entry(struct inode *dir, struct qstr *child, struct page **out_page) {
-    uint32_t page_nr = (dir->i_size + PAGE_SIZE - 1) / PAGE_SIZE;
-    uint32_t rec_len = EXT2_DIR_REC_LEN(child->len);
+    u32 page_nr = (dir->i_size + PAGE_SIZE - 1) / PAGE_SIZE;
+    u32 rec_len = EXT2_DIR_REC_LEN(child->len);
     struct page *page = NULL;
     char *buf = NULL;
     struct ext2_dir_entry_2 *child_entry = NULL;
@@ -122,10 +117,10 @@ static struct ext2_dir_entry_2 *ext2_find_entry(struct inode *dir, struct qstr *
             return ERR_CAST(page);
         }
         buf = (char *)page_address(page);
-        uint32_t valid_bytes_in_page = last_valid_byte(dir, i);
+        u32 valid_bytes_in_page = last_valid_byte(dir, i);
         char *end = (char*)(valid_bytes_in_page - rec_len);
-        uint32_t offset = 0;
-        while (offset < (uint32_t)end) {
+        u32 offset = 0;
+        while (offset < (u32)end) {
             struct ext2_dir_entry_2 *entry = (struct ext2_dir_entry_2 *)(buf + offset);
             if (entry->inode != 0 && entry->name_len == child->len &&
                 memcmp(entry->name, child->name, child->len) == 0) {
@@ -142,7 +137,7 @@ found:
 }
 
 
-uint32_t ext2_find(struct inode *dir, struct qstr *child) {
+u32 ext2_find(struct inode *dir, struct qstr *child) {
     struct page *page = NULL;
     struct ext2_dir_entry_2 *entry = ext2_find_entry(dir, child, &page);
     if (IS_ERR(entry)) {

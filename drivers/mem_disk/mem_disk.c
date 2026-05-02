@@ -22,7 +22,7 @@ static struct mem_disk mem_disk_dev;
 static struct request_queue mem_disk_queue;
 static struct gendisk mem_disk_gendisk;
 
-static int mem_disk_submit_bio(struct block_device *bdev, struct bio *bio)
+static int mem_disk_submit_bio(struct blkdev *bdev, struct bio *bio)
 {
     struct mem_disk *disk = NULL;
     sector_t sector = 0;
@@ -37,8 +37,8 @@ static int mem_disk_submit_bio(struct block_device *bdev, struct bio *bio)
 
     for (int i = 0; i < bio->bi_vcnt; i++) {
         struct bio_vec *bvec = &bio->bi_io_vec[i];
-        uint8_t *page_base = NULL;
-        uint32_t done = 0;
+        u8 *page_base = NULL;
+        u32 done = 0;
 
         CHECK(bvec->page != NULL, "mem_disk: bio_vec page is NULL", return -EINVAL;);
         if (bvec->len == 0) {
@@ -52,18 +52,18 @@ static int mem_disk_submit_bio(struct block_device *bdev, struct bio *bio)
         CHECK((bvec->len % MEM_DISK_SECTOR_SIZE) == 0,
               "mem_disk: unaligned bio length", return -EINVAL;);
 
-        page_base = (uint8_t *)page_address(bvec->page) + bvec->offset;
+        page_base = (u8 *)page_address(bvec->page) + bvec->offset;
         while (done < bvec->len) {
-            uint64_t disk_off = (uint64_t)sector * MEM_DISK_SECTOR_SIZE;
+            u64 disk_off = (u64)sector * MEM_DISK_SECTOR_SIZE;
 
             CHECK(disk_off + MEM_DISK_SECTOR_SIZE <= disk->size_bytes,
                   "mem_disk: bio exceeds disk size", return -EIO;);
 
             spin_lock(&disk->lock);
             if (bio->op == REQ_OP_READ) {
-                memcpy(page_base + done, (uint8_t *)disk->data + disk_off, MEM_DISK_SECTOR_SIZE);
+                memcpy(page_base + done, (u8 *)disk->data + disk_off, MEM_DISK_SECTOR_SIZE);
             } else if (bio->op == REQ_OP_WRITE) {
-                memcpy((uint8_t *)disk->data + disk_off, page_base + done, MEM_DISK_SECTOR_SIZE);
+                memcpy((u8 *)disk->data + disk_off, page_base + done, MEM_DISK_SECTOR_SIZE);
             } else {
                 spin_unlock(&disk->lock);
                 return -EINVAL;
@@ -98,7 +98,7 @@ static int mem_disk_register(struct mem_disk *disk)
     spin_lock_init(&mem_disk_queue.lock);
     mem_disk_queue.fops = &mem_disk_bdops;
     mem_disk_queue.logical_block_size = MEM_DISK_SECTOR_SIZE;
-    mem_disk_queue.max_hw_sectors = (uint32_t)total_sectors;
+    mem_disk_queue.max_hw_sectors = (u32)total_sectors;
     mem_disk_queue.queuedata = disk;
 
     memset(&mem_disk_gendisk, 0, sizeof(mem_disk_gendisk));
@@ -108,7 +108,9 @@ static int mem_disk_register(struct mem_disk *disk)
     mem_disk_gendisk.queue = &mem_disk_queue;
     mem_disk_gendisk.private_data = disk;
 
-    ret = register_blkdev(&mem_disk_gendisk);
+    dev_t devnr;
+    alloc_blkdev_region(&devnr, 1);
+    ret = blkdev_register("ram_disk", devnr, &mem_disk_gendisk, NULL);
     CHECK(ret == 0, "mem_disk: register block device failed",
           return ret;);
 

@@ -1,7 +1,8 @@
 OBJ_Y += kernel.o
-OBJ_Y += user_mode_smoke.o
+OBJ_Y += initcall.o
 OBJ_Y += printk.o
 OBJ_Y += syscall.o
+OBJ_Y += stacktrace.o
 OBJ_Y += sched/
 OBJ_Y += console.o
 OBJ_Y += irq/

@@ -11,7 +11,7 @@
 #include <os/string.h>
 #include <fs/dcache.h>
 
-static void blkdev_print_text_sample(const char *tag, const uint8_t *buf, size_t len)
+static void blkdev_print_text_sample(const char *tag, const u8 *buf, size_t len)
 {
     size_t n = 0;
     char line[160];
@@ -41,13 +41,13 @@ static void blkdev_print_text_sample(const char *tag, const uint8_t *buf, size_t
 
 static int blkdev_selftest(void)
 {
-    struct block_device *bdev = NULL;
-    uint8_t *expected = NULL;
-    uint8_t *readback = NULL;
-    uint8_t *patch = NULL;
-    uint8_t *text_window = NULL;
-    uint8_t *text_readback = NULL;
-    uint32_t sector_size = 0;
+    struct blkdev *bdev = NULL;
+    u8 *expected = NULL;
+    u8 *readback = NULL;
+    u8 *patch = NULL;
+    u8 *text_window = NULL;
+    u8 *text_readback = NULL;
+    u32 sector_size = 0;
     size_t total_len = 0;
     size_t patch_pos = 0;
     size_t patch_len = 0;
@@ -85,7 +85,7 @@ static int blkdev_selftest(void)
 
     memset(expected, 0x11, total_len);
     for (size_t i = 0; i < patch_len; i++) {
-        patch[i] = (uint8_t)(i * 37U + 13U);
+        patch[i] = (u8)(i * 37U + 13U);
     }
     memcpy(expected + patch_pos, patch, patch_len);
     memset(readback, 0, total_len);
@@ -126,7 +126,7 @@ static int blkdev_selftest(void)
     ret = blkdev_read(bdev, text_window, text_window_len, 0);
     CHECK(ret == 0, "blkdev: text window read failed", goto out;);
 
-    blkdev_print_text_sample("blkdev-test: expected text: ", (const uint8_t *)text_payload, text_len);
+    blkdev_print_text_sample("blkdev-test: expected text: ", (const u8 *)text_payload, text_len);
     blkdev_print_text_sample("blkdev-test: readback text: ", text_readback, text_len);
     blkdev_print_text_sample("blkdev-test: disk prefix    : ", text_window, text_window_len);
 

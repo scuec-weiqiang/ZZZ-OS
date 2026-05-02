@@ -25,8 +25,8 @@ arch_user_enter:
 
 	add	r1, ip, #PT_REGS_SP
 	ldmia	r1, {sp, lr}^		@ restore user sp/lr bank
+	add	sp, ip, #68		@ drop the bootstrap pt_regs from svc stack
 	ldmia	ip, {r0-r12}		@ restore shared registers
-
 	movs	pc, lr			@ switch to user mode and branch
 
 
@@ -38,8 +38,10 @@ ret_from_fork:
 
 	// 是内核线程
 	mov	r0, r4
+	cpsie i
 	blx	r5		// 调用 my_kthread(arg)
 
+	// 处理内核进程执行execve后变成用户进程的情况	
 	ldr	r1, [sp, #PT_REGS_CPSR]
 	and	r1, r1, #MODE_MASK
 	cmp	r1, #USR_MODE
@@ -47,6 +49,14 @@ ret_from_fork:
 
 	bl	do_exit		// 普通内核线程返回后自动退出
 1:
+	# mov	r0, sp
+	# bl	debug_dump_ret_from_fork
 	mov	r0, sp
 	b	arch_user_enter
 	b	1b
+
+.global ret_to_user_from_irq
+ret_to_user_from_irq:
+	bl	sched_handle_user_return
+	mov	r0, sp
+	b	arch_user_enter
