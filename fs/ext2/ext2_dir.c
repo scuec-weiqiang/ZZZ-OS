@@ -9,6 +9,33 @@
 
 extern int ext2_block_mapping(struct inode *inode, u32 index);
 
+static unsigned char ext2_filetype_table[EXT2_FT_MAX] = {
+	[EXT2_FT_UNKNOWN]	= DT_UNKNOWN,
+	[EXT2_FT_REG_FILE]	= DT_REG,
+	[EXT2_FT_DIR]		= DT_DIR,
+	[EXT2_FT_CHRDEV]	= DT_CHR,
+	[EXT2_FT_BLKDEV]	= DT_BLK,
+	[EXT2_FT_FIFO]		= DT_FIFO,
+	[EXT2_FT_SOCK]		= DT_SOCK,
+	[EXT2_FT_SYMLINK]	= DT_LNK,
+};
+
+#define S_SHIFT 12
+static unsigned char ext2_type_by_mode[S_IFMT >> S_SHIFT] = {
+	[S_IFREG >> S_SHIFT]	= EXT2_FT_REG_FILE,
+	[S_IFDIR >> S_SHIFT]	= EXT2_FT_DIR,
+	[S_IFCHR >> S_SHIFT]	= EXT2_FT_CHRDEV,
+	[S_IFBLK >> S_SHIFT]	= EXT2_FT_BLKDEV,
+	[S_IFIFO >> S_SHIFT]	= EXT2_FT_FIFO,
+	[S_IFSOCK >> S_SHIFT]	= EXT2_FT_SOCK,
+	[S_IFLNK >> S_SHIFT]	= EXT2_FT_SYMLINK,
+};
+
+// static inline void ext2_set_de_type(struct ext2_dir_entry_2 *de, struct inode *inode) {
+// 	u32 mode = inode->i_mode;
+// 	de->file_type = ext2_type_by_mode[(mode & S_IFMT)>>S_SHIFT];
+// }
+
 static int ext2_readpage(struct page *page) {
     struct inode *inode= page->mapping->host;
     struct blkdev *bdev = page->mapping->host->i_sb->s_bdev;
@@ -136,6 +163,48 @@ found:
     return child_entry;
 }
 
+int ext2_readdir(struct file *fp, struct dir_context *ctx) {
+    struct inode *dir = file_inode(fp);
+    u32 page_nr = (dir->i_size + PAGE_SIZE - 1) / PAGE_SIZE;
+    struct page *page = NULL;
+    char *buf = NULL;
+    
+    u32 pos = ctx->pos;
+    u32 start_page = pos / PAGE_SIZE;
+    u32 offset = pos % PAGE_SIZE;
+
+    for (int i = start_page; i < page_nr; i++) {
+        page = ext2_get_page(dir, i);
+        if (IS_ERR(page)) {
+            return PTR_ERR(page);
+        }
+        buf = (char *)page_address(page);
+        u32 valid_end = last_valid_byte(dir, i);
+        while (offset < (u32)valid_end) {
+            struct ext2_dir_entry_2 *entry = (struct ext2_dir_entry_2 *)(buf + offset);
+            if (entry->rec_len == 0) {
+                ext2_put_page(page);
+                return -EIO;
+            }
+
+            if (entry->inode != 0) {
+                unsigned int d_type = ext2_filetype_table[entry->file_type];
+                int err = ctx->actor(ctx, entry->name, entry->name_len, offset, entry->inode, d_type);
+                if (err < 0) {
+                    ext2_put_page(page);
+                    return err;
+                }
+                
+            }
+            offset += entry->rec_len;
+            ctx->pos = i * PAGE_SIZE + offset;
+        }
+        offset = 0;
+        ext2_put_page(page);
+    }
+
+    return 0;
+}
 
 u32 ext2_find(struct inode *dir, struct qstr *child) {
     struct page *page = NULL;
@@ -150,3 +219,6 @@ u32 ext2_find(struct inode *dir, struct qstr *child) {
     return entry->inode;
 }
 
+const struct file_operations ext2_dir_operations = {
+    .iterate = ext2_readdir,
+};

@@ -17,62 +17,61 @@ int mount_root(const char *dev, const char *fs_type)
     int ret = 0;
 
     ret = icache_init();
-    CHECK(ret == 0, "fs: failed to init icache", return -1;);
+    if (ret < 0) {
+        panic("fs: failed to init icache");
+    }
+
     ret = dcache_init();
-    CHECK(ret == 0, "fs: failed to init dcache", return -1;);
+    if (ret < 0) {
+        panic("fs: failed to init dcache");
+    }
+
     ret = pagecache_init();
-    CHECK(ret == 0, "fs: failed to init pagecache", return -1;);
+    if (ret < 0) {
+        panic("fs: failed to init pagecache");
+    }
 
     struct file_system_type *rootfs = get_fs_type(fs_type);
-    CHECK(rootfs != NULL, "fs: ext2 filesystem is not registered", return -1;);
+    if (!rootfs) {
+        panic("fs: root fs type not found");
+    }
 
     fc = fs_context_for_mount(rootfs, 0);
-    CHECK(fc != NULL, "fs: failed to alloc fs_context", return -1;);
+    if (!fc) {
+        panic("fs: failed to create fs context for root fs");
+    }
 
     fc->source = dev;
     ret = vfs_get_tree(fc);
     if (ret < 0) {
-        printk("failed to get tree for root fs:%d\n",ret);
+        panic("failed to get tree for root fs:%d\n",ret);
     }
         
     ret = vfs_kern_mount(fc, &root_mnt);
-    CHECK(ret == 0, "fs: failed to create root mount",
-          put_fs_context(fc);
-          return -1;);
+    if (ret < 0) {
+        put_fs_context(fc);
+        panic("fs: failed to mount root fs");
+    }
+ 
 
     ret = init_mount_tree(root_mnt);
-    CHECK(ret == 0, "fs: failed to install mount tree",
+    if(ret< 0) {
           put_fs_context(fc);
-          return -1;);
+          panic("fs: failed to install mount tree");
+    }
 
     put_fs_context(fc);
 
     ret = vfs_mount_fs("ramfs", NULL, "/dev", 0);
-    CHECK(ret == 0,
-          "fs: failed to mount ramfs on /dev, make sure /dev exists in the ext2 rootfs image",
-          return -1;);
+    if (ret < 0) {
+        panic("fs: failed to mount ramfs on /dev, make sure /dev exists in the ext2 rootfs image");
+    }
 
     ret = devtmpfs_mount("/dev");
-    CHECK(ret == 0, "fs: failed to populate /dev from devnodes", return -1;);
+    if (ret < 0) {
+        panic("fs: failed to populate /dev from devnodes");
+    }
 
     elf_binfmt_init();
-
-//     struct dentry *find = NULL;
-//     find = vfs_lookup("/dev/uart0");
-
-//     if (find != NULL) {
-//         printk("found /dev/uart0\n");
-//     } else {
-//         printk("failed to find /dev/uart0\n");
-//     }
-
-//     struct file *f = filp_open("/dev/uart0", O_RDWR);
-//     if (f != NULL) {
-//         printk("opened /dev/uart0 successfully\n");
-//     } else {
-//         printk("failed to open /dev/uart0\n");
-//     }
-// 
-//     kernel_write(f, "hello!\n", 7);
     return 0;
 }

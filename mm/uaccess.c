@@ -39,5 +39,5 @@ int copy_to_user(char *dst, char* src, size_t len) {
         copied += n;
     }
 
-    return copied;
+    return len - copied;
 }

@@ -513,8 +513,7 @@ static int ramfs_register_filesystem_init(void)
 
 fs_initcall(ramfs_register_filesystem_init);
 
-int ramfs_debug_ls(const char *path)
-{
+int ramfs_debug_ls(const char *path) {
     struct dentry *dentry = NULL;
     struct ramfs_node *node = NULL;
     struct list_head *pos = NULL;

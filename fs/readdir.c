@@ -13,6 +13,7 @@ int iterate_dir(struct file *file, struct dir_context *ctx) {
 	res = -ENOENT;
 	if (S_ISDIR(inode->i_mode)) {
 		ctx->pos = file->f_pos;
+		here;
 		res = file->f_op->iterate(file, ctx);
 		file->f_pos = ctx->pos;
 	}
@@ -54,22 +55,43 @@ static int filldir(struct dir_context *ctx, const char *name, int namlen,
 		return -EINVAL;
 	dirent = buf->previous;
 	if (dirent) {
-		if (__put_user(offset, &dirent->d_off))
+		if (__put_user(offset, &dirent->d_off)) {
 			goto efault;
+		}
 	}
+
 	dirent = buf->current_dir;
-	if (__put_user(ino, &dirent->d_ino))
+
+	if (__put_user(ino, &dirent->d_ino)) {
+		here;
 		goto efault;
-	if (__put_user(0, &dirent->d_off))
+	}
+
+	if (__put_user(0, &dirent->d_off)) {
+		here;
 		goto efault;
-	if (__put_user(reclen, &dirent->d_reclen))
+	}
+
+	if (__put_user(reclen, &dirent->d_reclen)) {
+		here;
 		goto efault;
-	if (__put_user(d_type, &dirent->d_type))
+	}
+		
+	if (__put_user(d_type, &dirent->d_type)) {
+		here;
 		goto efault;
-	if (copy_to_user(dirent->d_name, name, namlen))
+	}
+
+	if (copy_to_user(dirent->d_name, name, namlen)) {
+		here;
 		goto efault;
-	if (__put_user(0, dirent->d_name + namlen))
+	}
+		
+	if (__put_user(0, dirent->d_name + namlen)) {
+		here;
 		goto efault;
+	}
+		
 	buf->previous = dirent;
 	dirent = (void __user *)dirent + reclen;
 	buf->current_dir = dirent;
@@ -86,7 +108,9 @@ int getdents(unsigned int fd, struct linux_dirent __user * dirent, unsigned int 
 	struct getdents_callback buf = {
 		.ctx.actor = filldir,
 		.count = count,
-		.current_dir = dirent
+		.current_dir = dirent,
+		.previous = NULL,
+		.error = 0,
 	};
 	int error;
 
@@ -95,15 +119,18 @@ int getdents(unsigned int fd, struct linux_dirent __user * dirent, unsigned int 
 		return -EBADF;
 
 	error = iterate_dir(f, &buf.ctx);
-	if (error >= 0)
+	if (error >= 0) {
 		error = buf.error;
+	}
+		
 	lastdirent = buf.previous;
 	if (lastdirent) {
 		s64 d_off = buf.ctx.pos;
-		if (__put_user(d_off, &lastdirent->d_off))
+		if (__put_user(d_off, &lastdirent->d_off)) {
 			error = -EFAULT;
-		else
+		} else {
 			error = count - buf.count;
+		}
 	}
 	fd_put_file(f);
 	return error;

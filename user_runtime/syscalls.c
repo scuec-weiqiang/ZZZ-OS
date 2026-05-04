@@ -142,4 +142,12 @@ int _execve(const char *filename, char *const argv[], char *const envp[]) {
     return -1; // execve 成功不会返回，失败才会返回 -1
 }
 
+int getdents(int fd, void *dirp, unsigned int count) {
+    long ret = __syscall3(SYS_getdents, fd, (long)dirp, count);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret;
+}
 

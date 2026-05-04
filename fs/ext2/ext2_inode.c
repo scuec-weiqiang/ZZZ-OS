@@ -139,11 +139,7 @@ struct dentry * ext2_lookup(struct inode *dir,struct dentry *child_dentry, unsig
 
 
 
-const struct file_operations ext2_dir_operations = {
-    // .owner = THIS_MODULE,
-    // .read = ext2_dir_read,
-    // .readdir = ext2_dir_readdir,
-};
+
 
 /* file.c */
 const struct inode_operations ext2_file_inode_operations = {

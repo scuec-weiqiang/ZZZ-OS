@@ -76,6 +76,7 @@ all: disk $(TARGET) $(DTB)
 	sudo umount $(MOUNT_PATH)
 
 os: $(TARGET) $(ASM_LINK) $(KBUILD_FILE) $(DTB)
+	$(MAKE) -C ./user_runtime/ all
 	cp $(TARGET) ../linux/tftpboot/
 	cp $(DTB) ../linux/tftpboot/
 
@@ -106,6 +107,7 @@ $(BUILD_DIR)/%.o: %.s $(ASM_LINK) $(KBUILD_FILE)
 
 clean:
 	rm -rf $(BUILD_DIR) $(KBUILD_FILE) 
+	$(MAKE) -C ./user_runtime/ clean
 	@echo "clean complete"
 
 .PHONY: all clean

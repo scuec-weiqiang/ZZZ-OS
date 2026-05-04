@@ -188,7 +188,23 @@ static int load_elf_binary(struct linux_binprm *bprm) {
     current->mm->start_stack = bprm->p;
     regs = task_pt_regs(current);
 
+    dprintk("exec: entry=%x start_code=%x end_code=%x start_data=%x end_data=%x start_brk=%x brk=%x start_stack=%x p=%x\n",
+            (unsigned int)elf_info->entry,
+            (unsigned int)current->mm->start_code,
+            (unsigned int)current->mm->end_code,
+            (unsigned int)current->mm->start_data,
+            (unsigned int)current->mm->end_data,
+            (unsigned int)current->mm->start_brk,
+            (unsigned int)current->mm->brk,
+            (unsigned int)current->mm->start_stack,
+            (unsigned int)bprm->p);
+
     start_thread(regs, elf_info->entry, bprm->p);
+
+    dprintk("exec: regs pc=%x sp=%x cpsr=%x\n",
+            (unsigned int)regs->pc,
+            (unsigned int)regs->sp,
+            (unsigned int)regs->cpsr);
 
     elf_free(elf_info);
     return 0;

@@ -56,6 +56,13 @@ static inline int __range_ok(unsigned long addr, size_t size)
 					: : "r"(__val), "r"(__addr)           \
 					: "memory");                          \
 					break;                              \
+            case 8:                                   \
+            __asm__ __volatile__(                 \
+                "str  %Q0, [%1]\n"                \
+                "str  %R0, [%1, #4]\n"            \
+                : : "r"(__val), "r"(__addr)       \
+                : "memory");                      \
+                break;                            \
 			default:\
 				__err = -EFAULT;                              \
 				break;                              \
