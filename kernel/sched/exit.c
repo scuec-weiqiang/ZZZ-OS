@@ -6,12 +6,6 @@
 #include <asm/ptrace.h>
 extern struct task_struct init_task;
 
-static inline unsigned long exit_read_cpsr(void)
-{
-    unsigned long cpsr;
-    asm volatile("mrs %0, cpsr" : "=r"(cpsr));
-    return cpsr;
-}
 struct task_struct *choose_reaper(struct task_struct *child) {
     if (child->flags & PF_KTHREAD)
         return kthreadd_task;   // PID 2
@@ -44,7 +38,6 @@ void __noreturn do_exit(int code)
     struct rq *rq = this_rq();
     struct task_struct *curr = current;
     unsigned long flags;
-    unsigned long cpsr = exit_read_cpsr();
     
     // dprintk("mode=%xu sp=%xu current=%d rq_curr=%d exit_code=%d\n",
     //         cpsr & MODE_MASK, current_stack_pointer,

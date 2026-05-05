@@ -10,11 +10,14 @@
 #ifndef TRAP_H
 #define TRAP_H
 
-#include <os/types.h>
 #include <os/irqreturn.h>
+#include <os/types.h>
 
-extern void trap_init();
+struct pt_regs;
+
+extern void trap_init(void);
 extern irqreturn_t s_soft_interrupt_handler(int virq, void *dev_id);
 extern irqreturn_t s_timer_interrupt_handler(int virq, void *dev_id);
 extern reg_t trap_handler(reg_t ctx);
+extern struct pt_regs *trap_prepare_user_return(struct pt_regs *regs);
 #endif

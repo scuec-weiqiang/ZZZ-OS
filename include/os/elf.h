@@ -117,4 +117,5 @@ struct __attribute__((packed)) Elf64_Phdr
 
 extern struct elf_info *elf_parse_file(struct file *file);
 extern void elf_free(struct elf_info *info);
+extern int arch_elf_check(const struct elf_info *info);
 #endif

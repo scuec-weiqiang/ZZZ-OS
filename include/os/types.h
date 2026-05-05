@@ -36,6 +36,7 @@
     typedef unsigned long       u64;
     typedef unsigned long       size_t;
     typedef u64            uintptr_t;
+    #define INT_MAX             (0x7fffffff)
     #define UINT_MAX            (0xffffffffffffffff)
 
 #elif SYS_BITS == 32

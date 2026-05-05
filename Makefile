@@ -28,6 +28,8 @@ CFLAGS += -Iinclude
 CFLAGS += -MMD -MP
 ASFLAGS := $(CFLAGS)
 LDFLAGS := -Tarch/$(ARCH)/config/link.ld 
+MKIMAGE_ARCH ?= arm
+OBJDUMP_ARCH ?= arm
 
 
 # 目标架构的asm头文件目录（如arch/riscv64/include/asm）
@@ -81,7 +83,7 @@ os: $(TARGET) $(ASM_LINK) $(KBUILD_FILE) $(DTB)
 	cp $(DTB) ../linux/tftpboot/
 
 $(TARGET): $(BIN)
-	./tools/mkimage -A arm -O linux -T kernel -C none -a 0x80200000 -e 0x80200000 -n "ZZZ-OS" -d $(BIN) $(TARGET)
+	./tools/mkimage -A $(MKIMAGE_ARCH) -O linux -T kernel -C none -a 0x80200000 -e 0x80200000 -n "ZZZ-OS" -d $(BIN) $(TARGET)
 
 
 $(BIN): $(ELF) 
@@ -159,7 +161,7 @@ distclean:
 #********************************************************************************
 .PHONY:dump
 dump:
-	$(OBJDUMP) -D -m arm $(ELF) > $(BUILD_DIR)/disassembly.asm
+	$(OBJDUMP) -D -m $(OBJDUMP_ARCH) $(ELF) > $(BUILD_DIR)/disassembly.asm
 
 .PHONY:disk
 disk:

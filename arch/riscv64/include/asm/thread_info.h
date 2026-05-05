@@ -1,7 +1,6 @@
 #ifndef __ASM_RISCV64_THREAD_INFO_H
 #define __ASM_RISCV64_THREAD_INFO_H
 
-#include <asm/context.h>
 #include <os/compiler_attributes.h>
 #include <os/pfn.h>
 #include <os/types.h>
@@ -12,8 +11,25 @@
 
 struct task_struct;
 
+struct cpu_context_save {
+    reg_t ra;
+    reg_t sp;
+    reg_t s0;
+    reg_t s1;
+    reg_t s2;
+    reg_t s3;
+    reg_t s4;
+    reg_t s5;
+    reg_t s6;
+    reg_t s7;
+    reg_t s8;
+    reg_t s9;
+    reg_t s10;
+    reg_t s11;
+};
+
 struct thread_info {
-    struct context cpu_context;
+    struct cpu_context_save cpu_context;
     struct task_struct *task;
     int preempt_count;
     u32 cpu;
@@ -46,4 +62,4 @@ static inline struct thread_info *current_thread_info(void)
 #define thread_saved_fp(tsk) \
     ((unsigned long)(task_thread_info(tsk)->cpu_context.s0))
 
-#endif /* __ASM_RISCV64_THREAD_INFO_H */
+#endif

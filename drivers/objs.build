@@ -3,11 +3,8 @@ OBJ_Y += core/
 OBJ_Y += gpio_chip/
 OBJ_Y += irq_chip/
 OBJ_Y += clocksource/
-OBJ_Y += imx6ull_uart.o
-OBJ_Y += imx6ull_led.o
-# OBJ_Y += imx6ull_rtc.o
-OBJ_Y += mem_disk/
-# 切到 riscv64 时，手动改成下面这组
-# OBJ_Y += irq_chip/
-# OBJ_Y += qemu_riscv_uart.o
-# OBJ_Y += virt_disk/
+OBJ_arm += imx6ull_uart.o
+OBJ_arm += imx6ull_led.o
+OBJ_arm += mem_disk/
+OBJ_riscv64 += qemu_riscv_uart.o
+OBJ_riscv64 += virt_disk/

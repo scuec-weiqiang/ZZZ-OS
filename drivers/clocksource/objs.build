@@ -1,1 +1,2 @@
-OBJ_Y += arm/
+OBJ_arm += arm/
+OBJ_riscv64 += riscv64/

@@ -14,18 +14,6 @@
 #include <asm/process.h>
 #include <asm/ptrace.h>
 
-static int elf_check_arch(const struct elf_info *info) {
-    if(info->elf_class != ELFCLASS32){
-         printk("elf: only ELF32 supported\n");
-         return -1;
-    }
-    if(info->machine != EM_ARM){
-        printk("elf: only ARM ELF supported\n");
-        return -1;
-    }
-    return 0;
- }
-
 static pgprot_t elf_segment_prot(u32 elf_flags)
 {
     pgprot_t prot = PROT_USER;
@@ -165,7 +153,7 @@ static int load_elf_binary(struct linux_binprm *bprm) {
     elf_info = elf_parse_file(bprm->file);
     CHECK(elf_info != NULL, "elf: parse header failed", return -1;);
 
-    ret = elf_check_arch(elf_info);
+    ret = arch_elf_check(elf_info);
     if (ret != 0) {
         goto out_fail;
     }

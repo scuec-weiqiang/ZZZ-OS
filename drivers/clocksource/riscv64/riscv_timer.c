@@ -1,7 +1,3 @@
-/**
- * @FilePath: /ZZZ-OS/arch/riscv64/timer/arch_timer.c
- * @Description:
- */
 #include <asm/clint.h>
 #include <asm/interrupt.h>
 #include <asm/platform.h>

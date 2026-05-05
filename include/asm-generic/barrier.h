@@ -3,7 +3,7 @@
 
 
 #ifndef barrier
-#define barrier() __asm__ __volatile__("dmb ish" ::: "memory")
+#define barrier() __asm__ __volatile__("" ::: "memory")
 #endif
 
 #ifndef mb

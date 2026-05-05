@@ -1,7 +1,3 @@
-/**
- * @FilePath: /ZZZ-OS/arch/riscv64/irq/clint.c
- * @Description:
- */
 #include <asm/clint.h>
 #include <asm/interrupt.h>
 #include <os/irq.h>

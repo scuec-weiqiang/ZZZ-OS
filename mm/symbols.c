@@ -138,7 +138,7 @@ void symbols_init()
     text_size = (text_end - text_start);
 
     sched_text_start = (phys_addr_t)&_sched_text_start;
-    sched_text_end = (phys_addr_t)&_sched_text_start;
+    sched_text_end = (phys_addr_t)&_sched_text_end;
     sched_text_size = sched_text_end - sched_text_start;
 
     trap_start = (phys_addr_t)&_trap_start;

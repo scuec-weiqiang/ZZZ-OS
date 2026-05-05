@@ -128,11 +128,13 @@ static inline int test_bit(int nr, const volatile unsigned long *addr)
 #define GENMASK(h,l) \
     (((~0U) >> (31-(h))) & (~0U << (l)))
     
+#define __bf_shf(x) (__ffs(x))
+
 #define FIELD_PREP(mask,val) \
-    (((val) << __builtin_ctz(mask)) & (mask))
+    (((val) << __bf_shf(mask)) & (mask))
 
 #define FIELD_GET(mask,val) \
-    (((val) & (mask)) >> __builtin_ctz(mask))
+    (((val) & (mask)) >> __bf_shf(mask))
 
 #define SET_VAL(dest,mask,val)  ((dest) = (((dest) & ~(mask)) | FIELD_PREP(mask,val)))
 #define GET_VAL(src,mask)       (FIELD_GET(mask,src))

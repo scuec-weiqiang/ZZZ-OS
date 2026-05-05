@@ -196,10 +196,10 @@ static int create_user_stack_layout(int argc, char **argv, struct linux_binprm *
     argv_user[argc] = 0;
 
     /*
-     * AAPCS requires SP to be 8-byte aligned at a public interface.
-     * Newlib's varargs code relies on this.
+     * Keep the initial userspace stack aligned to the target ABI.
+     * ARM newlib needs 8-byte alignment, while RV64 uses 16-byte alignment.
      */
-    bprm->p = ALIGN_DOWN(bprm->p, 8);
+    bprm->p = ALIGN_DOWN(bprm->p, USER_STACK_ALIGN);
 
     /*
      *   栈布局
@@ -207,10 +207,12 @@ static int create_user_stack_layout(int argc, char **argv, struct linux_binprm *
      *   argv[0..argc-1]
      *   NULL
      *   envp[0] = NULL
-     *   optional padding word to keep SP 8-byte aligned
+     *   optional padding words to keep SP ABI-aligned
      */
     total_words = 1 + (argc + 1) + 1;
-    pad_words = total_words & 0x1;
+    pad_words = (USER_STACK_ALIGN / sizeof(unsigned long) -
+                 (total_words % (USER_STACK_ALIGN / sizeof(unsigned long)))) %
+                (USER_STACK_ALIGN / sizeof(unsigned long));
     total_words += pad_words;
     total_bytes = total_words * sizeof(unsigned long);
 

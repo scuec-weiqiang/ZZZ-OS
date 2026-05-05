@@ -1,19 +1,16 @@
-/**
- * @FilePath: /ZZZ-OS/arch/riscv64/include/asm/barrier.h
- * @Description:  
- * @Author: scuec_weiqiang scuec_weiqiang@qq.com
- * @Date: 2025-10-30 21:01:45
- * @LastEditTime: 2025-10-30 21:02:08
- * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
- * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
-*/
-#ifndef _ASM_BARRIER_H
-#define _ASM_BARRIER_H
+#ifndef __ASM_RISCV64_BARRIER_H
+#define __ASM_RISCV64_BARRIER_H
 
-static inline void sfence_vma()
+#define barrier() __asm__ volatile("" ::: "memory")
+#define mb() barrier()
+#define rmb() mb()
+#define wmb() mb()
+
+static inline void sfence_vma(void)
 {
-    // the zero, zero means flush all TLB entries.
-    asm volatile("sfence.vma zero, zero");
+    asm volatile("sfence.vma zero, zero" ::: "memory");
 }
+
+#include <asm-generic/barrier.h>
 
 #endif

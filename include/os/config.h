@@ -10,7 +10,9 @@
 #ifndef __OS_CONFIG_H
 #define __OS_CONFIG_H
 
+#ifndef SYS_BITS
 #define SYS_BITS 32
+#endif
 #define GNUC
 
 #endif // __OS_CONFIG_H

@@ -497,7 +497,7 @@ unsigned long find_next_zero_bit(const unsigned long *addr, unsigned long size, 
         mask = ~((1UL << idx) - 1);
         if ((addr[k] | mask) != ~0UL) {
             // 这个 word 里还有 0，直接找
-            unsigned long bit = __builtin_ctz(~(addr[k] | mask));
+            unsigned long bit = __ffs(~(addr[k] | mask));
             unsigned long pos = k * BITS_PER_LONG + bit;
             return pos < size ? pos : size;
         }
@@ -509,7 +509,7 @@ unsigned long find_next_zero_bit(const unsigned long *addr, unsigned long size, 
     for (; k * BITS_PER_LONG < size; k++) {
         if (addr[k] != ~0UL) {
             // 找到有 0 的 word，找第一个 0
-            unsigned long bit = __builtin_ctz(~addr[k]);
+            unsigned long bit = __ffs(~addr[k]);
             unsigned long pos = k * BITS_PER_LONG + bit;
             return pos < size ? pos : size;
         }

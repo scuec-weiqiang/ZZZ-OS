@@ -1,9 +1,6 @@
-/**
- * @FilePath: /ZZZ-OS/arch/riscv64/irq/irq.c
- * @Description:
- */
 #include <asm/clint.h>
 #include <asm/irq.h>
+#include <asm/ptrace.h>
 #include <asm/riscv.h>
 #include <asm/trap_handler.h>
 
@@ -26,19 +23,18 @@ void arch_irq_init(void)
 
 void local_irq_enable(void)
 {
-    sstatus_w(sstatus_r() | 0x2UL);
+    sstatus_w(sstatus_r() | SSTATUS_SIE);
 }
 
 void local_irq_disable(void)
 {
-    sstatus_w(sstatus_r() & ~0x2UL);
+    sstatus_w(sstatus_r() & ~SSTATUS_SIE);
 }
 
 unsigned long arch_local_irq_save(void)
 {
-    unsigned long flags;
+    unsigned long flags = sstatus_r();
 
-    flags = sstatus_r();
     local_irq_disable();
     return flags;
 }

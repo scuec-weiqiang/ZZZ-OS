@@ -14,6 +14,9 @@ SECTIONS
         *(.text.entry)
         __trap_start = .;  /* trap处理函数起始地址 */
         __trap_end = .;    /* trap处理函数结束地址 */
+        __sched_text_start = .;
+        *(.text.sched .text.sched.*)
+        __sched_text_end = .;
         *(.text .text.*)
         . = ALIGN(4096);
         __text_end = .;
@@ -135,6 +138,8 @@ SECTIONS
     
     PROVIDE_HIDDEN(_text_start = __text_start);
     PROVIDE_HIDDEN(_text_end = __text_end);
+    PROVIDE_HIDDEN(_sched_text_start = __sched_text_start);
+    PROVIDE_HIDDEN(_sched_text_end = __sched_text_end);
 
     PROVIDE_HIDDEN(_initcall_start = __initcall_start);
     PROVIDE_HIDDEN(_initcall_end = __initcall_end);

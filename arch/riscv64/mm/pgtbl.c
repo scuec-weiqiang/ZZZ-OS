@@ -6,7 +6,7 @@
 #include <mm/page.h>
 #include <os/check.h>
 #include <asm/barrier.h>
-#include <asm/riscv.h> 
+#include <asm/riscv.h>
 #include <os/kva.h>
 #include <mm/pgprot.h>
 #include <asm/pgtbl.h>
@@ -17,19 +17,12 @@
 #define PTE_X (1 << 3)      // 可执行
 #define PTE_U (1 << 4)      // 用户模式可访问
 
-#define PA2PTE(pa) ()
-#define PTE2PA(entry) (((entry&UINT_MAX) >> 10) << 12)
-
 #define SATP_NONE (0)
 #define SATP_SV32 (1)
 #define SATP_SV39 (8)
 #define SATP_SV48 (9)
 
-#ifdef RISCV64
 #define SATP_MODE SATP_SV39
-#else
-#define SATP_MODE SATP_SV32
-#endif
 
 struct satp {
     union {
@@ -63,11 +56,17 @@ static const struct pgtable_features riscv_features = {
 
 
 static pteval_t arch_pgtbl_entry_set_pa(pgtable_t *tbl, u32 level, pgdesc_type_t type, phys_addr_t pa) {
+    (void)tbl;
+    (void)level;
+    (void)type;
     return (pteval_t)(((pa) >> 12) << 10);
 }
 
-phys_addr_t arch_pgtbl_entry_get_pa(pgtable_t *tbl, u32 level, pgdesc_type_t type, pteval_t  val) {
-    return ((val >> 10) << 12);
+phys_addr_t arch_pgtbl_entry_get_pa(pgtable_t *tbl, u32 level, pgdesc_type_t type, pte_t *entry) {
+    (void)tbl;
+    (void)level;
+    (void)type;
+    return ((entry->val >> 10) << 12);
 }
 
 u32 arch_pgtbl_level_index(pgtable_t *tbl, u32 level, virt_addr_t va) {
@@ -76,7 +75,10 @@ u32 arch_pgtbl_level_index(pgtable_t *tbl, u32 level, virt_addr_t va) {
 }
 
 void arch_pgtbl_entry_set_flags(pgtable_t *tbl, int level, pte_t* entry, pgprot_t flags) {
-    pgprot_t _flags = {0};
+    pgprot_t _flags = 0;
+
+    (void)tbl;
+    (void)level;
 
     if (flags & PROT_READ) _flags |= PTE_R;
     if (flags & PROT_WRITE) _flags |= PTE_W;
@@ -90,7 +92,11 @@ void arch_pgtbl_entry_set_flags(pgtable_t *tbl, int level, pte_t* entry, pgprot_
 }
 
 pgprot_t arch_pgtbl_entry_get_flags(pgtable_t *tbl, int level, pte_t* entry) {
-    pgprot_t flags = {0};
+    pgprot_t flags = 0;
+
+    (void)tbl;
+    (void)level;
+
     if (entry->val & PTE_R) flags |= PROT_READ;
     if (entry->val & PTE_W) flags |= PROT_WRITE;
     if (entry->val & PTE_X) flags |= PROT_EXEC;
@@ -100,7 +106,7 @@ pgprot_t arch_pgtbl_entry_get_flags(pgtable_t *tbl, int level, pte_t* entry) {
 
 void arch_pgtbl_set_entry(pgtable_t *tbl, int level, pgdesc_type_t type, pte_t* entry, phys_addr_t pa, pgprot_t flags) {
     pteval_t val = arch_pgtbl_entry_set_pa(tbl, level, type, pa);
-    u32 _flags = 0;
+    pteval_t _flags = 0;
 
     if (flags & PROT_READ) _flags |= PTE_R;
     if (flags & PROT_WRITE) _flags |= PTE_W;
@@ -111,6 +117,9 @@ void arch_pgtbl_set_entry(pgtable_t *tbl, int level, pgdesc_type_t type, pte_t* 
 }
 
 void arch_pgtbl_clear_entry(pgtable_t *tbl, int level, pgdesc_type_t type, pte_t* entry) {
+    (void)tbl;
+    (void)level;
+    (void)type;
     entry->val = 0;
 }
 
@@ -122,6 +131,11 @@ bool arch_pgtbl_entry_is_leaf(pte_t *entry) {
     return (entry->val & (PTE_R | PTE_W | PTE_X)) != 0;
 }
 
+void arch_pgtbl_sync_range(void *addr, size_t size) {
+    (void)addr;
+    (void)size;
+    asm volatile("fence rw, rw" ::: "memory");
+}
 
 void arch_pgtbl_flush() {
     sfence_vma();
@@ -147,6 +161,3 @@ void arch_pgtbl_deinit(pgtable_t *tbl) {
     }
     tbl->root_pa = 0;
 }
-
-
-

@@ -9,9 +9,18 @@
 #define MAX_ARG_STRLEN (PAGE_SIZE * 32)
 #define MAX_ARG_STRINGS 0x7FFFFFFF
 
-#define USER_STACK_TOP   0xbf000000
+#if SYS_BITS == 64
+#define USER_STACK_TOP   0x0000003f00000000UL
+#else
+#define USER_STACK_TOP   0xbf000000UL
+#endif
 #define USER_STACK_PAGES 4
 #define USER_STACK_SIZE  (USER_STACK_PAGES * PAGE_SIZE)
+#if SYS_BITS == 64
+#define USER_STACK_ALIGN 16UL
+#else
+#define USER_STACK_ALIGN 8UL
+#endif
 
 struct mm_struct;
 struct file;

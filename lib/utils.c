@@ -29,11 +29,11 @@ int is_power_of_two(unsigned int n)
 
 #if SYS_BITS == 64
 
-unsigned int div_u32(unsigned int num, unsigned int div_u32) {
+unsigned int div_u32(unsigned int num, unsigned int div_num) {
     return num / div_num;
 }
 
-unsigned int mod_u32(unsigned int num, unsigned int div_u32) {
+unsigned int mod_u32(unsigned int num, unsigned int div_num) {
     return num % div_num;
 }
 
@@ -47,6 +47,17 @@ unsigned long long divmod_u64(unsigned long long num, unsigned int div_num, unsi
     unsigned long long ret =  num / div_num;
     if (rem) *rem = num % div_num;
     return ret;
+}
+
+unsigned long long div_u64(unsigned long long num, unsigned int div_num) {
+    return divmod_u64(num, div_num, 0);
+}
+
+unsigned long long mod_u64(unsigned long long num, unsigned int div_num) {
+    unsigned int rem = 0;
+
+    divmod_u64(num, div_num, &rem);
+    return rem;
 }
 
 #elif SYS_BITS == 32

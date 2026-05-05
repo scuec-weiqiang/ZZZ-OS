@@ -42,15 +42,27 @@ static inline unsigned long __fls(unsigned long x)
 
 static inline int ffs(int x)
 {
+    int bit = 1;
+
     if (x == 0) {
         return 0;
     }
-    return __builtin_ffs(x);
+    while ((x & 1) == 0) {
+        x >>= 1;
+        bit++;
+    }
+    return bit;
 }
 
 static inline unsigned long __ffs(unsigned long x)
 {
-    return (unsigned long)(__builtin_ffsl((long)x) - 1);
+    unsigned long bit = 0;
+
+    while ((x & 1UL) == 0) {
+        x >>= 1;
+        bit++;
+    }
+    return bit;
 }
 
 #define ffz(x) __ffs(~(x))

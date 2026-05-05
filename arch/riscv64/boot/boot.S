@@ -1,6 +1,8 @@
 .section .text.entry
 .globl  _start
 _start:
+    mv s0, a0
+    mv s1, a1
     csrw mie, zero  # 禁用所有中断
     csrw satp, zero
 
@@ -41,6 +43,7 @@ _start:
     mret
 
 smode:
+    mv tp, s0
     csrw sie, zero  # 禁用所有中断
     csrw satp, zero
     sfence.vma x0, x0
@@ -100,14 +103,13 @@ smode:
     li t1, 0xffffffff40000000
     add t0, t0, t1
     mv sp, t0  # 设置早期栈指针
-    csrw sscratch, sp  # sscratch存放内核栈指针
+    csrw sscratch, zero
 
-    li a0, 0        /* cpuid */
-    li a1, 0xffffffffc0400000        /* dtb phys addr */
-
-    la t0, init_kernel
+    la t0, start_kernel
     li t1, 0xffffffff40000000
     add t0, t0, t1  # 转换为虚拟地址
+    mv a0, s0
+    mv a1, s1
     jr t0
 
 .end
