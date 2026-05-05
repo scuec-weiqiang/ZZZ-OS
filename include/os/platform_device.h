@@ -14,10 +14,16 @@
 #include <os/container_of.h>
 #include <os/init.h>
 #include <os/resource.h>
+struct platform_device_id {
+    char name[32];
+    unsigned long driver_data;
+};
 
 struct platform_device {
     const char *name;              // 例如 "ns16550a"
+    int id;                       // 设备实例编号，-1 表示自动分配
     struct device dev;            // device core
+    const struct platform_device_id	*id_entry;
     void *platform_data;           // optional
     struct resource *resources;
     int num_resources;
@@ -29,8 +35,11 @@ struct platform_device {
 struct platform_driver {
     const char *name;
     struct device_driver driver; // driver core
+    const struct platform_device_id *id_table;
+
     int (*probe) (struct platform_device *pdev);
     int (*remove) (struct platform_device *pdev);
+
     struct list_head node; // 链接到全局 platform driver 列表
 };
 
@@ -52,4 +61,13 @@ extern int platform_driver_unregister(struct platform_driver *drv);
 extern struct resource *platform_get_resource(struct platform_device *pdev, unsigned int type, unsigned int index);
 extern  virt_addr_t platform_ioremap_resource(struct platform_device *pdev, unsigned int index);
 extern int platform_get_irq(struct platform_device *dev, unsigned int index);
+
+
+static inline void platform_set_drvdata(struct platform_device *pdev, void *data) {
+    pdev->platform_data = data;
+}
+
+static inline void *platform_get_drvdata(struct platform_device *pdev) {
+    return pdev->platform_data;
+}
 #endif

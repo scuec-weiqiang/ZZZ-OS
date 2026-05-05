@@ -57,10 +57,20 @@ extern int of_device_is_available(const struct device_node *node);
 extern int of_device_is_type(const struct device_node *node, const char *type);
 extern int of_scan_memory();
 extern int of_scan_reserved_memory();
-extern struct device *of_device_create(struct device_node *np, struct device *parent, struct bus_type *bus);
-extern const struct of_device_id *of_match_node(const struct of_device_id *matches, const struct device_node *node);
+extern struct device *of_device_create(struct device_node *np, 
+										struct device *parent, 
+										struct bus_type *bus);
+
+extern const struct of_device_id *of_match_node(const struct of_device_id *matches, 
+												const struct device_node *node);
+extern const struct of_device_id *of_match_device(const struct of_device_id *matches, 
+												const struct device *dev);
+
 extern struct device_node *of_find_all_nodes(struct device_node *prev);
-extern struct device_node *of_find_matching_node_and_match(struct device_node *from,const struct of_device_id *matches,const struct of_device_id **match);
+extern struct device_node *of_find_matching_node_and_match(struct device_node *from,
+															const struct of_device_id *matches,
+															const struct of_device_id **match);
+															
 static inline struct device_node *of_find_matching_node(struct device_node *from, const struct of_device_id *matches) {
 	return of_find_matching_node_and_match(from, matches, NULL);
 }

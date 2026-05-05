@@ -58,10 +58,10 @@ static struct file *sys_fdget(int fd) {
 
 long sys_read(struct pt_regs *ctx) {
     int fd = (int)ctx->r[0];
-    uintptr_t user_buf = ctx->r[1];
+    void* user_buf = (void*)ctx->r[1];
     size_t len = ctx->r[2];
     struct file *file;
-    char *kbuf;
+
     ssize_t ret;
 
     if (len == 0)
@@ -71,19 +71,8 @@ long sys_read(struct pt_regs *ctx) {
     if (file == NULL)
         return -EBADF;
 
-    kbuf = kmalloc(len);
-    if (kbuf == NULL)
-        return -ENOMEM;
+    ret = kernel_read(file, (void*)user_buf, len);
 
-    ret = kernel_read(file, kbuf, len);
-    if (ret >= 0) {
-        if (copy_to_user((char *)user_buf, kbuf, (size_t)ret) < 0) {
-            kfree(kbuf);
-            return -EFAULT;
-        }
-    }
-
-    kfree(kbuf);
     return ret;
 }
 
@@ -92,7 +81,6 @@ long sys_write(struct pt_regs *ctx) {
     uintptr_t user_buf = ctx->r[1];
     size_t len = ctx->r[2];
     struct file *file;
-    char *kbuf;
     ssize_t ret;
 
     if (len == 0)
@@ -102,17 +90,7 @@ long sys_write(struct pt_regs *ctx) {
     if (file == NULL)
         return -EBADF;
 
-    kbuf = kmalloc(len);
-    if (kbuf == NULL)
-        return -ENOMEM;
-
-    if (copy_from_user(kbuf, (char *)user_buf, len) < 0) {
-        kfree(kbuf);
-        return -EFAULT;
-    }
-
-    ret = kernel_write(file, kbuf, len);
-    kfree(kbuf);
+    ret = kernel_write(file, (void*)user_buf, len);
     return ret;
 }
 
@@ -221,8 +199,8 @@ struct file *filp_open(const char *path, u32 flags) {
         }
         cdev->cd_openers++;
         file->f_op = (struct file_operations *)cdev->node->fops;
-		// dprintk("filp_open: open char device %s, devnr=%u, fops=%xu\n",
-		// 		cdev->name, cdev->devnr, file->f_op);
+		dprintk("filp_open: open char device %s, devnr=%u, fops=%xu\n",
+				cdev->name, cdev->devnr, file->f_op);
         file->private_data = cdev->private ? cdev->private : cdev;
     } else if (S_ISBLK(file->f_inode->i_mode)) {
         bdev = blkdev_get_by_devnr(file->f_inode->i_rdev);
@@ -609,6 +587,7 @@ int setup_stdio(const char *path) {
     }
 
     stdio_status = true;
+
     return 0;
 }
 

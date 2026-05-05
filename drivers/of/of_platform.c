@@ -33,7 +33,8 @@ struct platform_device *platform_device_create(struct device_node *np, struct de
 
     pdev = kmalloc(sizeof(struct platform_device));
     memset(pdev, 0, sizeof(struct platform_device));
-   
+    
+    pdev->id = -1;
     pdev->dev.of_node = np;
     pdev->dev.bus = &platform_bus_type;
     pdev->dev.name = strdup(np->name);

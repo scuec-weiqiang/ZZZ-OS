@@ -33,9 +33,17 @@ int platform_bus_init() {
     return bus_register(&platform_bus_type);
 }
 
+static int alloc_id(struct platform_device *pdev) {
+    static int id = 0;
+    return id++;
+}
+
 int platform_device_register(struct platform_device *pdev) {
     if (!pdev) {
         return -1;
+    }
+    if (pdev->id < 0) {
+        pdev->id = alloc_id(pdev);
     }
     device_register(&pdev->dev);
     return 0;
@@ -118,3 +126,4 @@ virt_addr_t platform_ioremap_resource(struct platform_device *pdev, unsigned int
 int platform_get_irq(struct platform_device *dev, unsigned int index) {
     return of_irq_get(dev->dev.of_node, index);
 }
+

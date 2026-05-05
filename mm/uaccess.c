@@ -1,12 +1,14 @@
 #include <asm/uaccess.h>
 #include <os/pfn.h>
 
-int copy_from_user(char *dst, char* src, size_t len)
+int copy_from_user(char *dst, const char* src, size_t len)
 {
+    int ret = 0;
+
     size_t copied = 0;
 
     while (copied < len) {
-        char *srcp = src + copied;
+        char *srcp = (char*)src + copied;
         char *dstp = dst + copied;
         size_t page_left = PAGE_SIZE - ((uintptr_t)srcp & (PAGE_SIZE - 1));
         size_t n = page_left;
@@ -14,12 +16,15 @@ int copy_from_user(char *dst, char* src, size_t len)
         if (n > len - copied)
             n = len - copied;
 
-        __copy_from_user(dstp, srcp, n);
+        ret = __copy_from_user(dstp, srcp, n);
+        if (ret < 0) {
+            return ret;
+        }
 
         copied += n;
     }
 
-    return copied;
+    return len - copied;
 }
 
 int copy_to_user(char *dst, char* src, size_t len) {

@@ -32,7 +32,7 @@ struct bus_type {
 struct device_driver {
     const char *name;
     struct bus_type *bus; // 关联的总线类型
-    struct of_device_id *of_match_table; // 设备树匹配表
+    const struct of_device_id *of_match_table; // 设备树匹配表
     int (*probe) (struct device *dev);
 	int (*remove) (struct device *dev);
     struct list_head node; // 链接到总线的驱动列表
@@ -48,6 +48,10 @@ struct device {
     void *driver_data;              // optional
     struct list_head node;         // 链接到总线的设备列表
 };
+
+static inline const char *dev_name(const struct device *dev) {
+    return dev->name;
+}
 
 static inline void *dev_get_drvdata(const struct device *dev) {
 	return dev->driver_data;

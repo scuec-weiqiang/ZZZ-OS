@@ -21,7 +21,7 @@ int register_binfmt(struct linux_binfmt *fmt) {
 
     INIT_LIST_HEAD(&fmt->lh);
     list_add(&formats, &fmt->lh);
-    dprintk("exec: registered binfmt\n");
+    // dprintk("exec: registered binfmt\n");
     return 0;
 }
 

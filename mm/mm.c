@@ -208,6 +208,7 @@ static virt_addr_t alloc_mmio_va(size_t size) {
 
 void *ioremap(phys_addr_t pa, size_t size) {
     uintptr_t va = alloc_mmio_va(size);
+    // dprintk("ioremap: pa=%xu size=%xu to va=%xu\n", pa, size, va);
     map(init_mm.pgdir, va, pa, size, PAGE_DEVICE);
     return (void *)va;
 }

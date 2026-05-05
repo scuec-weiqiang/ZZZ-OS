@@ -96,8 +96,7 @@ static void buf_putu(char *buf, size_t size, size_t *pos,
     }
 }
 
-static int kvsnprintk(char *buf, size_t size, const char *fmt, va_list ap)
-{
+static int kvsnprintk(char *buf, size_t size, const char *fmt, va_list ap) {
     size_t pos = 0;
 
     while (*fmt) {
@@ -278,11 +277,22 @@ int printk(const char *fmt, ...)
     va_end(ap);
 
     flags = spin_lock_irqsave(&printk_lock);
-    // console_puts(printk_buf);
-    // console_flush();
-    extern void _puts(char *s) ;
-    _puts(printk_buf);
+    console_puts(printk_buf);
+    console_flush();
+    // extern void _puts(char *s) ;
+    // _puts(printk_buf);
     spin_unlock_irqrestore(&printk_lock, flags);
+
+    return n;
+}
+
+int snprintk(char *str, size_t size, const char *fmt, ...) {
+    va_list ap;
+    int n;
+    
+    va_start(ap, fmt);
+    n = kvsnprintk(str, size, fmt, ap);
+    va_end(ap);
 
     return n;
 }

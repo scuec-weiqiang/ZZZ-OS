@@ -1,3 +1,4 @@
+#include <dt-bindings/gpio/gpio.h>
 /dts-v1/;
 / {
     #address-cells = <1>;
@@ -48,12 +49,31 @@
         #address-cells = <1>;
         #size-cells = <1>;
         compatible = "simple-bus";
+
+        gpio1: gpio@0209c000 {
+            compatible = "fsl,imx35-gpio";
+            reg = <0x0209c000 0x4000>;
+            // interrupts-extended = <&intc 66 IRQ_TYPE_LEVEL_HIGH>,
+            //             <&intc 67 IRQ_TYPE_LEVEL_HIGH>;
+            gpio-controller;
+            #gpio-cells = <2>;
+            // interrupt-controller;
+            // #interrupt-cells = <2>;
+		};
        
         // time: time@50000000 {
         //     compatible = "wq,time";
         //     reg = <0x50000000 0x1c>;
         // };
   // setenv kernel_addr_r 0x80200000; tftp ${kernel_addr_r} uImage; setexpr kernel_end ${kernel_addr_r} + ${filesize}; setexpr fdt_addr_r ${kernel_end} + 0x400000; setexpr fdt_addr_r ${fdt_addr_r} + 0x1fffff; setexpr fdt_addr_r ${fdt_addr_r} "&" 0xffe00000; tftp ${fdt_addr_r} imx6ull.dtb; tftp 0x90000000 rootfs.ext2 bootm ${kernel_addr_r} - ${fdt_addr_r}
+        myled@0 {
+            compatible = "my,led";
+            // pinctrl-names = "default";
+            // pinctrl-0 = <&pinctrl_myled0>;
+            led-gpios = <&gpio1 3 GPIO_ACTIVE_LOW>;
+            // key-gpios = <&gpio1 18 GPIO_ACTIVE_LOW>;
+	    };
+        
         uart0: uart@02020000 {
             compatible = "imx6ull,uart";
             reg = <0x02020000 0xbc>;

@@ -18,7 +18,7 @@ struct devnode {
     void *private;
 };
 
-int devnode_register(const char *name, int type, dev_t devt, struct file_operations *fops, void *private);
+int devnode_register(const char *name, int type, dev_t devt, const struct file_operations *fops, void *private);
 struct devnode *devnode_lookup_by_name(const char *name);
 struct devnode *devnode_lookup_by_devnr(dev_t devnr);
 int devtmpfs_mount(const char *path);

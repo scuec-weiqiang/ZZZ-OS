@@ -14,7 +14,7 @@ struct cdev {
     struct list_head list;
 };
 int alloc_chrdev_region(dev_t *devt, unsigned int count);
-int cdev_register(const char *name, dev_t devnr, struct file_operations *fops, void *private);
+int cdev_register(const char *name, dev_t devnr, const struct file_operations *fops, void *private);
 struct cdev* cdev_get_by_path(const char *path);
 void cdev_put(struct cdev *cdev);
 struct cdev *cdev_get_by_devnr(dev_t devnr);

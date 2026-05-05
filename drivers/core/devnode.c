@@ -56,7 +56,7 @@ out:
     return ret;
 }
 
-int devnode_register(const char *name, int type, dev_t devt, struct file_operations *fops, void *private) {
+int devnode_register(const char *name, int type, dev_t devt,const struct file_operations *fops, void *private) {
     struct devnode *node;
     struct list_head *pos;
 

@@ -187,12 +187,11 @@ int data_abort_handler(unsigned long spsr) {
     u32 ttbr1 = read_ttbr1();
     u32 ttbcr = read_ttbcr();
     u32 dacr = read_dacr();
-    here;
+
 
     /* 注意，current宏依赖svc模式的栈，而abort时的栈是独立的，直接用current是错的 */
     struct mm_struct *mm = this_rq()->curr->mm;
     if (arm_fault_is_user(spsr) && arm_fault_is_translation(fs) && mm != NULL) {
-        here;
         if (do_page_fault(mm, addr, PROT_USER | PROT_READ | PROT_WRITE) == 0) {
             return 0;
         }

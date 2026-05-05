@@ -134,7 +134,8 @@ clean_dtbs:
 
 $(BUILD_DIR)/%.dtb: %.dts
 	mkdir -p $(BUILD_DIR)/arch/$(ARCH)/boot/dts
-	$(DTC) -I dts -O dtb -o $@ $< -i .
+	$(CC) -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp -Iinclude -o - $< \
+	| $(DTC) -I dts -O dtb -o $@ -i . -
 
 
 .PHONY: dtc

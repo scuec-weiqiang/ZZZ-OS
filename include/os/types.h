@@ -87,6 +87,7 @@ typedef enum { false, true } bool;
 #define __in
 #define __out
 #define __user
+#define __iomem
 
 typedef u32 dev_t;
 #define MKDEV(ma, mi) (((ma) << 8) | (mi))

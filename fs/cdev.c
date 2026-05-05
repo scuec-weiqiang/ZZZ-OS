@@ -16,7 +16,7 @@ int alloc_chrdev_region(dev_t *devt, unsigned int count) {
     return 0;
 }
 
-int cdev_register(const char *name, dev_t devnr, struct file_operations *fops, void *private) {
+int cdev_register(const char *name, dev_t devnr, const struct file_operations *fops, void *private) {
     struct cdev *cdev;
 
     struct cdev *iter = NULL;

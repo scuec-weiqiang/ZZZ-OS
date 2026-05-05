@@ -7,8 +7,10 @@
  * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
-#ifndef PRINTF_H
-#define PRINTF_H
+#ifndef __OS_PRINTF_H
+#define __OS_PRINTF_H
+
+#include <os/types.h>
 
 #define GREEN(msg)          "\033[32m" msg "\033[0m"
 #define RED(msg)            "\033[31m" msg "\033[0m"
@@ -25,6 +27,7 @@
 #define STRIKE(msg)         "\033[9m" msg "\033[0m"
 
 extern int printk(const char* s, ...);
+extern int snprintk(char *str, size_t size, const char *fmt, ...);
 extern void panic(const char* s, ...);
 
 

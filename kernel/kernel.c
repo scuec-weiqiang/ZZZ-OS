@@ -38,15 +38,17 @@
 #include <asm/ptrace.h>
 
 int kernel_init(void *arg) {
+    of_platform_populate(NULL,of_default_bus_match_table,NULL);
+
     arch_initcalls_run();
     core_initcalls_run();
     fs_initcalls_run();
-    of_platform_populate(NULL,of_default_bus_match_table,NULL);
     device_initcalls_run();
+
     mount_root("/dev/ram_disk", "ext2");
+    
     late_initcalls_run();
     setup_stdio("/dev/uart0");
-    
 
     char *argv[] = { "/bin/init", NULL };
     do_execve("/bin/init", argv, NULL);

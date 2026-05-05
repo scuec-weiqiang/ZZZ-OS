@@ -1,9 +1,10 @@
 OBJ_Y += of/
 OBJ_Y += core/
+OBJ_Y += gpio_chip/
 OBJ_Y += irq_chip/
 OBJ_Y += clocksource/
 OBJ_Y += imx6ull_uart.o
+OBJ_Y += imx6ull_led.o
 # OBJ_Y += imx6ull_rtc.o
-# OBJ_Y += plic/
 OBJ_Y += mem_disk/
-OBJ_Y += virt_disk/
+# OBJ_Y += virt_disk/

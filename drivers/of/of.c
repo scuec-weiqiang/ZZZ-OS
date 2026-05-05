@@ -337,6 +337,14 @@ const struct of_device_id *of_match_node(const struct of_device_id *matches, con
     return NULL;
 }
 
+
+const struct of_device_id *of_match_device(const struct of_device_id *matches, const struct device *dev) {
+    if (!matches || !dev || !dev->of_node)
+        return NULL;
+
+    return of_match_node(matches, dev->of_node);
+}
+
 struct device_node *of_find_matching_node_and_match(struct device_node *from,
 					const struct of_device_id *matches,
 					const struct of_device_id **match) {

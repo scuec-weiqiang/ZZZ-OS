@@ -167,6 +167,7 @@ struct inode {
     u16 i_mode;
     u32 i_nlink;
     size_t i_size;
+    void *i_cdev;
     dev_t i_rdev;
     timespec_t i_atime;
     timespec_t i_mtime;

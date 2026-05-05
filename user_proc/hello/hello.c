@@ -5,18 +5,18 @@
 #include <sched.h>
 #include <sys/wait.h>
 
+char led_on[] = "1\n";
+char led_off[] = "0\n";
+
 int main(int argc, char *argv[])
 {
     (void)argc;
     (void)argv;
-    // char line[128];
-    printf("hell0! pid=%d\n", getpid());
-          
-    // while (1) {
-    //     if (fgets(line, sizeof(line), stdin) == NULL) {
-    //         printf("\n");
-    //         break;
-    //     }
-    // }
+  
+    int fd = open("/dev/myledcdev",O_RDWR);
+    write(fd, led_on,sizeof(led_on));
+    
+    printf("hell0! pid=%d, led on\n", getpid());
+
     return 0;
 }
