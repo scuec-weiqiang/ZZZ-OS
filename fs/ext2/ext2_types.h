@@ -2,7 +2,6 @@
 #define EXT2_H
 
 #include <os/types.h>
-#include <os/bitmap.h>
 #include <fs/types.h>
 
 #define EXT2_SUPERBLOCK_OFFSET 1024

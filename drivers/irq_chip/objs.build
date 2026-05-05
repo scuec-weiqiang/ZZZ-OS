@@ -1,2 +1,3 @@
 OBJ_Y += gic/
-
+# 切到 riscv64 时，手动改成下面这一行
+# OBJ_Y += plic/

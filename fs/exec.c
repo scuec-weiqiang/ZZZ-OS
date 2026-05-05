@@ -427,7 +427,7 @@ int do_execve(char *filename, char* argv[], char* envp[]) {
     if (retval < 0) {
         goto create_failed;
     }
-    here;
+    
     retval = search_binary_handler(bprm);
     if (retval < 0) {
         goto bin_failed;

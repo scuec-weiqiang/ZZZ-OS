@@ -1,4 +1,4 @@
-OBJ_Y += bitmap.o
+# OBJ_Y += bitmap.o
 OBJ_Y += hashtable.o
 OBJ_Y += lru.o
 OBJ_Y += string.o

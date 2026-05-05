@@ -13,7 +13,7 @@ int iterate_dir(struct file *file, struct dir_context *ctx) {
 	res = -ENOENT;
 	if (S_ISDIR(inode->i_mode)) {
 		ctx->pos = file->f_pos;
-		here;
+		
 		res = file->f_op->iterate(file, ctx);
 		file->f_pos = ctx->pos;
 	}
@@ -63,32 +63,32 @@ static int filldir(struct dir_context *ctx, const char *name, int namlen,
 	dirent = buf->current_dir;
 
 	if (__put_user(ino, &dirent->d_ino)) {
-		here;
+		
 		goto efault;
 	}
 
 	if (__put_user(0, &dirent->d_off)) {
-		here;
+		
 		goto efault;
 	}
 
 	if (__put_user(reclen, &dirent->d_reclen)) {
-		here;
+		
 		goto efault;
 	}
 		
 	if (__put_user(d_type, &dirent->d_type)) {
-		here;
+		
 		goto efault;
 	}
 
 	if (copy_to_user(dirent->d_name, name, namlen)) {
-		here;
+		
 		goto efault;
 	}
 		
 	if (__put_user(0, dirent->d_name + namlen)) {
-		here;
+		
 		goto efault;
 	}
 		

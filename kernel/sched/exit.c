@@ -23,7 +23,7 @@ void reparent_children(struct task_struct *parent) {
     struct task_struct *child, *n, *reaper;
     list_for_each_entry_safe(child, n, &parent->children, struct task_struct, sibling) {
         list_del(&child->sibling);
-        dprintk("reparent child pid=%d to init\n", child->pid);
+        // dprintk("reparent child pid=%d to init\n", child->pid);
         reaper = choose_reaper(child);
         child->parent = reaper;
         list_add_tail(&reaper->children, &child->sibling);
@@ -46,11 +46,11 @@ void __noreturn do_exit(int code)
     unsigned long flags;
     unsigned long cpsr = exit_read_cpsr();
     
-    dprintk("do_exit: mode=%xu sp=%xu current=%d rq_curr=%d exit_code=%d\n",
-            cpsr & MODE_MASK, current_stack_pointer,
-            curr ? curr->pid : -1,
-            (rq && rq->curr) ? rq->curr->pid : -1,
-            code);
+    // dprintk("mode=%xu sp=%xu current=%d rq_curr=%d exit_code=%d\n",
+    //         cpsr & MODE_MASK, current_stack_pointer,
+    //         curr ? curr->pid : -1,
+    //         (rq && rq->curr) ? rq->curr->pid : -1,
+    //         code);
 
     flags = spin_lock_irqsave(&rq->lock);
 
@@ -61,7 +61,7 @@ void __noreturn do_exit(int code)
     /* cancel 当前 rq 的调度 timer，如有需要 */
 
     spin_unlock_irqrestore(&rq->lock, flags);
-    dprintk("task pid=%xu exit with code %d, hand off to scheduler for cleanup\n", (unsigned long)curr->pid, code);
+    printk("pid=%xu exit with code %d\n", (unsigned long)curr->pid, code);
 
     reparent_children(curr);
 

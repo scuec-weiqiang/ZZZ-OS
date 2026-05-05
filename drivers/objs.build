@@ -7,4 +7,7 @@ OBJ_Y += imx6ull_uart.o
 OBJ_Y += imx6ull_led.o
 # OBJ_Y += imx6ull_rtc.o
 OBJ_Y += mem_disk/
+# 切到 riscv64 时，手动改成下面这组
+# OBJ_Y += irq_chip/
+# OBJ_Y += qemu_riscv_uart.o
 # OBJ_Y += virt_disk/

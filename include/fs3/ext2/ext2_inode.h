@@ -13,7 +13,8 @@
 #include <os/types.h>
 #include <fs/types.h>
 
-extern u32 ext2_ino_group(struct superblock *vfs_sb,u32 ino);
-extern struct super_ops ext2_s_ops;
+extern int ext2_ino_group(struct super_block *vfs_sb, u32 ino);
+extern u32 ext2_alloc_ino(struct super_block *vfs_sb);
+extern int ext2_release_ino(struct super_block *vfs_sb, u32 ino);
 
 #endif

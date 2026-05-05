@@ -1,11 +1,15 @@
+#include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #define FILE_NAME "objs.build"
 #define MAX_PATH_LEN 1024
 #define MAX_LINE_LEN 1024
-#define OBJ "OBJ_Y"
+#define OBJ_PREFIX "OBJ_"
+
+static const char *selected_arch = "arm";
 
 /*
 将类似"/home/user/"的字符串组合为 "/home/user/.config" 或 "/home/user/lib/"
@@ -63,6 +67,48 @@ int truncate_path(char *path) {
     return 0;
 }
 
+static char *skip_spaces(char *p) {
+    while (*p != '\0' && isspace((unsigned char)*p)) {
+        p++;
+    }
+    return p;
+}
+
+static char *match_obj_key(char *line) {
+    char key[64];
+    size_t i = 0;
+    char *p = skip_spaces(line);
+
+    if (strncmp(p, OBJ_PREFIX, strlen(OBJ_PREFIX)) != 0) {
+        return NULL;
+    }
+
+    while (p[i] != '\0' && !isspace((unsigned char)p[i]) &&
+           p[i] != '+' && p[i] != '=' && p[i] != ':') {
+        if (i + 1 >= sizeof(key)) {
+            return NULL;
+        }
+        key[i] = p[i];
+        i++;
+    }
+    key[i] = '\0';
+
+    if (strcmp(key, "OBJ_Y") == 0) {
+        return p + i;
+    }
+
+    if (selected_arch != NULL) {
+        char arch_key[64];
+
+        snprintf(arch_key, sizeof(arch_key), "OBJ_%s", selected_arch);
+        if (strcmp(key, arch_key) == 0) {
+            return p + i;
+        }
+    }
+
+    return NULL;
+}
+
 int parse(char* path) {
     if (!path) {
         printf("kbuild error: invalid path\n");
@@ -83,10 +129,8 @@ int parse(char* path) {
         if (line[0] == '#' || line[0] == '\n'|| line[0] == '\r' || line[0] == 0) {
             continue;
         }
-        char *p = strstr(line,OBJ);
+        char *p = match_obj_key(line);
         if (p) {
-            p += strlen(OBJ);
-
             while((*p == ' ') || (*p == '+') || (*p == '=') || (*p == ':')) {
                 p++;
             }
@@ -124,6 +168,10 @@ int main(int argc, char *argv[]) {
      if (argc != 2) {
         fprintf(stderr, "用法：%s <初始目录>\n", argv[0]);
         return 1;
+    }
+    const char *arch = getenv("ARCH");
+    if (arch != NULL && arch[0] != '\0') {
+        selected_arch = arch;
     }
     char path[MAX_PATH_LEN];
     strcpy(path, argv[1]);

@@ -1,7 +1,7 @@
 OBJ_Y += ramfs/
 OBJ_Y += ext2/
 
-OBJ_Y += fs2_init.o
+OBJ_Y += fs_init.o
 OBJ_Y += registry.o
 OBJ_Y += fs_context.o
 OBJ_Y += fs_struct.o

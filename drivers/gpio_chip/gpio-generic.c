@@ -76,7 +76,6 @@ static unsigned long bgpio_read16(void __iomem *reg)
 
 static void bgpio_write32(void __iomem *reg, unsigned long data)
 {
-	dprintk("write32 reg 0x%x,data 0x%x\n",reg,data);
 	writel(data, reg);
 }
 

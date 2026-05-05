@@ -54,6 +54,7 @@
 
 #define S_IDEFAULT 0x01ed
 
+typedef long off_t;
 typedef long long loff_t;
 typedef s32 ino_t;
 typedef uintptr_t pgoff_t;
@@ -122,6 +123,7 @@ struct file_operations {
     ssize_t (*read)(struct file *file, char *buf, size_t len, loff_t *ppos);
     ssize_t (*write)(struct file *file, const char *buf, size_t len, loff_t *ppos);
     int (*iterate) (struct file *, struct dir_context *);
+    off_t (*lseek)(struct file *, off_t offset, int whence);
 };
 
 struct file_system_type {

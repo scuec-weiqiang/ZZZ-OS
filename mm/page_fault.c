@@ -13,7 +13,7 @@ int do_page_fault(struct mm_struct *mm, virt_addr_t fault_addr, int fault_flags)
     virt_addr_t page_va;
     struct vma *vma;
     void *kva;
-    here;
+    
     if (!mm || mm->pgdir == NULL) {
         return -1;
     }

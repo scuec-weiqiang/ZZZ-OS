@@ -15,10 +15,6 @@
 
 extern void trap_init();
 extern irqreturn_t s_soft_interrupt_handler(int virq, void *dev_id);
-// extern reg_t m_soft_interrupt_handler(reg_t epc);
 extern irqreturn_t s_timer_interrupt_handler(int virq, void *dev_id);
-// extern reg_t m_timer_interrupt_handler(reg_t epc);
-// extern irqreturn_t s_extern_interrupt_handler(int virq, void *dev_id);
-// extern reg_t m_extern_interrupt_handler(reg_t epc);
-extern irqreturn_t trap_handler(reg_t ctx);
+extern reg_t trap_handler(reg_t ctx);
 #endif

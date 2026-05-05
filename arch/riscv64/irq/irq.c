@@ -1,75 +1,49 @@
 /**
  * @FilePath: /ZZZ-OS/arch/riscv64/irq/irq.c
- * @Description:  
- * @Author: scuec_weiqiang scuec_weiqiang@qq.com
- * @Date: 2025-11-10 20:21:56
- * @LastEditTime: 2025-12-04 21:57:34
- * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
- * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
-*/
-#include <os/irq_chip.h>
-#include <asm/trap_handler.h>
-#include <asm/interrupt.h>
+ * @Description:
+ */
 #include <asm/clint.h>
-#include <os/list.h>
-#include <os/printk.h>
-#include <os/kmalloc.h>
-#include <os/irq_domain.h>
-#include <os/irq.h>
+#include <asm/irq.h>
 #include <asm/riscv.h>
+#include <asm/trap_handler.h>
 
-int arch_irq_cpu_id(void) {
-    return (int)tp_r();
+handle_arch_irq_t handle_arch_irq = NULL;
+
+void set_handle_irq(reg_t (*handle_irq)(reg_t *))
+{
+    if (handle_arch_irq != NULL) {
+        return;
+    }
+
+    handle_arch_irq = handle_irq;
 }
 
-void arch_irq_init() {
+void arch_irq_init(void)
+{
     trap_init();
-
-    struct irq_chip *chip = irq_chip_register("riscv64_clint", &riscv64_clint_chip_ops, 0, NULL);
-    int virq_base = irq_domain_alloc_virq_base(RISCV64_CLINT_IRQ_COUNT);
-    struct irq_domain *domain = irq_domain_create(chip, virq_base, RISCV64_CLINT_IRQ_COUNT);
-
-    irq_domain_add_mapping(domain, 0); // 将全局中断号0也进行映射，方便控制全局中断，但是不注册中断函数
-
-    int virq = irq_domain_add_mapping(domain, CLINT_IRQ_SOFT);
-    irq_request(virq, s_soft_interrupt_handler, "soft_irq", NULL);
-
-    virq = irq_domain_add_mapping(domain, CLINT_IRQ_TIMER);
-    irq_request(virq, s_timer_interrupt_handler, "timer_irq", NULL);
+    riscv64_local_irq_init();
 }
 
-int arch_local_irq_register(int hwirq, irq_handler_t handler, char *name, int cpu, void *dev_id) {
-    struct irq_chip *chip = irq_chip_lookup("riscv64_clint", cpu);
-    if (!chip) {
-        return -1;
-    }
-    struct irq_domain *domain = (struct irq_domain *)chip->priv;
-    if (!domain) {
-        return -1;
-    }
-    int virq = irq_domain_add_mapping(domain, hwirq);
-    if (virq < 0) {
-        return virq;
-    }
-    irq_request(virq, handler, name, dev_id);
-    return 0;
+void local_irq_enable(void)
+{
+    sstatus_w(sstatus_r() | 0x2UL);
 }
 
-int arch_extern_irq_register(int hwirq, irq_handler_t handler, char *name, int cpu, void *dev_id) {
-    struct irq_chip *chip = irq_chip_lookup("riscv64_plic", cpu);
-    if (!chip) {
-        return -1;
-    }
-    struct irq_domain *domain = (struct irq_domain *)chip->priv;
-    if (!domain) {
-        return -1;
-    }
-    int virq = irq_domain_add_mapping(domain, hwirq);
-    if (virq < 0) {
-        return virq;
-    }
-    irq_request(virq, handler, name, dev_id);
-    return 0;
+void local_irq_disable(void)
+{
+    sstatus_w(sstatus_r() & ~0x2UL);
 }
 
-// int arch_
+unsigned long arch_local_irq_save(void)
+{
+    unsigned long flags;
+
+    flags = sstatus_r();
+    local_irq_disable();
+    return flags;
+}
+
+void arch_local_irq_restore(unsigned long flags)
+{
+    sstatus_w(flags);
+}

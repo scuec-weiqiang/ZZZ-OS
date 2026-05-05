@@ -215,7 +215,6 @@ void gpiod_put(struct gpio_desc *desc) {
 
 static int gpiod_to_raw_value(struct gpio_desc *desc, int value) {
     if (desc->flags & GPIO_ACTIVE_LOW) {
-        dprintk("active low, invert value\n");
         value = !value;
     }
         

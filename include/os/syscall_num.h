@@ -15,6 +15,7 @@
     X(4,  write)   \
     X(5,  open)    \
     X(6,  close)   \
+    X(19, lseek)   \
     X(20, getpid)  \
     X(45, brk)     \
     X(46, creat)   \

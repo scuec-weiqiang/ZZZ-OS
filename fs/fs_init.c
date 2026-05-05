@@ -10,8 +10,7 @@
 #include <os/init.h>
 #include <os/check.h>
 
-int mount_root(const char *dev, const char *fs_type)
-{
+int mount_root(const char *dev, const char *fs_type) {
     struct fs_context *fc = NULL;
     struct vfsmount *root_mnt = NULL;
     int ret = 0;

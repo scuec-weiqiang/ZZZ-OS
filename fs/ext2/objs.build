@@ -1,3 +1,4 @@
+OBJ_Y += ext2_bitmap.o
 OBJ_Y += ext2_blk.o
 OBJ_Y += ext2_dir.o
 OBJ_Y += ext2_file.o

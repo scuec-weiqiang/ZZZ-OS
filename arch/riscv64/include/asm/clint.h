@@ -10,9 +10,12 @@
 #ifndef __ASM_CLINT_H__
 #define __ASM_CLINT_H__
 
-#include <os/irq_chip.h>
+#include <os/types.h>
+
 #define RISCV64_CLINT_IRQ_COUNT 16
 
-extern struct irq_chip_ops riscv64_clint_chip_ops;
+extern int riscv64_local_irq_init(void);
+extern int riscv64_local_irq_map(unsigned int hwirq);
+extern int riscv64_local_irq_dispatch(reg_t ctx, unsigned int hwirq);
 
 #endif // __ASM_CLINT_H__

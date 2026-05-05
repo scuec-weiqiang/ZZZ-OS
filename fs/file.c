@@ -56,6 +56,34 @@ static struct file *sys_fdget(int fd) {
     return file;
 }
 
+# define	SEEK_SET	0
+# define	SEEK_CUR	1
+# define	SEEK_END	2
+
+off_t generic_file_lseek(struct file *file, off_t offset, int whence) {
+    off_t newpos;
+
+    switch (whence) {
+    case SEEK_SET:
+        newpos = offset;
+        break;
+    case SEEK_CUR:
+        newpos = file->f_pos + offset;
+        break;
+    case SEEK_END:
+        newpos = file->f_inode->i_size + offset;
+        break;
+    default:
+        return -EINVAL;
+    }
+
+    if (newpos < 0)
+        return -EINVAL;
+
+    file->f_pos = newpos;
+    return newpos;
+}
+
 long sys_read(struct pt_regs *ctx) {
     int fd = (int)ctx->r[0];
     void* user_buf = (void*)ctx->r[1];
@@ -160,6 +188,27 @@ long sys_mkdir(struct pt_regs *ctx) {
     return 0;
 }
 
+long sys_lseek(struct pt_regs *ctx) {
+    int fd = (int)ctx->r[0];
+    off_t offset = (off_t)ctx->r[1];
+    int whence = (int)ctx->r[2];
+    struct file *file;
+    off_t new_pos;
+
+    file = sys_fdget(fd);
+    if (file == NULL)
+        return -EBADF;
+
+    if (file->f_op == NULL || file->f_op->lseek == NULL)
+        return -EINVAL;
+
+    new_pos = file->f_op->lseek(file, offset, whence);
+    if (new_pos < 0)
+        return new_pos;
+
+    return new_pos;
+}
+
 struct file *filp_open(const char *path, u32 flags) {
     struct cdev *cdev = NULL;
     struct blkdev *bdev = NULL;
@@ -199,8 +248,8 @@ struct file *filp_open(const char *path, u32 flags) {
         }
         cdev->cd_openers++;
         file->f_op = (struct file_operations *)cdev->node->fops;
-		dprintk("filp_open: open char device %s, devnr=%u, fops=%xu\n",
-				cdev->name, cdev->devnr, file->f_op);
+		// dprintk("filp_open: open char device %s, devnr=%u, fops=%xu\n",
+		// 		cdev->name, cdev->devnr, file->f_op);
         file->private_data = cdev->private ? cdev->private : cdev;
     } else if (S_ISBLK(file->f_inode->i_mode)) {
         bdev = blkdev_get_by_devnr(file->f_inode->i_rdev);

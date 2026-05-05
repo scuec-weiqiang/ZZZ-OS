@@ -20,7 +20,7 @@ int do_waitpid(pid_t pid, int *status) {
     
             found_child = 1;
             if (child->status == TASK_ZOMBIE) {
-                dprintk("waitpid: found zombie child pid=%d, exit code=%d\n", child->pid, child->exit_code);
+                // dprintk("waitpid: found zombie child pid=%d, exit code=%d\n", child->pid, child->exit_code);
                 // 取 exit code
                 if (status) {
                     *status = child->exit_code;

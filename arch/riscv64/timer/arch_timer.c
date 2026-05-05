@@ -1,75 +1,108 @@
 /**
  * @FilePath: /ZZZ-OS/arch/riscv64/timer/arch_timer.c
- * @Description:  
- * @Author: scuec_weiqiang scuec_weiqiang@qq.com
- * @Date: 2025-04-19 21:58:52
- * @LastEditTime: 2025-11-14 15:21:31
- * @LastEditors: scuec_weiqiang scuec_weiqiang@qq.com
- * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
-*/
-
-#include <os/types.h>
-#include <asm/platform.h>
+ * @Description:
+ */
+#include <asm/clint.h>
 #include <asm/interrupt.h>
-#include <asm/arch_timer.h>
+#include <asm/platform.h>
 #include <asm/riscv.h>
 #include <os/irq.h>
+#include <os/irqreturn.h>
+#include <os/timekeeping.h>
+#include <os/timer_chip.h>
 
-//系统时钟以0核为基准
-static u64 arch_timer_tick[] = {0};
-static enum arch_timer_hz arch_timer_hz[] = {SYS_HZ_1,SYS_HZ_1};
+struct riscv64_timer_data {
+    bool active;
+    int virq;
+};
 
-void arch_timer_period(enum arch_timer_hz hz)
-{
-    int id = tp_r();
-    arch_timer_hz[id] = hz;
-}
+static struct riscv64_timer_data riscv64_timer = {
+    .active = false,
+    .virq = -1,
+};
 
-void arch_timer_reload()
-{   
-    int id = tp_r();
-    u64 temp = time_r();
-    temp +=  arch_timer_hz[id];
-    stimecmp_w(temp);
-}
-
-u64 systick()
-{
-    int id = tp_r();
-    return arch_timer_tick[id];
-}
-
-void systick_up()
-{
-    int id = tp_r();
-    arch_timer_tick[id]++;
-}
-
-u64 arch_timer_counter(void)
+static u64 riscv64_timer_read_counter(void)
 {
     return time_r();
 }
 
-u32 arch_timer_frequency(void)
+static irqreturn_t riscv64_timer_irq_handler(int virq, void *dev_id)
 {
-    return (u32)SYS_CLOCK_FREQ;
+    (void)virq;
+    (void)dev_id;
+
+    timekeeping_timer_interrupt();
+    return IRQ_HANDLED;
 }
 
-void arch_timer_init( enum arch_timer_hz hz)
+static void riscv64_timer_set_next_event(u64 delta_ns)
 {
-    s_timer_interrupt_disable();
-    arch_timer_period(hz);
-    int id = tp_r();
-    arch_timer_tick[id] = 0;
+    u64 cycles;
+
+    if (!riscv64_timer.active) {
+        if (riscv64_timer.virq >= 0) {
+            irq_enable(riscv64_timer.virq);
+        }
+        riscv64_timer.active = true;
+    }
+
+    if (delta_ns == 0) {
+        delta_ns = 1;
+    }
+
+    cycles = ns_to_cycles(delta_ns, SYS_CLOCK_FREQ);
+    if (cycles == 0) {
+        cycles = 1;
+    }
+
+    stimecmp_w(time_r() + cycles);
 }
 
-void arch_timer_start()
+static void riscv64_timer_shutdown(void)
 {
-    arch_timer_reload();
-    irq_enable(TIMER_IRQ);
+    riscv64_timer.active = false;
+    if (riscv64_timer.virq >= 0) {
+        irq_disable(riscv64_timer.virq);
+    }
 }
 
-void arch_timer_pause()
+static struct clockevent_ops riscv64_timer_clockevent_ops = {
+    .set_next_event = riscv64_timer_set_next_event,
+    .shutdown = riscv64_timer_shutdown,
+};
+
+static int riscv64_timer_of_init(struct device_node *np, struct device_node *parent)
 {
-    irq_disable(TIMER_IRQ);
+    int virq;
+
+    (void)np;
+    (void)parent;
+
+    virq = riscv64_local_irq_map(CLINT_IRQ_TIMER);
+    if (virq < 0) {
+        return -1;
+    }
+
+    if (irq_request(virq, riscv64_timer_irq_handler, "riscv64_timer", NULL) < 0) {
+        return -1;
+    }
+
+    riscv64_timer.virq = virq;
+
+    if (clocksource_register("riscv64_time_clocksource",
+                             riscv64_timer_read_counter,
+                             SYS_CLOCK_FREQ,
+                             &riscv64_timer) < 0) {
+        return -1;
+    }
+
+    if (clockevent_register("riscv64_time_clockevent",
+                            &riscv64_timer_clockevent_ops,
+                            true) < 0) {
+        return -1;
+    }
+
+    return 0;
 }
+
+TIMERCHIP_DECLARE(riscv64_timer, "wq,time", riscv64_timer_of_init);

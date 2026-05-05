@@ -10,13 +10,6 @@
 #ifndef _ASM_IRQ_H
 #define _ASM_IRQ_H
 
-#include "os/irq.h"
-#include <os/irqreturn.h>
-#include <os/types.h>
-
-extern void arch_irq_init();
-extern int arch_irq_cpu_id(void);
-extern int arch_local_irq_register(int hwirq, irq_handler_t handler, char *name, int cpu, void *dev_id);
-extern int arch_extern_irq_register(int hwirq, irq_handler_t handler, char *name, int cpu, void *dev_id);
+#include <asm-generic/irq.h>
 
 #endif // _ASM_IRQ_H

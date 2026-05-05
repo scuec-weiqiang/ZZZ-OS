@@ -372,7 +372,7 @@ static struct dentry *ramfs_lookup(struct inode *dir, struct dentry *dentry, uns
     
     entry = ramfs_find_child(dir_node, dentry->d_name.name, dentry->d_name.len);
     if (entry == NULL || entry->node == NULL) {
-        here;
+        
         return NULL;
     }
     

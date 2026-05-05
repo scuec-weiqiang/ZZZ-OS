@@ -11,7 +11,7 @@
 #define __KERNEL_SLAB_H__
 
 #include <os/types.h>
-#include <os/bitmap.h>
+// #include <os/bitmap.h>
 #include <os/spinlock.h>
 
 struct page;
