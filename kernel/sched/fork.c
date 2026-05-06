@@ -1,7 +1,7 @@
 #include <os/sched.h>
 #include <os/magic.h>
 #include <os/check.h>
-#include <os/compiler_attributes.h>
+#include <os/compiler.h>
 #include <os/cpu.h>
 #include <os/irq.h>
 #include <os/kmalloc.h>

@@ -11,7 +11,7 @@
 #define __KERNEL_INIT_H__ 
 
 // #include "os/printk.h"
-#include <os/compiler_attributes.h>
+#include <os/compiler.h>
 #include <os/printk.h>
 
 typedef int(*initcall_t)(void);

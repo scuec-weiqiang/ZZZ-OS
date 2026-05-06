@@ -1,2 +1,2 @@
-OBJ_arm += gic/
-OBJ_riscv64 += plic/
+OBJ_$(CONFIG_GIC) += gic/
+OBJ_$(CONFIG_PLIC) += plic/

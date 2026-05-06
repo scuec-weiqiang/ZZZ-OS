@@ -21,7 +21,7 @@ Copyright © zuozhongkai Co., Ltd. 1998-2019. All rights reserved.
 ***************************************************************/
 #include <os/string.h>
 #include <os/types.h>
-#include <os/compiler_attributes.h>
+#include <os/compiler.h>
 
 #define FORCEDINLINE __attribute__((always_inline))
 #define __ASM __asm     /* GNU C语言内嵌汇编关键字 */

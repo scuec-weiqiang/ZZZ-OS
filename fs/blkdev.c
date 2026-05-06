@@ -9,11 +9,11 @@
 #include <mm/buddy.h>
 #include <mm/page.h>
 #include <os/utils.h>
+#include <os/printk.h>
 
 static LIST_HEAD(g_blk_disks);
 
-static int blkdev_validate_bio(struct bio *bio)
-{
+static int blkdev_validate_bio(struct bio *bio) {
     u32 block_size = 0;
 
     CHECK(bio != NULL, "blkdev: invalid bio", return -EINVAL;);
@@ -47,9 +47,9 @@ static int blkdev_validate_bio(struct bio *bio)
     return 0;
 }
 
-int alloc_blkdev_region(dev_t *devt, unsigned int count) {
-    static dev_t next_devt = 1; // 从 1 开始分配，0 通常保留给特殊用途
+static dev_t next_devt = 1; // 从 1 开始分配，0 通常保留给特殊用途
 
+int alloc_blkdev_region(dev_t *devt, unsigned int count) {
     if (!devt || count == 0)
         return -EINVAL;
 
@@ -58,45 +58,8 @@ int alloc_blkdev_region(dev_t *devt, unsigned int count) {
     return 0;
 }
 
-int blkdev_register(char *name, dev_t devnr, struct gendisk *disk, struct file_operations *fops) {
-    struct list_head *pos = NULL;
-    struct blkdev *bdev = NULL;
-
-    CHECK(disk != NULL, "blkdev: invalid disk", return -EINVAL;);
-    CHECK(disk->disk_name[0] != '\0', "blkdev: empty disk name", return -EINVAL;);
-    CHECK(disk->queue != NULL, "blkdev: missing request queue", return -EINVAL;);
-    CHECK(disk->queue->fops != NULL && disk->queue->fops->submit_bio != NULL,
-          "blkdev: missing submit_bio op", return -EINVAL;);
-    CHECK(disk->logical_block_size != 0, "blkdev: invalid logical block size", return -EINVAL;);
-    CHECK(disk->part0 == NULL, "blkdev: disk already registered", return -EEXIST;);
-
-    list_for_each(pos, &g_blk_disks) {
-        struct gendisk *iter = list_entry(pos, struct gendisk, disk_list);
-        if (strcmp(iter->disk_name, disk->disk_name) == 0) {
-            return -EEXIST;
-        }
-    }
-
-    bdev = kzalloc(sizeof(*bdev));
-    CHECK(bdev != NULL, "blkdev: alloc block device failed", return -ENOMEM;);
-
-    bdev->bd_disk = disk;
-    bdev->bd_start_sect = 0;
-    bdev->bd_nr_sectors = disk->capacity;
-    bdev->bd_openers = 0;
-    bdev->bd_fs_info = NULL;
-    bdev->bd_devnr = devnr; 
-
-    int ret = devnode_register(disk->disk_name, DEV_BLOCK, devnr, fops,bdev);
-    if (ret < 0) {
-        kfree(bdev);
-        return ret;
-    }
-    bdev->bd_node = devnode_lookup_by_name(disk->disk_name);
-    disk->part0 = bdev;
-    INIT_LIST_HEAD(&disk->disk_list);
-    list_add_tail(&g_blk_disks, &disk->disk_list);
-    return 0;
+static void update_region() {
+    next_devt++;
 }
 
 struct blkdev *blkdev_get_by_path(const char *path) {
@@ -124,8 +87,7 @@ struct blkdev *blkdev_get_by_path(const char *path) {
     return bdev;
 }
 
-struct blkdev *blkdev_get_by_devnr(dev_t devnr)
-{
+struct blkdev *blkdev_get_by_devnr(dev_t devnr) {
     struct devnode *node;
     struct blkdev *bdev;
 
@@ -201,8 +163,7 @@ int submit_bio_wait(struct bio *bio) {
     return ret;
 }
 
-
-int blkdev_read(struct blkdev *bdev, void *buf, size_t len, u64 pos) {
+int __blkdev_read_raw(struct blkdev *bdev, void *buf, size_t len, u64 pos) {
     struct bio *bio = NULL;
     void *base = NULL;
     struct page *temp = NULL;
@@ -275,8 +236,7 @@ out_bio:
     return ret;
 }
 
-
-int blkdev_write(struct blkdev *bdev, const void *buf, size_t len, u64 pos) {
+int __blkdev_write_raw(struct blkdev *bdev, const void *buf, size_t len, u64 pos) {
     struct bio *bio = NULL;
     void *base = NULL;
     struct page *temp = NULL;
@@ -357,4 +317,167 @@ out_page:
 out_bio:
     bio_put(bio);
     return ret;
+}
+
+int blkdev_read(struct blkdev *bdev, void *buf, size_t len, u64 pos) {
+    u64 size;
+    u64 real_pos;
+
+    size = (u64)bdev->bd_nr_sectors * SECTOR_SIZE;
+
+    if (pos + len > size)
+        return -EINVAL;
+
+    real_pos = (u64)bdev->bd_start_sect * SECTOR_SIZE + pos;
+
+    return __blkdev_read_raw(bdev->bd_contains, buf, len, real_pos);
+}
+
+int blkdev_write(struct blkdev *bdev, const void *buf, size_t len, u64 pos) {
+    u64 size;
+    u64 real_pos;
+
+    size = (u64)bdev->bd_nr_sectors * SECTOR_SIZE;
+
+    if (pos + len > size)
+        return -EINVAL;
+
+    real_pos = (u64)bdev->bd_start_sect * SECTOR_SIZE + pos;
+
+    return __blkdev_write_raw(bdev->bd_contains, buf, len, real_pos);
+}
+
+static int guid_is_zero(const u8 guid[16]) {
+    int i;
+
+    for (i = 0; i < 16; i++) {
+        if (guid[i])
+            return 0;
+    }
+
+    return 1;
+}
+
+int blkdev_register_partition(struct blkdev *whole, int partno, sector_t start, sector_t nr_sectors) {
+    struct blkdev *part;
+    char name[64];
+
+    part = kzalloc(sizeof(*part));
+    if (!part)
+        return -ENOMEM;
+
+    part->bd_disk = whole->bd_disk;
+    part->bd_start_sect = start;
+    part->bd_nr_sectors = nr_sectors;
+    part->bd_partno = partno;
+    part->bd_contains = whole;
+
+    snprintk(name, sizeof(name), "%s%d", whole->bd_disk->disk_name, partno);
+
+    part->bd_devnr = MKDEV(MAJOR(whole->bd_devnr), MINOR(whole->bd_devnr) + partno);
+    update_region();
+
+    int ret = devnode_register(name, DEV_BLOCK, part->bd_devnr, whole->bd_node->fops, part);
+    if (ret < 0) {
+        kfree(part);
+        return ret;
+    }
+    part->bd_node = devnode_lookup_by_name(name);
+
+    return 0;
+}
+
+static int gpt_scan(struct blkdev *whole) {
+    struct gpt_header hdr;
+    u32 nr_entries;
+    u32 entry_size;
+    u64 entries_pos;
+    u32 i;
+
+    if (blkdev_read(whole, &hdr, sizeof(hdr), GPT_HEADER_LBA * SECTOR_SIZE) < 0)
+        return -EIO;
+
+    if (memcmp(hdr.signature, "EFI PART", 8) != 0)
+        return -EINVAL;
+
+    nr_entries = hdr.num_partition_entries;
+    entry_size = hdr.sizeof_partition_entry;
+    entries_pos = hdr.partition_entries_lba * SECTOR_SIZE;
+
+    if (entry_size < sizeof(struct gpt_entry))
+        return -EINVAL;
+
+    for (i = 0; i < nr_entries; i++) {
+        struct gpt_entry ent;
+        u64 pos;
+        sector_t first;
+        sector_t last;
+        sector_t nr;
+
+        pos = entries_pos + (u64)i * entry_size;
+
+        if (blkdev_read(whole, &ent, sizeof(ent), pos) < 0)
+            return -EIO;
+
+        if (guid_is_zero(ent.type_guid))
+            continue;
+
+        first = ent.first_lba;
+        last = ent.last_lba;
+
+        if (first == 0 || last < first)
+            continue;
+
+        nr = last - first + 1;
+
+        blkdev_register_partition(whole, i + 1, first, nr);
+    }
+
+    return 0;
+}
+
+int blkdev_scan_partitions(struct blkdev *whole) {
+    if (!whole || whole->bd_partno != 0)
+        return -EINVAL;
+
+    if (gpt_scan(whole) == 0)
+        return 0;
+
+    return -ENOENT;
+}
+
+int blkdev_register(char *name, dev_t devnr, struct gendisk *disk, struct file_operations *fops) {
+    struct list_head *pos = NULL;
+    struct blkdev *bdev = NULL;
+
+    list_for_each(pos, &g_blk_disks) {
+        struct gendisk *iter = list_entry(pos, struct gendisk, disk_list);
+        if (strcmp(iter->disk_name, disk->disk_name) == 0) {
+            return -EEXIST;
+        }
+    }
+
+    bdev = kzalloc(sizeof(*bdev));
+    CHECK(bdev != NULL, "blkdev: alloc block device failed", return -ENOMEM;);
+
+    bdev->bd_disk = disk;
+    bdev->bd_start_sect = 0;
+    bdev->bd_nr_sectors = disk->capacity;
+    bdev->bd_openers = 0;
+    bdev->bd_fs_info = NULL;
+    bdev->bd_devnr = devnr; 
+
+    int ret = devnode_register(name, DEV_BLOCK, devnr, fops,bdev);
+    if (ret < 0) {
+        kfree(bdev);
+        return ret;
+    }
+    bdev->bd_node = devnode_lookup_by_name(name);
+    disk->part0 = bdev;
+    INIT_LIST_HEAD(&disk->disk_list);
+    list_add_tail(&g_blk_disks, &disk->disk_list);
+
+    blkdev_scan_partitions(bdev);
+
+    return 0;
 }

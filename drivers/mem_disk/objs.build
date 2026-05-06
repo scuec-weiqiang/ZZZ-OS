@@ -1,1 +1,1 @@
-OBJ_Y += mem_disk.o
+OBJ_$(CONFIG_MEM_DISK) += mem_disk.o

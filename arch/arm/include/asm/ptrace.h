@@ -4,7 +4,7 @@
 #include <os/config.h>
 
 #include <os/string.h>
-#include <os/compiler_attributes.h>
+#include <os/compiler.h>
 #include <os/bitops.h>
 
 struct task_struct;

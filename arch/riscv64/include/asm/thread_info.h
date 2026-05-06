@@ -1,7 +1,7 @@
 #ifndef __ASM_RISCV64_THREAD_INFO_H
 #define __ASM_RISCV64_THREAD_INFO_H
 
-#include <os/compiler_attributes.h>
+#include <os/compiler.h>
 #include <os/pfn.h>
 #include <os/types.h>
 

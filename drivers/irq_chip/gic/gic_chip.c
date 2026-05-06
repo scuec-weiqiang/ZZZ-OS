@@ -15,7 +15,7 @@
 #include <os/device.h>
 #include <os/of_address.h>
 // #include "armv7_gic.h"
-#include <os/compiler_attributes.h>
+#include <os/compiler.h>
 #include <asm/irq.h>
 
 #define FORCEDINLINE __attribute__((always_inline))

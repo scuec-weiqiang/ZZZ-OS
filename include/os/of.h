@@ -15,7 +15,7 @@
 #include <os/device.h>
 #include <os/bswap.h>
 #include <os/bitops.h>
-#include <os/compiler_attributes.h>
+#include <os/compiler.h>
 
 /* flag descriptions */
 #define OF_DYNAMIC	1 /* node and properties were allocated via kmalloc */

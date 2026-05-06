@@ -1,5 +1,5 @@
-OBJ_Y += ramfs/
-OBJ_Y += ext2/
+OBJ_$(CONFIG_RAMFS) += ramfs/
+OBJ_$(CONFIG_EXT2) += ext2/
 
 OBJ_Y += fs_init.o
 OBJ_Y += registry.o
@@ -14,7 +14,6 @@ OBJ_Y += dcache.o
 OBJ_Y += inode.o
 OBJ_Y += namei.o
 OBJ_Y += file.o
-OBJ_Y += test.o
 OBJ_Y += exec.o
 OBJ_Y += elf.o
 OBJ_Y += elf_binfmt.o

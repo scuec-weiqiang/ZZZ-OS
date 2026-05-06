@@ -1,6 +1,6 @@
 #include <os/sched.h>
 #include <os/stacktrace.h>
-#include <os/compiler_attributes.h>
+#include <os/compiler.h>
 #include <os/pfn.h>
 #include <mm/symbols.h>
 #include <asm/stacktrace.h>

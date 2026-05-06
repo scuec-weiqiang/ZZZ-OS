@@ -1,2 +1,2 @@
-OBJ_arm += arm/
-OBJ_riscv64 += riscv64/
+OBJ_$(CONFIG_ARCH_ARM) += arm/
+OBJ_$(CONFIG_ARCH_RISCV64) += riscv64/

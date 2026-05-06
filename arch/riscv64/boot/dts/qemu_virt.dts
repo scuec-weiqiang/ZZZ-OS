@@ -39,9 +39,9 @@
             interrupt-controller;
             reg = <0xc000000 0x4000000>;
             #interrupt-cells = <1>;
-            riscv,max-priority = <7>;
-            riscv,ndev = <53>;       // 支持的外设中断数量
-            interrupts-extended = <&cpu0 9>; // 通知目标CPU
+            // riscv,max-priority = <7>;
+            // riscv,ndev = <53>;       // 支持的外设中断数量
+            // interrupts-extended = <&cpu0 9>; // 通知目标CPU
         };
        
         time: time@50000000 {
@@ -52,15 +52,13 @@
         uart0: uart@10000000 {
             compatible = "wq,uart";
             reg = <0x10000000 0x8>;
-            interrupt-parent = <&plic>;
-            interrupts = <10>;
+            interrupt-extended = <&plic 10>; 
         };
 
         virt_disk: virt_disk@10001000 {
             compatible = "wq,virt_disk";
             reg = <0x10001000 0x1000>;
-            interrupt-parent = <&plic>;
-            interrupts = <11>;
+            interrupt-extended = <&plic 11>; 
         };
 
     };

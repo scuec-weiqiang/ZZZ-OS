@@ -12,7 +12,7 @@
 
 #include <os/types.h>
 #include <os/pfn.h>
-#include <os/compiler_attributes.h>
+#include <os/compiler.h>
 
 #define THREAD_SIZE_ORDER	1
 #define THREAD_SIZE		(PAGE_SIZE << THREAD_SIZE_ORDER)

@@ -8,7 +8,7 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
 */
 #include <os/types.h>
-#include <os/compiler_attributes.h>
+#include <os/compiler.h>
 
 #define _LOG_BUF_SIZE 0x4000
 

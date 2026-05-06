@@ -1,11 +1,9 @@
 build/
 .cache/
-./fs(legacy)/
-./include/fs3/
 compile_commands.json
-./disk.img
+disk.img
 .codex
-.claude/
-.vscode/
-user_proc/
+.claude/*
+.vscode/*
+user_proc/*
 .gitignore

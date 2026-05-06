@@ -1,9 +1,11 @@
 #--------------架构---------------#
-ARCH ?= arm
-# CROSS_COMPILE ?= riscv64-unknown-elf-
+ARCH ?= riscv64
+CROSS_COMPILE ?= riscv64-unknown-elf-
 # CROSS_COMPILE ?= arm-linux-gnueabihf-
-CROSS_COMPILE ?= arm-none-eabi-
-BOARD ?= imx6ull
+# CROSS_COMPILE ?= arm-none-eabi-
+# BOARD ?= imx6ull
+BOARD ?= qemu_virt
+CONFIG_FILE ?= .config
 
 DISK = ./disk.img
 DISK_DEV = /dev/loop0p1
@@ -28,8 +30,6 @@ CFLAGS += -Iinclude
 CFLAGS += -MMD -MP
 ASFLAGS := $(CFLAGS)
 LDFLAGS := -Tarch/$(ARCH)/config/link.ld 
-MKIMAGE_ARCH ?= arm
-OBJDUMP_ARCH ?= arm
 
 
 # 目标架构的asm头文件目录（如arch/riscv64/include/asm）
@@ -49,10 +49,13 @@ SRC_ROOT ?=  ./
 KBUILD_FILE = objs.mk
 KBUILD_SOURCES := $(shell find . -name objs.build)
 # 若不存在 objs.mk，则生成
-$(KBUILD_FILE):$(KBUILD) $(KBUILD_SOURCES)
-	@$(KBUILD) $(SRC_ROOT) > $@
+
+$(KBUILD_FILE):$(KBUILD) $(KBUILD_SOURCES) $(CONFIG_FILE)
+	@$(KBUILD) $(SRC_ROOT) $(CONFIG_FILE) > $@
 $(KBUILD):
 	$(MAKE) -C $(KBUILD_PATH)
+$(CONFIG_FILE):
+	@cat arch/$(ARCH)/config/defconfig > $@
 include $(KBUILD_FILE)
 # 生成 .o 文件路径
 BUILD_OBJS := $(patsubst %.o, $(BUILD_DIR)/%.o, $(OBJ_Y))
@@ -108,7 +111,7 @@ $(BUILD_DIR)/%.o: %.s $(ASM_LINK) $(KBUILD_FILE)
 	@echo "汇编：$< → $@"
 
 clean:
-	rm -rf $(BUILD_DIR) $(KBUILD_FILE) 
+	rm -rf $(BUILD_DIR) $(KBUILD_FILE) $(CONFIG_FILE)
 	$(MAKE) -C ./user_runtime/ clean
 	@echo "clean complete"
 

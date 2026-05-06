@@ -1,2 +1,2 @@
-OBJ_Y += virtio.o
-OBJ_Y += virt_disk.o
+OBJ_$(CONFIG_VIRT_DISK) += virtio.o
+OBJ_$(CONFIG_VIRT_DISK) += virt_disk.o

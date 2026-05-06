@@ -1,7 +1,7 @@
 #ifndef __ASM_RISCV64_PTRACE_H
 #define __ASM_RISCV64_PTRACE_H
 
-#include <os/compiler_attributes.h>
+#include <os/compiler.h>
 #include <os/string.h>
 #include <os/types.h>
 

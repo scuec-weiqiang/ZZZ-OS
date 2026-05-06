@@ -15,7 +15,7 @@
 
 // #include <linux/gpio.h>
 #include <os/types.h>
-#include <os/compiler_attributes.h>
+#include <os/compiler.h>
 #include <os/spinlock.h>
 #include <os/gpio/driver.h>
 

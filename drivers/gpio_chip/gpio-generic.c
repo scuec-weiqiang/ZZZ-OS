@@ -48,7 +48,7 @@ o        `                     ~~~~\___/~~~~    ` controller in FPGA is ,.`
 #include <os/err.h>
 #include <os/module.h>
 #include <os/spinlock.h>
-#include <os/compiler_attributes.h>
+#include <os/compiler.h>
 #include <os/utils.h>
 #include <os/io.h>
 #include <os/platform_device.h>

@@ -1,4 +1,5 @@
 OBJ_Y += gpio-generic.o
-OBJ_Y += gpio-mxc.o
 OBJ_Y += gpiolib.o
+
+OBJ_$(CONFIG_GPIO_MXC) += gpio-mxc.o
 

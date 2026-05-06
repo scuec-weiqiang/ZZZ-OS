@@ -3,8 +3,9 @@ OBJ_Y += core/
 OBJ_Y += gpio_chip/
 OBJ_Y += irq_chip/
 OBJ_Y += clocksource/
-OBJ_arm += imx6ull_uart.o
-OBJ_arm += imx6ull_led.o
-OBJ_arm += mem_disk/
-OBJ_riscv64 += qemu_riscv_uart.o
-OBJ_riscv64 += virt_disk/
+
+OBJ_$(CONFIG_IMX6ULL_UART) += imx6ull_uart.o
+OBJ_$(CONFIG_IMX6ULL_LED) += imx6ull_led.o
+OBJ_$(CONFIG_MEM_DISK) += mem_disk/
+OBJ_$(CONFIG_QEMU_RISCV_UART) += qemu_riscv_uart.o
+OBJ_$(CONFIG_VIRT_DISK) += virt_disk/
