@@ -23,7 +23,8 @@ static inline void put_file(struct file *f) {
 		atomic_dec(&f->f_count);
 	}
 }
-
+struct file *alloc_file(void);
+void free_file(struct file *file);
 struct file *filp_open(const char *path, u32 flags);
 void filp_close(struct file *file);
 ssize_t kernel_read(struct file *file, char *buf, size_t len);
@@ -32,6 +33,8 @@ ssize_t kernel_write(struct file *file, const char *buf, size_t len);
 
 int alloc_fd(unsigned start, unsigned flags);
 int close_fd(unsigned fd);
+
+
 
 static inline bool close_on_exec(int fd, const struct fdtable *fdt) {
 	return test_bit(fd, fdt->close_on_exec);

@@ -4,6 +4,7 @@
 #include <fs/dcache.h>
 #include <fs/inode.h>
 #include <fs/namei.h>
+#include <fs/fs_struct.h>
 #include <os/check.h>
 #include <os/err.h>
 #include <os/kmalloc.h>
@@ -14,6 +15,27 @@
 #include <os/sched.h>
 #include <os/syscall_num.h>
 #include <os/uaccess.h>
+#include <mm/slab.h>
+
+struct kmem_cache *file_kmem_cache = NULL;
+
+int alloc_file_init(void) {
+    file_kmem_cache = kmem_cache_create("file_cache", sizeof(struct file), 0);
+    if (!file_kmem_cache) {
+        return -ENOMEM;
+    }
+    return 0;
+}
+
+struct file *alloc_file(void) {
+    return kmem_cache_alloc(file_kmem_cache);
+}
+
+void free_file(struct file *file) {
+    if (file) {
+        kmem_cache_free(file);
+    }
+}
 
 #define SYSCALL_PATH_MAX 256
 /*
@@ -98,6 +120,8 @@ long sys_read(struct pt_regs *ctx) {
     file = sys_fdget(fd);
     if (file == NULL)
         return -EBADF;
+    if (file->f_flags & O_WRONLY)
+        return -EACCES;
 
     ret = kernel_read(file, (void*)user_buf, len);
 
@@ -118,6 +142,9 @@ long sys_write(struct pt_regs *ctx) {
     if (file == NULL)
         return -EBADF;
 
+    if (file->f_flags & O_RDONLY)
+        return -EACCES;
+    
     ret = kernel_write(file, (void*)user_buf, len);
     return ret;
 }
@@ -157,7 +184,8 @@ long sys_open(struct pt_regs *ctx) {
 }
 
 long sys_close(struct pt_regs *ctx) {
-    return close_fd((unsigned)ctx->r[0]);
+    close_fd((unsigned)ctx->r[0]);
+
 }
 
 long sys_creat(struct pt_regs *ctx) {
@@ -186,6 +214,46 @@ long sys_mkdir(struct pt_regs *ctx) {
         return -EIO;
 
     return 0;
+}
+
+long sys_chdir(struct pt_regs *ctx) {
+    uintptr_t user_path = ctx->r[0];
+    char path[SYSCALL_PATH_MAX];
+
+    if (copy_user_string(path, sizeof(path), user_path) < 0)
+        return -EFAULT;
+
+    return vfs_chdir(path);
+}
+
+long sys_getcwd(struct pt_regs *ctx) {
+    uintptr_t user_buf = ctx->r[0];
+    size_t size = (size_t)ctx->r[1];
+    char *kbuf;
+    int len;
+
+    if (user_buf == 0 || size == 0) {
+        return -EINVAL;
+    }
+
+    kbuf = kmalloc(size);
+    if (kbuf == NULL) {
+        return -ENOMEM;
+    }
+
+    len = vfs_getcwd(kbuf, size);
+    if (len < 0) {
+        kfree(kbuf);
+        return len;
+    }
+
+    if (copy_to_user((char *)user_buf, kbuf, (size_t)len) != 0) {
+        kfree(kbuf);
+        return -EFAULT;
+    }
+
+    kfree(kbuf);
+    return len;
 }
 
 long sys_lseek(struct pt_regs *ctx) {
@@ -226,7 +294,7 @@ struct file *filp_open(const char *path, u32 flags) {
         goto err_put_path;
     }
     
-    file = kmalloc(sizeof(*file));
+    file = alloc_file();
     if (file == NULL) {
         ret = -ENOMEM;
         goto err_put_path;
@@ -283,15 +351,14 @@ err_free_file:
     if (bdev != NULL) {
         blkdev_put(bdev);
     }
-    kfree(file);
+    free_file(file);
 err_put_path:
     file = NULL;
-    if (resolved.dentry != NULL) {
-        struct inode *inode = resolved.dentry->d_inode;
-        dput(resolved.dentry);
-        if (inode != NULL) {
-            iput(inode);
-        }
+    if (resolved.dentry != NULL && resolved.dentry->d_inode != NULL) {
+        iput(resolved.dentry->d_inode);
+    }
+    if (resolved.dentry != NULL || resolved.mnt != NULL) {
+        path_put(&resolved);
     }
     return ERR_PTR(ret);
 }
@@ -307,13 +374,13 @@ void filp_close(struct file *file) {
                 blkdev_put(bdev);
             }
         }
-        if (file->f_path.dentry != NULL) {
-            dput(file->f_path.dentry);
-        }
         if (file->f_inode != NULL) {
             iput(file->f_inode);
         }
-        kfree(file);
+        if (file->f_path.dentry != NULL || file->f_path.mnt != NULL) {
+            path_put(&file->f_path);
+        }
+        free_file(file);
     }
 }
 
@@ -563,18 +630,26 @@ static int __close_fd(struct files_struct *files, unsigned fd) {
 	struct fdtable *fdt;
 
 	spin_lock(&files->file_lock);
+
 	fdt = &files->fdtab;
 	if (fd >= fdt->max_fds)
 		goto out_unlock;
+
 	file = fdt->fd[fd];
 	if (!file)
 		goto out_unlock;
+
 	fdt->fd[fd] = NULL;
 	__clear_close_on_exec(fd, fdt);
 	__put_unused_fd(files, fd);
+    
 	spin_unlock(&files->file_lock);
+
 	put_file(file);
     if (file && atomic_read(&file->f_count) == 0) {
+        if (file->f_op && file->f_op->release) {
+            file->f_op->release(file->f_inode, file);
+        }
         filp_close(file);
     }
 	
@@ -617,8 +692,10 @@ int setup_stdio(const char *path) {
     for (i = 0; i < 3; i++) {
         struct file *file = filp_open(path, O_RDWR);
 
-        if (IS_ERR(file))
+        if (IS_ERR(file)) {
             return PTR_ERR(file);
+        }
+            
 
         if (close_fd(stdio_fds[i]) < 0) {
             /* Ignore EBADF for empty stdio slots in a fresh files table. */
@@ -728,4 +805,97 @@ void put_files_struct(struct files_struct *files) {
 
     close_files(files);
     kmem_cache_free(files);
+}
+
+long sys_fstat(struct pt_regs *ctx) {
+    int fd = (int)ctx->r[0];
+    void* user_st = (void*)ctx->r[1];
+    struct user_stat st;
+    struct file *file;
+    struct inode *inode;
+
+    file = sys_fdget(fd);
+    if (file == NULL)
+        return -EBADF;
+
+    memset(&st, 0, sizeof(st));
+
+    inode = file->f_inode;
+    if (inode) {
+        st.st_ino = (ino_t)inode->i_ino;         // inode 号
+        st.st_size = (off_t)inode->i_size;          // 文件大小
+        st.st_atim.tv_sec = inode->i_atime.tv_sec;        // 访问时间
+        st.st_mtim.tv_sec = inode->i_mtime.tv_sec;        // 修改时间
+        st.st_ctim.tv_sec = inode->i_ctime.tv_sec;        // 创建时间
+
+       
+        // 4. 关键：文件类型
+        if (S_ISREG(inode->i_mode)) {
+            st.st_mode = S_IFREG | 0644;   // 普通文件
+        } else if (S_ISDIR(inode->i_mode)) {
+            st.st_mode = S_IFDIR | 0755;   // 目录
+        } else if (S_ISCHR(inode->i_mode)) {
+            st.st_mode = S_IFCHR | 0666;   // 控制台/串口
+        }
+    
+        st.st_nlink = inode->i_nlink;      // 链接数
+        st.st_uid = 0;
+        st.st_gid = 0;
+    } else {
+        return -EBADF;
+    }
+
+    if (copy_to_user( user_st, (char *)&st,sizeof(st))) {
+        return -EFAULT;
+    }
+
+    return 0; // 成功
+}
+
+long sys_stat(struct pt_regs *ctx) {
+    uintptr_t user_path = ctx->r[0];
+    void* user_st = (void*)ctx->r[1];
+    char path[SYSCALL_PATH_MAX];
+    struct user_stat st;
+    struct path resolved = {0};
+    struct inode *inode;
+
+    if (copy_user_string(path, sizeof(path), user_path) < 0)
+        return -EFAULT;
+
+    if (path_lookup(path, &resolved) < 0)
+        return -ENOENT;
+
+    memset(&st, 0, sizeof(st));
+
+    inode = resolved.dentry->d_inode;
+    if (inode) {
+        st.st_ino = (ino_t)inode->i_ino;         // inode 号
+        st.st_size = (off_t)inode->i_size;          // 文件大小
+        st.st_atim.tv_sec = inode->i_atime.tv_sec;        // 访问时间
+        st.st_mtim.tv_sec = inode->i_mtime.tv_sec;        // 修改时间
+        st.st_ctim.tv_sec = inode->i_ctime.tv_sec;        // 创建时间
+
+       
+        // 4. 关键：文件类型
+        if (S_ISREG(inode->i_mode)) {
+            st.st_mode = S_IFREG | 0644;   // 普通文件
+        } else if (S_ISDIR(inode->i_mode)) {
+            st.st_mode = S_IFDIR | 0755;   // 目录
+        } else if (S_ISCHR(inode->i_mode)) {
+            st.st_mode = S_IFCHR | 0666;   // 控制台/串口
+        }
+    
+        st.st_nlink = inode->i_nlink;      // 链接数
+        st.st_uid = 0;
+        st.st_gid = 0;
+    } else {
+        return -ENOENT;
+    }
+
+    if (copy_to_user( user_st, (char *)&st,sizeof(st))) {
+        return -EFAULT;
+    }
+
+    return 0; // 成功
 }

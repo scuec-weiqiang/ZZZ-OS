@@ -29,7 +29,7 @@ vector_table:
 .global __reset_handler
 __reset_handler:
     b .
-    // 这里可以添加一些初始化代码，例如设置堆栈指针等
+    @ 这里可以添加一些初始化代码，例如设置堆栈指针等
 
 .global __undef_handler
 __undef_handler:

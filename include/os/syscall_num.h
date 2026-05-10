@@ -15,14 +15,20 @@
     X(4,  write)   \
     X(5,  open)    \
     X(6,  close)   \
+    X(7,  fstat)   \
+    X(8,  stat)    \
+    X(9,  kill)    \
+    X(12, chdir)   \
     X(19, lseek)   \
     X(20, getpid)  \
+    X(22, pipe)    \
     X(45, brk)     \
     X(46, creat)   \
     X(47, mkdir)  \
     X(59, execve)  \
     X(106, waitpid) \
     X(141, getdents) \
+    X(183, getcwd) \
 
 /* 生成系统调用号枚举 */
 #define X(nr, name) SYSCALL_##name = nr,

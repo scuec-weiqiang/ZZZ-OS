@@ -7,7 +7,9 @@
 #include <os/resource.h>
 #include <os/mm.h>
 #include <os/irq_domain.h>
+#include <os/errno.h>
 #include <os/of_irq.h>
+#include <os/pinctrl.h>
 
 struct device platform_bus = {
 	.name	= "platform",
@@ -62,6 +64,11 @@ static int platform_drv_probe(struct device *_dev) {
 	struct platform_device *dev = to_platform_device(_dev);
 
 	int ret;
+
+	ret = pinctrl_select_state(_dev, "default");
+	if (ret < 0 && ret != -ENOENT) {
+		return ret;
+	}
 
 	ret = drv->probe(dev);
 		
@@ -126,4 +133,3 @@ virt_addr_t platform_ioremap_resource(struct platform_device *pdev, unsigned int
 int platform_get_irq(struct platform_device *dev, unsigned int index) {
     return of_irq_get(dev->dev.of_node, index);
 }
-

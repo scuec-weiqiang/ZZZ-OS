@@ -1,16 +1,14 @@
-#include <os/list.h>
-#include <os/pfn.h>
-#include <os/types.h>
+#include <mm/buddy.h>
+#include <mm/page.h>
 #include <mm/physmem.h>
 #include <mm/slab.h>
-#include <mm/buddy.h>
-#include <os/string.h>
-#include <os/list.h>
-#include <os/printk.h>
-#include <mm/page.h>
 #include <os/kva.h>
+#include <os/list.h>
+#include <os/pfn.h>
+#include <os/printk.h>
+#include <os/string.h>
+#include <os/types.h>
 #include <os/utils.h>
-
 
 #define get_slab(list_node) list_entry(list_node, struct slab, list)
 
@@ -31,22 +29,18 @@
 #define SIZE_TYPE_14 2048
 
 static const int size_types[] = {
-    SIZE_TYPE_0, SIZE_TYPE_1, SIZE_TYPE_2, SIZE_TYPE_3, 
+    SIZE_TYPE_0, SIZE_TYPE_1, SIZE_TYPE_2, SIZE_TYPE_3,
     SIZE_TYPE_4, SIZE_TYPE_5, SIZE_TYPE_6, SIZE_TYPE_7,
     SIZE_TYPE_8, SIZE_TYPE_9, SIZE_TYPE_10, SIZE_TYPE_11,
-    SIZE_TYPE_12, SIZE_TYPE_13, SIZE_TYPE_14
-};
+    SIZE_TYPE_12, SIZE_TYPE_13, SIZE_TYPE_14};
 
 static struct {
     size_t size;
     struct kmem_cache *cache;
 } kmalloc_caches[] = {
-    {SIZE_TYPE_0, NULL}, {SIZE_TYPE_1, NULL}, {SIZE_TYPE_2, NULL}, {SIZE_TYPE_3, NULL}, {SIZE_TYPE_4, NULL},
-    {SIZE_TYPE_5, NULL}, {SIZE_TYPE_6, NULL}, {SIZE_TYPE_7, NULL}, {SIZE_TYPE_8, NULL}, {SIZE_TYPE_9, NULL},
-    {SIZE_TYPE_10, NULL}, {SIZE_TYPE_11, NULL}, {SIZE_TYPE_12, NULL}, {SIZE_TYPE_13, NULL}, {SIZE_TYPE_14, NULL}
-};
+    {SIZE_TYPE_0, NULL}, {SIZE_TYPE_1, NULL}, {SIZE_TYPE_2, NULL}, {SIZE_TYPE_3, NULL}, {SIZE_TYPE_4, NULL}, {SIZE_TYPE_5, NULL}, {SIZE_TYPE_6, NULL}, {SIZE_TYPE_7, NULL}, {SIZE_TYPE_8, NULL}, {SIZE_TYPE_9, NULL}, {SIZE_TYPE_10, NULL}, {SIZE_TYPE_11, NULL}, {SIZE_TYPE_12, NULL}, {SIZE_TYPE_13, NULL}, {SIZE_TYPE_14, NULL}};
 
-#define SLAB_SIZE_TYPES_NUM (sizeof(size_types)/sizeof(size_types[0]))
+#define SLAB_SIZE_TYPES_NUM (sizeof(size_types) / sizeof(size_types[0]))
 #define SLAB_MAX_SIZE 2048
 #define SLAB_MIN_ALIGN 8
 
@@ -113,17 +107,20 @@ static inline size_t cache_object_size(size_t size, size_t align) {
 }
 
 static int size_to_index(size_t size) {
-    if (size == 0) return 0;
+    if (size == 0)
+        return 0;
     size = round_up_align(size, SLAB_MIN_ALIGN);
 
     for (int i = 0; i < SLAB_SIZE_TYPES_NUM; i++) {
-        if (size <= size_types[i]) return i;
+        if (size <= size_types[i])
+            return i;
     }
     return -1;
 }
 
-struct kmem_cache* kmem_cache_create(const char *name, size_t size, size_t align) {
-    if (!name) return NULL;
+struct kmem_cache *kmem_cache_create(const char *name, size_t size, size_t align) {
+    if (!name)
+        return NULL;
 
     struct kmem_cache *cache = alloc_pages_kva(1);
     if (!cache) {
@@ -156,23 +153,23 @@ struct kmem_cache* kmem_cache_create(const char *name, size_t size, size_t align
     return cache;
 }
 
-static struct slab* init_slab(struct kmem_cache *cache) {
+static struct slab *init_slab(struct kmem_cache *cache) {
     void *mem = alloc_pages_kva(1);
     if (!mem) {
         return NULL;
     }
 
-    struct slab *slab = (struct slab*)mem;
+    struct slab *slab = (struct slab *)mem;
     slab->parent = cache;
     slab->inuse = 0;
     INIT_LIST_HEAD(&slab->list);
     list_add(&cache->free_slabs, &slab->list);
 
-    struct free_obj* obj = (struct free_obj*)((size_t)slab + slab_objects_offset(cache));
+    struct free_obj *obj = (struct free_obj *)((size_t)slab + slab_objects_offset(cache));
     slab->free_object.next = obj;
 
     for (unsigned int i = 0; i < cache->objects_per_slab - 1; i++) {
-        struct free_obj* next = (struct free_obj*)((size_t)obj + cache->object_size);
+        struct free_obj *next = (struct free_obj *)((size_t)obj + cache->object_size);
         obj->next = next;
         obj = next;
     }
@@ -190,13 +187,12 @@ void *kmem_cache_alloc(struct kmem_cache *cache) {
     struct list_head *node = NULL;
 
     if (!list_empty(&cache->partial_slabs)) {
-       goto alloc_obj;
+        goto alloc_obj;
     }
 
     if (!list_empty(&cache->free_slabs)) {
-       goto add_partial;
-    }
-    else {
+        goto add_partial;
+    } else {
         slab = init_slab(cache);
         if (!slab) {
             return NULL;
@@ -204,12 +200,12 @@ void *kmem_cache_alloc(struct kmem_cache *cache) {
         cache->total_slabs++;
     }
 
-    add_partial:
+add_partial:
     node = cache->free_slabs.next;
     list_del(node);
     list_add(&cache->partial_slabs, node);
 
-    alloc_obj:
+alloc_obj:
     slab = get_slab(cache->partial_slabs.next);
     struct free_obj *obj = slab->free_object.next;
     phys_addr_t ret;
@@ -232,19 +228,20 @@ void *kmem_cache_alloc(struct kmem_cache *cache) {
         list_del(&slab->list);
         list_add(&cache->full_slabs, &slab->list);
     }
-  
-    return (void*)ret;
+
+    return (void *)ret;
 }
 
 void kmem_cache_free(void *obj) {
-    if (!obj) return;
+    if (!obj)
+        return;
 
     phys_addr_t slab_base = (phys_addr_t)obj & PAGE_MASK;
     struct slab *slab = (struct slab *)slab_base;
     if (slab->magic != SLAB_MAGIC) {
         panic("kmem_cache_free: invalid slab magic");
     }
-    struct free_obj *free_obj = (struct free_obj*)obj;
+    struct free_obj *free_obj = (struct free_obj *)obj;
     if (!slab_obj_is_valid(slab->parent, slab, free_obj)) {
         slab_panic_bad_obj("kmem_cache_free: invalid object", slab->parent, slab, free_obj);
     }
@@ -264,14 +261,14 @@ void kmem_cache_free(void *obj) {
     if (slab->inuse == cache->objects_per_slab - 1) {
         list_del(&slab->list);
         list_add(&cache->partial_slabs, &slab->list);
-    }    
-
+    }
 }
 
-void* __kmalloc(size_t size) {
+void *__kmalloc(size_t size) {
     void *ptr;
 
-    if (size == 0) return NULL;
+    if (size == 0)
+        return NULL;
 
     if (size > SLAB_MAX_SIZE) {
         size_t npages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
@@ -284,7 +281,8 @@ void* __kmalloc(size_t size) {
     }
 
     int idx = size_to_index(size);
-    if (idx < 0) return NULL;
+    if (idx < 0)
+        return NULL;
 
     ptr = kmem_cache_alloc(kmalloc_caches[idx].cache);
     // if (slab_debug_size(size) && ptr) {
@@ -299,7 +297,8 @@ void* __kmalloc(size_t size) {
 }
 
 void __kfree(void *ptr) {
-    if (!ptr) return;
+    if (!ptr)
+        return;
 
     // 只有按页对齐且对应的page有slab信息，才是从slab分配的，否则是从buddy分配的
     if (IS_ALIGNED((uintptr_t)ptr, PAGE_SIZE)) {
@@ -335,6 +334,16 @@ void slab_init() {
     extern int alloc_fs_struct_init(void);
     if (alloc_fs_struct_init() < 0) {
         panic("fs_struct cache create failed");
+    }
+
+    extern int alloc_file_init(void);
+    if (alloc_file_init() < 0) {
+        panic("file cache create failed");
+    }
+
+    extern int alloc_pipe_inode_info_init(void);
+    if (alloc_pipe_inode_info_init() < 0) {
+        panic("pipe cache create failed");
     }
 }
 
@@ -413,10 +422,9 @@ void slab_init() {
 //         buddy_dump();
 //         if (!p)
 //         {
-            
+
 //             panic("alloc failed for order %d", order);
 //         }
-            
 
 //         /* 测试页是否连续 */
 //         for (int i = 0; i < (1 << order); i++) {

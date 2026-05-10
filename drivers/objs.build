@@ -1,11 +1,13 @@
 OBJ_Y += of/
 OBJ_Y += core/
 OBJ_Y += gpio_chip/
+OBJ_Y += pinctrl/
 OBJ_Y += irq_chip/
 OBJ_Y += clocksource/
 
 OBJ_$(CONFIG_IMX6ULL_UART) += imx6ull_uart.o
 OBJ_$(CONFIG_IMX6ULL_LED) += imx6ull_led.o
+OBJ_$(CONFIG_IMX6ULL_USDHC) += imx6ull_usdhc.o
 OBJ_$(CONFIG_MEM_DISK) += mem_disk/
 OBJ_$(CONFIG_QEMU_RISCV_UART) += qemu_riscv_uart.o
 OBJ_$(CONFIG_VIRT_DISK) += virt_disk/

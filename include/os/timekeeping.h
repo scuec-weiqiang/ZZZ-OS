@@ -47,7 +47,7 @@ extern void timekeeping_timer_interrupt(void);
 typedef struct timespec 
 {
     u64 tv_sec;   // 秒数（自 Unix 纪元时间 1970-01-01 00:00:00 起）
-    u64 tv_nsec;  // 纳秒数（0 ~ 999,999,999）
+    long tv_nsec;  // 纳秒数（0 ~ 999,999,999）
 }timespec_t;
 
 #endif

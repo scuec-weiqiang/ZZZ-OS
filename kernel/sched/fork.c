@@ -391,7 +391,6 @@ void wake_up_process(struct task_struct *p) {
     unsigned long flags;
 
     if (p == NULL || p == &init_task || p->status == TASK_RUNNING) {
-        
         return;
     }
 

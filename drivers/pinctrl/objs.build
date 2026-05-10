@@ -1,0 +1,2 @@
+OBJ_Y += core.o
+OBJ_$(CONFIG_PINCTRL_IMX6ULL) += pinctrl-imx6ull.o

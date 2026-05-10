@@ -109,6 +109,17 @@ static struct ramfs_dentry *ramfs_find_child(struct ramfs_node *dir, const char 
     return NULL;
 }
 
+static int ramfs_qstr_is_dot(const struct qstr *name)
+{
+    return name != NULL && name->len == 1 && name->name[0] == '.';
+}
+
+static int ramfs_qstr_is_dotdot(const struct qstr *name)
+{
+    return name != NULL && name->len == 2 &&
+           name->name[0] == '.' && name->name[1] == '.';
+}
+
 static int ramfs_inode_refresh(struct inode *inode) {
     struct ramfs_node *node = RAMFS_NODE(inode);
 
@@ -309,13 +320,43 @@ static ssize_t ramfs_file_write(struct file *file, const char *buf, size_t len, 
 static int ramfs_readdir (struct file *fp, struct dir_context *ctx) {
     struct ramfs_node *node = RAMFS_NODE(fp->f_inode);
     struct list_head *pos = NULL;
+    loff_t entry_pos = 2;
+    int ret;
 
     CHECK(node != NULL && S_ISDIR(node->mode), "fs: invalid ramfs readdir", return -ENOTDIR;);
+
+    if (ctx->pos == 0) {
+        ret = ctx->actor(ctx, ".", 1, 1, node->ino, DT_DIR);
+        if (ret < 0) {
+            return ret;
+        }
+        ctx->pos = 1;
+    }
+
+    if (ctx->pos == 1) {
+        ino_t parent_ino = node->parent ? node->parent->ino : node->ino;
+
+        ret = ctx->actor(ctx, "..", 2, 2, parent_ino, DT_DIR);
+        if (ret < 0) {
+            return ret;
+        }
+        ctx->pos = 2;
+    }
 
     list_for_each(pos, &node->u.dir.children) {
         struct ramfs_dentry *entry = container_of(pos, struct ramfs_dentry, sibling);
         unsigned int d_type = ramfs_type_by_mode[(entry->node->mode & S_IFMT) >> S_SHIFT];
-        ctx->actor(ctx, entry->name, strlen(entry->name), ctx->pos, entry->node->ino, d_type);
+        if (ctx->pos > entry_pos) {
+            entry_pos++;
+            continue;
+        }
+
+        ret = ctx->actor(ctx, entry->name, strlen(entry->name), entry_pos + 1, entry->node->ino, d_type);
+        if (ret < 0) {
+            return ret;
+        }
+        entry_pos++;
+        ctx->pos = entry_pos;
     }
     return 0;
 }
@@ -325,6 +366,10 @@ static struct file_operations ramfs_file_ops = {
     .open = ramfs_file_open,
     .read = ramfs_file_read,
     .write = ramfs_file_write,
+};
+
+static struct file_operations ramfs_dir_ops = {
+    .open = ramfs_file_open,
     .iterate = ramfs_readdir,
 };
 
@@ -354,6 +399,8 @@ struct inode *ramfs_iget(struct super_block *sb, ino_t ino) {
 
     if (S_ISDIR(node->mode))
         inode->i_op = &ramfs_dir_iops;
+    if (S_ISDIR(node->mode))
+        inode->i_fop = &ramfs_dir_ops;
     else if (S_ISREG(node->mode))
         inode->i_fop = &ramfs_file_ops;
 
@@ -366,18 +413,24 @@ static struct dentry *ramfs_lookup(struct inode *dir, struct dentry *dentry, uns
     struct ramfs_node *dir_node = RAMFS_NODE(dir);
     struct ramfs_dentry *entry = NULL;
     struct inode *inode = NULL;
+    ino_t ino = 0;
 
     (void)flags;
     CHECK(dir_node != NULL && S_ISDIR(dir_node->mode), "fs: invalid ramfs lookup dir", return NULL;);
-    
-    entry = ramfs_find_child(dir_node, dentry->d_name.name, dentry->d_name.len);
-    if (entry == NULL || entry->node == NULL) {
-        
-        return NULL;
+
+    if (ramfs_qstr_is_dot(&dentry->d_name)) {
+        ino = dir_node->ino;
+    } else if (ramfs_qstr_is_dotdot(&dentry->d_name)) {
+        ino = dir_node->parent ? dir_node->parent->ino : dir_node->ino;
+    } else {
+        entry = ramfs_find_child(dir_node, dentry->d_name.name, dentry->d_name.len);
+        if (entry == NULL || entry->node == NULL) {
+            return NULL;
+        }
+        ino = entry->node->ino;
     }
-    
-    inode = ramfs_iget(dir->i_sb, entry->node->ino);
-    
+
+    inode = ramfs_iget(dir->i_sb, ino);
     CHECK(inode != NULL, "fs: ramfs iget failed", return NULL;);
     
     d_add(dentry, inode);

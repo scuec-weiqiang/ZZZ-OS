@@ -277,10 +277,10 @@ int printk(const char *fmt, ...)
     va_end(ap);
 
     flags = spin_lock_irqsave(&printk_lock);
-    console_puts(printk_buf);
-    console_flush();
-    // extern void _puts(char *s) ;
-    // _puts(printk_buf);
+    // console_puts(printk_buf);
+    // console_flush();
+    extern void _puts(char *s) ;
+    _puts(printk_buf);
     spin_unlock_irqrestore(&printk_lock, flags);
 
     return n;

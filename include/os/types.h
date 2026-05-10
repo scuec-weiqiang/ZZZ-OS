@@ -90,7 +90,7 @@ typedef enum { false, true } bool;
 #define __user
 #define __iomem
 
-typedef u32 dev_t;
+typedef unsigned long dev_t;
 
 #define MINORBITS	20
 #define MINORMASK	((1U << MINORBITS) - 1)

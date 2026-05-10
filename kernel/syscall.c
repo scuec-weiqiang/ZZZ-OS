@@ -10,8 +10,7 @@ const syscall_fn_t syscall_table[SYSCALL_MAX] = {
 #undef X
 };
 
-void do_syscall(struct pt_regs *ctx)
-{
+void do_syscall(struct pt_regs *ctx) {
     long ret = -ENOSYS;
     u32 nr;
 

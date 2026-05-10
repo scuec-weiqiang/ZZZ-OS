@@ -325,8 +325,10 @@ int blkdev_read(struct blkdev *bdev, void *buf, size_t len, u64 pos) {
 
     size = (u64)bdev->bd_nr_sectors * SECTOR_SIZE;
 
-    if (pos + len > size)
-        return -EINVAL;
+    if (pos + len > size) {
+        return -EINVAL; 
+    }
+        
 
     real_pos = (u64)bdev->bd_start_sect * SECTOR_SIZE + pos;
 
@@ -399,7 +401,7 @@ static int gpt_scan(struct blkdev *whole) {
 
     if (memcmp(hdr.signature, "EFI PART", 8) != 0)
         return -EINVAL;
-
+    dprintk("GPT signature found on %s\n", whole->bd_disk->disk_name);
     nr_entries = hdr.num_partition_entries;
     entry_size = hdr.sizeof_partition_entry;
     entries_pos = hdr.partition_entries_lba * SECTOR_SIZE;
@@ -439,7 +441,7 @@ static int gpt_scan(struct blkdev *whole) {
 int blkdev_scan_partitions(struct blkdev *whole) {
     if (!whole || whole->bd_partno != 0)
         return -EINVAL;
-
+    
     if (gpt_scan(whole) == 0)
         return 0;
 
@@ -456,7 +458,6 @@ int blkdev_register(char *name, dev_t devnr, struct gendisk *disk, struct file_o
             return -EEXIST;
         }
     }
-
     bdev = kzalloc(sizeof(*bdev));
     CHECK(bdev != NULL, "blkdev: alloc block device failed", return -ENOMEM;);
 
@@ -466,6 +467,7 @@ int blkdev_register(char *name, dev_t devnr, struct gendisk *disk, struct file_o
     bdev->bd_openers = 0;
     bdev->bd_fs_info = NULL;
     bdev->bd_devnr = devnr; 
+    bdev->bd_contains = bdev;
 
     int ret = devnode_register(name, DEV_BLOCK, devnr, fops,bdev);
     if (ret < 0) {
@@ -476,7 +478,6 @@ int blkdev_register(char *name, dev_t devnr, struct gendisk *disk, struct file_o
     disk->part0 = bdev;
     INIT_LIST_HEAD(&disk->disk_list);
     list_add_tail(&g_blk_disks, &disk->disk_list);
-
     blkdev_scan_partitions(bdev);
 
     return 0;

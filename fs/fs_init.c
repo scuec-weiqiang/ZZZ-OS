@@ -1,6 +1,7 @@
 #include <fs/fs.h>
 #include <fs/dcache.h>
 #include <fs/fs_context.h>
+#include <fs/dcache.h>
 #include <fs/inode.h>
 #include <fs/namespace.h>
 #include <fs/pagecache.h>
@@ -13,6 +14,7 @@
 int mount_root(const char *dev, const char *fs_type) {
     struct fs_context *fc = NULL;
     struct vfsmount *root_mnt = NULL;
+
     int ret = 0;
 
     ret = icache_init();
@@ -45,32 +47,31 @@ int mount_root(const char *dev, const char *fs_type) {
     if (ret < 0) {
         panic("failed to get tree for root fs:%d\n",ret);
     }
-        
+    
     ret = vfs_kern_mount(fc, &root_mnt);
     if (ret < 0) {
         put_fs_context(fc);
         panic("fs: failed to mount root fs");
     }
- 
-
+    
     ret = init_mount_tree(root_mnt);
     if(ret< 0) {
           put_fs_context(fc);
           panic("fs: failed to install mount tree");
     }
-
+    
     put_fs_context(fc);
-
+    
     ret = vfs_mount_fs("ramfs", NULL, "/dev", 0);
     if (ret < 0) {
-        panic("fs: failed to mount ramfs on /dev, make sure /dev exists in the ext2 rootfs image");
+        panic("fs: failed to mount ramfs on /dev, ret=%d", ret);
     }
-
+    
     ret = devtmpfs_mount("/dev");
     if (ret < 0) {
         panic("fs: failed to populate /dev from devnodes");
     }
-
+    
     elf_binfmt_init();
     return 0;
 }

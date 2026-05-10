@@ -135,7 +135,7 @@ int devtmpfs_mount(const char *path) {
     list_for_each(pos, &g_devnodes) {
         struct devnode *node = list_entry(pos, struct devnode, list);
         int ret = devtmpfs_publish(node);
-        dprintk("devtmpfs: publish existing node %s, ret = %d\n", node->name, ret);
+        
         if (ret < 0) {
             printk("devtmpfs: publish existing node %s failed: %d\n", node->name, ret);
         }

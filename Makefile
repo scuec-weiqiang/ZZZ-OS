@@ -1,10 +1,11 @@
 #--------------架构---------------#
-ARCH ?= riscv64
-CROSS_COMPILE ?= riscv64-unknown-elf-
-# CROSS_COMPILE ?= arm-linux-gnueabihf-
-# CROSS_COMPILE ?= arm-none-eabi-
-# BOARD ?= imx6ull
-BOARD ?= qemu_virt
+ARCH ?= arm
+CROSS_COMPILE ?= arm-none-eabi-
+BOARD ?= imx6ull
+# CROSS_COMPILE ?= riscv64-unknown-elf-
+# BOARD ?= qemu_virt
+MKIMAGE_ARCH = arm
+
 CONFIG_FILE ?= .config
 
 DISK = ./disk.img
@@ -142,7 +143,6 @@ $(BUILD_DIR)/%.dtb: %.dts
 	$(CC) -E -nostdinc -undef -D__DTS__ -x assembler-with-cpp -Iinclude -o - $< \
 	| $(DTC) -I dts -O dtb -o $@ -i . -
 
-
 .PHONY: dtc
 dtc:
 	$(MAKE) -C tools/dtc 
@@ -178,7 +178,7 @@ umount:
 
 .PHONY:mount
 mount:
-	@ sudo mount $(DISK_DEV) $(MOUNT_PATH) && echo "挂载成功!" 
+	@ sudo mount $(DISK_DEV)  $(MOUNT_PATH) && echo "挂载成功!" 
 
 .PHONY:show
 show:

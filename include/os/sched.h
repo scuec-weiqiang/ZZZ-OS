@@ -16,6 +16,7 @@
 #include <os/timerqueue.h>
 #include <os/pfn.h>
 #include <os/wait.h>
+#include <os/signal.h>
 #include <asm/thread_info.h>
 
 #define PROC_DEFAULT_SLICE 500
@@ -125,6 +126,10 @@ struct task_struct {
     struct list_head children;
     struct list_head sibling;
     struct wait_queue_head wait_child; 
+
+    unsigned long signal_pending;
+    unsigned long signal_blocked;
+    struct k_sigaction sigactions[NSIG];
 
     struct timer sleep_timer; // 睡眠定时器
 };

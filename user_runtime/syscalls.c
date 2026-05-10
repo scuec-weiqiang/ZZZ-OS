@@ -7,9 +7,6 @@
 
 void _init(void) {}
 void _fini(void) {}
-void _kill(int sig) {
-    _exit(128 + sig);
-}
 
 extern int __syscall0(int nr);
 extern int __syscall1(int nr, int a0);
@@ -22,13 +19,19 @@ extern int __syscall3(int nr, int a0, int a1, int a2);
 #define SYS_write  4
 #define SYS_open   5
 #define SYS_close  6
+#define SYS_fstat  7
+#define SYS_stat   8
+#define SYS_kill   9
+#define SYS_chdir  12
 #define SYS_lseek  19
 #define SYS_getpid 20
+#define SYS_pipe   22
 #define SYS_yield  24
 #define SYS_brk    45
 #define SYS_execve 59
 #define SYS_waitpid 106
 #define SYS_getdents 141
+#define SYS_getcwd 183
 
 extern char _end;
 static char *heap_end;
@@ -96,6 +99,40 @@ int _close(int fd) {
     return ret;
 }
 
+int _chdir(const char *path) {
+    long ret = __syscall1(SYS_chdir, (long)path);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret;
+}
+
+int chdir(const char *path) {
+    return _chdir(path);
+}
+
+char *_getcwd(char *buf, size_t size) {
+    long ret;
+
+    if (buf == NULL || size == 0) {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    ret = __syscall2(SYS_getcwd, (long)buf, size);
+    if (ret < 0) {
+        errno = -ret;
+        return NULL;
+    }
+
+    return buf;
+}
+
+char *getcwd(char *buf, size_t size) {
+    return _getcwd(buf, size);
+}
+
 int _lseek(int fd, int offset, int whence) {
     long ret = __syscall3(SYS_lseek, fd, offset, whence);
     if (ret < 0) {
@@ -106,8 +143,21 @@ int _lseek(int fd, int offset, int whence) {
 }
 
 int _fstat(int fd, struct stat *st) {
-    st->st_mode = 0020000/*S_IFCHR*/;
-    return 0;
+    long ret = __syscall2(SYS_fstat, fd, (long)st);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret;
+}
+
+int _stat(const char *path, struct stat *st) {
+    long ret = __syscall2(SYS_stat, (long)path, (long)st);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret;
 }
 
 int _isatty(int fd) {
@@ -142,7 +192,7 @@ int _execve(const char *filename, char *const argv[], char *const envp[]) {
     return -1; // execve 成功不会返回，失败才会返回 -1
 }
 
-int getdents(int fd, void *dirp, unsigned int count) {
+int _getdents(int fd, void *dirp, unsigned int count) {
     long ret = __syscall3(SYS_getdents, fd, (long)dirp, count);
     if (ret < 0) {
         errno = -ret;
@@ -151,3 +201,20 @@ int getdents(int fd, void *dirp, unsigned int count) {
     return ret;
 }
 
+int _kill(int pid, int sig) {
+    long ret = __syscall2(SYS_kill, pid, sig);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return 0;
+}
+
+int _pipe(int pipefd[2]) {
+    long ret = __syscall1(SYS_pipe, (long)pipefd);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return 0;
+}

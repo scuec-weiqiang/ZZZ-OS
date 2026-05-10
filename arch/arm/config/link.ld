@@ -12,7 +12,7 @@ SECTIONS
         *(.text.entry)
         __sched_text_start = .;
         *(.text.sched)
-        __sched_text_eend = .;
+        __sched_text_end = .;
         *(.text .text.*)
         . = ALIGN(4096);
         __text_end = .;

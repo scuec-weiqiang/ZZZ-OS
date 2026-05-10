@@ -114,7 +114,7 @@ void undef_handler(void)
 {
    exception("undef");
 }
-
+extern void handle_pending_signal(struct pt_regs *regs);
 void swi_handler(struct pt_regs *regs)
 {
     // local_irq_disable();
@@ -124,6 +124,7 @@ void swi_handler(struct pt_regs *regs)
     }
 
     do_syscall(regs);
+    handle_pending_signal(regs);
 }
 
 
@@ -188,15 +189,16 @@ int data_abort_handler(unsigned long spsr) {
     u32 ttbcr = read_ttbcr();
     u32 dacr = read_dacr();
 
-
     /* 注意，current宏依赖svc模式的栈，而abort时的栈是独立的，直接用current是错的 */
-    struct mm_struct *mm = this_rq()->curr->mm;
-    if (arm_fault_is_user(spsr) && arm_fault_is_translation(fs) && mm != NULL) {
-        if (do_page_fault(mm, addr, PROT_USER | PROT_READ | PROT_WRITE) == 0) {
-            return 0;
+    if (this_rq() != NULL) {
+        struct mm_struct *mm = this_rq()->curr->mm;
+        if (arm_fault_is_user(spsr) && arm_fault_is_translation(fs) && mm != NULL) {
+            if (do_page_fault(mm, addr, PROT_USER | PROT_READ | PROT_WRITE) == 0) {
+                return 0;
+            }
         }
     }
-
+    
     printk("DATA ABORT ");
     printk("addr=%xu stat=%xu fs=%xu spsr=%xu mode=%xu\n",
            addr, stat, fs, spsr, spsr & 0x1f);

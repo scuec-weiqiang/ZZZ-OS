@@ -44,13 +44,15 @@ int kernel_init(void *arg) {
     core_initcalls_run();
     fs_initcalls_run();
     device_initcalls_run();
-
-    mount_root("/dev/ram_disk", "ext2");
+    
+    mount_root("/dev/usdhc11", "ext2");
     
     late_initcalls_run();
+    
     setup_stdio("/dev/uart0");
-
+    
     char *argv[] = { "/bin/init", NULL };
+    
     do_execve("/bin/init", argv, NULL);
 
     return 0;
@@ -70,7 +72,6 @@ void start_kernel(int cpuid,void *dtb) {
         irq_init();
         time_init();
         sched_init();
-
         kernel_thread(kernel_init, "kernel_init");
         pid_t pid= kernel_thread(kthreadd, "kthreadd");
         kthreadd_task = find_task_by_pid(pid); 

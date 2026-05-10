@@ -53,11 +53,16 @@
 #define S_IRWXO 0000007 // 其他用户读、写、执行权限
 
 #define S_IDEFAULT 0x01ed
+typedef uintptr_t       pgoff_t;
 
-typedef long off_t;
-typedef long long loff_t;
-typedef s32 ino_t;
-typedef uintptr_t pgoff_t;
+typedef long            off_t;
+typedef long long       loff_t;
+typedef unsigned long   ino_t;
+
+typedef unsigned int  uid_t;
+typedef	unsigned short	nlink_t;
+typedef unsigned int  gid_t;
+typedef unsigned short  mode_t;
 
 struct file_system_type;
 struct fs_context;
@@ -120,6 +125,8 @@ struct inode_operations {
 
 struct file_operations {
     int (*open)(struct inode *inode, struct file *file);
+    int (*close)(struct inode *inode, struct file *file);
+    int (*release)(struct inode *inode, struct file *file);
     ssize_t (*read)(struct file *file, char *buf, size_t len, loff_t *ppos);
     ssize_t (*write)(struct file *file, const char *buf, size_t len, loff_t *ppos);
     int (*iterate) (struct file *, struct dir_context *);
@@ -287,4 +294,41 @@ struct fs_struct {
     struct path root, pwd;
 };
 
+typedef long blksize_t;
+typedef long blkcnt_t;
+
+typedef unsigned short user_dev_t;
+typedef unsigned short user_ino_t;
+typedef unsigned int   user_mode_t;
+typedef unsigned short user_nlink_t;
+typedef unsigned short user_uid_t;
+typedef unsigned short user_gid_t;
+typedef long           user_off_t;
+typedef long long      user_time_t;
+typedef long           user_blkcnt_t;
+typedef long           user_blksize_t;
+
+struct user_timespec {
+    user_time_t tv_sec;   // 8 bytes
+    long        tv_nsec;  // 4 bytes
+};
+
+struct user_stat {
+    user_dev_t     st_dev;
+    user_ino_t     st_ino;
+    user_mode_t    st_mode;
+    user_nlink_t   st_nlink;
+    user_uid_t     st_uid;
+    user_gid_t     st_gid;
+    user_dev_t     st_rdev;
+    user_off_t     st_size;
+
+    struct user_timespec st_atim;
+    struct user_timespec st_mtim;
+    struct user_timespec st_ctim;
+
+    user_blksize_t st_blksize;
+    user_blkcnt_t  st_blocks;
+    long           st_spare4[2];
+};
 #endif
