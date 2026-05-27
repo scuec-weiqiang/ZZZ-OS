@@ -21,7 +21,7 @@ long sys_brk(struct pt_regs *ctx)
     if (new_brk < mm->start_brk)
         return mm->brk;
 
-    if (new_brk >= USER_STACK_TOP - USER_STACK_SIZE)
+    if (new_brk >= USER_SIGTRAMP_ADDR)
         return mm->brk;
     // dprintk("new brk = %x\n", new_brk);
     if (new_brk > mm->brk) {

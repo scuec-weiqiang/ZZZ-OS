@@ -174,6 +174,7 @@ static int load_elf_binary(struct linux_binprm *bprm) {
     }
 
     current->mm->start_stack = bprm->p;
+    current->signal_trampoline = USER_SIGTRAMP_ADDR;
     regs = task_pt_regs(current);
 
     // dprintk("exec: entry=%x start_code=%x end_code=%x start_data=%x end_data=%x start_brk=%x brk=%x start_stack=%x p=%x\n",

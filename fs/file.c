@@ -899,3 +899,44 @@ long sys_stat(struct pt_regs *ctx) {
 
     return 0; // 成功
 }
+
+
+long sys_dup(struct pt_regs *ctx) {
+    int oldfd = ctx->r[0];
+    struct file *file;
+    int newfd;
+
+    file = fd_get_file(oldfd);
+    if (!file)
+        return -EBADF;
+
+    newfd = alloc_fd(0, 0);
+    if (newfd < 0) {
+        fd_put_file(file);
+        return newfd;
+    }
+
+    attach_fd(newfd, file);
+
+    return newfd;
+}
+
+
+long sys_dup2(struct pt_regs *ctx) {   
+    int oldfd = ctx->r[0];
+    int newfd = ctx->r[1];
+    struct file *file;
+
+    if (oldfd == newfd)
+        return newfd;
+
+    file = fd_get_file(oldfd);
+    if (!file)
+        return -EBADF;
+
+    __close_fd(current->files, newfd);
+
+    attach_fd(newfd, file);
+
+    return newfd;
+}

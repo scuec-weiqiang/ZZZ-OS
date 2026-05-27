@@ -130,6 +130,7 @@ struct task_struct {
     unsigned long signal_pending;
     unsigned long signal_blocked;
     struct k_sigaction sigactions[NSIG];
+    uintptr_t signal_trampoline;
 
     struct timer sleep_timer; // 睡眠定时器
 };
@@ -163,13 +164,13 @@ struct rq {
     int nr_running;
     int nr_tasks;
 };
-
+#define WNOHANG 1
 extern void task_attach_to_rq(struct task_struct *task);
 extern void task_detach_from_rq(struct task_struct *task);
 extern void sleep_on(struct wait_queue_head *wq_head);
 extern void wake_up_one(struct wait_queue_head *wq_head);
 extern void wake_up_all(struct wait_queue_head *wq_head);
-extern int do_waitpid(pid_t pid, int *status);
+extern int do_waitpid(pid_t pid, int *status, int options);
 extern int do_wait(int *status);
 
 #define __sched		__attribute__((__section__(".text.sched.")))

@@ -453,7 +453,7 @@ int kthreadd(void *arg) {
                 complete(info->done);
             }
         }
-        do_waitpid(-1, &status);
+        do_waitpid(-1, &status, 0);
         sched();
     }
 }

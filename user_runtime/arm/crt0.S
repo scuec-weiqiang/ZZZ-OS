@@ -4,6 +4,15 @@
 .global _start
 .type _start, %function
 
+.equ SYS_sigreturn,13
+
+.global __sigreturn_trampoline
+__sigreturn_trampoline:
+    mov r7, #SYS_sigreturn
+    svc #0
+1:
+    b 1b
+
 # _start:
 #     mov r4, sp
 #     ldr r0, [r4]
@@ -16,6 +25,7 @@
 .extern main
 .extern exit
 .extern __libc_init_array
+.extern environ
 
 .equ CRT0_DEBUG, 0
 .equ SYS_write, 4
@@ -72,79 +82,136 @@ debug_write_hex32:
     bx   lr
 .endif
 
+# _start:
+#     ldr r0, [sp]          @ argc
+#     add r1, sp, #4        @ argv = &argv[0]
+#     add r2, r1, r0, lsl #2
+#     add r2, r2, #4        @ envp = &argv[argc + 1]
+#     mov r5, r0
+#     mov r6, r1
+#     mov r7, r2
+
+# .if CRT0_DEBUG
+#     mov r4, sp
+
+#     ldr r0, =msg_crt0_enter
+#     bl  debug_write_cstr
+#     mov r0, r4
+#     bl  debug_write_hex32
+
+#     ldr r0, =msg_argc
+#     bl  debug_write_cstr
+#     mov r0, r5
+#     bl  debug_write_hex32
+
+#     ldr r0, =msg_argv
+#     bl  debug_write_cstr
+#     mov r0, r6
+#     bl  debug_write_hex32
+
+#     ldr r0, =msg_envp
+#     bl  debug_write_cstr
+#     mov r0, r7
+#     bl  debug_write_hex32
+
+#     cmp r5, #0
+#     beq 1f
+#     ldr r0, [r6]
+#     cmp r0, #0
+#     beq 1f
+#     ldr r1, =msg_argv0
+#     mov r2, r0
+#     mov r0, r1
+#     bl  debug_write_cstr
+#     mov r0, r2
+#     bl  debug_write_cstr
+#     ldr r0, =msg_nl
+#     bl  debug_write_cstr
+# 1:
+# .endif
+
+#     mov r0, r5
+#     mov r1, r6
+#     mov r2, r7
+# .if CRT0_DEBUG
+#     ldr r3, =msg_before_libc
+#     mov r0, r3
+#     bl  debug_write_cstr
+# .endif
+
+#     mov r0, r5
+#     mov r1, r6
+#     mov r2, r7
+#     bl __libc_init_array
+
+# .if CRT0_DEBUG
+#     ldr r0, =msg_after_libc
+#     bl  debug_write_cstr
+# .endif
+
+#     mov r0, r5
+#     mov r1, r6
+#     mov r2, r7
+#     bl main
+
+#     bl exit
+# 1:
+#     b 1b
+.global _start
 _start:
-    ldr r0, [sp]          @ argc
-    add r1, sp, #4        @ argv = &argv[0]
+
+    /* argc */
+    ldr r0, [sp]
+
+    /* argv */
+    add r1, sp, #4
+
+    /*
+     * envp = &argv[argc + 1]
+     *
+     * argv 后面有一个 NULL
+     */
     add r2, r1, r0, lsl #2
-    add r2, r2, #4        @ envp = &argv[argc + 1]
+    add r2, r2, #4
+
+    /*
+     * environ = envp
+     */
+    ldr r3, =environ
+    str r2, [r3]
+
+    /*
+     * 保存 argc argv envp
+     */
     mov r5, r0
     mov r6, r1
     mov r7, r2
 
-.if CRT0_DEBUG
-    mov r4, sp
-
-    ldr r0, =msg_crt0_enter
-    bl  debug_write_cstr
-    mov r0, r4
-    bl  debug_write_hex32
-
-    ldr r0, =msg_argc
-    bl  debug_write_cstr
-    mov r0, r5
-    bl  debug_write_hex32
-
-    ldr r0, =msg_argv
-    bl  debug_write_cstr
-    mov r0, r6
-    bl  debug_write_hex32
-
-    ldr r0, =msg_envp
-    bl  debug_write_cstr
-    mov r0, r7
-    bl  debug_write_hex32
-
-    cmp r5, #0
-    beq 1f
-    ldr r0, [r6]
-    cmp r0, #0
-    beq 1f
-    ldr r1, =msg_argv0
-    mov r2, r0
-    mov r0, r1
-    bl  debug_write_cstr
-    mov r0, r2
-    bl  debug_write_cstr
-    ldr r0, =msg_nl
-    bl  debug_write_cstr
-1:
-.endif
-
+    /*
+     * C++ constructors
+     */
     mov r0, r5
     mov r1, r6
     mov r2, r7
-.if CRT0_DEBUG
-    ldr r3, =msg_before_libc
-    mov r0, r3
-    bl  debug_write_cstr
-.endif
 
-    mov r0, r5
-    mov r1, r6
-    mov r2, r7
     bl __libc_init_array
 
-.if CRT0_DEBUG
-    ldr r0, =msg_after_libc
-    bl  debug_write_cstr
-.endif
-
+    /*
+     * 调 main(argc, argv, envp)
+     */
     mov r0, r5
     mov r1, r6
     mov r2, r7
+
     bl main
 
+    /*
+     * exit(main_ret)
+     *
+     * main 返回值已经在 r0
+     */
     bl exit
+
 1:
     b 1b
 

@@ -24,5 +24,10 @@ void do_syscall(struct pt_regs *ctx) {
     if (nr < SYSCALL_MAX && syscall_table[nr] != NULL)
         ret = syscall_table[nr](ctx);
 
-    ctx->r[0] = (reg_t)ret;
+    if (nr == SYSCALL_sigreturn) {
+
+    } else {
+        ctx->r[0] = (reg_t)ret;
+    }
+        
 }

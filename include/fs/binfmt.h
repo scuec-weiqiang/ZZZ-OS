@@ -16,6 +16,7 @@
 #endif
 #define USER_STACK_PAGES 4
 #define USER_STACK_SIZE  (USER_STACK_PAGES * PAGE_SIZE)
+#define USER_SIGTRAMP_ADDR (USER_STACK_TOP - USER_STACK_SIZE - PAGE_SIZE)
 #if SYS_BITS == 64
 #define USER_STACK_ALIGN 16UL
 #else
@@ -37,6 +38,8 @@ struct linux_binprm {
     const char *filename;             /* 可执行文件路径 */
     const char *interp;               /* 实际执行的二进制路径（通常同 filename） */
     struct file *file;                /* 已打开的可执行文件 */
+    unsigned long arg_start;
+    unsigned long env_start;
 };
 
 /*

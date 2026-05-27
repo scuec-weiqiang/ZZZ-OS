@@ -18,7 +18,11 @@
     X(7,  fstat)   \
     X(8,  stat)    \
     X(9,  kill)    \
+    X(10, dup)      \
+    X(11, dup2)     \
     X(12, chdir)   \
+    X(13, sigreturn) \
+    X(14, sigaction) \
     X(19, lseek)   \
     X(20, getpid)  \
     X(22, pipe)    \

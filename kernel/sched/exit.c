@@ -3,6 +3,7 @@
 #include <os/cpu.h>
 #include <os/syscall_num.h>
 #include <os/list.h>
+#include <os/signal.h>
 #include <asm/ptrace.h>
 extern struct task_struct init_task;
 
@@ -33,8 +34,7 @@ long sys_exit(struct pt_regs *ctx)
     return 0;
 }
 
-void __noreturn do_exit(int code)
-{
+void __noreturn do_exit(int code) {
     struct rq *rq = this_rq();
     struct task_struct *curr = current;
     unsigned long flags;
@@ -61,6 +61,7 @@ void __noreturn do_exit(int code)
     curr->sched_class->dequeue_task(rq, curr);
 
     if (curr->parent) {
+        send_signal(curr->parent, SIGCHLD);
         wake_up_one(&curr->parent->wait_child);
     }
     sched();

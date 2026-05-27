@@ -22,7 +22,11 @@ extern int __syscall3(int nr, int a0, int a1, int a2);
 #define SYS_fstat  7
 #define SYS_stat   8
 #define SYS_kill   9
+#define SYS_dup    10
+#define SYS_dup2   11
 #define SYS_chdir  12
+#define SYS_sigreturn 13
+#define sys_sigaction 14
 #define SYS_lseek  19
 #define SYS_getpid 20
 #define SYS_pipe   22
@@ -164,6 +168,7 @@ int _isatty(int fd) {
     return fd >= 0 && fd <= 2;
 }
 
+
 int _getpid(void) {
     long ret = __syscall1(SYS_getpid, 0);
     if (ret < 0) {
@@ -172,6 +177,29 @@ int _getpid(void) {
     }
     return ret;
 }
+
+int _getpgrp(void) {
+    return _getpid();
+}
+
+int _setpgid(pid_t pid, pid_t pgid) {
+    return 0;
+}
+
+int _tcgetpgrp(int fd) {
+    return _getpid();
+}
+
+int _tcsetpgrp(int fd, pid_t pgrp) {
+    return 0;
+}
+
+int _tcgetattr(int fd, void *termios_p) {
+    return 0;
+}
+
+
+
 
 void _exit(int status) {
     __syscall1(SYS_exit, status);
@@ -212,6 +240,49 @@ int _kill(int pid, int sig) {
 
 int _pipe(int pipefd[2]) {
     long ret = __syscall1(SYS_pipe, (long)pipefd);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return 0;
+}
+
+int _dup(int oldfd) {
+    long ret = __syscall1(SYS_dup, oldfd);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret;
+}
+
+int _dup2(int oldfd, int newfd) {
+    long ret = __syscall2(SYS_dup2, oldfd, newfd);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret;
+}
+
+
+int _sigreturn(void) {
+    long ret = __syscall0(SYS_sigreturn);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return 0;
+}
+
+struct sigaction {
+    void (*handler)(int );
+    unsigned long mask;
+    int flags;
+};
+
+int _sigaction(int signum, const struct sigaction *act, struct sigaction *oldact) {
+    long ret = __syscall3(sys_sigaction, signum, (long)act, (long)oldact);
     if (ret < 0) {
         errno = -ret;
         return -1;

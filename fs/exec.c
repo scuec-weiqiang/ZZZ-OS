@@ -12,6 +12,7 @@
 
 #include <mm/pgtbl.h>
 #include <asm/ptrace.h>
+#include <asm/signal.h>
 
 static LIST_HEAD(formats);
 
@@ -116,43 +117,89 @@ static int copy_string_to_stack(struct linux_binprm *bprm,
     栈向低地址增长，所以按 argc-1 -> 0 的顺序拷贝，
     每拷入一个字符串都下移 bprm->p。
  */
-static int copy_strings(int argc, char **argv, struct linux_binprm *bprm) {
+static int copy_strings(int count,
+                        char **strings,
+                        struct linux_binprm *bprm)
+{
     int i;
 
-    if (!bprm) {
+    if (!bprm)
         return -EINVAL;
-    }
 
-    if (argc == 0 || !argv) {
+    if (count <= 0 || !strings)
         return 0;
-    }
 
-    for (i = argc - 1; i >= 0; i--) {
-        const char *str = argv[i];
+    /*
+     * 栈向低地址增长，
+     * 所以逆序压栈。
+     */
+    for (i = count - 1; i >= 0; i--) {
+
+        const char *str = strings[i];
         size_t len;
         unsigned long dst;
         int ret;
 
-        if (!str) {
+        if (!str)
             return -EFAULT;
-        }
 
         len = strlen(str) + 1;
-        if (!valid_arg_len(bprm, len)) {
+
+        if (!valid_arg_len(bprm, len))
             return -E2BIG;
-        }
 
         bprm->p -= len;
+
         dst = bprm->p;
 
-        ret = copy_string_to_stack(bprm, dst, str, len);
-        if (ret < 0) {
+        ret = copy_string_to_stack(bprm,
+                                   dst,
+                                   str,
+                                   len);
+
+        if (ret < 0)
             return ret;
-        }
     }
 
     return 0;
 }
+// static int copy_strings(int argc, char **argv, struct linux_binprm *bprm) {
+//     int i;
+
+//     if (!bprm) {
+//         return -EINVAL;
+//     }
+
+//     if (argc == 0 || !argv) {
+//         return 0;
+//     }
+
+//     for (i = argc - 1; i >= 0; i--) {
+//         const char *str = argv[i];
+//         size_t len;
+//         unsigned long dst;
+//         int ret;
+
+//         if (!str) {
+//             return -EFAULT;
+//         }
+
+//         len = strlen(str) + 1;
+//         if (!valid_arg_len(bprm, len)) {
+//             return -E2BIG;
+//         }
+
+//         bprm->p -= len;
+//         dst = bprm->p;
+
+//         ret = copy_string_to_stack(bprm, dst, str, len);
+//         if (ret < 0) {
+//             return ret;
+//         }
+//     }
+
+//     return 0;
+// }
 
 /*
     在已经写入字符串的用户栈上补齐启动布局。
@@ -163,84 +210,252 @@ static int copy_strings(int argc, char **argv, struct linux_binprm *bprm) {
     envp[0] = NULL
     argv 字符串区
  */
-static int create_user_stack_layout(int argc, char **argv, struct linux_binprm *bprm) {
+// static int create_user_stack_layout(int argc, char **argv, struct linux_binprm *bprm) {
+//     unsigned long *argv_user = NULL;
+//     unsigned long *stack_words = NULL;
+//     unsigned long cursor;
+//     unsigned long argc_val = argc;
+//     size_t total_words;
+//     size_t total_bytes;
+//     size_t pad_words;
+//     int ret = 0;
+//     int i;
+//     int idx = 0;
+
+//     if (!bprm || !bprm->mm) {
+//         return -EINVAL;
+//     }
+
+//     argv_user = kmalloc(sizeof(unsigned long) * (argc + 1));
+//     if (!argv_user) {
+//         return -ENOMEM;
+//     }
+
+
+
+//     cursor = bprm->p;
+//     for (i = 0; i < argc; i++) {
+//         if (!argv || !argv[i]) {
+//             ret = -EFAULT;
+//             goto out;
+//         }
+//         argv_user[i] = cursor;
+//         cursor += strlen(argv[i]) + 1;
+//     }
+//     argv_user[argc] = 0;
+
+//     /*
+//      * Keep the initial userspace stack aligned to the target ABI.
+//      * ARM newlib needs 8-byte alignment, while RV64 uses 16-byte alignment.
+//      */
+//     bprm->p = ALIGN_DOWN(bprm->p, USER_STACK_ALIGN);
+
+//     /*
+//      *   栈布局
+//      *   argc
+//      *   argv[0..argc-1]
+//      *   NULL
+//      *   envp[0] = NULL
+//      *   optional padding words to keep SP ABI-aligned
+//      */
+//     total_words = 1 + (argc + 1) + 1;
+//     pad_words = (USER_STACK_ALIGN / sizeof(unsigned long) -
+//                  (total_words % (USER_STACK_ALIGN / sizeof(unsigned long)))) %
+//                 (USER_STACK_ALIGN / sizeof(unsigned long));
+//     total_words += pad_words;
+//     total_bytes = total_words * sizeof(unsigned long);
+
+//     stack_words = kmalloc(total_bytes);
+//     if (!stack_words) {
+//         ret = -ENOMEM;
+//         goto out;
+//     }
+//     memset(stack_words, 0, total_bytes);
+
+//     stack_words[idx++] = argc_val;
+//     for (i = 0; i < argc; i++) {
+//         stack_words[idx++] = argv_user[i];
+//     }
+//     stack_words[idx++] = 0;
+//     stack_words[idx++] = 0;
+
+//     bprm->p -= total_bytes;
+//     ret = copy_string_to_stack(bprm, bprm->p, (const char *)stack_words, total_bytes);
+//     if (ret < 0) {
+//         goto out;
+//     }
+
+//     bprm->mm->start_stack = bprm->p;
+
+// out:
+//     kfree(stack_words);
+//     kfree(argv_user);
+//     return ret;
+// }
+static int create_user_stack_layout(int argc,
+                                    char **argv,
+                                    int envc,
+                                    char **envp,
+                                    struct linux_binprm *bprm)
+{
     unsigned long *argv_user = NULL;
+    unsigned long *envp_user = NULL;
     unsigned long *stack_words = NULL;
+
     unsigned long cursor;
-    unsigned long argc_val = argc;
+
     size_t total_words;
     size_t total_bytes;
     size_t pad_words;
-    int ret = 0;
-    int i;
+
     int idx = 0;
+    int i;
+    int ret = 0;
 
-    if (!bprm || !bprm->mm) {
+    if (!bprm || !bprm->mm)
         return -EINVAL;
-    }
 
+    /*
+     * argv pointer array
+     */
     argv_user = kmalloc(sizeof(unsigned long) * (argc + 1));
-    if (!argv_user) {
+
+    if (!argv_user)
         return -ENOMEM;
+
+    /*
+     * envp pointer array
+     */
+    envp_user = kmalloc(sizeof(unsigned long) * (envc + 1));
+
+    if (!envp_user) {
+        ret = -ENOMEM;
+        goto out;
     }
 
-    cursor = bprm->p;
+    /*
+     * argv 字符串地址计算
+     *
+     * 注意：
+     * copy_strings() 是逆序压栈，
+     * 所以最终 argv[0] 位于最低地址。
+     */
+    cursor = bprm->arg_start;
+
     for (i = 0; i < argc; i++) {
-        if (!argv || !argv[i]) {
-            ret = -EFAULT;
-            goto out;
-        }
+
         argv_user[i] = cursor;
+
         cursor += strlen(argv[i]) + 1;
     }
+
     argv_user[argc] = 0;
 
     /*
-     * Keep the initial userspace stack aligned to the target ABI.
-     * ARM newlib needs 8-byte alignment, while RV64 uses 16-byte alignment.
+     * envp 字符串地址计算
      */
-    bprm->p = ALIGN_DOWN(bprm->p, USER_STACK_ALIGN);
+    cursor = bprm->env_start;
+
+    for (i = 0; i < envc; i++) {
+
+        envp_user[i] = cursor;
+
+        cursor += strlen(envp[i]) + 1;
+    }
+
+    envp_user[envc] = 0;
 
     /*
-     *   栈布局
-     *   argc
-     *   argv[0..argc-1]
-     *   NULL
-     *   envp[0] = NULL
-     *   optional padding words to keep SP ABI-aligned
+     * ABI 对齐
      */
-    total_words = 1 + (argc + 1) + 1;
-    pad_words = (USER_STACK_ALIGN / sizeof(unsigned long) -
-                 (total_words % (USER_STACK_ALIGN / sizeof(unsigned long)))) %
-                (USER_STACK_ALIGN / sizeof(unsigned long));
+    bprm->p = ALIGN_DOWN(bprm->p,
+                         USER_STACK_ALIGN);
+
+    /*
+     * 栈布局：
+     *
+     * argc
+     * argv[]
+     * NULL
+     * envp[]
+     * NULL
+     */
+    total_words =
+        1 +              /* argc */
+        (argc + 1) +     /* argv + NULL */
+        (envc + 1);      /* envp + NULL */
+
+    /*
+     * 对齐 padding
+     */
+    pad_words =
+        (USER_STACK_ALIGN / sizeof(unsigned long)
+        - (total_words %
+           (USER_STACK_ALIGN /
+            sizeof(unsigned long))))
+        %
+        (USER_STACK_ALIGN /
+         sizeof(unsigned long));
+
     total_words += pad_words;
-    total_bytes = total_words * sizeof(unsigned long);
+
+    total_bytes =
+        total_words *
+        sizeof(unsigned long);
 
     stack_words = kmalloc(total_bytes);
+
     if (!stack_words) {
         ret = -ENOMEM;
         goto out;
     }
+
     memset(stack_words, 0, total_bytes);
 
-    stack_words[idx++] = argc_val;
+    /*
+     * argc
+     */
+    stack_words[idx++] = argc;
+
+    /*
+     * argv[]
+     */
     for (i = 0; i < argc; i++) {
         stack_words[idx++] = argv_user[i];
     }
-    stack_words[idx++] = 0;
+
     stack_words[idx++] = 0;
 
-    bprm->p -= total_bytes;
-    ret = copy_string_to_stack(bprm, bprm->p, (const char *)stack_words, total_bytes);
-    if (ret < 0) {
-        goto out;
+    /*
+     * envp[]
+     */
+    for (i = 0; i < envc; i++) {
+        stack_words[idx++] = envp_user[i];
     }
+
+    stack_words[idx++] = 0;
+
+    /*
+     * 压入 pointer 区
+     */
+    bprm->p -= total_bytes;
+
+    ret = copy_string_to_stack(bprm,
+                               bprm->p,
+                               (const char *)stack_words,
+                               total_bytes);
+
+    if (ret < 0)
+        goto out;
 
     bprm->mm->start_stack = bprm->p;
 
 out:
+
     kfree(stack_words);
     kfree(argv_user);
+    kfree(envp_user);
+
     return ret;
 }
 
@@ -269,6 +484,7 @@ int search_binary_handler(struct linux_binprm *bprm) {
 static int setup_arg_pages(struct linux_binprm *bprm) {
     struct mm_struct *mm = bprm->mm;
     virt_addr_t stack_base = USER_STACK_TOP - USER_STACK_SIZE;
+    virt_addr_t sigtramp = USER_SIGTRAMP_ADDR;
     pgprot_t prot = PROT_USER | PROT_READ | PROT_WRITE;
 
     if (!mm)
@@ -296,6 +512,29 @@ static int setup_arg_pages(struct linux_binprm *bprm) {
         
     }
 
+    {
+        void *kva;
+        pgprot_t sig_prot = PROT_USER | PROT_READ | PROT_EXEC;
+
+        ret = vma_add(mm, sigtramp, PAGE_SIZE, sig_prot);
+        if (ret < 0) {
+            return ret;
+        }
+
+        kva = page_alloc(1);
+        if (!kva) {
+            return -ENOMEM;
+        }
+        memset(kva, 0, PAGE_SIZE);
+        memcpy(kva, sigtramp_code, sizeof(sigtramp_code));
+
+        ret = map(mm->pgdir, sigtramp, KERNEL_PA(kva), PAGE_SIZE, sig_prot);
+        if (ret < 0) {
+            kfree(kva);
+            return ret;
+        }
+    }
+
     mm->start_stack = USER_STACK_TOP;
     bprm->p = USER_STACK_TOP;
     return 0;
@@ -304,6 +543,7 @@ static int setup_arg_pages(struct linux_binprm *bprm) {
 static void clear_arg_pages(struct linux_binprm *bprm) {
     struct mm_struct *mm = bprm->mm;
     virt_addr_t stack_base = USER_STACK_TOP - USER_STACK_SIZE;
+    virt_addr_t sigtramp = USER_SIGTRAMP_ADDR;
 
     if (!mm)
         return;
@@ -318,6 +558,15 @@ static void clear_arg_pages(struct linux_binprm *bprm) {
     }
 
     vma_delete(mm, stack_base, USER_STACK_SIZE);
+
+    {
+        phys_addr_t pa = pgtbl_lookup(mm->pgdir, sigtramp);
+        if (pa) {
+            unmap(mm->pgdir, sigtramp, PAGE_SIZE);
+            kfree((void *)KERNEL_VA(pa));
+        }
+    }
+    vma_delete(mm, sigtramp, PAGE_SIZE);
 }
 
 static int bprm_mm_init(struct linux_binprm *bprm) {
@@ -369,6 +618,7 @@ int flush_old_exec(struct linux_binprm *bprm) {
     pgtbl_flush();
 
     current->flags &= ~PF_KTHREAD;
+    current->signal_trampoline = 0;
 
     if (old_mm && old_mm != &init_mm && old_mm != current->mm) {
         mm_destroy(old_mm);
@@ -424,8 +674,15 @@ int do_execve(char *filename, char* argv[], char* envp[]) {
     if (retval < 0) {
         goto copy_failed;
     }
+    bprm->arg_start = bprm->p;
 
-    retval = create_user_stack_layout(bprm->argc, argv, bprm);
+    retval = copy_strings(bprm->envc, envp, bprm);
+    if (retval < 0) {
+        goto copy_failed;
+    }
+    bprm->env_start = bprm->p;
+
+    retval = create_user_stack_layout(bprm->argc, argv, bprm->envc, envp, bprm);
     if (retval < 0) {
         goto create_failed;
     }

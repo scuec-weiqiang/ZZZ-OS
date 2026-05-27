@@ -5,8 +5,9 @@
 #include <os/sched.h>
 #include <os/list.h>
 #include <asm/ptrace.h>
+#include <os/uaccess.h>
 
-int do_waitpid(pid_t pid, int *status) {
+int do_waitpid(pid_t pid, int *status, int options) {
     while (1) {
         int found_child = 0;
         struct task_struct *child;
@@ -23,7 +24,8 @@ int do_waitpid(pid_t pid, int *status) {
                 // dprintk("waitpid: found zombie child pid=%d, exit code=%d\n", child->pid, child->exit_code);
                 // 取 exit code
                 if (status) {
-                    *status = child->exit_code;
+                    // *status = child->exit_code;
+                    copy_to_user((void*)status, (void*)&child->exit_code, sizeof(int));
                 }
 
                 pid_t pid = child->pid;
@@ -45,18 +47,21 @@ int do_waitpid(pid_t pid, int *status) {
             // 
             return -ECHILD;
         }
-            
+        
+        if (options & WNOHANG)
+            return 0;
         // 有子进程但都没死 → 睡眠
         sleep_on(&current->wait_child);
     }
 }
 
 int do_wait(int *status) {
-    return do_waitpid(-1, status);
+    return do_waitpid(-1, status, 0);
 }
 
 int sys_waitpid(struct pt_regs *ctx) {
     pid_t pid = (pid_t)ctx->r[0];
     int *status = (int *)ctx->r[1];
-    return do_waitpid(pid, status);
+    int options = (int)ctx->r[2];
+    return do_waitpid(pid, status, options);
 }
