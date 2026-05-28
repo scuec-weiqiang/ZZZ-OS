@@ -103,7 +103,7 @@ int _close(int fd) {
     return ret;
 }
 
-int _chdir(const char *path) {
+int chdir(const char *path) {
     long ret = __syscall1(SYS_chdir, (long)path);
     if (ret < 0) {
         errno = -ret;
@@ -112,9 +112,7 @@ int _chdir(const char *path) {
     return ret;
 }
 
-int chdir(const char *path) {
-    return _chdir(path);
-}
+
 
 char *_getcwd(char *buf, size_t size) {
     long ret;
@@ -198,9 +196,6 @@ int _tcgetattr(int fd, void *termios_p) {
     return 0;
 }
 
-
-
-
 void _exit(int status) {
     __syscall1(SYS_exit, status);
     while (1) {}
@@ -215,9 +210,22 @@ int _wait(int *status) {
     return ret;
 }
 
+int waitpid(pid_t pid, int *status, int options) {
+    long ret = __syscall3(SYS_waitpid, pid, (long)status, options);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret;
+}
+
 int _execve(const char *filename, char *const argv[], char *const envp[]) {
     __syscall3(SYS_execve, (long)filename, (long)argv, (long)envp);
     return -1; // execve 成功不会返回，失败才会返回 -1
+}
+
+int execvp(const char *file, char *const argv[]) {
+    return _execve(file, argv, NULL);
 }
 
 int _getdents(int fd, void *dirp, unsigned int count) {
@@ -238,7 +246,7 @@ int _kill(int pid, int sig) {
     return 0;
 }
 
-int _pipe(int pipefd[2]) {
+int pipe(int pipefd[2]) {
     long ret = __syscall1(SYS_pipe, (long)pipefd);
     if (ret < 0) {
         errno = -ret;
@@ -247,7 +255,7 @@ int _pipe(int pipefd[2]) {
     return 0;
 }
 
-int _dup(int oldfd) {
+int dup(int oldfd) {
     long ret = __syscall1(SYS_dup, oldfd);
     if (ret < 0) {
         errno = -ret;
@@ -256,7 +264,7 @@ int _dup(int oldfd) {
     return ret;
 }
 
-int _dup2(int oldfd, int newfd) {
+int dup2(int oldfd, int newfd) {
     long ret = __syscall2(SYS_dup2, oldfd, newfd);
     if (ret < 0) {
         errno = -ret;
@@ -265,8 +273,7 @@ int _dup2(int oldfd, int newfd) {
     return ret;
 }
 
-
-int _sigreturn(void) {
+int sigreturn(void) {
     long ret = __syscall0(SYS_sigreturn);
     if (ret < 0) {
         errno = -ret;
@@ -281,7 +288,7 @@ struct sigaction {
     int flags;
 };
 
-int _sigaction(int signum, const struct sigaction *act, struct sigaction *oldact) {
+int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact) {
     long ret = __syscall3(sys_sigaction, signum, (long)act, (long)oldact);
     if (ret < 0) {
         errno = -ret;

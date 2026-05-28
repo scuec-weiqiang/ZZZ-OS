@@ -184,8 +184,7 @@ long sys_open(struct pt_regs *ctx) {
 }
 
 long sys_close(struct pt_regs *ctx) {
-    close_fd((unsigned)ctx->r[0]);
-
+    return close_fd((unsigned)ctx->r[0]);
 }
 
 long sys_creat(struct pt_regs *ctx) {
@@ -354,9 +353,6 @@ err_free_file:
     free_file(file);
 err_put_path:
     file = NULL;
-    if (resolved.dentry != NULL && resolved.dentry->d_inode != NULL) {
-        iput(resolved.dentry->d_inode);
-    }
     if (resolved.dentry != NULL || resolved.mnt != NULL) {
         path_put(&resolved);
     }
@@ -373,9 +369,6 @@ void filp_close(struct file *file) {
                 struct blkdev *bdev = blkdev_get_by_devnr(file->f_inode->i_rdev);
                 blkdev_put(bdev);
             }
-        }
-        if (file->f_inode != NULL) {
-            iput(file->f_inode);
         }
         if (file->f_path.dentry != NULL || file->f_path.mnt != NULL) {
             path_put(&file->f_path);
@@ -859,6 +852,7 @@ long sys_stat(struct pt_regs *ctx) {
     struct user_stat st;
     struct path resolved = {0};
     struct inode *inode;
+    long ret = 0;
 
     if (copy_user_string(path, sizeof(path), user_path) < 0)
         return -EFAULT;
@@ -890,14 +884,18 @@ long sys_stat(struct pt_regs *ctx) {
         st.st_uid = 0;
         st.st_gid = 0;
     } else {
-        return -ENOENT;
+        ret = -ENOENT;
+        goto out_put_path;
     }
 
     if (copy_to_user( user_st, (char *)&st,sizeof(st))) {
-        return -EFAULT;
+        ret = -EFAULT;
+        goto out_put_path;
     }
 
-    return 0; // 成功
+out_put_path:
+    path_put(&resolved);
+    return ret; // 成功
 }
 
 

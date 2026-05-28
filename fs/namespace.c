@@ -131,6 +131,7 @@ int vfs_search_mount(struct dentry *dentry, struct vfsmount **mnt_out) {
 
 int vfs_get_mnt_parent(struct vfsmount *mnt, struct path *parent) {
     struct list_head *pos = NULL;
+    struct dentry *mountpoint_parent = NULL;
 
     CHECK(mnt != NULL, "fs: invalid mount for parent lookup", return -EINVAL;);
     CHECK(parent != NULL, "fs: invalid parent path output", return -EINVAL;);
@@ -149,8 +150,12 @@ int vfs_get_mnt_parent(struct vfsmount *mnt, struct path *parent) {
         }
 
         if (iter->mnt_sb == mnt->mnt_mountpoint->d_sb) {
+            mountpoint_parent = mnt->mnt_mountpoint->d_parent;
+            if (mountpoint_parent == NULL) {
+                mountpoint_parent = mnt->mnt_mountpoint;
+            }
             parent->mnt = mntget(iter);
-            parent->dentry = dget(mnt->mnt_mountpoint);
+            parent->dentry = dget(mountpoint_parent);
             return 0;
         }
     }

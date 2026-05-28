@@ -162,7 +162,6 @@ void path_put(const struct path *path) {
 
 int path_lookup(const char *path, struct path *out) {
     struct path_cursor cur;
-    struct path root = {0};
     struct path current_path = {0};
     struct qstr name;
     int ret;
@@ -171,14 +170,13 @@ int path_lookup(const char *path, struct path *out) {
     CHECK(out != NULL, "fs: invalid lookup output", return -EINVAL;);
     CHECK(path[0] != '\0', "fs: empty path", return -EINVAL;);
 
-    ret = path_init_start(path, &root);
-    if (ret < 0) {
-        return ret;
-    }
+    // ret = path_init_start(path, &root);
+    // if (ret < 0) {
+    //     return ret;
+    // }
 
     ret = path_init_start(path, &current_path);
     if (ret < 0) {
-        path_put(&root);
         return ret;
     }
 
@@ -200,9 +198,9 @@ int path_lookup(const char *path, struct path *out) {
         }
 
         if (qstr_is_dotdot(&name)) {
-            ret = path_step_up(&current_path, &root);
+            ret = path_step_up(&current_path, &current->fs->root);
         } else {
-            dprintk("lookup component '%s' under dentry '%s'\n", name.name, current_path.dentry->d_name.name);
+            // dprintk("lookup component '%s' under dentry '%s'\n", name.name, current_path.dentry->d_name.name);
             ret = path_step_down(&current_path, &name);
         }
         if (ret < 0) {
@@ -211,12 +209,10 @@ int path_lookup(const char *path, struct path *out) {
     }
 
     *out = current_path;
-    path_put(&root);
     return 0;
 
 err_out:
     path_put(&current_path);
-    path_put(&root);
     out->mnt = NULL;
     out->dentry = NULL;
     return ret;
@@ -224,7 +220,7 @@ err_out:
 
 int path_parentat(const char *path, struct path *parent, struct qstr *last) {
     struct path_cursor cur;
-    struct path root = {0};
+    // struct path root = {0};
     struct path current_path = {0};
     struct qstr name;
     struct qstr next_name;
@@ -237,14 +233,14 @@ int path_parentat(const char *path, struct path *parent, struct qstr *last) {
         return -EINVAL;
     }
 
-    ret = path_init_start(path, &root);
-    if (ret < 0) {
-        return ret;
-    }
+    // ret = path_init_start(path, &root);
+    // if (ret < 0) {
+    //     return ret;
+    // }
 
     ret = path_init_start(path, &current_path);
     if (ret < 0) {
-        path_put(&root);
+        // path_put(&root);
         return ret;
     }
 
@@ -266,7 +262,7 @@ int path_parentat(const char *path, struct path *parent, struct qstr *last) {
             last->name = current_path.dentry->d_name.name;
             last->len = current_path.dentry->d_name.len;
             path_put(&current_path);
-            path_put(&root);
+            // path_put(&root);
             return 0;
         }
 
@@ -275,7 +271,7 @@ int path_parentat(const char *path, struct path *parent, struct qstr *last) {
         if (next_ret > 0) {
             *parent = current_path;
             *last = name;
-            path_put(&root);
+            // path_put(&root);
             return 0;
         }
 
@@ -284,7 +280,7 @@ int path_parentat(const char *path, struct path *parent, struct qstr *last) {
         }
 
         if (qstr_is_dotdot(&name)) {
-            ret = path_step_up(&current_path, &root);
+            ret = path_step_up(&current_path, &current->fs->root);
         } else {
             ret = path_step_down(&current_path, &name);
         }
@@ -295,7 +291,7 @@ int path_parentat(const char *path, struct path *parent, struct qstr *last) {
 
 err_out:
     path_put(&current_path);
-    path_put(&root);
+    // path_put(&root);
     parent->mnt = NULL;
     parent->dentry = NULL;
     last->name = NULL;
