@@ -10,10 +10,10 @@
 void _init(void) {}
 void _fini(void) {}
 
-extern int __syscall0(int nr);
-extern int __syscall1(int nr, int a0);
-extern int __syscall2(int nr, int a0, int a1);
-extern int __syscall3(int nr, int a0, int a1, int a2);
+extern long __syscall0(long nr);
+extern long __syscall1(long nr, long a0);
+extern long __syscall2(long nr, long a0, long a1);
+extern long __syscall3(long nr, long a0, long a1, long a2);
 
 #define SYS_exit   1
 #define SYS_fork   2

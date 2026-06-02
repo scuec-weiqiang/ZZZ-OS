@@ -1,10 +1,12 @@
 #--------------架构---------------#
-ARCH ?= arm
-CROSS_COMPILE ?= arm-none-eabi-
-BOARD ?= imx6ull
-# CROSS_COMPILE ?= riscv64-unknown-elf-
-# BOARD ?= qemu_virt
-MKIMAGE_ARCH = arm
+# ARCH ?= arm
+ARCH ?= riscv64
+# CROSS_COMPILE ?= arm-none-eabi-
+# BOARD ?= imx6ull
+CROSS_COMPILE ?= riscv-none-elf-
+BOARD ?= qemu_virt
+# MKIMAGE_ARCH = arm
+MKIMAGE_ARCH = riscv64
 
 CONFIG_FILE ?= .config
 
@@ -25,12 +27,13 @@ OBJDUMP :=$(CROSS_COMPILE)objdump
 OBJCOPY := $(CROSS_COMPILE)objcopy
 
 CFLAGS = -g -Wall -fno-builtin -std=c11 -ffreestanding -fno-pic -fno-pie -no-pie 
+LDFLAGS = -Tarch/$(ARCH)/config/link.ld 
 
 -include arch/$(ARCH)/config/config.mk
 CFLAGS += -Iinclude 
 CFLAGS += -MMD -MP
 ASFLAGS := $(CFLAGS)
-LDFLAGS := -Tarch/$(ARCH)/config/link.ld 
+
 
 
 # 目标架构的asm头文件目录（如arch/riscv64/include/asm）
@@ -82,7 +85,7 @@ all: disk $(TARGET) $(DTB)
 	sudo umount $(MOUNT_PATH)
 
 os: $(TARGET) $(ASM_LINK) $(KBUILD_FILE) $(DTB)
-	$(MAKE) -C ./user_runtime/ all
+	$(MAKE) -C ./user_runtime/ ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) all
 	cp $(TARGET) ../linux/tftpboot/
 	cp $(DTB) ../linux/tftpboot/
 
@@ -197,7 +200,7 @@ u:
 	@set -e; \
 	for d in user_proc/*; do \
 		if [ -d "$$d" ] && [ -f "$$d/Makefile" ]; then \
-			$(MAKE) -C "$$d" all; \
+			$(MAKE) -C "$$d" ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) all; \
 		fi; \
 	done
 
@@ -206,7 +209,7 @@ uc:
 	@set -e; \
 	for d in user_proc/*; do \
 		if [ -d "$$d" ] && [ -f "$$d/Makefile" ]; then \
-			$(MAKE) -C "$$d" clean; \
+			$(MAKE) -C "$$d" ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) clean; \
 		fi; \
 	done
 	rm -rf user_proc/user/

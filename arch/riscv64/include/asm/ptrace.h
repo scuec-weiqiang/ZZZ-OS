@@ -10,7 +10,11 @@
 #define SSTATUS_SPP  (1UL << 8)
 
 struct pt_regs {
-    reg_t ra;
+    union {
+        reg_t ra;
+        reg_t x1;
+        reg_t lr;
+    };
     reg_t sp;
     reg_t gp;
     reg_t tp;
@@ -46,7 +50,10 @@ struct pt_regs {
     reg_t t4;
     reg_t t5;
     reg_t t6;
-    reg_t sepc;
+    union {
+        reg_t sepc;
+        reg_t pc;
+    };
     reg_t sstatus;
     reg_t scause;
     reg_t stval;

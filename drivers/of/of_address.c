@@ -22,7 +22,7 @@ struct of_bus {
 	void (*count_cells)(struct device_node *child, int *addrc, int *sizec);
 	// u64 (*map)(__be32 *addr, const __be32 *range, int na, int ns, int pna);
 	// int		(*translate)(__be32 *addr, u64 offset, int na);
-	unsigned int	(*get_flags)(const addr_t *addr);
+	unsigned int	(*get_flags)(const __be32 *addr);
 };
 
 static void of_bus_default_count_cells(struct device_node *dev, int *addrc, int *sizec)

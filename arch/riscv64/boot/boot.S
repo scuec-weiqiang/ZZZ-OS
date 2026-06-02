@@ -1,6 +1,11 @@
 .section .text.entry
 .globl  _start
 _start:
+    /* UART0 @ QEMU virt / U-Boot already initialized */
+    li t0, 0x10000000
+    li t1, 'A'
+    sb t1, 0(t0)
+
     mv s0, a0
     mv s1, a1
     csrw mie, zero  # 禁用所有中断
@@ -50,8 +55,8 @@ smode:
 
     /* 设置 S-mode trap */
     la t0, kernel_trap_entry
-    li t1, 0xffffffff40000000
-    add t0, t0, t1  # 转换为虚拟地址
+    # li t1, 0xffffffff40000000
+    # add t0, t0, t1  # 转换为虚拟地址
     csrw stvec, t0
 
 
@@ -100,14 +105,18 @@ smode:
     sfence.vma x0, x0  # 刷新地址转换缓存
 
     la t0, _early_stack_end
-    li t1, 0xffffffff40000000
-    add t0, t0, t1
+    # li t1, 0xffffffff40000000
+    # add t0, t0, t1
     mv sp, t0  # 设置早期栈指针
     csrw sscratch, zero
 
     la t0, start_kernel
-    li t1, 0xffffffff40000000
-    add t0, t0, t1  # 转换为虚拟地址
+    # li t1, 0xffffffff40000000
+    # add t0, t0, t1  # 转换为虚拟地址
+    li t1, 0x10000000
+    li t2, 'S'
+    sb t2, 0(t1)
+    fence io, io
     mv a0, s0
     mv a1, s1
     jr t0

@@ -1,24 +1,40 @@
-CC = arm-none-eabi-gcc
-AS = arm-none-eabi-as
+ARCH ?= arm
 
+ifeq ($(ARCH),riscv64)
+CROSS_COMPILE ?= riscv64-unknown-elf-
+CPUFLAGS = -march=rv64gc -mabi=lp64d -mcmodel=medany -fno-omit-frame-pointer
+ASFLAGS = $(CPUFLAGS)
+else
+CROSS_COMPILE ?= arm-none-eabi-
 CPUFLAGS = -mcpu=arm7tdmi -mfloat-abi=soft -marm
-CFLAGS = $(CPUFLAGS) -Wall -g -I../include
 ASFLAGS = -mcpu=arm7tdmi
+endif
 
-OBJS = crt0.o syscall.o syscalls.o
+CC = $(CROSS_COMPILE)gcc
+AS = $(CROSS_COMPILE)gcc
+
+CFLAGS = $(CPUFLAGS) -Wall -g -I../include
+
+BUILD_DIR = build/$(ARCH)
+CRT0_SRC = $(ARCH)/crt0.S
+SYSCALL_SRC = $(ARCH)/syscall.S
+OBJS = $(BUILD_DIR)/crt0.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/syscalls.o
 
 .PHONY: all clean
 
 all: $(OBJS)
 
-crt0.o: arm/crt0.S
-	$(AS) $(ASFLAGS) $< -o $@
+$(BUILD_DIR)/crt0.o: $(CRT0_SRC)
+	@mkdir -p $(dir $@)
+	$(AS) $(ASFLAGS) -c $< -o $@
 
-syscall.o: arm/syscall.S
-	$(AS) $(ASFLAGS) $< -o $@
+$(BUILD_DIR)/syscall.o: $(SYSCALL_SRC)
+	@mkdir -p $(dir $@)
+	$(AS) $(ASFLAGS) -c $< -o $@
 
-syscalls.o: syscalls.c
+$(BUILD_DIR)/syscalls.o: syscalls.c
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS)
+	rm -rf build
