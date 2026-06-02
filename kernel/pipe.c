@@ -52,6 +52,12 @@ void free_pipe_inode_info(struct pipe_inode_info *pipe) {
 
 // 读端一次最多读 PIPE_BUF_SIZE 字节，写端一次最多写 PIPE_BUF_SIZE 字节
 static ssize_t __pipe_read(struct pipe_inode_info *pipe, char *buf, size_t len) {
+        // printk("pipe=%p count=%d readers=%d writers=%d\n",
+        //    pipe,
+        //    pipe->count,
+        //    pipe->readers,
+        //    pipe->writers);
+
     size_t bytes_to_read;
     size_t i;
 
@@ -86,6 +92,7 @@ static ssize_t __pipe_read(struct pipe_inode_info *pipe, char *buf, size_t len) 
 }
 
 static ssize_t __pipe_write(struct pipe_inode_info *pipe, const char *buf, size_t len) {
+    
     size_t space_available;
     size_t bytes_to_write;
     size_t i;
@@ -108,17 +115,22 @@ static ssize_t __pipe_write(struct pipe_inode_info *pipe, const char *buf, size_
 
     space_available = PIPE_BUF_SIZE - pipe->count;
     bytes_to_write = min(len, space_available);
+    // dprintk("pipe write: count=%zu space_available=%zu bytes_to_write=%zu\n",
+    //         pipe->count, space_available, bytes_to_write);
 
     for (i = 0; i < bytes_to_write; i++) {
         pipe->buf[(pipe->head + i) % PIPE_BUF_SIZE] = buf[i];
     }
 
+    
+
     pipe->head += bytes_to_write;
     pipe->head %= PIPE_BUF_SIZE;
     pipe->count += bytes_to_write;
     spin_unlock(&pipe->lock);
-
+    
     wake_up_one(&pipe->read_wait);
+    
     return (ssize_t)bytes_to_write;
 }
 
@@ -141,6 +153,10 @@ int pipe_release(struct inode *inode, struct file *file) {
 
     if (p == NULL)
         return 0;
+
+    // printk("pipe read count=%d writers=%d\n",
+    //    p->count,
+    //    p->writers); 
 
     spin_lock(&p->lock);
 

@@ -1,5 +1,5 @@
 CC = arm-none-eabi-gcc
-CFLAGS = -mcpu=arm7tdmi -mfloat-abi=soft -marm -Wall -g
+CFLAGS = -mcpu=arm7tdmi -mfloat-abi=soft -marm -Wall -g -I../../include
 RUNTIME = ../../user_runtime
 
 

@@ -628,6 +628,9 @@ int flush_old_exec(struct linux_binprm *bprm) {
 }
 
 int do_execve(char *filename, char* argv[], char* envp[]) {
+    // dprintk("do_execve: filename=%s\n", filename);
+    // dprintk("do_execve: argv[0]=%s\n", argv ? argv[0] : "NULL");
+    // dprintk("do_execve: envp[0]=%s\n", envp ? envp[0] : "NULL");
     struct linux_binprm *bprm = NULL;
     struct file *file;
     int retval = -ENOMEM;
@@ -641,32 +644,31 @@ int do_execve(char *filename, char* argv[], char* envp[]) {
         retval = -ENOMEM;
         goto failed;
     }
-
+    
     current->in_execve = 1;
-
     do_close_on_exec(current->files);
-
+    
     file = filp_open(filename, O_RDONLY);
     if (IS_ERR(file)) {
         retval = PTR_ERR(file);
         goto open_failed;
     }
-
+    
     bprm->file = file;
     bprm->filename = filename;
     bprm->interp = filename;
-
+    
     retval = bprm_mm_init(bprm);
     if (retval < 0) {
         goto mm_failed;
     }
-  
+    
     bprm->argc = count(argv, MAX_ARG_STRINGS);
     if (bprm->argc < 0) {
         retval = bprm->argc;
         goto count_failed;
     }
-
+    
     memset(bprm->buf, 0, BINPRM_BUF_SIZE);
     kernel_read(bprm->file, bprm->buf, BINPRM_BUF_SIZE);
 

@@ -281,8 +281,8 @@ struct files_struct {
     int next_fd;
 
     // 由于struct fdtable里的一些成员（例如位图）都是指针，用到时候需要给他们分配地址，不如直接在这个结构体里分配给它
-    unsigned long close_on_exec_init[1];  // exec时要关掉的文件
-    unsigned long open_fds_init[1];       // 哪些正在用
+    unsigned long close_on_exec_init[MAX_OPEN_FILES_NUM/(sizeof(unsigned long)*4)];  // exec时要关掉的文件
+    unsigned long open_fds_init[MAX_OPEN_FILES_NUM/(sizeof(unsigned long)*4)];       // 哪些正在用
     struct file *fd_array[MAX_OPEN_FILES_NUM];
 };
 

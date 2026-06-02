@@ -192,9 +192,12 @@ int data_abort_handler(unsigned long spsr) {
     /* 注意，current宏依赖svc模式的栈，而abort时的栈是独立的，直接用current是错的 */
     if (this_rq() != NULL) {
         struct mm_struct *mm = this_rq()->curr->mm;
-        if (arm_fault_is_user(spsr) && arm_fault_is_translation(fs) && mm != NULL) {
+        if ((arm_fault_is_user(spsr) || arm_fault_is_translation(fs)) && mm != NULL) {
             if (do_page_fault(mm, addr, PROT_USER | PROT_READ | PROT_WRITE) == 0) {
+                
                 return 0;
+            } else {
+                printk("Page fault handling failed for data abort at addr=%xu\n", addr);
             }
         }
     }

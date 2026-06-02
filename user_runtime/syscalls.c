@@ -2,6 +2,8 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <stdio.h>
 
@@ -32,13 +34,18 @@ extern int __syscall3(int nr, int a0, int a1, int a2);
 #define SYS_pipe   22
 #define SYS_yield  24
 #define SYS_brk    45
+#define SYS_creat  46
+#define SYS_mkdir  47
 #define SYS_execve 59
 #define SYS_waitpid 106
 #define SYS_getdents 141
 #define SYS_getcwd 183
 
 extern char _end;
+extern char **environ;
 static char *heap_end;
+
+#define EXECVP_PATH_MAX 256
 
 
 void *_sbrk(ptrdiff_t incr) {
@@ -162,6 +169,24 @@ int _stat(const char *path, struct stat *st) {
     return ret;
 }
 
+int creat(const char *path, mode_t mode) {
+    long ret = __syscall2(SYS_creat, (long)path, mode);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret;
+}
+
+int mkdir(const char *path, mode_t mode) {
+    long ret = __syscall2(SYS_mkdir, (long)path, mode);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret;
+}
+
 int _isatty(int fd) {
     return fd >= 0 && fd <= 2;
 }
@@ -220,12 +245,85 @@ int waitpid(pid_t pid, int *status, int options) {
 }
 
 int _execve(const char *filename, char *const argv[], char *const envp[]) {
-    __syscall3(SYS_execve, (long)filename, (long)argv, (long)envp);
-    return -1; // execve 成功不会返回，失败才会返回 -1
+    long ret = __syscall3(SYS_execve, (long)filename, (long)argv, (long)envp);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret; // execve 成功不会返回
+}
+
+static int execvp_try_path(const char *dir, size_t dir_len,
+                           const char *file, char *const argv[])
+{
+    char path[EXECVP_PATH_MAX];
+    size_t file_len;
+    size_t pos = 0;
+
+    if (dir_len == 0) {
+        return _execve(file, argv, environ);
+    }
+
+    file_len = strlen(file);
+    if (dir_len + file_len + 2 > sizeof(path)) {
+        errno = ENAMETOOLONG;
+        return -1;
+    }
+
+    memcpy(path, dir, dir_len);
+    pos = dir_len;
+    if (pos > 0 && path[pos - 1] != '/') {
+        path[pos++] = '/';
+    }
+
+    memcpy(path + pos, file, file_len);
+    pos += file_len;
+    path[pos] = '\0';
+
+    return _execve(path, argv, environ);
 }
 
 int execvp(const char *file, char *const argv[]) {
-    return _execve(file, argv, NULL);
+    const char *path_env;
+    const char *seg;
+    int last_errno = ENOENT;
+
+    if (file == NULL || file[0] == '\0') {
+        errno = ENOENT;
+        return -1;
+    }
+
+    if (strchr(file, '/') != NULL) {
+        return _execve(file, argv, environ);
+    }
+
+    path_env = getenv("PATH");
+    if (path_env == NULL || path_env[0] == '\0') {
+        path_env = "/bin";
+    }
+
+    seg = path_env;
+    while (1) {
+        const char *end = strchr(seg, ':');
+        size_t seg_len = end ? (size_t)(end - seg) : strlen(seg);
+
+        if (execvp_try_path(seg, seg_len, file, argv) >= 0) {
+            return 0;
+        }
+
+        if (errno != ENOENT && errno != ENOTDIR) {
+            return -1;
+        }
+        last_errno = errno;
+
+        if (end == NULL) {
+            break;
+        }
+        seg = end + 1;
+    }
+
+    errno = last_errno;
+    return -1;
 }
 
 int _getdents(int fd, void *dirp, unsigned int count) {

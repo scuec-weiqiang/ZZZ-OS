@@ -195,7 +195,7 @@ move:
 .PHONY: u
 u:
 	@set -e; \
-	for d in user_proc/proc*; do \
+	for d in user_proc/*; do \
 		if [ -d "$$d" ] && [ -f "$$d/Makefile" ]; then \
 			$(MAKE) -C "$$d" all; \
 		fi; \
@@ -204,7 +204,7 @@ u:
 .PHONY: uc
 uc:
 	@set -e; \
-	for d in user_proc/proc*; do \
+	for d in user_proc/*; do \
 		if [ -d "$$d" ] && [ -f "$$d/Makefile" ]; then \
 			$(MAKE) -C "$$d" clean; \
 		fi; \

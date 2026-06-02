@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ========= 配置 =========
-IMG=${1:-disk.img}
+IMG=${1:-rootfs.ext2}
 IMG_SIZE_MB=4
 PART_START=1MiB
 PART_END=2MiB

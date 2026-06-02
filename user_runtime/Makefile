@@ -2,7 +2,7 @@ CC = arm-none-eabi-gcc
 AS = arm-none-eabi-as
 
 CPUFLAGS = -mcpu=arm7tdmi -mfloat-abi=soft -marm
-CFLAGS = $(CPUFLAGS) -Wall -g
+CFLAGS = $(CPUFLAGS) -Wall -g -I../include
 ASFLAGS = -mcpu=arm7tdmi
 
 OBJS = crt0.o syscall.o syscalls.o

@@ -335,6 +335,7 @@ struct dentry* vfs_mkdir(const char* path,u16 mode) {
 }
 
 struct dentry *vfs_create(const char *path, u16 mode) {
+    here;
     struct path resolved_parent;
     struct qstr child_name;
     struct dentry *child_dentry = NULL;

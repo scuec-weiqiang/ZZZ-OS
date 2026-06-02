@@ -3,15 +3,19 @@
 
 #include <fs/types.h>
 #include <os/atomic.h>
+#include <uapi/fcntl_defs.h>
 
-#define O_ACCMODE	00000003
-#define O_RDONLY	00000000
-#define O_WRONLY	00000001
-#define O_RDWR		00000002
-#define O_CREAT		00000100	/* not fcntl */
-#define O_EXCL		00000200	/* not fcntl */
-#define O_APPEND	00002000
-#define O_CLOEXEC	02000000	/* set close_on_exec */
+struct file *alloc_file(void);
+void free_file(struct file *file);
+struct file *filp_open(const char *path, u32 flags);
+void filp_close(struct file *file);
+ssize_t kernel_read(struct file *file, char *buf, size_t len);
+ssize_t kernel_read_at(struct file *file, loff_t pos, char *buf, size_t len);
+ssize_t kernel_write(struct file *file, const char *buf, size_t len);
+
+int alloc_fd(unsigned start, unsigned flags);
+int close_fd(unsigned fd);
+
 
 static inline struct file *get_file(struct file *f) {
 	atomic_inc(&f->f_count);
@@ -23,16 +27,6 @@ static inline void put_file(struct file *f) {
 		atomic_dec(&f->f_count);
 	}
 }
-struct file *alloc_file(void);
-void free_file(struct file *file);
-struct file *filp_open(const char *path, u32 flags);
-void filp_close(struct file *file);
-ssize_t kernel_read(struct file *file, char *buf, size_t len);
-ssize_t kernel_read_at(struct file *file, loff_t pos, char *buf, size_t len);
-ssize_t kernel_write(struct file *file, const char *buf, size_t len);
-
-int alloc_fd(unsigned start, unsigned flags);
-int close_fd(unsigned fd);
 
 
 

@@ -46,7 +46,7 @@ int kernel_init(void *arg) {
     device_initcalls_run();
     
     // mount_root("/dev/usdhc11", "ext2");
-    mount_root("/dev/usdhc11", "ext2");
+    mount_root("/dev/ram_disk1", "ext2");
     
     late_initcalls_run();
     

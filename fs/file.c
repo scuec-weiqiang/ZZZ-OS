@@ -162,13 +162,16 @@ long sys_open(struct pt_regs *ctx) {
 
     file = filp_open(path, (u32)flags);
     if (IS_ERR(file)) {
-        if ((flags & O_CREAT) == 0)
+        if ((flags & O_CREAT) == 0) {
             return PTR_ERR(file);
+        }
 
-        if (vfs_create(path, 0644) == NULL)
+        if (vfs_create(path, 0644) == NULL) {
             return -ENOENT;
+        }
 
         file = filp_open(path, (u32)flags);
+        here;
         if (IS_ERR(file))
             return PTR_ERR(file);
     }
@@ -285,7 +288,8 @@ struct file *filp_open(const char *path, u32 flags) {
 
     ret = path_lookup(path, &resolved);
     if (ret < 0) {
-        return ERR_PTR(-ENOENT);
+         return ERR_PTR(-ENOENT);
+        
     }
 
     if (resolved.dentry == NULL || resolved.dentry->d_inode == NULL) {
@@ -463,6 +467,15 @@ void free_files_struct(struct files_struct *files) {
     kmem_cache_free(files);
 }
 
+static void file_release_last_ref(struct file *file) {
+    if (file && atomic_read(&file->f_count) == 0) {
+        if (file->f_op && file->f_op->release) {
+            file->f_op->release(file->f_inode, file);
+        }
+        filp_close(file);
+    }
+}
+
 struct files_struct *dup_fd(struct files_struct *oldf) {
 	struct files_struct *newf;
 	int i;
@@ -511,16 +524,14 @@ static struct fdtable *close_files(struct files_struct * files) {
 			break;
 		set = fdt->open_fds[j++];
 		while (set) {
-			if (set & 1) {
-				struct file * file = fdt->fd[i];
-				if (file) {
-                    fdt->fd[i] = NULL;
-					put_file(file);
-                    if (file && atomic_read(&file->f_count) == 0) {
-                        filp_close(file);
-                    }
+				if (set & 1) {
+					struct file * file = fdt->fd[i];
+					if (file) {
+	                    fdt->fd[i] = NULL;
+						put_file(file);
+	                    file_release_last_ref(file);
+					}
 				}
-			}
 			i++;
 			set >>= 1;
 		}
@@ -615,7 +626,6 @@ static int __alloc_fd(struct files_struct *files, unsigned start, unsigned end, 
 
 static int __close_fd(struct files_struct *files, unsigned fd) {
 	if (files == NULL || fd >= MAX_OPEN_FILES_NUM) {
-		
 		return -EBADF;
 	}
 
@@ -639,13 +649,8 @@ static int __close_fd(struct files_struct *files, unsigned fd) {
 	spin_unlock(&files->file_lock);
 
 	put_file(file);
-    if (file && atomic_read(&file->f_count) == 0) {
-        if (file->f_op && file->f_op->release) {
-            file->f_op->release(file->f_inode, file);
-        }
-        filp_close(file);
-    }
-	
+    file_release_last_ref(file);
+		
     return 0;
 
 out_unlock:
@@ -738,28 +743,25 @@ void do_close_on_exec(struct files_struct *files) {
 	unsigned fd;
 
 	for (fd = 0; fd < MAX_OPEN_FILES_NUM; fd++) {
-        struct file *file;
+		struct file *file;
 
-        spin_lock(&files->file_lock);
+		spin_lock(&files->file_lock);
 
-        if (!fd_is_open((int)fd, &files->fdtab) ||
-            !close_on_exec((int)fd, &files->fdtab)) {
-            spin_unlock(&files->file_lock);
-            continue;
-        }
+		if (!fd_is_open((int)fd, &files->fdtab) ||
+		    !close_on_exec((int)fd, &files->fdtab)) {
+			spin_unlock(&files->file_lock);
+			continue;
+		}
 
-        file = files->fdtab.fd[fd];
-        files->fdtab.fd[fd] = NULL;
-        __clear_close_on_exec((int)fd, &files->fdtab);
-        __put_unused_fd(files, fd);
+		file = files->fdtab.fd[fd];
+		files->fdtab.fd[fd] = NULL;
+		__clear_close_on_exec((int)fd, &files->fdtab);
+		__put_unused_fd(files, fd);
 
-        spin_unlock(&files->file_lock);
+		spin_unlock(&files->file_lock);
 
-        put_file(file);
-
-        if (atomic_read(&files->refcount) == 0) {
-            filp_close(file);
-        }
+		put_file(file);
+		file_release_last_ref(file);
 	}
 }
 
@@ -898,7 +900,6 @@ out_put_path:
     return ret; // 成功
 }
 
-
 long sys_dup(struct pt_regs *ctx) {
     int oldfd = ctx->r[0];
     struct file *file;
@@ -918,7 +919,6 @@ long sys_dup(struct pt_regs *ctx) {
 
     return newfd;
 }
-
 
 long sys_dup2(struct pt_regs *ctx) {   
     int oldfd = ctx->r[0];

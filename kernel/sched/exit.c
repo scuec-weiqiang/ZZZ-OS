@@ -54,8 +54,9 @@ void __noreturn do_exit(int code) {
     /* cancel 当前 rq 的调度 timer，如有需要 */
 
     spin_unlock_irqrestore(&rq->lock, flags);
-    printk("pid=%xu exit with code %d\n", (unsigned long)curr->pid, code);
-
+    if (code != 0) {
+        printk(RED("pid=%xu exit with code %d\n"), (unsigned long)curr->pid, code);
+    }
     reparent_children(curr);
 
     curr->sched_class->dequeue_task(rq, curr);
