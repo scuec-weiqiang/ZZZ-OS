@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <sys/mman.h>
 
 void _init(void) {}
 void _fini(void) {}
@@ -14,6 +15,7 @@ extern long __syscall0(long nr);
 extern long __syscall1(long nr, long a0);
 extern long __syscall2(long nr, long a0, long a1);
 extern long __syscall3(long nr, long a0, long a1, long a2);
+extern long __syscall6(long nr, long a0, long a1, long a2, long a3, long a4, long a5);
 
 #define SYS_exit   1
 #define SYS_fork   2
@@ -32,14 +34,20 @@ extern long __syscall3(long nr, long a0, long a1, long a2);
 #define SYS_lseek  19
 #define SYS_getpid 20
 #define SYS_pipe   22
+#define SYS_access 33
+#define SYS_rmdir  40
+#define SYS_unlink 41
 #define SYS_yield  24
 #define SYS_brk    45
 #define SYS_creat  46
 #define SYS_mkdir  47
 #define SYS_execve 59
+#define SYS_munmap 91
 #define SYS_waitpid 106
+#define SYS_mprotect 125
 #define SYS_getdents 141
 #define SYS_getcwd 183
+#define SYS_mmap   192
 
 extern char _end;
 extern char **environ;
@@ -119,6 +127,33 @@ int chdir(const char *path) {
     return ret;
 }
 
+int access(const char *path, int mode) {
+    long ret = __syscall2(SYS_access, (long)path, mode);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return 0;
+}
+
+int unlink(const char *path) {
+    long ret = __syscall1(SYS_unlink, (long)path);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return 0;
+}
+
+int rmdir(const char *path) {
+    long ret = __syscall1(SYS_rmdir, (long)path);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return 0;
+}
+
 
 
 char *_getcwd(char *buf, size_t size) {
@@ -149,6 +184,33 @@ int _lseek(int fd, int offset, int whence) {
         return -1;
     }
     return ret;
+}
+
+void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+    long ret = __syscall6(SYS_mmap, (long)addr, length, prot, flags, fd, offset);
+    if (ret < 0) {
+        errno = -ret;
+        return MAP_FAILED;
+    }
+    return (void *)ret;
+}
+
+int munmap(void *addr, size_t length) {
+    long ret = __syscall2(SYS_munmap, (long)addr, length);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return 0;
+}
+
+int mprotect(void *addr, size_t length, int prot) {
+    long ret = __syscall3(SYS_mprotect, (long)addr, length, prot);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return 0;
 }
 
 int _fstat(int fd, struct stat *st) {

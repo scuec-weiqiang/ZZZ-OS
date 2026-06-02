@@ -280,6 +280,7 @@ extern const struct file_operations ext2_file_operations;
 
 /* inode.c */
 extern const struct address_space_operations ext2_aops;
+extern int ext2_free_inode_blocks(struct inode *inode);
 
 /* namei.c */
 extern const struct inode_operations ext2_dir_inode_operations;

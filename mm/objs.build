@@ -11,3 +11,4 @@ OBJ_Y += vma.o
 OBJ_Y += page_fault.o
 OBJ_Y += uaccess.o
 OBJ_Y += brk.o
+OBJ_Y += mmap.o

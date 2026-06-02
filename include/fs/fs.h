@@ -15,5 +15,8 @@ struct dentry *vfs_lookup(const char *path);
 struct dentry *vfs_mkdir(const char *path, u16 mode);
 struct dentry *vfs_create(const char *path, u16 mode);
 struct dentry *vfs_mknod(const char *path, u16 mode, dev_t dev);
+int vfs_unlink(const char *path);
+int vfs_rmdir(const char *path);
+int vfs_access(const char *path, int mode);
 int do_execve(char *filename, char* argv[], char* envp[]);
 #endif

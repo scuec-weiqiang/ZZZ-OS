@@ -1,3 +1,3 @@
-TARGET := init
+TARGET := touch
 
 include ../common.mk

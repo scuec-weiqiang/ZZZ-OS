@@ -1,19 +1,26 @@
 ARCH ?= arm
 
-ifeq ($(ARCH),riscv64)
-CROSS_COMPILE ?= riscv64-unknown-elf-
-CPUFLAGS = -march=rv64gc -mabi=lp64d -mcmodel=medany -fno-omit-frame-pointer
-ASFLAGS = $(CPUFLAGS)
-else
-CROSS_COMPILE ?= arm-none-eabi-
-CPUFLAGS = -mcpu=arm7tdmi -mfloat-abi=soft -marm
-ASFLAGS = -mcpu=arm7tdmi
+ARCH_TOOLCHAIN_MK := ../user_proc/.toolchain/$(ARCH).mk
+
+ifneq ($(wildcard $(ARCH_TOOLCHAIN_MK)),)
+include $(ARCH_TOOLCHAIN_MK)
 endif
 
-CC = $(CROSS_COMPILE)gcc
-AS = $(CROSS_COMPILE)gcc
+ifndef CROSS_COMPILE
+$(error Missing CROSS_COMPILE; set it in the parent Makefile or via $(ARCH_TOOLCHAIN_MK))
+endif
 
-CFLAGS = $(CPUFLAGS) -Wall -g -I../include
+ifndef USER_CPUFLAGS
+$(error Missing USER_CPUFLAGS; set it in the parent Makefile or via $(ARCH_TOOLCHAIN_MK))
+endif
+
+USER_ASFLAGS ?= $(USER_CPUFLAGS)
+
+CC := $(CROSS_COMPILE)gcc
+AS := $(CROSS_COMPILE)gcc
+
+CFLAGS := $(USER_CPUFLAGS) -Wall -g -I../include
+ASFLAGS := $(USER_ASFLAGS)
 
 BUILD_DIR = build/$(ARCH)
 CRT0_SRC = $(ARCH)/crt0.S

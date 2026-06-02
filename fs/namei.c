@@ -72,6 +72,10 @@ static int path_step_down(struct path *path, const struct qstr *name) {
     if (next == NULL) {
         return -ENOENT;
     }
+    if (next->d_inode == NULL) {
+        dput(next);
+        return -ENOENT;
+    }
     
     if (vfs_search_mount(next, &mounted) == 0) {
         new_path.mnt = mntget(mounted);
@@ -86,6 +90,25 @@ static int path_step_down(struct path *path, const struct qstr *name) {
     
     *path = new_path;
     return 0;
+}
+
+static struct dentry *prepare_child_dentry(struct dentry *parent,
+                                           const struct qstr *name)
+{
+    struct dentry *cached;
+    struct dentry *child;
+
+    cached = d_lookup(parent, name);
+    if (cached != NULL) {
+        child = dget(cached);
+        if (child->d_inode != NULL) {
+            dput(child);
+            return NULL;
+        }
+        return child;
+    }
+
+    return d_alloc_qstr(parent, name);
 }
 
 static int path_step_up(struct path *path, const struct path *root) {
@@ -320,7 +343,7 @@ struct dentry* vfs_mkdir(const char* path,u16 mode) {
 
     CHECK(ret == 0, "vfs: parent dir lookup failed", return NULL;);
 
-    struct dentry *child_dentry = d_alloc_qstr(resolved_parent.dentry, &child_name);
+    struct dentry *child_dentry = prepare_child_dentry(resolved_parent.dentry, &child_name);
     CHECK(child_dentry != NULL, "vfs: d_alloc failed for child dentry", return NULL;);
 
     dprintk("get parent dentry %s, parent node = %xu\n", resolved_parent.dentry->d_name.name, resolved_parent.dentry->d_inode->i_private);
@@ -346,7 +369,7 @@ struct dentry *vfs_create(const char *path, u16 mode) {
     ret = path_parentat(path, &resolved_parent, &child_name);
     CHECK(ret == 0, "vfs: parent dir lookup failed", return NULL;);
 
-    child_dentry = d_alloc_qstr(resolved_parent.dentry, &child_name);
+    child_dentry = prepare_child_dentry(resolved_parent.dentry, &child_name);
     CHECK(child_dentry != NULL, "vfs: d_alloc failed for child dentry", return NULL;);
 
     ret = resolved_parent.dentry->d_inode->i_op->create(resolved_parent.dentry->d_inode, child_dentry, mode);
@@ -370,7 +393,7 @@ struct dentry *vfs_mknod(const char *path, u16 mode, dev_t dev) {
     ret = path_parentat(path, &resolved_parent, &child_name);
     CHECK(ret == 0, "vfs: parent dir lookup failed", return NULL;);
 
-    child_dentry = d_alloc_qstr(resolved_parent.dentry, &child_name);
+    child_dentry = prepare_child_dentry(resolved_parent.dentry, &child_name);
     CHECK(child_dentry != NULL, "vfs: d_alloc failed for child dentry", return NULL;);
 
     ret = resolved_parent.dentry->d_inode->i_op->mknod(resolved_parent.dentry->d_inode, child_dentry, mode, dev);
@@ -407,6 +430,156 @@ int vfs_chdir(const char *path) {
     set_fs_pwd(current->fs, &resolved);
     path_put(&resolved);
     return 0;
+}
+
+int vfs_unlink(const char *path)
+{
+    struct path resolved = {0};
+    struct path parent = {0};
+    struct qstr last = {0};
+    int ret;
+
+    CHECK(path != NULL, "fs: invalid unlink path", return -EINVAL;);
+
+    ret = path_lookup(path, &resolved);
+    if (ret < 0) {
+        return ret;
+    }
+
+    if (resolved.dentry == resolved.mnt->mnt_root) {
+        ret = -EBUSY;
+        goto out_put_resolved;
+    }
+
+    if (resolved.dentry->d_inode == NULL) {
+        ret = -ENOENT;
+        goto out_put_resolved;
+    }
+
+    if (S_ISDIR(resolved.dentry->d_inode->i_mode)) {
+        ret = -EISDIR;
+        goto out_put_resolved;
+    }
+
+    ret = path_parentat(path, &parent, &last);
+    if (ret < 0) {
+        goto out_put_resolved;
+    }
+
+    if (parent.dentry == NULL || parent.dentry->d_inode == NULL ||
+        parent.dentry->d_inode->i_op == NULL ||
+        parent.dentry->d_inode->i_op->unlink == NULL) {
+        ret = -EPERM;
+        goto out_put_parent;
+    }
+
+    ret = parent.dentry->d_inode->i_op->unlink(parent.dentry->d_inode, resolved.dentry);
+
+out_put_parent:
+    path_put(&parent);
+out_put_resolved:
+    path_put(&resolved);
+    return ret;
+}
+
+int vfs_rmdir(const char *path)
+{
+    struct path resolved = {0};
+    struct path parent = {0};
+    struct qstr last = {0};
+    int ret;
+
+    CHECK(path != NULL, "fs: invalid rmdir path", return -EINVAL;);
+
+    ret = path_lookup(path, &resolved);
+    if (ret < 0) {
+        return ret;
+    }
+
+    if (resolved.dentry == resolved.mnt->mnt_root) {
+        ret = -EBUSY;
+        goto out_put_resolved;
+    }
+
+    if (resolved.dentry->d_inode == NULL) {
+        ret = -ENOENT;
+        goto out_put_resolved;
+    }
+
+    if (!S_ISDIR(resolved.dentry->d_inode->i_mode)) {
+        ret = -ENOTDIR;
+        goto out_put_resolved;
+    }
+
+    ret = path_parentat(path, &parent, &last);
+    if (ret < 0) {
+        goto out_put_resolved;
+    }
+
+    if (parent.dentry == NULL || parent.dentry->d_inode == NULL ||
+        parent.dentry->d_inode->i_op == NULL ||
+        parent.dentry->d_inode->i_op->rmdir == NULL) {
+        ret = -EPERM;
+        goto out_put_parent;
+    }
+
+    ret = parent.dentry->d_inode->i_op->rmdir(parent.dentry->d_inode, resolved.dentry);
+
+out_put_parent:
+    path_put(&parent);
+out_put_resolved:
+    path_put(&resolved);
+    return ret;
+}
+
+int vfs_access(const char *path, int mode)
+{
+    struct path resolved = {0};
+    struct inode *inode;
+    u16 perms;
+    int ret;
+
+    CHECK(path != NULL, "fs: invalid access path", return -EINVAL;);
+
+    if (mode & ~7) {
+        return -EINVAL;
+    }
+
+    ret = path_lookup(path, &resolved);
+    if (ret < 0) {
+        return ret;
+    }
+
+    inode = resolved.dentry->d_inode;
+    if (inode == NULL) {
+        ret = -ENOENT;
+        goto out_put;
+    }
+
+    if (mode == 0) {
+        ret = 0;
+        goto out_put;
+    }
+
+    perms = inode->i_mode;
+    if ((mode & 4) && !(perms & (S_IRUSR | S_IRGRP | S_IROTH))) {
+        ret = -EACCES;
+        goto out_put;
+    }
+    if ((mode & 2) && !(perms & (S_IWUSR | S_IWGRP | S_IWOTH))) {
+        ret = -EACCES;
+        goto out_put;
+    }
+    if ((mode & 1) && !(perms & (S_IXUSR | S_IXGRP | S_IXOTH))) {
+        ret = -EACCES;
+        goto out_put;
+    }
+
+    ret = 0;
+
+out_put:
+    path_put(&resolved);
+    return ret;
 }
 
 int vfs_getcwd(char *buf, size_t size) {

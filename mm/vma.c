@@ -39,24 +39,28 @@ struct vma *vma_find(struct mm_struct *mm, virt_addr_t va) {
     return ERR_PTR(-EFAULT);
 }
 
-static int vma_split(struct mm_struct *mm, struct vma *vma, virt_addr_t split_addr) {
+static struct vma *vma_split(struct mm_struct *mm, struct vma *vma,
+                             virt_addr_t split_addr)
+{
+    struct vma *new_vma;
+
     if (!mm || !vma) {
-        return -1;
+        return ERR_PTR(-EINVAL);
     }
 
     if (split_addr <= vma->start || split_addr >= vma->end) {
-        // No need to split
-        return 0;
+        return vma;
     }
 
-    struct vma *new_vma = vma_create(split_addr, vma->end, vma->flags);
-    if (!new_vma) {
-        return -ENOMEM;
+    new_vma = vma_create(split_addr, vma->end, vma->flags);
+    if (IS_ERR(new_vma)) {
+        return new_vma;
     }
 
+    new_vma->mm = mm;
     vma->end = split_addr;
     list_add_after(&vma->node, &new_vma->node);
-    return vma->end - vma->start;
+    return new_vma;
 }
 
 static int vma_merge(struct mm_struct *mm, struct vma *vma1, struct vma *vma2) {
@@ -116,6 +120,54 @@ merged:
     return 0;
 }
 
+static void vma_merge_all(struct mm_struct *mm)
+{
+    struct list_head *head;
+    struct list_head *pos;
+
+    if (!mm) {
+        return;
+    }
+
+    head = &mm->vma_list.node;
+    pos = head->next;
+    while (pos != head && pos->next != head) {
+        struct vma *curr = list_entry(pos, struct vma, node);
+        struct vma *next = list_entry(pos->next, struct vma, node);
+
+        if (vma_merge(mm, curr, next) == 0) {
+            continue;
+        }
+        pos = pos->next;
+    }
+}
+
+static bool vma_range_is_mapped(struct mm_struct *mm, virt_addr_t start,
+                                virt_addr_t end)
+{
+    struct vma *vma;
+    virt_addr_t cursor = start;
+
+    if (start >= end) {
+        return false;
+    }
+
+    list_for_each_entry(vma, &mm->vma_list.node, struct vma, node) {
+        if (vma->end <= cursor) {
+            continue;
+        }
+        if (vma->start > cursor) {
+            return false;
+        }
+        if (vma->end >= end) {
+            return true;
+        }
+        cursor = vma->end;
+    }
+
+    return false;
+}
+
 int vma_remove(struct mm_struct *mm, struct vma *vma) {
     if (!mm || !vma) {
         return -EINVAL;
@@ -151,54 +203,122 @@ int vma_add(struct mm_struct *mm, virt_addr_t start, size_t len, pgprot_t flags)
 }
 
 int vma_delete(struct mm_struct *mm, virt_addr_t start, size_t len) {
+    struct list_head *head;
+    struct vma *vma;
+    struct vma *next;
+    virt_addr_t end;
+
     if (!mm || len == 0) {
         return -EINVAL;
     }
 
-    virt_addr_t end = start + len;
-    virt_addr_t addr = start;
-    struct vma *vma = node_to_vma(mm->vma_list.node.next);
-
-    // 这一步是将所有和删除范围有交集的vma进行拆分，拆分成多个vma，每个vma要么完全在删除范围内，要么完全在删除范围外
-    list_for_each_entry(vma, &mm->vma_list.node, struct vma, node) {
-        if (vma->end <= addr) {
-            // 当前vma在删除范围之前，跳过
-            continue;
-        }
-        if (vma->start >= end) {
-            // 当前vma在删除范围之后，结束
-            break;
-        }
-        
-        if (vma->start == addr) 
-        {
-            addr += len;
-        }
-
-        if (vma_split(mm, vma, addr) < 0) {
-            return -1;
-        }
-
-        addr += vma->end - vma->start;
+    end = start + len;
+    if (end < start) {
+        return -EINVAL;
     }
 
-    // 删除所有完全在删除范围内的vma
-    list_for_each_entry(vma, &mm->vma_list.node, struct vma, node) {
+    head = &mm->vma_list.node;
+    list_for_each_entry(vma, head, struct vma, node) {
         if (vma->end <= start) {
-            // 当前vma在删除范围之前，跳过
             continue;
         }
         if (vma->start >= end) {
             break;
-            // 当前vma在删除范围之后，结束      
         }
-        if (vma->start >= start && vma->end <= end) {
-            // 当前vma完全在删除范围内，删除
-            struct vma *to_delete = vma;
-            vma = node_to_vma(vma->node.prev); // 先保存前一个节点，防止删除后无法继续遍历
-            vma_remove(mm, to_delete);
+        if (vma->start < start) {
+            vma = vma_split(mm, vma, start);
+            if (IS_ERR(vma)) {
+                return PTR_ERR(vma);
+            }
         }
+        break;
     }
+
+    list_for_each_entry(vma, head, struct vma, node) {
+        if (vma->end <= end) {
+            continue;
+        }
+        if (vma->start < end) {
+            if (IS_ERR(vma_split(mm, vma, end))) {
+                return -ENOMEM;
+            }
+        }
+        break;
+    }
+
+    list_for_each_entry_safe(vma, next, head, struct vma, node) {
+        if (vma->end <= start) {
+            continue;
+        }
+        if (vma->start >= end) {
+            break;
+        }
+        vma_remove(mm, vma);
+    }
+    return 0;
+}
+
+int vma_protect(struct mm_struct *mm, virt_addr_t start, size_t len,
+                pgprot_t flags)
+{
+    struct list_head *head;
+    struct vma *vma;
+    virt_addr_t end;
+
+    if (!mm || len == 0) {
+        return -EINVAL;
+    }
+
+    end = start + len;
+    if (end < start) {
+        return -EINVAL;
+    }
+
+    if (!vma_range_is_mapped(mm, start, end)) {
+        return -ENOMEM;
+    }
+
+    head = &mm->vma_list.node;
+    list_for_each_entry(vma, head, struct vma, node) {
+        if (vma->end <= start) {
+            continue;
+        }
+        if (vma->start >= end) {
+            break;
+        }
+        if (vma->start < start) {
+            vma = vma_split(mm, vma, start);
+            if (IS_ERR(vma)) {
+                return PTR_ERR(vma);
+            }
+        }
+        break;
+    }
+
+    list_for_each_entry(vma, head, struct vma, node) {
+        if (vma->end <= end) {
+            continue;
+        }
+        if (vma->start < end) {
+            if (IS_ERR(vma_split(mm, vma, end))) {
+                return -ENOMEM;
+            }
+        }
+        break;
+    }
+
+    list_for_each_entry(vma, head, struct vma, node) {
+        if (vma->end <= start) {
+            continue;
+        }
+        if (vma->start >= end) {
+            break;
+        }
+        vma->flags = flags;
+    }
+
+    vma_merge_all(mm);
+
     return 0;
 }
 

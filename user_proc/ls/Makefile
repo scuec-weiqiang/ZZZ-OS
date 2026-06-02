@@ -1,3 +1,3 @@
-TARGET := init
+TARGET := ls
 
 include ../common.mk

@@ -82,6 +82,13 @@ static struct file *sys_fdget(int fd) {
 # define	SEEK_CUR	1
 # define	SEEK_END	2
 
+#ifndef F_OK
+#define F_OK 0
+#define X_OK 1
+#define W_OK 2
+#define R_OK 4
+#endif
+
 off_t generic_file_lseek(struct file *file, off_t offset, int whence) {
     off_t newpos;
 
@@ -216,6 +223,40 @@ long sys_mkdir(struct pt_regs *ctx) {
         return -EIO;
 
     return 0;
+}
+
+long sys_access(struct pt_regs *ctx) {
+    uintptr_t user_path = ctx->r[0];
+    int mode = (int)ctx->r[1];
+    char path[SYSCALL_PATH_MAX];
+
+    if (copy_user_string(path, sizeof(path), user_path) < 0)
+        return -EFAULT;
+
+    if (mode != F_OK && (mode & ~(R_OK | W_OK | X_OK)))
+        return -EINVAL;
+
+    return vfs_access(path, mode);
+}
+
+long sys_rmdir(struct pt_regs *ctx) {
+    uintptr_t user_path = ctx->r[0];
+    char path[SYSCALL_PATH_MAX];
+
+    if (copy_user_string(path, sizeof(path), user_path) < 0)
+        return -EFAULT;
+
+    return vfs_rmdir(path);
+}
+
+long sys_unlink(struct pt_regs *ctx) {
+    uintptr_t user_path = ctx->r[0];
+    char path[SYSCALL_PATH_MAX];
+
+    if (copy_user_string(path, sizeof(path), user_path) < 0)
+        return -EFAULT;
+
+    return vfs_unlink(path);
 }
 
 long sys_chdir(struct pt_regs *ctx) {

@@ -1,5 +1,6 @@
 #include <fs/types.h>
 #include <fs/blkdev.h>
+#include <fs/pagecache.h>
 
 #include <os/kmalloc.h>
 #include <os/err.h>
@@ -8,6 +9,7 @@
 #include "ext2_types.h"
 
 extern u32 ext2_alloc_bno(struct super_block *sb);
+extern int ext2_release_bno(struct super_block *sb, u32 bno);
 
 int ext2_block_mapping(struct inode *inode, u32 index) {
     struct ext2_inode_info *ei = EXT2_I(inode);
@@ -226,4 +228,108 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
 
     kfree(buf);
     return -EFBIG;
+}
+
+static int ext2_release_indirect_branch(struct super_block *sb, u32 bno, int depth)
+{
+    u32 block_size = sb->s_blocksize;
+    u32 per_block = block_size / sizeof(u32);
+    u32 *buf;
+    int ret = 0;
+
+    if (bno == 0) {
+        return 0;
+    }
+
+    buf = kmalloc(block_size);
+    if (!buf) {
+        return -ENOMEM;
+    }
+
+    if (blkdev_read(sb->s_bdev, buf, block_size, (u64)bno * block_size) < 0) {
+        kfree(buf);
+        return -EIO;
+    }
+
+    for (u32 i = 0; i < per_block; i++) {
+        if (buf[i] == 0) {
+            continue;
+        }
+
+        if (depth == 1) {
+            ret = ext2_release_bno(sb, buf[i]);
+        } else {
+            ret = ext2_release_indirect_branch(sb, buf[i], depth - 1);
+        }
+
+        if (ret < 0) {
+            kfree(buf);
+            return ret;
+        }
+    }
+
+    kfree(buf);
+    return ext2_release_bno(sb, bno);
+}
+
+int ext2_free_inode_blocks(struct inode *inode)
+{
+    struct ext2_inode_info *ei;
+    struct super_block *sb;
+    int ret;
+
+    if (inode == NULL || inode->i_sb == NULL) {
+        return -EINVAL;
+    }
+
+    sb = inode->i_sb;
+    ei = EXT2_I(inode);
+
+    ret = pagecache_sync_mapping(inode->i_mapping);
+    if (ret < 0) {
+        return ret;
+    }
+
+    ret = pagecache_invalidate_mapping(inode->i_mapping);
+    if (ret < 0) {
+        return ret;
+    }
+
+    for (int i = 0; i < EXT2_NDIR_BLOCKS; i++) {
+        if (ei->i_data[i] == 0) {
+            continue;
+        }
+        ret = ext2_release_bno(sb, ei->i_data[i]);
+        if (ret < 0) {
+            return ret;
+        }
+        ei->i_data[i] = 0;
+    }
+
+    if (ei->i_data[EXT2_IND_BLOCK] != 0) {
+        ret = ext2_release_indirect_branch(sb, ei->i_data[EXT2_IND_BLOCK], 1);
+        if (ret < 0) {
+            return ret;
+        }
+        ei->i_data[EXT2_IND_BLOCK] = 0;
+    }
+
+    if (ei->i_data[EXT2_DIND_BLOCK] != 0) {
+        ret = ext2_release_indirect_branch(sb, ei->i_data[EXT2_DIND_BLOCK], 2);
+        if (ret < 0) {
+            return ret;
+        }
+        ei->i_data[EXT2_DIND_BLOCK] = 0;
+    }
+
+    if (ei->i_data[EXT2_TIND_BLOCK] != 0) {
+        ret = ext2_release_indirect_branch(sb, ei->i_data[EXT2_TIND_BLOCK], 3);
+        if (ret < 0) {
+            return ret;
+        }
+        ei->i_data[EXT2_TIND_BLOCK] = 0;
+    }
+
+    inode->i_size = 0;
+    return 0;
 }

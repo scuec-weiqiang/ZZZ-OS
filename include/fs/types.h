@@ -121,6 +121,8 @@ struct inode_operations {
     int (*create)(struct inode *dir, struct dentry *dentry, u16 mode);
     int (*mkdir)(struct inode *dir, struct dentry *dentry, u16 mode);
     int (*mknod)(struct inode *dir, struct dentry *dentry, u16 mode, dev_t dev);
+    int (*unlink)(struct inode *dir, struct dentry *dentry);
+    int (*rmdir)(struct inode *dir, struct dentry *dentry);
 };
 
 struct file_operations {

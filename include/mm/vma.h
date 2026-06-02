@@ -21,5 +21,6 @@ void vma_destroy(struct vma *vma);
 struct vma *vma_find(struct mm_struct *mm, virt_addr_t va);
 int vma_add(struct mm_struct *mm, virt_addr_t start, size_t len, pgprot_t flags);
 int vma_delete(struct mm_struct *mm, virt_addr_t start, size_t len);
+int vma_protect(struct mm_struct *mm, virt_addr_t start, size_t len, pgprot_t flags);
 
 #endif

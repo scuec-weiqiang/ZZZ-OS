@@ -341,6 +341,100 @@ static void ext2_init_dir_entry(struct ext2_dir_entry_2 *de, u32 ino, u16 mode, 
     memcpy(de->name, name, name_len);
 }
 
+static timespec_t ext2_now(void) {
+    u64 now = monotonic_ns();
+
+    return (timespec_t) {
+        .tv_sec = now / NSEC_PER_SEC,
+        .tv_nsec = now % NSEC_PER_SEC,
+    };
+}
+
+static int ext2_delete_entry(struct inode *dir, const struct qstr *child) {
+    u32 page_nr = (dir->i_size + PAGE_SIZE - 1) / PAGE_SIZE;
+
+    for (u32 i = 0; i < page_nr; i++) {
+        struct page *page = ext2_get_page(dir, i);
+        char *buf;
+        u32 valid_end;
+        u32 offset = 0;
+        struct ext2_dir_entry_2 *prev = NULL;
+
+        if (IS_ERR(page))
+            return PTR_ERR(page);
+
+        buf = (char *)page_address(page);
+        valid_end = last_valid_byte(dir, i);
+
+        while (offset < valid_end) {
+            struct ext2_dir_entry_2 *entry = (struct ext2_dir_entry_2 *)(buf + offset);
+
+            if (entry->rec_len == 0) {
+                ext2_put_page(page);
+                return -EIO;
+            }
+
+            if (entry->inode != 0 && entry->name_len == child->len &&
+                memcmp(entry->name, child->name, child->len) == 0) {
+                if (prev != NULL) {
+                    prev->rec_len += entry->rec_len;
+                } else {
+                    entry->inode = 0;
+                }
+
+                SetPageDirty(page);
+                return ext2_commit_dir_page(dir, page);
+            }
+
+            prev = entry;
+            offset += entry->rec_len;
+        }
+
+        ext2_put_page(page);
+    }
+
+    return -ENOENT;
+}
+
+static int ext2_dir_is_empty(struct inode *dir) {
+    u32 page_nr = (dir->i_size + PAGE_SIZE - 1) / PAGE_SIZE;
+
+    for (u32 i = 0; i < page_nr; i++) {
+        struct page *page = ext2_get_page(dir, i);
+        char *buf;
+        u32 valid_end;
+        u32 offset = 0;
+
+        if (IS_ERR(page))
+            return PTR_ERR(page);
+
+        buf = (char *)page_address(page);
+        valid_end = last_valid_byte(dir, i);
+
+        while (offset < valid_end) {
+            struct ext2_dir_entry_2 *entry = (struct ext2_dir_entry_2 *)(buf + offset);
+
+            if (entry->rec_len == 0) {
+                ext2_put_page(page);
+                return -EIO;
+            }
+
+            if (entry->inode != 0 &&
+                !((entry->name_len == 1 && entry->name[0] == '.') ||
+                  (entry->name_len == 2 && entry->name[0] == '.' && entry->name[1] == '.'))) {
+                ext2_put_page(page);
+                return 0;
+            }
+
+            offset += entry->rec_len;
+        }
+
+        ext2_put_page(page);
+    }
+
+    return 1;
+}
+
 int ext2_init_dot_entries(struct inode *new_dir, u32 parent_ino) {
     struct page *page;
     u8 *buf;
@@ -554,9 +648,104 @@ static int ext2_mknod(struct inode *dir, struct dentry *dentry, u16 mode, dev_t 
     return 0;
 }
 
+static int ext2_unlink(struct inode *dir, struct dentry *dentry) {
+    struct inode *inode;
+    struct ext2_inode_info *ei;
+    timespec_t now;
+    int ret;
+
+    if (dir == NULL || dentry == NULL || dentry->d_inode == NULL)
+        return -EINVAL;
+
+    inode = dentry->d_inode;
+    if (S_ISDIR(inode->i_mode))
+        return -EISDIR;
+
+    ret = ext2_delete_entry(dir, &dentry->d_name);
+    if (ret < 0)
+        return ret;
+
+    now = ext2_now();
+    dir->i_mtime = dir->i_ctime = now;
+    ext2_write_inode(dir);
+
+    if (inode->i_nlink > 0)
+        inode->i_nlink--;
+    inode->i_ctime = inode->i_mtime = now;
+    ei = EXT2_I(inode);
+    if (inode->i_nlink == 0) {
+        ret = ext2_free_inode_blocks(inode);
+        if (ret < 0)
+            return ret;
+        ei->i_dtime = now.tv_sec;
+        inode->i_size = 0;
+    }
+    ret = ext2_write_inode(inode);
+    if (ret < 0)
+        return ret;
+    if (inode->i_nlink == 0) {
+        ret = ext2_release_ino(inode->i_sb, inode->i_ino);
+        if (ret < 0)
+            return ret;
+    }
+
+    d_add(dentry, NULL);
+    return 0;
+}
+
+static int ext2_rmdir(struct inode *dir, struct dentry *dentry) {
+    struct inode *inode;
+    struct ext2_inode_info *ei;
+    timespec_t now;
+    int ret;
+
+    if (dir == NULL || dentry == NULL || dentry->d_inode == NULL)
+        return -EINVAL;
+
+    inode = dentry->d_inode;
+    if (!S_ISDIR(inode->i_mode))
+        return -ENOTDIR;
+
+    ret = ext2_dir_is_empty(inode);
+    if (ret < 0)
+        return ret;
+    if (ret == 0)
+        return -ENOTEMPTY;
+
+    ret = ext2_delete_entry(dir, &dentry->d_name);
+    if (ret < 0)
+        return ret;
+
+    now = ext2_now();
+    if (dir->i_nlink > 0)
+        dir->i_nlink--;
+    dir->i_mtime = dir->i_ctime = now;
+    ext2_write_inode(dir);
+
+    inode->i_nlink = 0;
+    inode->i_ctime = inode->i_mtime = now;
+    ei = EXT2_I(inode);
+    ret = ext2_free_inode_blocks(inode);
+    if (ret < 0)
+        return ret;
+    ei->i_dtime = now.tv_sec;
+    inode->i_size = 0;
+    ret = ext2_write_inode(inode);
+    if (ret < 0)
+        return ret;
+    ret = ext2_release_ino(inode->i_sb, inode->i_ino);
+    if (ret < 0)
+        return ret;
+
+    d_add(dentry, NULL);
+    return 0;
+}
+
 const struct inode_operations ext2_dir_inode_operations = {
     .lookup = ext2_lookup,
     .create = ext2_create,
     .mkdir = ext2_mkdir,
     .mknod = ext2_mknod,
+    .unlink = ext2_unlink,
+    .rmdir = ext2_rmdir,
 };

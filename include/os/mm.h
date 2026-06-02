@@ -18,6 +18,7 @@
 extern struct mm_struct init_mm;
 
 int map(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, pgprot_t flags);
+int remap(pgtable_t *pgtbl, virt_addr_t vaddr, size_t size, pgprot_t flags);
 int unmap(pgtable_t *pgtbl, virt_addr_t vaddr, size_t size);
 
 void *ioremap(phys_addr_t pa, size_t size);

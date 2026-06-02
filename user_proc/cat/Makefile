@@ -1,3 +1,3 @@
-TARGET := init
+TARGET := cat
 
 include ../common.mk

@@ -1,3 +1,3 @@
-TARGET := init
+TARGET := echo
 
 include ../common.mk

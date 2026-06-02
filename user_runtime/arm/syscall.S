@@ -40,3 +40,42 @@ __syscall3:
     svc #0
     pop {r7}
     bx lr
+
+.global __syscall4
+__syscall4:
+    push {r7}
+    mov r7, r0
+    mov r0, r1
+    mov r1, r2
+    mov r2, r3
+    ldr r3, [sp, #4]
+    svc #0
+    pop {r7}
+    bx lr
+
+.global __syscall5
+__syscall5:
+    push {r4, r7}
+    mov r7, r0
+    mov r0, r1
+    mov r1, r2
+    mov r2, r3
+    ldr r3, [sp, #8]
+    ldr r4, [sp, #12]
+    svc #0
+    pop {r4, r7}
+    bx lr
+
+.global __syscall6
+__syscall6:
+    push {r4, r5, r7}
+    mov r7, r0
+    mov r0, r1
+    mov r1, r2
+    mov r2, r3
+    ldr r3, [sp, #12]
+    ldr r4, [sp, #16]
+    ldr r5, [sp, #20]
+    svc #0
+    pop {r4, r5, r7}
+    bx lr

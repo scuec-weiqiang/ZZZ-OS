@@ -1,3 +1,3 @@
-TARGET := init
+TARGET := dup2-test
 
 include ../common.mk

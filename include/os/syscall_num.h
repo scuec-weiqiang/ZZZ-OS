@@ -26,13 +26,19 @@
     X(19, lseek)   \
     X(20, getpid)  \
     X(22, pipe)    \
+    X(33, access)  \
+    X(40, rmdir)   \
+    X(41, unlink)  \
     X(45, brk)     \
     X(46, creat)   \
     X(47, mkdir)  \
     X(59, execve)  \
+    X(91, munmap)  \
     X(106, waitpid) \
+    X(125, mprotect) \
     X(141, getdents) \
     X(183, getcwd) \
+    X(192, mmap) \
 
 /* 生成系统调用号枚举 */
 #define X(nr, name) SYSCALL_##name = nr,

@@ -1,12 +1,16 @@
 #--------------架构---------------#
-# ARCH ?= arm
-ARCH ?= riscv64
-# CROSS_COMPILE ?= arm-none-eabi-
-# BOARD ?= imx6ull
-CROSS_COMPILE ?= riscv-none-elf-
-BOARD ?= qemu_virt
-# MKIMAGE_ARCH = arm
-MKIMAGE_ARCH = riscv64
+# ARCH ?= riscv64
+# CROSS_COMPILE ?= riscv-none-elf-
+# BOARD ?= qemu_virt
+
+ARCH ?= arm
+CROSS_COMPILE ?= arm-none-eabi-
+BOARD ?= imx6ull
+
+ARCH_CONFIG_MK := arch/$(ARCH)/config/config.mk
+ifeq ($(wildcard $(ARCH_CONFIG_MK)),)
+$(error Missing architecture config '$(ARCH_CONFIG_MK)')
+endif
 
 CONFIG_FILE ?= .config
 
@@ -21,20 +25,20 @@ BIN := $(BUILD_DIR)/kernel.bin
 ELF := $(BUILD_DIR)/kernel.elf
 
 #--------------编译器---------------#
+CFLAGS = -g -Wall -fno-builtin -std=c11 -ffreestanding -fno-pic -fno-pie -no-pie 
+LDFLAGS = -Tarch/$(ARCH)/config/link.ld 
+
+include $(ARCH_CONFIG_MK)
 CC := $(CROSS_COMPILE)gcc
 LD := $(CROSS_COMPILE)ld
 OBJDUMP :=$(CROSS_COMPILE)objdump
 OBJCOPY := $(CROSS_COMPILE)objcopy
-
-CFLAGS = -g -Wall -fno-builtin -std=c11 -ffreestanding -fno-pic -fno-pie -no-pie 
-LDFLAGS = -Tarch/$(ARCH)/config/link.ld 
-
--include arch/$(ARCH)/config/config.mk
 CFLAGS += -Iinclude 
 CFLAGS += -MMD -MP
 ASFLAGS := $(CFLAGS)
 
-
+export ARCH
+export CROSS_COMPILE
 
 # 目标架构的asm头文件目录（如arch/riscv64/include/asm）
 ARCH_ASM_DIR := arch/$(ARCH)/include/asm
@@ -85,12 +89,12 @@ all: disk $(TARGET) $(DTB)
 	sudo umount $(MOUNT_PATH)
 
 os: $(TARGET) $(ASM_LINK) $(KBUILD_FILE) $(DTB)
-	$(MAKE) -C ./user_runtime/ ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) all
+	$(MAKE) -C ./user_runtime/ all
 	cp $(TARGET) ../linux/tftpboot/
 	cp $(DTB) ../linux/tftpboot/
 
 $(TARGET): $(BIN)
-	./tools/mkimage -A $(MKIMAGE_ARCH) -O linux -T kernel -C none -a 0x80200000 -e 0x80200000 -n "ZZZ-OS" -d $(BIN) $(TARGET)
+	./tools/mkimage -A $(patsubst riscv64,riscv,$(ARCH)) -O linux -T kernel -C none -a 0x80200000 -e 0x80200000 -n "ZZZ-OS" -d $(BIN) $(TARGET)
 
 
 $(BIN): $(ELF) 
@@ -157,6 +161,7 @@ distclean:
 	-$(MAKE) -C $(DTC_PATH) clean
 	-$(MAKE) -C $(KBUILD_PATH) clean
 	-rm -f disk.img
+	-rm .config
 	-sudo losetup -D
 	-rm -rf $(MOUNT_PATH)
 	-rm -rf $(ASM_LINK)
@@ -167,7 +172,7 @@ distclean:
 #********************************************************************************
 .PHONY:dump
 dump:
-	$(OBJDUMP) -D -m $(OBJDUMP_ARCH) $(ELF) > $(BUILD_DIR)/disassembly.asm
+	$(OBJDUMP) -D -m $(patsubst riscv64,riscv,$(ARCH)) $(ELF) > $(BUILD_DIR)/disassembly.asm
 
 .PHONY:disk
 disk:
@@ -200,7 +205,7 @@ u:
 	@set -e; \
 	for d in user_proc/*; do \
 		if [ -d "$$d" ] && [ -f "$$d/Makefile" ]; then \
-			$(MAKE) -C "$$d" ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) all; \
+			$(MAKE) -C "$$d" all; \
 		fi; \
 	done
 
@@ -209,7 +214,7 @@ uc:
 	@set -e; \
 	for d in user_proc/*; do \
 		if [ -d "$$d" ] && [ -f "$$d/Makefile" ]; then \
-			$(MAKE) -C "$$d" ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) clean; \
+			$(MAKE) -C "$$d" clean; \
 		fi; \
 	done
 	rm -rf user_proc/user/

@@ -1,3 +1,3 @@
-TARGET := init
+TARGET := env
 
 include ../common.mk

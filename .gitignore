@@ -2,7 +2,10 @@ build/
 .cache/
 compile_commands.json
 rootfs.ext2
+disk.img
+.config
+.clanged
+.clang-format
 .codex
 .claude/*
 .vscode/*
-user_proc/*

@@ -9,6 +9,24 @@
 
 /* ext2 位图管理：不缓存，每次从磁盘读取到临时缓冲区，修改后直接写回 */
 
+static int ext2_sync_group_and_super(struct super_block *sb)
+{
+	struct ext2_sb_info *sbi = EXT2_SB(sb);
+	u32 block_size = sb->s_blocksize;
+	u32 gdt_offset;
+
+	if (blkdev_write(sb->s_bdev, sbi->raw_sb, EXT2_SUPERBLOCK_SIZE,
+			 EXT2_SUPERBLOCK_OFFSET) < 0)
+		return -EIO;
+
+	gdt_offset = (sbi->s_first_data_block + 1) * block_size;
+	if (blkdev_write(sb->s_bdev, sbi->gdt, sbi->s_gdb_count * block_size,
+			 gdt_offset) < 0)
+		return -EIO;
+
+	return 0;
+}
+
 int ext2_bno_group(struct super_block *sb, u32 bno) {
 	struct ext2_sb_info *sbi = EXT2_SB(sb);
 
@@ -111,7 +129,10 @@ u32 ext2_alloc_bno(struct super_block *sb) {
 
 		u32 bno = sbi->s_first_data_block + g * bpg + bit;
 		gd->bg_free_blocks_count--;
+		sbi->s_free_blocks_count--;
 		sbi->raw_sb->s_free_blocks_count--;
+		if (ext2_sync_group_and_super(sb) < 0)
+			return 0;
 
 		return bno;
 	}
@@ -141,9 +162,9 @@ int ext2_release_bno(struct super_block *sb, u32 bno) {
 		return ret;
 
 	gd->bg_free_blocks_count++;
+	sbi->s_free_blocks_count++;
 	sbi->raw_sb->s_free_blocks_count++;
-
-	return 0;
+	return ext2_sync_group_and_super(sb);
 }
 
 /* inode 分配 释放 */
@@ -185,7 +206,10 @@ u32 ext2_alloc_ino(struct super_block *sb) {
 
 		u32 ino = g * ipg + bit + 1;
 		gd->bg_free_inodes_count--;
+		sbi->s_free_inodes_count--;
 		sbi->raw_sb->s_free_inodes_count--;
+		if (ext2_sync_group_and_super(sb) < 0)
+			return 0;
 
 		return ino;
 	}
@@ -215,7 +239,7 @@ int ext2_release_ino(struct super_block *sb, u32 ino) {
 		return ret;
 
 	gd->bg_free_inodes_count++;
+	sbi->s_free_inodes_count++;
 	sbi->raw_sb->s_free_inodes_count++;
-
-	return 0;
+	return ext2_sync_group_and_super(sb);
 }
