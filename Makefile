@@ -218,7 +218,12 @@ uc:
 		fi; \
 	done
 	rm -rf user_proc/user/
-
+.PHONY: i
+i:
+	-sudo mount $(DISK_DEV) $(MOUNT_PATH) && echo "挂载成功!"
+	sudo cp $(BIN) $(MOUNT_PATH)/
+	sudo cp $(DTB) $(MOUNT_PATH)/
+	-sudo umount $(MOUNT_PATH)
 #********************************************************************************
 #qemu模拟器
 QEMU = qemu-system-riscv64
@@ -244,7 +249,7 @@ debug: build
 	@echo "\033[32m先按 Ctrl+A 再按 X 退出 QEMU"
 	@echo "------------------------------------\033[0m"
 	${QEMU} ${QFLAGS} -S -s &
-	${GDB} ${GFLAGS} ${ELF}
+# ${GDB} ${GFLAGS} ${ELF}
 
 
 

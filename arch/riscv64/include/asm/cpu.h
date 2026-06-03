@@ -7,12 +7,14 @@
 
 static inline int arch_get_cpuid(void)
 {
-    return (int)tp_r();
+    // return (int)tp_r();
+    return 0;
 }
 
 static inline int arch_get_cpu_identification(void)
 {
-    return (int)tp_r();
+    // return (int)tp_r();
+    return 0;
 }
 
 static inline void arch_cpu_relax(void)

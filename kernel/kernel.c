@@ -45,7 +45,8 @@ int kernel_init(void *arg) {
     device_initcalls_run();
     
     // mount_root("/dev/usdhc11", "ext2");
-    mount_root("/dev/ram_disk1", "ext2");
+    // mount_root("/dev/ram_disk1", "ext2");
+    mount_root("/dev/virt_disk1", "ext2");
     
     late_initcalls_run();
     
@@ -62,7 +63,7 @@ u8 is_init = 0;
 
 void start_kernel(int cpuid,void *dtb) {
     local_irq_disable();
-    if (cpuid == 0) {
+    // if (cpuid == 0) {
         symbols_init();
 		early_malloc_init();
 		fdt_init(dtb);
@@ -81,6 +82,6 @@ void start_kernel(int cpuid,void *dtb) {
             cpu_idle();
         }
         // is_init = 1;
-    }
+    // }
 
 }

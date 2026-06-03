@@ -16,11 +16,22 @@
 
             "miDebuggerServerAddress": "localhost:1234",
 
-            "stopAtEntry": false,
+            "stopAtEntry": true,
 
             "externalConsole": false,
 
-            "preLaunchTask": "run qemu"
+            "setupCommands": [
+                {
+                    "description": "Enable pretty printing",
+                    "text": "-enable-pretty-printing"
+                },
+                {
+                    "text": "set architecture riscv:rv64"
+                },
+                {
+                    "text": "set output-radix 16"
+                }
+            ],
         }
     ]
 }

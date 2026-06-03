@@ -104,8 +104,13 @@ smode:
     csrw satp, t0
     sfence.vma x0, x0  # 刷新地址转换缓存
 
-    la t0, _early_stack_end
+    .global init_thread_union
+    la t0, init_thread_union
+
+    # la t0, _early_stack_end
     li t1, 0xffffffff40000000
+    add t0, t0, t1
+    li t1, 0x2000
     add t0, t0, t1
     mv sp, t0  # 设置早期栈指针
     csrw sscratch, sp
@@ -114,8 +119,8 @@ smode:
     li t1, 0xffffffff40000000
     add t0, t0, t1  # 转换为虚拟地址
 
-    mv a0, s0
-    mv a1, s1
+    li a0, 0
+    li a1, 0x80400000
     jr t0
 
 /*

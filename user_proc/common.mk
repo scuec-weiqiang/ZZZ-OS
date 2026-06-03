@@ -1,4 +1,4 @@
-ARCH ?= arm
+ARCH ?= riscv64
 
 COMMON_MK_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 ARCH_TOOLCHAIN_MK := $(COMMON_MK_DIR).toolchain/$(ARCH).mk
