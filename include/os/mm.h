@@ -10,6 +10,7 @@
 #ifndef KERNEL_MM_H
 #define KERNEL_MM_H
 
+#include <asm-generic/mm.h>
 #include <os/types.h>
 #include <mm/pgtbl_types.h>
 #include <mm/mm_types.h>

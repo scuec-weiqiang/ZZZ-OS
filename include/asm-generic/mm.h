@@ -1,0 +1,1 @@
+extern void arch_initial_mm_init();

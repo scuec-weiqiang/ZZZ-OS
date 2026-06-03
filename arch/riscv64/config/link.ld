@@ -7,18 +7,19 @@ RAM_BASE = 0xffffffffc0200000;      /* RAM起始地址 */
 SECTIONS
 {
     . = RAM_BASE;
-    .text : AT(0x80200000) ALIGN(4) {
+    .text : ALIGN(4) {
         __kernel_start = .;
         __text_start = .;
-        *(.text.trap)
         *(.text.entry)
-        __trap_start = .;  /* trap处理函数起始地址 */
-        __trap_end = .;    /* trap处理函数结束地址 */
+
         __sched_text_start = .;
         *(.text.sched .text.sched.*)
         __sched_text_end = .;
         *(.text .text.*)
         . = ALIGN(4096);
+        __trap_start = .;  /* trap处理函数起始地址 */
+        *(.text.trap)
+        __trap_end = .;    /* trap处理函数结束地址 */
         __text_end = .;
     }
 

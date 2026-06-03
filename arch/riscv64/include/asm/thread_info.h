@@ -44,7 +44,16 @@ struct thread_info {
 #define init_thread_info (init_thread_union.thread_info)
 #define init_stack       (init_thread_union.stack)
 
-register unsigned long current_stack_pointer asm("sp");
+static __always_inline unsigned long __current_stack_pointer(void) {
+    unsigned long sp;
+    asm volatile (
+        "mv %0, sp"
+        : "=r"(sp)
+    );
+    return sp;
+}
+
+#define current_stack_pointer __current_stack_pointer()
 
 static inline struct thread_info *current_thread_info(void) __attribute_const__;
 

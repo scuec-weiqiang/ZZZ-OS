@@ -1,11 +1,11 @@
 #--------------架构---------------#
-# ARCH ?= riscv64
-# CROSS_COMPILE ?= riscv-none-elf-
-# BOARD ?= qemu_virt
+ARCH ?= riscv64
+CROSS_COMPILE ?= riscv-none-elf-
+BOARD ?= qemu_virt
 
-ARCH ?= arm
-CROSS_COMPILE ?= arm-none-eabi-
-BOARD ?= imx6ull
+# ARCH ?= arm
+# CROSS_COMPILE ?= arm-none-eabi-
+# BOARD ?= imx6ull
 
 ARCH_CONFIG_MK := arch/$(ARCH)/config/config.mk
 ifeq ($(wildcard $(ARCH_CONFIG_MK)),)
@@ -222,10 +222,11 @@ uc:
 #********************************************************************************
 #qemu模拟器
 QEMU = qemu-system-riscv64
-QFLAGS = -nographic -smp 1 -machine virt -bios arch/$(ARCH)/boot/u-boot.bin -cpu rv64,sstc=on
+QFLAGS = -nographic -smp 1 -machine virt -bios arch/$(ARCH)/boot/u-boot.bin -cpu rv64,sstc=on 
 QFLAGS += -drive file=$(DISK),if=none,format=raw,id=disk0
 QFLAGS += -device virtio-blk-device,drive=disk0,bus=virtio-mmio-bus.0 
 QFLAGS += -global virtio-mmio.force-legacy=false
+
 #gdb
 GDB = gdb-multiarch
 GFLAGS = -tui -q -x gdbinit
@@ -236,6 +237,14 @@ run: build
 	@echo "\033[32m先按 Ctrl+A 再按 X 退出 QEMU"
 	@echo "------------------------------------\033[0m"
 	${QEMU} ${QFLAGS}
+
+.PHONY:debug
+debug: build
+	@${QEMU} -M ? | grep virt >/dev/null || exit
+	@echo "\033[32m先按 Ctrl+A 再按 X 退出 QEMU"
+	@echo "------------------------------------\033[0m"
+	${QEMU} ${QFLAGS} -S -s &
+	${GDB} ${GFLAGS} ${ELF}
 
 
 

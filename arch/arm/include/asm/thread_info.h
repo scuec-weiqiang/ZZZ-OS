@@ -59,19 +59,25 @@ struct thread_info {
 /*
  * how to get the current stack pointer in C
  */
-register unsigned long current_stack_pointer asm ("sp");
+static __always_inline unsigned long __current_stack_pointer(void) {
+    unsigned long sp;
+    asm volatile (
+        "mov %0, sp"
+        : "=r"(sp)
+    );
+    return sp;
+}
 
-
+#define current_stack_pointer __current_stack_pointer()
 /*
  * how to get the thread information struct from C
  */
 static inline struct thread_info *current_thread_info(void) __attribute_const__;
-
 static inline struct thread_info *current_thread_info(void)
 {
-	return (struct thread_info *)
-		(current_stack_pointer & ~(THREAD_SIZE - 1));
+    return (struct thread_info *)(current_stack_pointer & ~(THREAD_SIZE - 1));
 }
+
 
 #define thread_saved_pc(tsk)	\
 	((unsigned long)(task_thread_info(tsk)->cpu_context.pc))

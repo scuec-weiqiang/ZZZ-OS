@@ -1,0 +1,26 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "RISC-V Kernel",
+
+            "type": "cppdbg",
+            "request": "launch",
+
+            "program": "${workspaceFolder}/build/kernel.elf",
+
+            "cwd": "${workspaceFolder}",
+
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb-multiarch",
+
+            "miDebuggerServerAddress": "localhost:1234",
+
+            "stopAtEntry": false,
+
+            "externalConsole": false,
+
+            "preLaunchTask": "run qemu"
+        }
+    ]
+}

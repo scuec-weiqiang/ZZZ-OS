@@ -1,11 +1,6 @@
 .section .text.entry
 .globl  _start
 _start:
-    /* UART0 @ QEMU virt / U-Boot already initialized */
-    li t0, 0x10000000
-    li t1, 'A'
-    sb t1, 0(t0)
-
     mv s0, a0
     mv s1, a1
     csrw mie, zero  # 禁用所有中断
@@ -45,8 +40,13 @@ _start:
     csrw mstatus, t0
     la t0, smode
     csrw mepc, t0 
-    mret
 
+    # /* 调试：打印 mepc 的实际值 */
+    # csrr a0, mepc
+    # call print_hex64
+    # li t0, 0x10000000
+
+    mret
 smode:
     mv tp, s0
     csrw sie, zero  # 禁用所有中断
@@ -55,10 +55,9 @@ smode:
 
     /* 设置 S-mode trap */
     la t0, kernel_trap_entry
-    # li t1, 0xffffffff40000000
-    # add t0, t0, t1  # 转换为虚拟地址
+    li t1, 0xffffffff40000000
+    add t0, t0, t1  # 转换为虚拟地址
     csrw stvec, t0
-
 
     // 页表映射从内核开始的1G内存区域
     li t0, 1<<0 | 1<<1 | 1<<2 | 1<<3  # PTE_V | PTE_R | PTE_W | PTE_X 
@@ -101,24 +100,49 @@ smode:
     li t1, 8  # MODE=8 (SV39)
     slli t1, t1, 60  # 左移60位放入MODE位置
     or t0, t0, t1  # 组合satp值
+
     csrw satp, t0
     sfence.vma x0, x0  # 刷新地址转换缓存
 
     la t0, _early_stack_end
-    # li t1, 0xffffffff40000000
-    # add t0, t0, t1
+    li t1, 0xffffffff40000000
+    add t0, t0, t1
     mv sp, t0  # 设置早期栈指针
-    csrw sscratch, zero
+    csrw sscratch, sp
 
     la t0, start_kernel
-    # li t1, 0xffffffff40000000
-    # add t0, t0, t1  # 转换为虚拟地址
-    li t1, 0x10000000
-    li t2, 'S'
-    sb t2, 0(t1)
-    fence io, io
+    li t1, 0xffffffff40000000
+    add t0, t0, t1  # 转换为虚拟地址
+
     mv a0, s0
     mv a1, s1
     jr t0
+
+/*
+ * print_hex64(a0 = value)
+ * 输出 16 个十六进制字符到 UART0，不带 0x 前缀。
+ */
+.globl print_hex64
+print_hex64:
+    li t2, 0x10000000
+    li t3, 16
+
+1:
+    srli t0, a0, 60
+    andi t0, t0, 0xf
+    li t1, 10
+    blt t0, t1, 2f
+    addi t0, t0, 'a' - 10
+    j 3f
+
+2:
+    addi t0, t0, '0'
+
+3:
+    sb t0, 0(t2)
+    slli a0, a0, 4
+    addi t3, t3, -1
+    bnez t3, 1b
+    ret
 
 .end

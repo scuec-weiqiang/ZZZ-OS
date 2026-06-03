@@ -16,7 +16,6 @@
 #include <os/fdt.h>
 #include <os/of_platform.h>
 #include <fs/fs.h>
-// #include <os/elf.h>
 #include <os/irq.h>
 #include <os/timer_chip.h>
 #include <os/timekeeping.h>

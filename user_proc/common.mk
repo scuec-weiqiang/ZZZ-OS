@@ -20,7 +20,8 @@ USER_ASFLAGS ?= $(USER_CPUFLAGS)
 CC := $(CROSS_COMPILE)gcc
 RUNTIME ?= ../../user_runtime
 BUILD_DIR ?= build/$(ARCH)
-INSTALL_DIR ?= ../../../linux/tftpboot/mnt/bin
+# INSTALL_DIR ?= ../../../linux/tftpboot/mnt/bin
+INSTALL_DIR ?= ../../mount/bin
 CPPFLAGS += -I../../include
 CFLAGS += $(USER_CPUFLAGS) -Wall -g -MMD -MP
 
