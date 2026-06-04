@@ -129,9 +129,9 @@ long sys_read(struct pt_regs *ctx) {
         return -EBADF;
     if (file->f_flags & O_WRONLY)
         return -EACCES;
-
+    unsigned long t = enable_user_access();
     ret = kernel_read(file, (void*)user_buf, len);
-
+    restore_user_access(t);
     return ret;
 }
 
@@ -152,7 +152,10 @@ long sys_write(struct pt_regs *ctx) {
     if (file->f_flags & O_RDONLY)
         return -EACCES;
     
+    unsigned long t = enable_user_access();
     ret = kernel_write(file, (void*)user_buf, len);
+    restore_user_access(t);
+    
     return ret;
 }
 

@@ -15,21 +15,13 @@ int main(int argc, char *argv[])
 
     printf("after fork, pid=%d\n", pid);
 
-    char *child_argv[] = { "/bin/simple-c-shell", NULL };
+    char *child_argv[] = { "/bin/ls", NULL };
     if (pid == 0) {
         printf("now pid = %d\n",getpid());
-        execve("/bin/simple-c-shell", child_argv,NULL);
+        execve("/bin/ls", child_argv,NULL);
     } else {
         printf("now pid = %d\n",getpid());
         wait(NULL);
     }
-    
-
-    // char *child_argv[] = { "/bin/hello", NULL };
-    // if (pid == 0) {
-    //     execve("/bin/hello", child_argv,NULL);
-    // } else {
-    //     wait(NULL);
-    // }
     return 0;
 }

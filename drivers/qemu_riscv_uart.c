@@ -181,7 +181,7 @@ static int uart_release(struct inode *inode, struct file *file)
     file->private_data = NULL;
     return 0;
 }
-
+#include <asm/uaccess.h>
 static ssize_t uart_write(struct file *file, const char *buf, size_t size, loff_t *offset)
 {
     size_t written = 0;
@@ -190,7 +190,7 @@ static ssize_t uart_write(struct file *file, const char *buf, size_t size, loff_
     if (buf == NULL || offset == NULL) {
         return -1;
     }
-
+    enable_user_access();
     while (written < size) {
         uart_putc(buf[written]);
         written++;

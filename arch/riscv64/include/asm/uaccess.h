@@ -2,6 +2,7 @@
 #define __RISCV64_UACCESS_H
 
 #include <os/types.h>
+#include <asm/riscv.h>
 
 #define EFAULT 14
 #define USER_LIMIT 0x0000004000000000UL
@@ -80,6 +81,31 @@ static inline long __copy_from_user(void *to, const void __user *from, size_t le
     }
 
     return 0;
+}
+
+
+static inline unsigned long enable_user_access(void)
+{
+    unsigned long sstatus;
+
+    asm volatile(
+        "csrr %0, sstatus"
+        : "=r"(sstatus));
+
+    asm volatile(
+        "csrs sstatus, %0"
+        :
+        : "r"(1UL << 18));
+
+    return sstatus;
+}
+
+static inline void restore_user_access(unsigned long old)
+{
+    asm volatile(
+        "csrw sstatus, %0"
+        :
+        : "r"(old));
 }
 
 #endif

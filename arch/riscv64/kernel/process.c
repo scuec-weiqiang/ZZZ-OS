@@ -11,19 +11,19 @@ void show_regs(struct pt_regs *regs)
         return;
     }
 
-    printk("pc : %xu status: %xu cause: %xu tval: %xu\n",
+    printk("pc : %lx status: %lx cause: %lx tval: %lx\n",
            regs->sepc, regs->sstatus, regs->scause, regs->stval);
-    printk("ra : %xu sp: %xu gp: %xu tp: %xu\n",
+    printk("ra : %lx sp: %lx gp: %lx tp: %lx\n",
            regs->ra, regs->sp, regs->gp, regs->tp);
-    printk("a0 : %xu a1: %xu a2: %xu a3: %xu\n",
+    printk("a0 : %lx a1: %lx a2: %lx a3: %lx\n",
            regs->a0, regs->a1, regs->a2, regs->a3);
-    printk("a4 : %xu a5: %xu a6: %xu a7: %xu\n",
+    printk("a4 : %lx a5: %lx a6: %lx a7: %lx\n",
            regs->a4, regs->a5, regs->a6, regs->a7);
-    printk("s0 : %xu s1: %xu s2: %xu s3: %xu\n",
+    printk("s0 : %lx s1: %lx s2: %lx s3: %lx\n",
            regs->s0, regs->s1, regs->s2, regs->s3);
-    printk("s4 : %xu s5: %xu s6: %xu s7: %xu\n",
+    printk("s4 : %lx s5: %lx s6: %lx s7: %lx\n",
            regs->s4, regs->s5, regs->s6, regs->s7);
-    printk("s8 : %xu s9: %xu s10: %xu s11: %xu\n",
+    printk("s8 : %lx s9: %lx s10: %lx s11: %lx\n",
            regs->s8, regs->s9, regs->s10, regs->s11);
 }
 
@@ -58,6 +58,7 @@ int setup_uthread_context(struct task_struct *p)
 
     *childregs = *current_pt_regs();
     childregs->a0 = 0;
+    
     thread->cpu_context.ra = (unsigned long)ret_from_fork;
     thread->cpu_context.sp = (unsigned long)childregs;
 

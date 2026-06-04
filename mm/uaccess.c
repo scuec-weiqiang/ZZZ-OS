@@ -1,12 +1,11 @@
 #include <asm/uaccess.h>
 #include <os/pfn.h>
 
-int copy_from_user(char *dst, const char* src, size_t len)
-{
+int copy_from_user(char *dst, const char* src, size_t len) {
     int ret = 0;
 
     size_t copied = 0;
-
+    unsigned long t = enable_user_access();
     while (copied < len) {
         char *srcp = (char*)src + copied;
         char *dstp = dst + copied;
@@ -23,13 +22,13 @@ int copy_from_user(char *dst, const char* src, size_t len)
 
         copied += n;
     }
-
+    restore_user_access(t);
     return len - copied;
 }
 
 int copy_to_user(char *dst, char* src, size_t len) {
     size_t copied = 0;
-
+    unsigned long t = enable_user_access();
     while (copied < len) {
         char *srcp = src + copied;
         char *dstp = dst + copied;
@@ -38,11 +37,11 @@ int copy_to_user(char *dst, char* src, size_t len) {
 
         if (n > len - copied)
             n = len - copied;
-
+        
         __copy_to_user(dstp, srcp, n);
 
         copied += n;
     }
-
+    restore_user_access(t);
     return len - copied;
 }

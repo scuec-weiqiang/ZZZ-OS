@@ -248,7 +248,7 @@ debug: build
 	@${QEMU} -M ? | grep virt >/dev/null || exit
 	@echo "\033[32m先按 Ctrl+A 再按 X 退出 QEMU"
 	@echo "------------------------------------\033[0m"
-	${QEMU} ${QFLAGS} -S -s &
+	${QEMU} ${QFLAGS} -S -s 
 # ${GDB} ${GFLAGS} ${ELF}
 
 

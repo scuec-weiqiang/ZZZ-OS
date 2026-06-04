@@ -151,6 +151,15 @@ static inline long __copy_from_user(void *to,
 }
 
 
+static inline unsigned long enable_user_access(void)
+{
+    return 0;
+}
+
+static inline void restore_user_access(unsigned long old)
+{
+    return;
+}
 
 
 

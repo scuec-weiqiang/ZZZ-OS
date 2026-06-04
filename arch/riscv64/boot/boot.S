@@ -53,6 +53,9 @@ smode:
     csrw satp, zero
     sfence.vma x0, x0
 
+    li t0, (1 << 18) # SUM 位,允许 S 模式访问用户内存
+    csrs sstatus, t0
+
     /* 设置 S-mode trap */
     la t0, kernel_trap_entry
     li t1, 0xffffffff40000000
