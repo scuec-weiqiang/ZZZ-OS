@@ -9,12 +9,14 @@
 #include <os/mm.h>
 #include <os/string.h>
 #include <os/kva.h>
+#include <os/uaccess.h>
 
 #include <mm/pgtbl.h>
 #include <asm/ptrace.h>
 #include <asm/signal.h>
 
 static LIST_HEAD(formats);
+#define EXEC_PATH_MAX 256
 
 int register_binfmt(struct linux_binfmt *fmt) {
     CHECK(fmt != NULL, "exec: invalid binfmt", return -1;);
@@ -37,6 +39,113 @@ int unregister_binfmt(struct linux_binfmt *fmt) {
 void set_binfmt(struct linux_binfmt *new) {
     /* 简化版：仅记录当前进程的 binfmt 类型（可选扩展 task_struct） */
     (void)new;
+}
+
+static void free_kargv(char **argv)
+{
+    int i;
+
+    if (argv == NULL)
+        return;
+
+    for (i = 0; argv[i] != NULL; i++) {
+        kfree(argv[i]);
+    }
+
+    kfree(argv);
+}
+
+static int dup_user_string(const char *user_str, size_t max_len, char **out)
+{
+    size_t len = 0;
+    char ch;
+    char *kstr;
+
+    if (out == NULL)
+        return -EINVAL;
+
+    *out = NULL;
+    if (user_str == NULL)
+        return -EFAULT;
+
+    for (;;) {
+        if (len >= max_len)
+            return -ENAMETOOLONG;
+
+        if (copy_from_user(&ch, (char *)user_str + len, 1) < 0)
+            return -EFAULT;
+
+        len++;
+        if (ch == '\0')
+            break;
+    }
+
+    kstr = kmalloc(len);
+    if (kstr == NULL)
+        return -ENOMEM;
+
+    if (copy_from_user(kstr, (char *)user_str, len) < 0) {
+        kfree(kstr);
+        return -EFAULT;
+    }
+
+    *out = kstr;
+    return 0;
+}
+
+static int dup_user_argv(char *const *user_argv, char ***out)
+{
+    char **kargv;
+    char *user_str;
+    int argc = 0;
+    int i;
+    int ret;
+
+    if (out == NULL)
+        return -EINVAL;
+
+    *out = NULL;
+    if (user_argv == NULL)
+        return 0;
+
+    for (;;) {
+        if (argc >= MAX_ARG_STRINGS)
+            return -E2BIG;
+
+        if (copy_from_user((char *)&user_str,
+                           (char *)(user_argv + argc),
+                           sizeof(user_str)) < 0)
+            return -EFAULT;
+
+        if (user_str == NULL)
+            break;
+
+        argc++;
+    }
+
+    kargv = kzalloc(sizeof(char *) * (argc + 1));
+    if (kargv == NULL)
+        return -ENOMEM;
+
+    for (i = 0; i < argc; i++) {
+        if (copy_from_user((char *)&user_str,
+                           (char *)(user_argv + i),
+                           sizeof(user_str)) < 0) {
+            ret = -EFAULT;
+            goto err;
+        }
+
+        ret = dup_user_string(user_str, MAX_ARG_STRLEN, &kargv[i]);
+        if (ret < 0)
+            goto err;
+    }
+
+    *out = kargv;
+    return 0;
+
+err:
+    free_kargv(kargv);
+    return ret;
 }
 
 
@@ -668,6 +777,12 @@ int do_execve(char *filename, char* argv[], char* envp[]) {
         retval = bprm->argc;
         goto count_failed;
     }
+
+    bprm->envc = count(envp, MAX_ARG_STRINGS);
+    if (bprm->envc < 0) {
+        retval = bprm->envc;
+        goto count_failed;
+    }
     
     memset(bprm->buf, 0, BINPRM_BUF_SIZE);
     kernel_read(bprm->file, bprm->buf, BINPRM_BUF_SIZE);
@@ -713,9 +828,31 @@ printk("err retval=%d\n", retval);
 }
 
 int sys_execve(struct pt_regs *ctx) {
-    char *filename = (char *)ctx->r[0];
-    char **argv = (char **)ctx->r[1];
-    char **envp = (char **)ctx->r[2];
+    const char *user_filename = (const char *)ctx->r[0];
+    char *const *user_argv = (char *const *)ctx->r[1];
+    char *const *user_envp = (char *const *)ctx->r[2];
+    char *filename = NULL;
+    char **argv = NULL;
+    char **envp = NULL;
+    int ret;
 
-    return do_execve(filename, argv, envp);
+    ret = dup_user_string(user_filename, EXEC_PATH_MAX, &filename);
+    if (ret < 0)
+        return ret;
+
+    ret = dup_user_argv(user_argv, &argv);
+    if (ret < 0)
+        goto out;
+
+    ret = dup_user_argv(user_envp, &envp);
+    if (ret < 0)
+        goto out;
+
+    ret = do_execve(filename, argv, envp);
+
+out:
+    free_kargv(envp);
+    free_kargv(argv);
+    kfree(filename);
+    return ret;
 }

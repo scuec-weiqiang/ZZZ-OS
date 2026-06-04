@@ -103,6 +103,12 @@ static inline int uart_rx_ready(void)
     return (UART0->LSR & UART_RX_READY) != 0;
 }
 
+static inline void uart_enable_rx_irq(void)
+{
+    /* ns16550a IER bit0: received data available interrupt */
+    UART0->IER_DLM = 0x01;
+}
+
 static void uart_putc(char c)
 {
     while (!uart_tx_ready()) {
@@ -141,7 +147,7 @@ static void uart_reg_init(void)
     UART0->LCR &= ~(1U << 7);
     UART0->LCR = (UART0->LCR & ~0x03U) | 0x03U;
     UART0->LCR &= ~(1U << 2);
-    UART0->FCR_ISR = 0x01;       /* enable FIFO */
+    UART0->FCR_ISR = 0x07;       /* enable FIFO and clear RX/TX FIFO */
 }
 
 static void uart_rx_deferred(void *arg)
@@ -181,7 +187,6 @@ static int uart_release(struct inode *inode, struct file *file)
     file->private_data = NULL;
     return 0;
 }
-#include <asm/uaccess.h>
 static ssize_t uart_write(struct file *file, const char *buf, size_t size, loff_t *offset)
 {
     size_t written = 0;
@@ -190,7 +195,7 @@ static ssize_t uart_write(struct file *file, const char *buf, size_t size, loff_
     if (buf == NULL || offset == NULL) {
         return -1;
     }
-    enable_user_access();
+
     while (written < size) {
         uart_putc(buf[written]);
         written++;
@@ -212,6 +217,10 @@ static ssize_t uart_read(struct file *file, char *buf, size_t size, loff_t *offs
     while (read < size) {
         char ch;
 
+        if (!uart_rx_ready() && uart_rxbuf_is_empty()) {
+            sleep_on(&uart0->read_wait);
+        }
+
         if (uart_rxbuf_pop(&ch)) {
             buf[read++] = ch;
             continue;
@@ -226,7 +235,7 @@ static ssize_t uart_read(struct file *file, char *buf, size_t size, loff_t *offs
             break;
         }
 
-        sleep_on(&uart0->read_wait);
+        buf[read++] = uart_getc_hw();
     }
 
     *offset += read;
@@ -266,14 +275,18 @@ static int uart_probe(struct platform_device *pdev)
 
     uart_reg_init();
     irq_deferred_work_register(&uart0->rx_deferred, uart_rx_deferred, NULL);
+    uart_enable_rx_irq();
 
     virq = platform_get_irq(pdev, 0);
     if (virq >= 0) {
-        irq_request(virq, uart_irq_handler, "qemu_uart", NULL);
-        irq_enable(virq);
-        printk("qemu_uart: irq=%d\n", virq);
+        if (irq_request(virq, uart_irq_handler, "qemu_uart", NULL) == 0) {
+            irq_enable(virq);
+            printk("qemu_uart: irq=%d\n", virq);
+        } else {
+            printk("qemu_uart: irq=%d request failed\n", virq);
+        }
     } else {
-        printk("qemu_uart: no irq found, polling mode only\n");
+        printk("qemu_uart: no irq found\n");
     }
 
     ret = alloc_chrdev_region(&uart0->dev_num, 1);

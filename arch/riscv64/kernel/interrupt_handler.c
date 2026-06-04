@@ -84,9 +84,21 @@ reg_t trap_handler(reg_t ctx)
         trap_panic("breakpoint", regs);
         break;
     case 8:
+    {
+        reg_t old_sepc = regs->sepc;
+
         do_syscall(regs);
-        regs->sepc += 4;
+
+        /*
+         * Most syscalls should resume at the instruction after ecall.
+         * But execve/sigreturn may rebuild the user context and set a
+         * brand-new PC, so only advance when the syscall kept sepc intact.
+         */
+        if (regs->sepc == old_sepc) {
+            regs->sepc += 4;
+        }
         break;
+    }
     case 12:
         if (handle_page_fault(regs, PROT_USER | PROT_EXEC) == 0) {
             break;

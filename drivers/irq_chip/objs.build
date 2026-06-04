@@ -1,2 +1,2 @@
 OBJ_$(CONFIG_GIC) += gic/
-OBJ_$(CONFIG_PLIC) += plic/
+OBJ_$(CONFIG_ARCH_PLIC) += plic/

@@ -15,6 +15,7 @@
 #include <os/sched.h>
 #include <os/syscall_num.h>
 #include <os/uaccess.h>
+#include <os/minmax.h>
 #include <mm/slab.h>
 
 struct kmem_cache *file_kmem_cache = NULL;
@@ -38,6 +39,7 @@ void free_file(struct file *file) {
 }
 
 #define SYSCALL_PATH_MAX 256
+#define SYSCALL_IO_CHUNK 512
 /*
     这里没有对用户空间地址有效性做核验
     崩了直接就kernel panic了
@@ -115,10 +117,11 @@ off_t generic_file_lseek(struct file *file, off_t offset, int whence) {
 
 long sys_read(struct pt_regs *ctx) {
     int fd = (int)ctx->r[0];
-    void* user_buf = (void*)ctx->r[1];
+    char *user_buf = (char *)ctx->r[1];
     size_t len = ctx->r[2];
     struct file *file;
-
+    char *kbuf;
+    size_t done = 0;
     ssize_t ret;
 
     if (len == 0)
@@ -129,17 +132,46 @@ long sys_read(struct pt_regs *ctx) {
         return -EBADF;
     if (file->f_flags & O_WRONLY)
         return -EACCES;
-    unsigned long t = enable_user_access();
-    ret = kernel_read(file, (void*)user_buf, len);
-    restore_user_access(t);
-    return ret;
+
+    kbuf = kmalloc(SYSCALL_IO_CHUNK);
+    if (kbuf == NULL)
+        return -ENOMEM;
+
+    while (done < len) {
+        size_t chunk = min(len - done, (size_t)SYSCALL_IO_CHUNK);
+
+        ret = kernel_read(file, kbuf, chunk);
+        if (ret < 0) {
+            if (done == 0) {
+                kfree(kbuf);
+                return ret;
+            }
+            break;
+        }
+        if (ret == 0)
+            break;
+
+        if (copy_to_user(user_buf + done, kbuf, (size_t)ret) != 0) {
+            kfree(kbuf);
+            return done ? (ssize_t)done : -EFAULT;
+        }
+
+        done += (size_t)ret;
+        if ((size_t)ret < chunk)
+            break;
+    }
+
+    kfree(kbuf);
+    return (ssize_t)done;
 }
 
 long sys_write(struct pt_regs *ctx) {
     int fd = (int)ctx->r[0];
-    uintptr_t user_buf = ctx->r[1];
+    const char *user_buf = (const char *)ctx->r[1];
     size_t len = ctx->r[2];
     struct file *file;
+    char *kbuf;
+    size_t done = 0;
     ssize_t ret;
 
     if (len == 0)
@@ -151,12 +183,37 @@ long sys_write(struct pt_regs *ctx) {
 
     if (file->f_flags & O_RDONLY)
         return -EACCES;
-    
-    unsigned long t = enable_user_access();
-    ret = kernel_write(file, (void*)user_buf, len);
-    restore_user_access(t);
-    
-    return ret;
+
+    kbuf = kmalloc(SYSCALL_IO_CHUNK);
+    if (kbuf == NULL)
+        return -ENOMEM;
+
+    while (done < len) {
+        size_t chunk = min(len - done, (size_t)SYSCALL_IO_CHUNK);
+
+        if (copy_from_user(kbuf, user_buf + done, chunk) < 0) {
+            kfree(kbuf);
+            return done ? (ssize_t)done : -EFAULT;
+        }
+
+        ret = kernel_write(file, kbuf, chunk);
+        if (ret < 0) {
+            if (done == 0) {
+                kfree(kbuf);
+                return ret;
+            }
+            break;
+        }
+        if (ret == 0)
+            break;
+
+        done += (size_t)ret;
+        if ((size_t)ret < chunk)
+            break;
+    }
+
+    kfree(kbuf);
+    return (ssize_t)done;
 }
 
 long sys_open(struct pt_regs *ctx) {

@@ -4,6 +4,7 @@ OBJ_Y += printk.o
 OBJ_Y += signal.o
 OBJ_Y += pipe.o
 OBJ_Y += syscall.o
+OBJ_Y += kallsyms.o
 OBJ_Y += stacktrace.o
 OBJ_Y += sched/
 OBJ_Y += console.o

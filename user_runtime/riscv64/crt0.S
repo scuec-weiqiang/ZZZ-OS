@@ -9,7 +9,10 @@
 .extern environ
 
 _start:
-    # la gp, __global_pointer$
+    .option push
+    .option norelax
+    la gp, __global_pointer$
+    .option pop
 
     ld a0, 0(sp)          /* argc */
     addi a1, sp, 8        /* argv */

@@ -15,6 +15,7 @@ SECTIONS
     }
 
     .data ALIGN(8): {
+        PROVIDE(__global_pointer$ = . + 0x800);
         *(.data .data.* .sdata .sdata.*)
     }
 

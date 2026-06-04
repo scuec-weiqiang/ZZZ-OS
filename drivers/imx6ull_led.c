@@ -3,7 +3,6 @@
 #include <fs/cdev.h>
 #include <os/gpio/consumer.h>
 #include <os/platform_device.h>
-#include <os/uaccess.h>
 #include <os/err.h>
 #include <os/string.h>
 #include <os/kmalloc.h>
@@ -28,25 +27,28 @@ int led_release(struct inode *inode, struct file *file) {
 }
 
 
-ssize_t led_write (struct file *file, const char __user *buf, size_t size, loff_t *offset) {
-    char kbuf[16]; // 内核缓冲区，存储从用户空间复制的数据
+ssize_t led_write (struct file *file, const char *buf, size_t size, loff_t *offset) {
+    char kbuf[16];
     struct led_info *led = file->private_data;
+
+    (void)offset;
+
     if (size > sizeof(kbuf) - 1)
         return -EINVAL;
 
-    if (copy_from_user(kbuf, buf, size)) {
-        return -EFAULT;
-    }
+    if (buf == NULL)
+        return -EINVAL;
+
+    memcpy(kbuf, buf, size);
     
-    kbuf[size] = '\0'; // 确保字符串以'\0'结尾
-    // dprintk("led_write: received data: size %d ,addr 0x%x, '%s'\n",size, (u32)buf, kbuf);
+    kbuf[size] = '\0';
 
     if (strncmp(kbuf, "1\n",sizeof("1\n")) == 0) {
-        gpiod_set_value(led->gpio, 1); // 点亮LED
+        gpiod_set_value(led->gpio, 1);
     } else if (strncmp(kbuf, "0\n",sizeof("0\n")) == 0) {
-        gpiod_set_value(led->gpio, 0); // 熄灭LED
+        gpiod_set_value(led->gpio, 0);
     } else {
-        return -EINVAL; // 无效的输入
+        return -EINVAL;
     }
 
     return size;

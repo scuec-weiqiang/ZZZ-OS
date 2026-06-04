@@ -23,6 +23,11 @@ BUILD_DIR := build
 TARGET := $(BUILD_DIR)/uImage
 BIN := $(BUILD_DIR)/kernel.bin
 ELF := $(BUILD_DIR)/kernel.elf
+ELF_TMP := $(BUILD_DIR)/kernel.tmp.elf
+KALLSYMS_SRC := $(BUILD_DIR)/kallsyms_data.c
+KALLSYMS_OBJ := $(BUILD_DIR)/kallsyms_data.o
+KALLSYMS_STUB_SRC := $(BUILD_DIR)/kallsyms_stub.c
+KALLSYMS_STUB_OBJ := $(BUILD_DIR)/kallsyms_stub.o
 
 #--------------编译器---------------#
 CFLAGS = -g -Wall -fno-builtin -std=c11 -ffreestanding -fno-pic -fno-pie -no-pie 
@@ -31,6 +36,7 @@ LDFLAGS = -Tarch/$(ARCH)/config/link.ld
 include $(ARCH_CONFIG_MK)
 CC := $(CROSS_COMPILE)gcc
 LD := $(CROSS_COMPILE)ld
+NM := $(CROSS_COMPILE)nm
 OBJDUMP :=$(CROSS_COMPILE)objdump
 OBJCOPY := $(CROSS_COMPILE)objcopy
 CFLAGS += -Iinclude 
@@ -101,7 +107,28 @@ $(BIN): $(ELF)
 	$(OBJCOPY) -O binary $< -S $@
 	@echo "$@ is ready"
 	
-$(ELF): $(BUILD_OBJS) 
+$(KALLSYMS_STUB_SRC):
+	@mkdir -p $(dir $@)
+	@printf '%s\n' '#include <os/kallsyms.h>' > $@
+	@printf '%s\n' 'const struct kernel_symbol __kallsyms[] = { { 0, 0 } };' >> $@
+	@printf '%s\n' 'const unsigned int __kallsyms_count = 0;' >> $@
+
+$(KALLSYMS_STUB_OBJ): $(KALLSYMS_STUB_SRC)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(ELF_TMP): $(BUILD_OBJS) $(KALLSYMS_STUB_OBJ)
+	@mkdir -p $(dir $@)
+	$(LD) $(LDFLAGS) $^ -o $@
+
+$(KALLSYMS_SRC): $(ELF_TMP) tools/gen_kallsyms.sh
+	@mkdir -p $(dir $@)
+	chmod +x tools/gen_kallsyms.sh
+	NM="$(NM)" tools/gen_kallsyms.sh $(ELF_TMP) $@
+
+$(KALLSYMS_OBJ): $(KALLSYMS_SRC)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(ELF): $(BUILD_OBJS) $(KALLSYMS_OBJ)
 	$(LD) $(LDFLAGS) $^ -o $@
 	@echo "$@ is ready"
 

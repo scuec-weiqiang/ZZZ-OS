@@ -57,6 +57,12 @@ int setup_uthread_context(struct task_struct *p)
     memset(&thread->cpu_context, 0, sizeof(thread->cpu_context));
 
     *childregs = *current_pt_regs();
+    /*
+     * The parent trap path advances sepc after handling ecall.
+     * Make the child resume at the post-syscall PC as well, or it will
+     * re-enter the same ecall and loop in fork().
+     */
+    childregs->sepc += 4;
     childregs->a0 = 0;
     
     thread->cpu_context.ra = (unsigned long)ret_from_fork;

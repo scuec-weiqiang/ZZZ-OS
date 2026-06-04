@@ -45,7 +45,9 @@ all: install
 endif
 
 install: $(TARGET)
-	sudo cp $(TARGET) $(INSTALL_DIR)
+	@test -d $(INSTALL_DIR) || \
+		( echo "install target '$(INSTALL_DIR)' is not a directory; mount the image first" && exit 1 )
+	sudo cp $(TARGET) $(INSTALL_DIR)/
 
 $(RUNTIME_OBJS) &: $(RUNTIME)/$(ARCH)/crt0.S $(RUNTIME)/$(ARCH)/syscall.S \
 	$(RUNTIME)/syscalls.c $(RUNTIME)/Makefile $(RUNTIME_LD)

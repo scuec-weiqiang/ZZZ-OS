@@ -30,11 +30,14 @@ static inline int __range_ok(unsigned long addr, size_t size)
     int __err = 0;                                                          \
     __typeof__(*(ptr)) __val = (x);                                         \
     unsigned long __addr = (unsigned long)(ptr);                            \
+    unsigned long __sstatus;                                                \
                                                                             \
     if (__range_ok(__addr, sizeof(*(ptr)))) {                               \
         __err = -EFAULT;                                                    \
     } else {                                                                \
+        __sstatus = enable_user_access();                                   \
         *(volatile __typeof__(*(ptr)) *)__addr = __val;                     \
+        restore_user_access(__sstatus);                                     \
     }                                                                       \
     __err;                                                                  \
 })
@@ -43,12 +46,15 @@ static inline int __range_ok(unsigned long addr, size_t size)
 ({                                                                          \
     int __err = 0;                                                          \
     unsigned long __addr = (unsigned long)(ptr);                            \
+    unsigned long __sstatus;                                                \
                                                                             \
     if (__range_ok(__addr, sizeof(x))) {                                    \
         __err = -EFAULT;                                                    \
         (x) = 0;                                                            \
     } else {                                                                \
+        __sstatus = enable_user_access();                                   \
         (x) = *(volatile __typeof__(x) *)__addr;                            \
+        restore_user_access(__sstatus);                                     \
     }                                                                       \
     __err;                                                                  \
 })

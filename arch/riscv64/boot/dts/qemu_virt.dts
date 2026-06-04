@@ -43,6 +43,7 @@
             interrupt-controller;
             reg = <0xc000000 0x4000000>;
             #interrupt-cells = <1>;
+            riscv,ndev = <0x5f>;
         };
        
         // time: time@50000000 {
@@ -53,13 +54,13 @@
         uart0: uart@10000000 {
             compatible = "wq,uart";
             reg = <0x10000000 0x8>;
-            interrupt-extended = <&plic 10>; 
+            interrupts-extended = <&plic 10>;
         };
 
         virt_disk: virt_disk@10001000 {
             compatible = "wq,virt_disk";
             reg = <0x10001000 0x1000>;
-            interrupt-extended = <&plic 11>; 
+            interrupts-extended = <&plic 11>;
         };
 
     };
