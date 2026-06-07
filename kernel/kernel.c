@@ -14,6 +14,7 @@
 #include <os/mm.h>
 #include <os/sched.h>
 #include <os/fdt.h>
+#include <os/of.h>
 #include <os/of_platform.h>
 #include <fs/fs.h>
 #include <os/irq.h>
@@ -36,6 +37,22 @@
 #include <asm/process.h>
 #include <asm/ptrace.h>
 
+static const char *kernel_root_device(void)
+{
+    struct device_node *chosen;
+    const char *rootdev;
+
+    chosen = of_find_node_by_path("/chosen");
+    if (chosen) {
+        rootdev = of_get_property(chosen, "zzz,root-device", NULL);
+        if (rootdev && rootdev[0] != '\0') {
+            return rootdev;
+        }
+    }
+
+    return "/dev/virt_disk1";
+}
+
 int kernel_init(void *arg) {
     of_platform_populate(NULL,of_default_bus_match_table,NULL);
 
@@ -44,9 +61,7 @@ int kernel_init(void *arg) {
     fs_initcalls_run();
     device_initcalls_run();
     
-    // mount_root("/dev/usdhc11", "ext2");
-    // mount_root("/dev/ram_disk1", "ext2");
-    mount_root("/dev/virt_disk1", "ext2");
+    mount_root(kernel_root_device(), "ext2");
     
     late_initcalls_run();
     

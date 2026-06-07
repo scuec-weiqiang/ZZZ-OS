@@ -220,7 +220,6 @@ irqreturn_t uart_iqr(int virq, void *dev_id) {
         irq_deferred_work_queue(&uart_rx_deferred_work);
     }
    
-
     return IRQ_HANDLED;
 }
 

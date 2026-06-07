@@ -18,6 +18,11 @@
         };
     };
 
+    chosen {
+        stdout-path = "/soc/uart@10000000";
+        zzz,root-device = "/dev/virt_disk2";
+    };
+
     cpus {
         // compatible = "riscv";
         #address-cells = <1>;

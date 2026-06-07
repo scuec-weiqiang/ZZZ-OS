@@ -1,176 +1,160 @@
 # 构建系统
 
-[TOC]
+这份文档描述的是仓库当前代码所对应的构建方式，重点面向两类读者：
 
-## 1. 概述
+- 第一次尝试把系统跑起来的贡献者
+- 需要修改 Makefile、工具链、镜像流程的开发者
 
-ZZZ-OS 使用基于 Makefile 的构建系统，配合自定义的 `kbuild` 工具实现分层源码构建。支持 ARM 和 RISC-V 两种目标架构的交叉编译。
+## 1. 总览
 
-核心特性：
-- **分层构建**：每个子目录通过 `objs.build` 文件声明需要编译的源文件
-- **kbuild 工具**：递归扫描 `objs.build` 生成扁平的对象列表
-- **设备树编译**：内置 DTC（Device Tree Compiler），从 `.dts` 编译 `.dtb`
-- **磁盘镜像**：自动生成 disk.img，用于 QEMU 和真实硬件
-- **U-Boot 包装**：将 kernel 包装为 U-Boot 可加载的 uImage 格式
+ZZZ-OS 使用顶层 [Makefile](/home/wqqqq/ZZZ-OS/Makefile:1) 驱动编译流程，并配合仓库内工具完成：
 
-## 2. 主要目标
+- 递归扫描 `objs.build`
+- 交叉编译内核
+- 编译设备树
+- 生成 `uImage`
+- 生成 U-Boot 启动脚本 `boot.cmd` 与 `boot.scr`
+- 构建用户态运行时与示例程序
 
-### 2.1 构建完整系统
-
-```bash
-make all ARCH=arm BOARD=imx6ull
-```
-
-流程：
-1. 编译 kbuild 工具
-2. 扫描 `objs.build` → 生成 `build/objs.arm.mk`
-3. 编译所有 `.c` / `.S` → `.o`
-4. 链接 → `build/kernel.elf`
-5. 提取二进制 → `build/kernel.bin`
-6. 包装 uImage → `build/uImage`
-7. 编译 DTS → `.dtb`
-8. 创建 disk.img → 挂载 → 拷贝 uImage + dtb → 卸载
-
-### 2.2 构建并部署到 TFTP
-
-```bash
-make os ARCH=arm BOARD=imx6ull
-```
-
-编译后将 uImage 和 dtb 拷贝到 `../linux/tftpboot/`，用于网络启动。同时构建用户程序。
-
-### 2.3 QEMU 运行
-
-```bash
-make run ARCH=riscv64 BOARD=virt
-```
-
-启动 QEMU 模拟 RISC-V virt 机器，加载 kernel 和 disk.img。
-
-QEMU 参数：
-```
-qemu-system-riscv64 -nographic -smp 1 -machine virt \
-  -bios arch/riscv64/boot/u-boot.bin -cpu rv64,sstc=on \
-  -drive file=disk.img,if=none,format=raw,id=disk0 \
-  -device virtio-blk-device,drive=disk0,bus=virtio-mmio-bus.0 \
-  -global virtio-mmio.force-legacy=false
-```
-
-## 3. kbuild 工具
-
-`tools/kbuild/kbuild` 是一个 C 语言编写的构建扫描器，递归解析 `objs.build` 文件。
-
-### 3.1 objs.build 语法
-
-每个源文件目录包含一个 `objs.build` 文件，声明需要编译的源文件：
+当前默认参数是：
 
 ```makefile
-# 通用源（所有架构都编译）
-OBJ_Y += kernel.c
-OBJ_Y += mm/buddy.c
-
-# 架构特定源（仅指定架构编译）
-OBJ_arm += arch/arm_entry.S
-OBJ_riscv64 += arch/riscv_entry.S
+ARCH ?= riscv64
+BOARD ?= qemu_virt
 ```
 
-### 3.2 工作流程
+如果你不显式指定参数，默认走的是 RISC-V64 + QEMU `virt` 路径。
+`CROSS_COMPILE` 没有默认值，需要由用户自己传入。
 
-```
-kbuild $(SRC_ROOT)
-  → 递归查找所有 objs.build
-  → 解析 OBJ_Y / OBJ_$(ARCH) 条目
-  → 输出 OBJ_Y += path/to/file.c 扁平列表
-  → Makefile include 此列表
-  → 编译所有 .o
-```
-
-## 4. 编译器配置
-
-### 4.1 交叉编译工具链
-
-| 架构 | 工具链前缀 | 说明 |
-|---|---|---|
-| ARM | `arm-none-eabi-` | bare-metal ARM 工具链 |
-| RISC-V | `riscv64-unknown-elf-` | bare-metal RISC-V 工具链 |
-
-### 4.2 编译标志
-
-```makefile
-CFLAGS = -g -Wall -fno-builtin -std=c11 -ffreestanding -fno-pic -fno-pie -no-pie
-```
-
-- `-ffreestanding`：不依赖标准库
-- `-fno-builtin`：不使用编译器内置函数
-- `-std=c11`：C11 标准
-
-### 4.3 链接脚本
-
-各架构独立的链接脚本位于 `arch/<arch>/config/link.ld`，定义：
-- 内核加载地址
-- 段布局（`.text`、`.data`、`.bss`）
-- initcall 段（`.initcall`、`.coreinitcall`、`.deviceinitcall` 等）
-- 内核栈大小（32KB）
-- 早期页表空间（16KB）
-
-## 5. 设备树编译
+不过更推荐像 Linux 内核那样显式传入变量：
 
 ```bash
-make dtbs ARCH=riscv64 BOARD=virt
+make ARCH=<arch> CROSS_COMPILE=<toolchain-prefix> BOARD=<board> os -j$(nproc)
 ```
 
-编译流程：
-1. C 预处理器处理 `.dts`（支持 `#include` 和宏定义）
-2. DTC 将 `.dts` 编译为 `.dtb` 二进制
-3. 拷贝到 disk.img 中
+或者你可以在顶层Makefile里更改默认参数，这样可以直接：
+```bash
+make os -j$(nproc)
+```
 
-DTC 位于 `tools/dtc/`，是完整的 Device Tree Compiler 实现（包含 lexer、parser、libfdt）。
+## 2. 依赖
 
-## 6. 磁盘镜像
+建议准备以下工具：
+
+- `make`
+- `gcc`
+- 类似`riscv-none-elf-gcc`、 `arm-none-eabi-gcc`等对应平台的编译器
+
+仓库内已经带有：
+
+- `tools/dtc`：用于编译dts文件
+- `tools/kbuild`：用于收集所有编译需要的目标文件
+- `tools/mkimage`：将编译生成的efl/bin 变成uimage镜像
+
+## 3. 构建目标
+
+### 3.1 构建用户态程序
+例如：
+```bash
+make u ARCH=riscv64 CORSS_COMPILE=riscv-none-elf-gcc
+```
+
+或：
 
 ```bash
-make disk
+make u ARCH=arm CORSS_COMPILE=arm-none-eabi-gcc
 ```
 
-通过 `tools/mkdisk.sh` 创建 disk.img 并格式化为 ext2 文件系统。
+这会遍历 `user_proc/*` 下所有带 `Makefile` 的目录，并先构建 `user_runtime/` 依赖的目标文件，再分别编译用户程序。
 
-挂载/卸载操作：
-```bash
-make mount    # 挂载 disk.img
-make umount   # 卸载
-make show     # 查看 disk.img 内容
-```
+相关目录：
 
-## 7. 用户程序构建
+- [user_runtime/](/home/wqqqq/ZZZ-OS/user_runtime)
+- [user_proc/](/home/wqqqq/ZZZ-OS/user_proc)
+
+### 3.2 构建主机侧启动产物
 
 ```bash
-make u    # 构建 user_proc/ 下所有用户程序
-make uc   # 清理用户程序构建产物
+make ARCH=<arch> CROSS_COMPILE=<toolchain-prefix> BOARD=<board> os
 ```
 
-遍历 `user_proc/proc*` 目录，对包含 Makefile 的子目录执行构建。
+`make os` 会完成以下工作：
 
-## 8. 调试
+1. 构建 `tools/kbuild`
+2. 根据 `objs.build` 生成 `objs.<arch>.mk`
+3. 编译所有内核源文件为 `build/.../*.o`
+4. 先链接临时 ELF，生成 kallsyms 数据，再链接正式 `build/kernel.elf`
+5. 导出 `build/kernel.bin`
+6. 通过 `tools/mkimage` 生成 `build/uImage`
+7. 编译 `arch/<arch>/boot/dts/<board>.dts` 为 `build/.../*.dtb`
+8. 生成 `build/deploy/<arch>/<board>/boot.cmd` 与 `boot.scr`
 
-### 8.1 反汇编
+其中 `boot.scr` 由 `tools/mkimage` 根据 `boot.cmd` 生成；如果存在
+`tools/bootloaders/<platform>/boot.cmd`，则会优先使用这个板级脚本。
 
-```bash
-make dump
+`make os` 会把启动产物整理到：
+
+```text
+build/deploy/<arch>/<board>/
 ```
 
-生成 `build/disassembly.asm`，包含 kernel.elf 的完整反汇编。
+### 3.3 辅助目标
 
-### 8.2 GDB 调试
+- `make dump`：导出 `build/disassembly.asm`
+- 介质准备、QEMU 启动与 boot/rootfs 安装见 [deploy.md](/home/wqqqq/ZZZ-OS/doc/deploy.md)
 
-```bash
-# 在 QEMU 中加 -s -S 参数启动 GDB server
-# 然后使用 gdb-multiarch 连接
-gdb-multiarch -tui -q -x gdbinit build/kernel.elf
-```
+## 4. 配置来源
 
-## 9. 清理
+默认配置文件来自：
 
-```bash
-make clean        # 清理编译产物
-make distclean    # 清理所有输出（包括 disk.img、loop device）
-```
+- [arch/riscv64/config/defconfig](/home/wqqqq/ZZZ-OS/arch/riscv64/config/defconfig)
+- [arch/arm/config/defconfig](/home/wqqqq/ZZZ-OS/arch/arm/config/defconfig)
+
+首次构建时，如果对应架构的 `.config.<arch>` 不存在，Makefile 会把对应 `defconfig` 复制为该架构自己的配置文件。
+
+当前可见的典型配置包括：
+
+- RISC-V64：PLIC、virt disk、QEMU UART、ext2、ramfs
+- ARM：GIC、i.MX6ULL UART/LED/USDHC、GPIO、pinctrl、ext2、ramfs
+
+## 5. `objs.build` 与 kbuild
+
+ZZZ-OS 不是直接在顶层 Makefile 里手写所有对象文件，而是通过 `objs.build` 描述目录下需要编译的源文件，再由 `tools/kbuild/kbuild` 展开成 `objs.mk`。
+
+这带来两个直接好处：
+
+- 新增文件时只需要在对应目录补 `objs.build`
+- 架构相关和通用对象可以分层组织
+
+如果你新增了源码但编译系统没有自动带上，第一件事应检查对应目录的 `objs.build`。
+
+## 6. 用户态构建说明
+
+用户态由两部分组成：
+
+- `user_runtime/`
+  负责 `crt0.S`、系统调用汇编封装和 `syscalls.c`
+- `user_proc/`
+  各个独立用户程序
+
+当前用户态工具链配置位于：
+
+- [user_proc/.toolchain/arm.mk](/home/wqqqq/ZZZ-OS/user_proc/.toolchain/arm.mk)
+- [user_proc/.toolchain/riscv64.mk](/home/wqqqq/ZZZ-OS/user_proc/.toolchain/riscv64.mk)
+
+如果你要新增用户程序，最简单的做法是参考已有目录：
+
+- `user_proc/hello/`
+- `user_proc/init/`
+- `user_proc/simple-c-shell/`
+
+## 7. 常见问题
+
+### 7.1 新文件加了却没有参与编译
+
+通常是以下原因之一：
+
+- 忘了更新 `objs.build`
+- 目标配置没有在对应 `defconfig` 中启用
+- 文件放在了未被构建系统扫描到的目录
+

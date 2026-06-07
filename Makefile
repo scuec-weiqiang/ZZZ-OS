@@ -3,20 +3,15 @@ ARCH ?= riscv64
 CROSS_COMPILE ?= riscv-none-elf-
 BOARD ?= qemu_virt
 
-# ARCH ?= arm
-# CROSS_COMPILE ?= arm-none-eabi-
-# BOARD ?= imx6ull
-
 ARCH_CONFIG_MK := arch/$(ARCH)/config/config.mk
 ifeq ($(wildcard $(ARCH_CONFIG_MK)),)
 $(error Missing architecture config '$(ARCH_CONFIG_MK)')
 endif
 
-CONFIG_FILE ?= .config
-
-DISK = ./disk.img
-DISK_DEV = /dev/loop0p1
-MOUNT_PATH = ./mount
+CONFIG_FILE ?= .config.$(ARCH)
+DEPLOY_DIR ?= $(BUILD_DIR)/deploy/$(ARCH)/$(BOARD)
+DEPLOY_BOOT_CMD := $(DEPLOY_DIR)/boot.cmd
+DEPLOY_BOOT_SCR := $(DEPLOY_DIR)/boot.scr
 
 #--------------输出目录---------------#
 BUILD_DIR := build
@@ -34,6 +29,9 @@ CFLAGS = -g -Wall -fno-builtin -std=c11 -ffreestanding -fno-pic -fno-pie -no-pie
 LDFLAGS = -Tarch/$(ARCH)/config/link.ld 
 
 include $(ARCH_CONFIG_MK)
+ifndef CROSS_COMPILE
+$(error Missing CROSS_COMPILE; pass CROSS_COMPILE=<toolchain-prefix>)
+endif
 CC := $(CROSS_COMPILE)gcc
 LD := $(CROSS_COMPILE)ld
 NM := $(CROSS_COMPILE)nm
@@ -60,7 +58,7 @@ KBUILD_PATH = tools/kbuild
 KBUILD = $(KBUILD_PATH)/kbuild
 SRC_ROOT ?=  ./
 # Kbuild 输出文件
-KBUILD_FILE = objs.mk
+KBUILD_FILE = objs.$(ARCH).mk
 KBUILD_SOURCES := $(shell find . -name objs.build)
 # 若不存在 objs.mk，则生成
 
@@ -86,18 +84,22 @@ $(DTC):
 	$(MAKE) -C ./tools/dtc
 
 #--------------通用编译---------------#
-all: disk $(TARGET) $(DTB) 
-	sudo losetup -D
-	sudo losetup -Pf --show disk.img
-	-sudo mount  $(DISK_DEV) $(MOUNT_PATH) && echo "挂载成功!" 
-	sudo cp $(TARGET) $(MOUNT_PATH)
-	sudo cp $(DTB) $(MOUNT_PATH)
-	sudo umount $(MOUNT_PATH)
+all: os
 
-os: $(TARGET) $(ASM_LINK) $(KBUILD_FILE) $(DTB)
-	$(MAKE) -C ./user_runtime/ all
-	cp $(TARGET) ../linux/tftpboot/
-	cp $(DTB) ../linux/tftpboot/
+artifacts: $(TARGET) $(DTB)
+
+dist: artifacts
+	@mkdir -p $(DEPLOY_DIR)
+	cp $(TARGET) $(DEPLOY_DIR)/
+	cp $(DTB) $(DEPLOY_DIR)/
+	tools/deploy/generate_bootscript.sh \
+		--arch $(ARCH) \
+		--board $(BOARD) \
+		--dtb $(notdir $(DTB)) \
+		--output-dir $(DEPLOY_DIR)
+
+os: dist
+	@echo "boot artifacts are ready in $(DEPLOY_DIR)"
 
 $(TARGET): $(BIN)
 	./tools/mkimage -A $(patsubst riscv64,riscv,$(ARCH)) -O linux -T kernel -C none -a 0x80200000 -e 0x80200000 -n "ZZZ-OS" -d $(BIN) $(TARGET)
@@ -150,7 +152,7 @@ clean:
 	$(MAKE) -C ./user_runtime/ clean
 	@echo "clean complete"
 
-.PHONY: all clean
+.PHONY: all clean artifacts dist os
 
 -include $(BUILD_OBJS:.o=.d)
 
@@ -165,9 +167,6 @@ clean_kbuild:
 
 #--------------设备树编译---------------#
 dtbs: $(DTB)
-	sudo mount $(DISK_DEV)  $(MOUNT_PATH) && echo "挂载成功!" 
-	sudo cp $(DTB) $(MOUNT_PATH)/
-	sudo umount $(MOUNT_PATH)
 clean_dtbs:
 	rm -f *.dtb
 	
@@ -184,48 +183,29 @@ dtc:
 .PHONY: distclean
 distclean:
 	@echo "正在清理所有输出文件："
-	-rm -rf $(BUILD_DIR) $(KBUILD_FILE)
+	make clean
+	make uc
+	-rm -rf $(BUILD_DIR) objs.*.mk
 	-$(MAKE) -C $(DTC_PATH) clean
 	-$(MAKE) -C $(KBUILD_PATH) clean
-	-rm -f disk.img
-	-rm .config
-	-sudo losetup -D
-	-rm -rf $(MOUNT_PATH)
+	-rm -f .config .config.*
 	-rm -rf $(ASM_LINK)
 	@echo "清理完成"
 
 
 
 #********************************************************************************
+.PHONY: install
+install:
+	tools/deploy/install_disk_image.sh --image build/images/qemu_virt.img --arch riscv64 --cross-compile riscv-none-elf- --board qemu_virt
+
+.PHONY: run
+run:
+	tools/deploy/run_qemu_riscv64.sh
+
 .PHONY:dump
 dump:
 	$(OBJDUMP) -D -m $(patsubst riscv64,riscv,$(ARCH)) $(ELF) > $(BUILD_DIR)/disassembly.asm
-
-.PHONY:disk
-disk:
-	mkdir -p $(MOUNT_PATH)
-	chmod +x tools/mkdisk.sh
-	tools/mkdisk.sh $(DISK)
-
-.PHONY:umount
-umount:
-	@ sudo umount $(MOUNT_PATH)
-
-.PHONY:mount
-mount:
-	@ sudo mount $(DISK_DEV)  $(MOUNT_PATH) && echo "挂载成功!" 
-
-.PHONY:show
-show:
-	sudo mount $(DISK_DEV) $(MOUNT_PATH) && echo "挂载成功!"
-	ls -la $(MOUNT_PATH)/
-	sudo umount $(MOUNT_PATH)
-
-.PHONY: move
-move:
-	sudo mount $(DISK_DEV) $(MOUNT_PATH) && echo "挂载成功!" 
-	sudo cp $(TARGET) $(MOUNT_PATH)/
-	sudo umount $(MOUNT_PATH)
 
 .PHONY: u
 u:
@@ -245,41 +225,3 @@ uc:
 		fi; \
 	done
 	rm -rf user_proc/user/
-.PHONY: i
-i:
-	-sudo mount $(DISK_DEV) $(MOUNT_PATH) && echo "挂载成功!"
-	sudo cp $(BIN) $(MOUNT_PATH)/
-	sudo cp $(DTB) $(MOUNT_PATH)/
-	-sudo umount $(MOUNT_PATH)
-#********************************************************************************
-#qemu模拟器
-QEMU = qemu-system-riscv64
-QFLAGS = -nographic -smp 1 -machine virt -bios arch/$(ARCH)/boot/u-boot.bin -cpu rv64,sstc=on 
-QFLAGS += -drive file=$(DISK),if=none,format=raw,id=disk0
-QFLAGS += -device virtio-blk-device,drive=disk0,bus=virtio-mmio-bus.0 
-QFLAGS += -global virtio-mmio.force-legacy=false
-
-#gdb
-GDB = gdb-multiarch
-GFLAGS = -tui -q -x gdbinit
-
-.PHONY:run
-run: build 
-	@${QEMU} -M ? | grep virt >/dev/null || exit
-	@echo "\033[32m先按 Ctrl+A 再按 X 退出 QEMU"
-	@echo "------------------------------------\033[0m"
-	${QEMU} ${QFLAGS}
-
-.PHONY:debug
-debug: build
-	@${QEMU} -M ? | grep virt >/dev/null || exit
-	@echo "\033[32m先按 Ctrl+A 再按 X 退出 QEMU"
-	@echo "------------------------------------\033[0m"
-	${QEMU} ${QFLAGS} -S -s 
-# ${GDB} ${GFLAGS} ${ELF}
-
-
-
-# ext2load virtio 0:1 0x80200000 /kernel.bin
-# ext2load virtio 0:1 0x80400000 /qemu_virt.dtb
-# go 0x80200000

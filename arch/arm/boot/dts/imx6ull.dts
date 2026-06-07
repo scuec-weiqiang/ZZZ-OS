@@ -24,6 +24,10 @@
         };
     };
 
+    chosen {
+        zzz,root-device = "/dev/usdhc12";
+    };
+
     cpus {
         #address-cells = <1>;
         #size-cells = <1>;

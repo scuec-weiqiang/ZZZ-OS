@@ -18,6 +18,13 @@ __switch_to:
     sd s10, 96(a1)
     sd s11, 104(a1)
 
+    /* Match the ARM switch path: re-enable local IRQs before
+     * restoring the next task's context so sleepers can be woken
+     * by external interrupts while the new task resumes.
+     */
+    li t0, 0x2
+    csrs sstatus, t0
+
     ld ra, 0(a2)
     ld sp, 8(a2)
     ld s0, 16(a2)

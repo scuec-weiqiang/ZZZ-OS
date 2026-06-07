@@ -11,8 +11,10 @@
 #include <os/sched.h>
 #include <os/stacktrace.h>
 #include <os/syscall.h>
+#include <os/uaccess.h>
 
 extern void kernel_trap_entry(void);
+#define SSTATUS_SUM (1UL << 18)
 
 static void trap_panic(const char *reason, struct pt_regs *regs)
 {
@@ -32,7 +34,20 @@ void trap_init(void)
 
 static int handle_page_fault(struct pt_regs *regs, int prot)
 {
-    if (!pt_regs_is_user(regs) || current == NULL || current->mm == NULL) {
+    bool user_fault;
+    bool kernel_uaccess_fault;
+
+    if (regs == NULL || current == NULL || current->mm == NULL) {
+        return -1;
+    }
+
+    user_fault = pt_regs_is_user(regs);
+    kernel_uaccess_fault =
+        !user_fault &&
+        (regs->sstatus & SSTATUS_SUM) != 0 &&
+        access_ok((void *)regs->stval, 1);
+
+    if (!user_fault && !kernel_uaccess_fault) {
         return -1;
     }
 
@@ -62,7 +77,7 @@ reg_t trap_handler(reg_t ctx)
             }
             break;
         case CLINT_IRQ_EXTERN:
-            if (handle_arch_irq != NULL) {
+           if (handle_arch_irq != NULL) {
                 handle_arch_irq((reg_t *)regs);
             } else {
                 trap_panic("no external IRQ handler registered", regs);

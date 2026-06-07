@@ -122,8 +122,8 @@ smode:
     li t1, 0xffffffff40000000
     add t0, t0, t1  # 转换为虚拟地址
 
-    li a0, 0
-    li a1, 0x80400000
+    mv a0, s0
+    mv a1, s1
     jr t0
 
 /*
