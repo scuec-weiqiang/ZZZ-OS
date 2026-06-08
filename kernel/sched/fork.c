@@ -41,7 +41,8 @@ __aligned(SIZE_8K) union thread_union init_thread_union = {
 struct task_struct init_task = {
     .pid = 0,
     .flags = PF_KTHREAD,
-    .prio		= 0,					
+    .prio		= 1,
+    .base_prio		= 1,
 
     .status = TASK_RUNNING,
     .stack = &init_thread_union,

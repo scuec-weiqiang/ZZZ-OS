@@ -16,13 +16,6 @@
 
 struct rq *global_rq;
 
-// static inline unsigned long sched_read_cpsr(void)
-// {
-//     unsigned long cpsr;
-//     asm volatile("mrs %0, cpsr" : "=r"(cpsr));
-//     return cpsr;
-// }
-
 struct rq *this_rq(void) {
     CHECK(global_rq != NULL, "scheduler: runqueue is not initialized", return NULL;);
     return &global_rq[get_cpuid()];
@@ -39,12 +32,6 @@ static struct task_struct *pick_next_task(struct rq *rq) {
 
     for (class = sched_class_highest(); class != NULL; class = class->next) {
         struct task_struct *p;
-        // if (class == &rr_sched_class) {
-        //     dprintk("pick_next_task: check rr class, rq->nr_running=%d\n", rq->nr_running);
-        // } else if (class == &idle_sched_class) {
-        //     dprintk("pick_next_task: check idle class\n");
-        // }
-
         if (class->pick_next_task == NULL) {
             continue;
         }
@@ -117,7 +104,8 @@ void sched_fork(struct task_struct *p) {
 	__sched_fork(p);
 
 	p->status = TASK_SLEEPING;
-    p->prio = current->prio;
+    p->prio = current->base_prio;
+    p->base_prio = current->base_prio;
 	p->sched_class = &rr_sched_class;
 
     INIT_LIST_HEAD(&p->task_node);
@@ -186,7 +174,20 @@ void __sched sched(void) {
 }
 
 void sched_event(struct timer *t, void *arg) {
-    this_rq()->curr->need_resched = 1;
+    struct rq *rq = this_rq();
+    const struct sched_class *class;
+
+    // 1. 通知当前任务的调度类：时间片用完（只计数，不操作队列）
+    if (rq->curr->sched_class && rq->curr->sched_class->task_tick)
+        rq->curr->sched_class->task_tick(rq, rq->curr);
+
+    // 2. 遍历所有调度类，各调度类独立执行老化检查（低优先级 → 提权）
+    for (class = sched_class_highest(); class; class = class->next) {
+        if (class->aging)
+            class->aging(rq);
+    }
+
+    rq->curr->need_resched = 1;
 }
 
 void yield() {
@@ -267,7 +268,13 @@ void sched_init(void) {
         rq->sched_timer.pinned = cpuid;
         rq->sched_timer.callback = sched_event;
         spin_lock_init(&rq->lock);
-        INIT_LIST_HEAD(&rq->runnable);
+        for (int prio = PRIO_HIGHEST; prio <= PRIO_LOWEST; prio ++) {
+                INIT_LIST_HEAD(&rq->runnable[prio]);
+        }
+        rq->prio_bitmap = 0;
+        for (int prio = 0; prio < PRIO_NUMS; prio++) {
+            rq->prio_last_served[prio] = 0;
+        }
         INIT_LIST_HEAD(&rq->tasks);
         rq->nr_running = 0;
         rq->nr_tasks = 0;

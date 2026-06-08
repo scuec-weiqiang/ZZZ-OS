@@ -74,6 +74,7 @@ struct sched_entity {
         u64 vruntime; // 虚拟运行时
     };
     u64 sum_exec_runtime; // 总共运行了多久
+    int consec_ticks;     // 连续跑满时间片的次数（sleep/dequeue 清零）
 };
 
 struct sched_class {
@@ -83,6 +84,8 @@ struct sched_class {
     void (*enqueue_task)(struct rq *rq, struct task_struct *p);
     void (*dequeue_task)(struct rq *rq, struct task_struct *p);
     struct task_struct *(*pick_next_task)(struct rq *rq);
+    void (*aging)(struct rq *rq);   // 老化机制：防止低优先级饥饿，NULL = 不支持
+    void (*task_tick)(struct rq *rq, struct task_struct *curr); // 时间片到期回调，NULL = 不处理
 };
 
 extern struct sched_class rr_sched_class;
@@ -96,6 +99,12 @@ union thread_union {
 	unsigned long stack[THREAD_SIZE/sizeof(long)];
 };
 
+#define PRIO_NUMS 32
+#define PRIO_HIGHEST  0
+#define PRIO_LOWEST   (PRIO_NUMS - 1)
+
+#define AGING_THRESHOLD_NS  50000000    // 50ms，低优先级饥饿阈值
+
 struct task_struct {
     pid_t pid;            //进程ID
     // pid_t tgid;
@@ -106,7 +115,8 @@ struct task_struct {
 
     int on_rq;            // 是否在 runnable 队列中
     int exit_code;
-    int prio;
+    int prio;             // 有效优先级，aging 可临时提升
+    int base_prio;        // 静态优先级，永不改变
 
     spinlock_t lock;
 
@@ -154,8 +164,12 @@ static inline unsigned long *end_of_stack(struct task_struct *p) {
 
 struct rq {
     spinlock_t lock;
-    struct list_head runnable; // 可运行任务（不含curr）
-    struct list_head tasks; // 所有任务，包括可运行，等待，睡眠，僵尸等
+
+    struct list_head runnable[PRIO_NUMS]; // 可运行任务（不含curr）
+    u32 prio_bitmap; // 位图，标记哪些优先级有可运行任务
+    u64 prio_last_served[PRIO_NUMS];
+    
+    struct list_head tasks; // 当前cpu上的所有任务，包括可运行，等待，睡眠，僵尸等
 
     struct task_struct *curr; // 当前正在运行的任务
     struct task_struct *idle;

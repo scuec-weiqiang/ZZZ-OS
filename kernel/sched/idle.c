@@ -47,5 +47,6 @@ struct sched_class idle_sched_class = {
     .enqueue_task = idle_enqueue_task,
     .dequeue_task = idle_dequeue_task,
     .pick_next_task = idle_pick_next_task,
-    // .task_yield = idle_task_yield,
+    .aging = NULL,
+    .task_tick = NULL,
 };
