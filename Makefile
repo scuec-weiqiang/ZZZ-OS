@@ -1,7 +1,11 @@
 #--------------架构---------------#
-ARCH ?= riscv64
-CROSS_COMPILE ?= riscv-none-elf-
-BOARD ?= qemu_virt
+# ARCH ?= riscv64
+# CROSS_COMPILE ?= riscv-none-elf-
+# BOARD ?= qemu_virt
+
+ARCH ?= arm
+CROSS_COMPILE ?= arm-none-eabi-
+BOARD ?= imx6ull
 
 ARCH_CONFIG_MK := arch/$(ARCH)/config/config.mk
 ifeq ($(wildcard $(ARCH_CONFIG_MK)),)

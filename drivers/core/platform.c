@@ -23,17 +23,7 @@ static int platform_match(struct device *dev, const struct device_driver *drv) {
 	return of_match_node(drv->of_match_table, dev->of_node) != NULL;
 }
 
-struct bus_type platform_bus_type = {
-    .name = "platform",
-    .match = platform_match,
-    .devices = LIST_HEAD_INIT(platform_bus_type.devices),
-    .drivers = LIST_HEAD_INIT(platform_bus_type.drivers),
-};
 
-int platform_bus_init() {
-    device_register(&platform_bus);
-    return bus_register(&platform_bus_type);
-}
 
 static int alloc_id(struct platform_device *pdev) {
     static int id = 0;
@@ -98,13 +88,6 @@ int platform_driver_register(struct platform_driver *pdrv) {
         return -1;
     }
     pdrv->driver.bus = &platform_bus_type;
-    if (pdrv->probe) {
-        pdrv->driver.probe = platform_drv_probe;
-    }
-    if (pdrv->remove) {
-        pdrv->driver.remove = platform_drv_remove;
-    }
-
     driver_register(&pdrv->driver);
     return 0;
 }
@@ -133,3 +116,20 @@ virt_addr_t platform_ioremap_resource(struct platform_device *pdev, unsigned int
 int platform_get_irq(struct platform_device *dev, unsigned int index) {
     return of_irq_get(dev->dev.of_node, index);
 }
+
+
+struct bus_type platform_bus_type = {
+    .name = "platform",
+    .match = platform_match,
+    .probe = platform_drv_probe,
+    .remove = platform_drv_remove,
+    .devices = LIST_HEAD_INIT(platform_bus_type.devices),
+    .drivers = LIST_HEAD_INIT(platform_bus_type.drivers),
+};
+
+int platform_bus_init() {
+    device_register(&platform_bus);
+    return bus_register(&platform_bus_type);
+}
+
+core_initcall(platform_bus_init);

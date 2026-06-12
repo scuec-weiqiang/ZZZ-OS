@@ -24,7 +24,6 @@ int driver_register(struct device_driver *drv) {
     return 0;
 }
 
-
 void driver_unregister(struct device_driver *drv) {
     if (!drv || !drv->bus) {
         return;

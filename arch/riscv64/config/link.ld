@@ -44,6 +44,13 @@ SECTIONS
         __coreinitcall_end = .;
     }
 
+    .subsysinitcall : {
+        . = ALIGN(4096);
+        __subsysinitcall_start = .;
+        KEEP(*(.subsysinitcall))
+        __subsysinitcall_end = .;
+    }
+
     .fsinitcall : {
         . = ALIGN(4096);
         __fsinitcall_start = .;
@@ -150,6 +157,9 @@ SECTIONS
 
     PROVIDE_HIDDEN(_coreinitcall_start = __coreinitcall_start);
     PROVIDE_HIDDEN(_coreinitcall_end = __coreinitcall_end);
+
+    PROVIDE_HIDDEN(_subsysinitcall_start = __subsysinitcall_start);
+    PROVIDE_HIDDEN(_subsysinitcall_end = __subsysinitcall_end);
 
     PROVIDE_HIDDEN(_fsinitcall_start = __fsinitcall_start);
     PROVIDE_HIDDEN(_fsinitcall_end = __fsinitcall_end);

@@ -54,10 +54,10 @@ static const char *kernel_root_device(void)
 }
 
 int kernel_init(void *arg) {
-    of_platform_populate(NULL,of_default_bus_match_table,NULL);
-
     arch_initcalls_run();
     core_initcalls_run();
+    of_platform_populate(NULL,of_default_bus_match_table,NULL);
+    subsys_initcalls_run();
     fs_initcalls_run();
     device_initcalls_run();
     

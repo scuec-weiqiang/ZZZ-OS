@@ -20,7 +20,9 @@ int device_attach(struct device *dev) {
     list_for_each_entry(drv, &dev->bus->drivers, struct device_driver, node) {
         if (dev->bus->match(dev, drv)) {
             dev->driver = drv;
-            if (drv->probe) {
+            if (drv->bus->probe) {
+                return drv->bus->probe(dev);
+            } else if (drv->probe) {
                 return drv->probe(dev);
             }
         }
@@ -40,9 +42,12 @@ int driver_attach(struct device_driver *drv) {
     list_for_each_entry(dev, &bus->devices, struct device, node) {
         if (bus->match(dev, drv)) {
             dev->driver = drv;
-            if (drv->probe) {
-                // printk("Attaching driver %s to device %s\n", drv->name, dev->name);
-                return drv->probe(dev);
+            if (drv->bus->probe) {
+                int ret = drv->bus->probe(dev);
+                if (ret) {
+                    dev->driver = NULL;
+                    continue;
+                }
             }
             return 0;
         }

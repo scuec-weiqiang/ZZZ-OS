@@ -19,10 +19,23 @@ struct bus_type;
 struct device;
 struct device_node;
 
+struct device_type {
+	const char name[32];
+	// const struct attribute_group **groups;
+	// int (*uevent)(struct device *dev, struct kobj_uevent_env *env);
+	// char *(*devnode)(struct device *dev, umode_t *mode,
+	// 		 kuid_t *uid, kgid_t *gid);
+	// void (*release)(struct device *dev);
+
+	// const struct dev_pm_ops *pm;
+};
+
 struct bus_type {
     const char *name;
     struct device *dev_root; // 根设备
     int (*match)(struct device *dev, const struct device_driver *drv); // 匹配函数
+    int (*probe)(struct device *dev);
+	int (*remove)(struct device *dev);
     struct list_head drivers; // 该总线上的驱动列表
     struct list_head devices; // 该总线上的设备列表
 
@@ -41,6 +54,7 @@ struct device_driver {
 struct device {
     const char *name;
     // int state;              
+    struct device_type *type;        // 设备类型
     struct bus_type *bus;            // 关联的总线
     struct device_node *of_node;   // 对应 device tree 节点
     struct device *parent;          // optional

@@ -9,11 +9,13 @@
 */
 #ifndef __KERNEL_PLATFORM_DEVICE_H
 #define __KERNEL_PLATFORM_DEVICE_H
+
 #include <os/types.h>
 #include <os/device.h>
 #include <os/container_of.h>
 #include <os/init.h>
 #include <os/resource.h>
+
 struct platform_device_id {
     char name[32];
     unsigned long driver_data;
@@ -62,7 +64,6 @@ extern struct resource *platform_get_resource(struct platform_device *pdev, unsi
 extern  virt_addr_t platform_ioremap_resource(struct platform_device *pdev, unsigned int index);
 extern int platform_get_irq(struct platform_device *dev, unsigned int index);
 
-
 static inline void platform_set_drvdata(struct platform_device *pdev, void *data) {
     pdev->platform_data = data;
 }
@@ -70,4 +71,5 @@ static inline void platform_set_drvdata(struct platform_device *pdev, void *data
 static inline void *platform_get_drvdata(struct platform_device *pdev) {
     return pdev->platform_data;
 }
+
 #endif

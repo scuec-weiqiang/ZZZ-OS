@@ -12,6 +12,11 @@ void core_initcalls_run(void)
     do_initcalls(coreinitcall_start, coreinitcall_end);
 }
 
+void subsys_initcalls_run(void)
+{
+    do_initcalls(subsysinitcall_start, subsysinitcall_end);
+}
+
 void fs_initcalls_run(void)
 {
     do_initcalls(fsinitcall_start, fsinitcall_end);

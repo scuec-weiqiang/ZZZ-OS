@@ -17,6 +17,8 @@
 typedef int(*initcall_t)(void);
 typedef void(*exitcall_t)(void);
 
+#define __init
+
 #define module_init(fn,section) \
     static int fn##_initcall(void) { return fn(); } \
     __section(section) __used\
@@ -24,6 +26,7 @@ typedef void(*exitcall_t)(void);
 
 #define arch_initcall(fn) module_init(fn, ".archinitcall")
 #define core_initcall(fn) module_init(fn, ".coreinitcall")
+#define subsys_initcall(fn) module_init(fn, ".subsysinitcall")
 #define fs_initcall(fn) module_init(fn, ".fsinitcall")
 #define device_initcall(fn) module_init(fn, ".deviceinitcall")
 #define driver_initcall(fn) device_initcall(fn)
@@ -48,6 +51,7 @@ typedef void(*exitcall_t)(void);
 
 void arch_initcalls_run(void);
 void core_initcalls_run(void);
+void subsys_initcalls_run(void);
 void fs_initcalls_run(void);
 void device_initcalls_run(void);
 void late_initcalls_run(void);

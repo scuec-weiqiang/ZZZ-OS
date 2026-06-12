@@ -19,6 +19,7 @@ extern char _bss_start[], _bss_end[];
 extern char _initcall_start[],_initcall_end[];
 extern char _archinitcall_start[],_archinitcall_end[];
 extern char _coreinitcall_start[],_coreinitcall_end[];
+extern char _subsysinitcall_start[],_subsysinitcall_end[];
 extern char _fsinitcall_start[],_fsinitcall_end[];
 extern char _deviceinitcall_start[],_deviceinitcall_end[];
 extern char _lateinitcall_start[],_lateinitcall_end[];
@@ -65,6 +66,10 @@ phys_addr_t coreinitcall_start;
 phys_addr_t coreinitcall_end;
 size_t coreinitcall_size;
 
+phys_addr_t subsysinitcall_start;
+phys_addr_t subsysinitcall_end;
+size_t subsysinitcall_size;
+
 phys_addr_t fsinitcall_start;
 phys_addr_t fsinitcall_end;
 size_t fsinitcall_size;
@@ -110,6 +115,7 @@ void print_section() {
     printk("initcall:    start= %xu, end=  %xu, size=  %xu\n", initcall_start, initcall_end, initcall_size);
     printk("archinit:    start= %xu, end=  %xu, size=  %xu\n", archinitcall_start, archinitcall_end, archinitcall_size);
     printk("coreinit:    start= %xu, end=  %xu, size=  %xu\n", coreinitcall_start, coreinitcall_end, coreinitcall_size);
+    printk("subsysinit:  start= %xu, end=  %xu, size=  %xu\n", subsysinitcall_start, subsysinitcall_end, subsysinitcall_size);
     printk("fsinitcall:  start= %xu, end=  %xu, size=  %xu\n", fsinitcall_start, fsinitcall_end, fsinitcall_size);
     printk("deviceinit:  start= %xu, end=  %xu, size=  %xu\n", deviceinitcall_start, deviceinitcall_end, deviceinitcall_size);
     printk("lateinit:    start= %xu, end=  %xu, size=  %xu\n", lateinitcall_start, lateinitcall_end, lateinitcall_size);
@@ -168,6 +174,10 @@ void symbols_init()
     coreinitcall_start = (phys_addr_t)&_coreinitcall_start;
     coreinitcall_end = (phys_addr_t)&_coreinitcall_end;
     coreinitcall_size = (coreinitcall_end - coreinitcall_start);
+
+    subsysinitcall_start = (phys_addr_t)&_subsysinitcall_start;
+    subsysinitcall_end = (phys_addr_t)&_subsysinitcall_end;
+    subsysinitcall_size = (subsysinitcall_end - subsysinitcall_start);
 
     fsinitcall_start = (phys_addr_t)&_fsinitcall_start;
     fsinitcall_end = (phys_addr_t)&_fsinitcall_end;

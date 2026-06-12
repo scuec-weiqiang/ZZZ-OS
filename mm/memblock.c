@@ -301,7 +301,11 @@ void *memblock_alloc(size_t size, int align) {
                 // printk("\nmemblock_alloc: allocated at %xu\n", aligned);
                 // extern void memblock_dump();
                 // memblock_dump();
-                return (void*)KERNEL_VA(aligned);
+                if (aligned == 0)   {
+                    return NULL;
+                } else {
+                    return (void*)KERNEL_VA(aligned);
+                }
             }
             gap_start = r_end;
         }

@@ -5,7 +5,8 @@
 LIST_HEAD(global_bus_list);
 
 int bus_register(struct bus_type *bt) {
-    if (!bt || !bt->name || bt->match ) {
+    if (!bt || !bt->name || !bt->match ) {
+        // here;
         return -1;
     }
     INIT_LIST_HEAD(&bt->node);
@@ -14,6 +15,7 @@ int bus_register(struct bus_type *bt) {
     INIT_LIST_HEAD(&bt->devices);
     INIT_LIST_HEAD(&bt->drivers);
 
+    printk("Registered bus: %s\n", bt->name);
     return 0;
 }
 

@@ -69,6 +69,15 @@ struct platform_device *platform_device_create(struct device_node *np, struct de
     return pdev;
 }
 
+// void platform_device_destroy(struct platform_device *pdev) {
+//     if (!pdev) {
+//         return;
+//     }
+//     platform_device_unregister(pdev);
+//     kfree(pdev->resources);
+//     kfree((void*)pdev->name);
+//     kfree(pdev);
+// }
 
 int of_platform_bus_create(struct device_node *bus, const struct of_device_id *matches, struct device *parent) {
     struct device_node *child;
@@ -101,8 +110,7 @@ void of_platform_populate(struct device_node *root, const struct of_device_id *m
     if (!root) {
         root = (struct device_node *)fdt_root_node;
     }
-    bus_register(&platform_bus_type);
-    
+ 
     struct device_node *child;
     int rc = 0;
 

@@ -1,10 +1,18 @@
 #ifndef __OS_I2C_H
 #define __OS_I2C_H
+
 #include <os/types.h>
 #include <os/device.h>
+#include <os/container_of.h>
+
 struct i2c_msg;
 struct i2c_algorithm;
 struct i2c_adapter;
+
+struct i2c_device_id {
+	char name[32];
+	unsigned long driver_data;	/* Data private to the driver */
+};
 
 #define I2C_M_RD 0x0001
 
@@ -38,9 +46,24 @@ struct i2c_client {
 
 struct i2c_driver {
     struct device_driver driver;                 // 内嵌 driver core
-    int (*probe)(struct i2c_client *client);     // 匹配成功后调用
+    int (*probe)(struct i2c_client *client,const struct i2c_device_id *id);     // 匹配成功后调用
     int (*remove)(struct i2c_client *client);
     const struct i2c_device_id *id_table;        // 传统 ID 匹配表
 };
 
+#define to_i2c_adapter(d) container_of(d, struct i2c_adapter, dev)
+#define to_i2c_client(d) container_of(d, struct i2c_client, dev)
+#define to_i2c_driver(d) container_of(d, struct i2c_driver, driver)
+
+extern int i2c_add_adapter(struct i2c_adapter *adap);
+extern int i2c_del_adapter(struct i2c_adapter *adap);
+extern struct i2c_adapter* i2c_get_adapter(int nr);
+extern int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num);
+extern int i2c_init(void);
+
+extern int i2c_driver_register(struct i2c_driver *driver);
+extern int i2c_driver_unregister(struct i2c_driver *driver);
+
+#define module_i2c_driver(__i2c_driver) \
+    module_driver(__i2c_driver, i2c_driver_register, i2c_driver_unregister)
 #endif

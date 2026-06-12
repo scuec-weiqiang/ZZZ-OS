@@ -1,9 +1,4 @@
 build/
-.cache/
+.*
 compile_commands.json
-.config
-.clanged
-.clang-format
-.codex
-.claude/*
 CLAUDE.md

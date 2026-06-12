@@ -52,22 +52,15 @@
         };
 
         i2c0: i2c@10003000 {
-            compatible = "vendor,i2c-controller";
+            compatible = "test,i2c0";
             reg = <0x10003000 0x1000>;
-            interrupts = <24>;
             #address-cells = <1>;      // 子节点地址用 1 个 cell（7-bit 地址）
             #size-cells = <0>;          // 子节点不用 reg 表示长度
             clock-frequency = <100000>; // 100kHz
 
-            // I2C 从设备作为子节点
-            eeprom@50 {
-                compatible = "atmel,24c02";
-                reg = <0x50>;           // I2C 地址
-            };
-
-            rtc@51 {
-                compatible = "nxp,pcf8563";
-                reg = <0x51>;
+            test-i2c-dev@50 {
+                compatible = "test,i2c-client";
+                reg = <0x50>;
             };
         };
        
