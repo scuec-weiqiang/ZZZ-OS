@@ -37,8 +37,8 @@
 #include <asm/process.h>
 #include <asm/ptrace.h>
 
-static const char *kernel_root_device(void)
-{
+// 从设备树的 /chosen 节点获取根设备路径，如果没有找到则使用默认值
+static const char *kernel_root_device(void) {
     struct device_node *chosen;
     const char *rootdev;
 
@@ -75,28 +75,77 @@ int kernel_init(void *arg) {
 }
 
 u8 is_init = 0;
+unsigned long cpu_online_map = 0;
 
-void start_kernel(int cpuid,void *dtb) {
+int smp_get_cpu_count(void) {
+    struct device_node *cpus_node = of_find_node_by_path("/cpus");
+    if (cpus_node == NULL)
+        return 1;
+    return of_get_child_node_count(cpus_node);
+}
+
+/* 辅助核入口：等待CPU0释放后进入idle循环 */
+void secondary_entry(int cpuid, void *dtb) {
+    (void)dtb;
+    int cpu = get_cpuid();
+    arch_secondary_init();
+
+    set_cpu_online(cpu);
+    this_rq()->curr = this_rq()->idle;
+
+    printk("CPU %d online\n", cpu);
+
+    local_irq_enable();
+
+    while (1) {
+        // cpu_idle();
+        // if (current && current->need_resched) {
+        //     sched();
+        // }
+    }
+}
+
+void welcome(){
+    printk("\n\n");
+    printk("\t============================================\n");
+    printk("\t             Welcome to ZZZ-OS!\n");
+    printk("\t============================================\n");
+}
+
+void start_kernel(int cpuid, void *dtb) {
     local_irq_disable();
-    // if (cpuid == 0) {
+    if (cpuid == 0) {
         symbols_init();
-		early_malloc_init();
-		fdt_init(dtb);
+        welcome();
+
+        early_malloc_init();
+
+        fdt_init(dtb);
+        set_cpu_online(0);
+        
         memblock_init();
         initial_mm_init();
         kmalloc_init();
+    
         irq_init();
         time_init();
+        
         sched_init();
+       
+        printk("cpu %d starting\n", cpuid);
+        
+        arch_smp_init();
+
         kernel_thread(kernel_init, "kernel_init");
-        pid_t pid= kernel_thread(kthreadd, "kthreadd");
-        kthreadd_task = find_task_by_pid(pid); 
+        pid_t pid = kernel_thread(kthreadd, "kthreadd");
+        kthreadd_task = find_task_by_pid(pid);
 
         while(1) {
             sched();
             cpu_idle();
         }
-        // is_init = 1;
-    // }
-
+        is_init = 1;
+    } else {
+        secondary_entry(cpuid, dtb);
+    }
 }

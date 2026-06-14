@@ -13,8 +13,6 @@
 
 #include <os/types.h>
 #include <asm/riscv.h>
-#include <asm/platform.h>
-// #include <asm/riscv_plic.h>
 
 #define CLINT_IRQ_SOFT 1
 #define CLINT_IRQ_TIMER 5 

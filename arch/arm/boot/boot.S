@@ -167,7 +167,9 @@ _arm_mode:
     @ 回到 SVC 
     cps #0x13
 
-    ldr r0, =0
+    @ 读取 MPIDR 获取当前 CPU ID
+    mrc p15, 0, r0, c0, c0, 5   @ r0 = MPIDR
+    and r0, r0, #0xFF            @ r0 = cpuid
     mov r1, r8
     cmp r1, #0
     ldreq r1, =0x80000000

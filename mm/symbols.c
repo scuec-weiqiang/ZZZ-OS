@@ -139,6 +139,7 @@ void zero_bss()
 void symbols_init()
 {
     zero_bss();
+
     text_start = (phys_addr_t)&_text_start;
     text_end = (phys_addr_t)&_text_end;
     text_size = (text_end - text_start);
@@ -215,7 +216,7 @@ void symbols_init()
     early_pgtbl_start = (phys_addr_t)&_early_pgtbl_start;
     early_pgtbl_end = (phys_addr_t)&_early_pgtbl_end;
     early_pgtbl_size = early_pgtbl_end - early_pgtbl_start;
-    print_section();
+    // print_section();
 }
 
 /**

@@ -146,6 +146,7 @@ struct task_struct {
 };
 extern struct task_struct* find_task_by_pid(pid_t pid);
 extern struct task_struct *kthreadd_task;
+extern struct task_struct init_task;
 
 static inline void setup_thread_stack(struct task_struct *p, struct task_struct *org) {
 	*task_thread_info(p) = *task_thread_info(org);

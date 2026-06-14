@@ -1,7 +1,7 @@
 #include <asm/clint.h>
 #include <asm/interrupt.h>
-#include <asm/platform.h>
 #include <asm/riscv.h>
+#include <asm/cpu.h>
 #include <os/irq.h>
 #include <os/irqreturn.h>
 #include <os/timekeeping.h>
@@ -10,11 +10,13 @@
 struct riscv64_timer_data {
     bool active;
     int virq;
+    int clock_freq;
 };
 
 static struct riscv64_timer_data riscv64_timer = {
     .active = false,
     .virq = -1,
+    .clock_freq = -1,
 };
 
 static u64 riscv64_timer_read_counter(void)
@@ -46,7 +48,7 @@ static void riscv64_timer_set_next_event(u64 delta_ns)
         delta_ns = 1;
     }
 
-    cycles = ns_to_cycles(delta_ns, SYS_CLOCK_FREQ);
+    cycles = ns_to_cycles(delta_ns, riscv64_timer.clock_freq);
     if (cycles == 0) {
         cycles = 1;
     }
@@ -74,6 +76,11 @@ static int riscv64_timer_of_init(struct device_node *np, struct device_node *par
     (void)np;
     (void)parent;
 
+    riscv64_timer.clock_freq = of_get_u32(np, "clock-frequency", -1);
+    if (riscv64_timer.clock_freq <= 0) {
+        return -1;
+    }
+
     virq = riscv64_local_irq_map(CLINT_IRQ_TIMER);
     if (virq < 0) {
         return -1;
@@ -87,7 +94,7 @@ static int riscv64_timer_of_init(struct device_node *np, struct device_node *par
 
     if (clocksource_register("riscv64_time_clocksource",
                              riscv64_timer_read_counter,
-                             SYS_CLOCK_FREQ,
+                             riscv64_timer.clock_freq,
                              &riscv64_timer) < 0) {
         return -1;
     }

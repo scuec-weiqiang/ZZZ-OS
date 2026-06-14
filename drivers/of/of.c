@@ -85,7 +85,7 @@ __of_find_node_by_compatible_recursive(struct device_node *node, const char *com
     if (!node || !compatible)
         return NULL;
 
-    // 1. 检查当前节点是否匹配
+    // 检查当前节点是否匹配
     struct device_prop *prop = node->properties;
     while (prop) {
         if (strcmp(prop->name, "compatible") == 0) {
@@ -96,7 +96,7 @@ __of_find_node_by_compatible_recursive(struct device_node *node, const char *com
         prop = prop->next;
     }
 
-    // 2. 递归遍历所有子节点
+    // 递归遍历所有子节点
     struct device_node *child = node->children;
     while (child) {
         struct device_node *found = __of_find_node_by_compatible_recursive(child, compatible);
@@ -106,7 +106,6 @@ __of_find_node_by_compatible_recursive(struct device_node *node, const char *com
         child = child->sibling;
     }
 
-    // 3. 当前节点和所有子节点都不匹配
     return NULL;
 }
 
@@ -174,6 +173,14 @@ u32 *of_get_reg(const struct device_node *node) {
         return (u32 *)prop->value;
     }
     return 0;
+}
+
+u32 of_get_u32(const struct device_node *node, const char *prop_name, u32 default_val) {
+    struct device_prop *prop = of_get_property_by_name(node, prop_name);
+    if (prop && prop->length >= sizeof(u32)) {
+        return be32_to_cpu(*(u32 *)prop->value);
+    }
+    return default_val;
 }
 
 u32 *of_read_u32_array(const struct device_node *node, const char *prop_name, int count) {

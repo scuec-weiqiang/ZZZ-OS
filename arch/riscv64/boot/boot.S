@@ -41,14 +41,19 @@ _start:
     la t0, smode
     csrw mepc, t0 
 
-    # /* 调试：打印 mepc 的实际值 */
+    # 调试：打印 mepc 的实际值
     # csrr a0, mepc
     # call print_hex64
     # li t0, 0x10000000
 
     mret
 smode:
-    mv tp, s0
+    mv tp, s0               # tp = cpu ID
+
+    #  非 0 号 cpu 自旋等待 CPU0 释放
+    bnez s0, secondary_spin
+
+    # CPU 0 继续正常初始化 
     csrw sie, zero  # 禁用所有中断
     csrw satp, zero
     sfence.vma x0, x0
@@ -125,6 +130,33 @@ smode:
     mv a0, s0
     mv a1, s1
     jr t0
+
+/*
+ * 辅助核自旋区
+ * 每个 non-0 cpu 在这里等待 CPU0 释放
+ * secondary_data[cpuid] 结构 (C 中定义):
+ *   offset 0: go (8B)
+ *   offset 8: stack (8B)
+ *   offset 16: entry (8B)
+ *   每 CPU 24 字节
+ */
+secondary_spin:
+    mv t0, tp               # t0 = cpu ID
+    la t1, secondary_data   # t1 = secondary_data 基址
+    li t2, 24
+    mul t2, t0, t2          # t2 = cpuid * 24
+    add t1, t1, t2          # t1 = &secondary_data[cpuid]
+
+spin_loop:
+    ld t2, 0(t1)            # 读取 go 标志
+    beqz t2, spin_loop      # go == 0 → 等待
+    fence iorw, iorw        # 内存屏障
+
+    ld sp, 8(t1)            # sp = secondary_data[cpuid].stack
+    ld t2, 16(t1)           # t2 = secondary_data[cpuid].entry
+    mv a0, tp               # a0 = cpuid (cpu ID)
+    mv a1, s1               # a1 = dtb (from _start)
+    jr t2                   # 跳转到 secondary_entry
 
 /*
  * print_hex64(a0 = value)

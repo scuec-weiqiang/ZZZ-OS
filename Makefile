@@ -1,11 +1,11 @@
 #--------------架构---------------#
-# ARCH ?= riscv64
-# CROSS_COMPILE ?= riscv-none-elf-
-# BOARD ?= qemu_virt
+ARCH ?= riscv64
+CROSS_COMPILE ?= riscv-none-elf-
+BOARD ?= qemu_virt
 
-ARCH ?= arm
-CROSS_COMPILE ?= arm-none-eabi-
-BOARD ?= imx6ull
+# ARCH ?= arm
+# CROSS_COMPILE ?= arm-none-eabi-
+# BOARD ?= imx6ull
 
 ARCH_CONFIG_MK := arch/$(ARCH)/config/config.mk
 ifeq ($(wildcard $(ARCH_CONFIG_MK)),)
@@ -199,6 +199,10 @@ distclean:
 
 
 #********************************************************************************
+.PHONY: img
+img:
+	tools/deploy/create_disk_image.sh --image build/images/qemu_virt.img
+	
 .PHONY: install
 install:
 	tools/deploy/install_disk_image.sh --image build/images/qemu_virt.img --arch riscv64 --cross-compile riscv-none-elf- --board qemu_virt

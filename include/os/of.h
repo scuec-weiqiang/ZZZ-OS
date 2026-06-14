@@ -50,6 +50,7 @@ extern int of_get_child_node_count(const struct device_node *node);
 extern int of_get_address_cells(const struct device_node *node);
 extern int of_get_size_cells(const struct device_node *node);
 extern u32* of_get_reg(const struct device_node *node);
+extern u32 of_get_u32(const struct device_node *node, const char *prop_name, u32 default_val);
 extern u32 *of_read_u32_array(const struct device_node *node, const char *prop_name, int count);
 extern u64 *of_read_u64_array(const struct device_node *node, const char *prop_name, int count);
 extern struct device_node* of_get_interrupt_parent(const struct device_node *node);

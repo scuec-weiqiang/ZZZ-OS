@@ -4,6 +4,7 @@
 #include <os/kmalloc.h>
 #include <os/mm.h>
 #include <os/of_cpu.h>
+#include <os/cpu.h>
 #include <os/printk.h>
 #include <os/sched.h>
 #include <os/string.h>
@@ -247,25 +248,79 @@ void wake_up_all(struct wait_queue_head *wq_head) {
     }
 }
 // sk-c5765c5aa4e14cb19aefca18c7067d05
+
+/*
+ * 为非 0 号 CPU 创建 idle task
+ */
+static struct task_struct *create_idle_task(int cpu) {
+    struct task_struct *idle;
+    struct thread_info *ti;
+    void *stack;
+
+    /* 分配 task_struct */
+    idle = (struct task_struct *)kmalloc(sizeof(struct task_struct));
+    if (!idle) {
+        printk("sched: failed to alloc idle task for CPU %d\n", cpu);
+        return NULL;
+    }
+
+    /* 分配内核栈 */
+    stack = kmalloc(THREAD_SIZE);
+    if (!stack) {
+        printk("sched: failed to alloc idle stack for CPU %d\n", cpu);
+        kfree(idle);
+        return NULL;
+    }
+
+    /* 从 init_task 复制基础字段 */
+    memcpy(idle, &init_task, sizeof(struct task_struct));
+
+    /* thread_info 位于栈底 */
+    ti = (struct thread_info *)stack;
+    memset(ti, 0, sizeof(struct thread_info));
+    ti->task = idle;
+    ti->cpu  = cpu;
+
+    idle->stack = stack;
+    idle->pid   = 0;       /* idle task pid = 0 */
+    idle->sched_class = &idle_sched_class;
+
+    // 初始化链表节点 
+    INIT_LIST_HEAD(&idle->se.sched_node);
+    INIT_LIST_HEAD(&idle->task_node);
+    INIT_LIST_HEAD(&idle->children);
+    INIT_LIST_HEAD(&idle->sibling);
+    INIT_LIST_HEAD(&idle->wait.list);
+    INIT_LIST_HEAD(&idle->wait_child.head);
+    idle->wait.private = idle;
+
+    spin_lock_init(&idle->lock);
+
+    extern struct secondary_data secondary_data[MAX_CPUS];
+    // 回填辅助核 release 数据的栈指针 (结构定义在 os/cpu.h) 
+    secondary_data[cpu].stack = (void *)((unsigned long)stack + THREAD_SIZE);
+
+    return idle;
+}
+
 void sched_init(void) {
     int cpu_num = of_get_cpu_num();
     CHECK(cpu_num > 0, "scheduler: invalid cpu count", return;);
-    
+
     global_rq = (struct rq *)kmalloc((size_t)cpu_num * sizeof(*global_rq));
     CHECK(global_rq != NULL, "scheduler: alloc runqueue failed", return;);
 
     global_rq[0].idle = setup_init_task();
     global_rq[0].curr = global_rq[0].idle;
 
-    int cpuid = get_cpuid();
     for (int cpu = 0; cpu < cpu_num; cpu++) {
         struct rq *rq = &global_rq[cpu];
-        rq->sched_timer.cpu = cpuid;
+        rq->sched_timer.cpu = cpu;
         rq->sched_timer.active = false;
         rq->sched_timer.expires_ns = UINT64_MAX - 1;
-        rq->sched_timer.period_ns = 0; // one shot
+        rq->sched_timer.period_ns = 0; 
         rq->sched_timer.arg = NULL;
-        rq->sched_timer.pinned = cpuid;
+        rq->sched_timer.pinned = cpu;
         rq->sched_timer.callback = sched_event;
         spin_lock_init(&rq->lock);
         for (int prio = PRIO_HIGHEST; prio <= PRIO_LOWEST; prio ++) {
@@ -278,6 +333,15 @@ void sched_init(void) {
         INIT_LIST_HEAD(&rq->tasks);
         rq->nr_running = 0;
         rq->nr_tasks = 0;
+    }
+
+    // 为其他 CPU 创建 idle task
+    for (int cpu = 1; cpu < cpu_num; cpu++) {
+        struct task_struct *idle = create_idle_task(cpu);
+        if (idle) {
+            global_rq[cpu].idle = idle;
+            printk("sched: idle task for CPU %d created (stack=%p)\n", cpu, idle->stack);
+        }
     }
 
     sched();

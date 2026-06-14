@@ -36,6 +36,7 @@
 
     arch_timer {
         compatible = "wq,time";
+        clock-frequency = <10000000>;
     };
 
     soc {

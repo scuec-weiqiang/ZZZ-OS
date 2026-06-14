@@ -74,7 +74,7 @@ static int parse_reserved_memory_reg(struct device_node *node) {
 
     reg = of_get_reg(node);
     if (!reg) return -1;
-        printk("reg prop length: %xu bytes,\n", reg_prop->length);
+        // printk("reg prop length: %xu bytes,\n", reg_prop->length);
 
     len = reg_prop->length / sizeof(u32);
 
