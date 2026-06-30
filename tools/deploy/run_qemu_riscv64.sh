@@ -66,12 +66,14 @@ echo "  bootm \${kernel_addr_r} - \${fdt_addr_r}"
 
 exec qemu-system-riscv64 \
     -nographic \
-    -smp 1 \
+    -smp 2 \
     -m 256M \
     -machine virt \
-    -bios "${REPO_ROOT}/tools/bootloaders/qemu-riscv64/u-boot.bin" \
+    -bios default \
+    -kernel "${REPO_ROOT}/tools/bootloaders/qemu-riscv64/u-boot.bin" \
     -cpu rv64,sstc=on \
     -drive "file=${IMAGE},if=none,format=raw,id=disk0" \
     -device virtio-blk-device,drive=disk0,bus=virtio-mmio-bus.0 \
     -global virtio-mmio.force-legacy=false \
+    -S -s \
     "${EXTRA_ARGS[@]}"

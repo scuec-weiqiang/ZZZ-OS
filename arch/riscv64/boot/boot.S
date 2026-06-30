@@ -3,55 +3,8 @@
 _start:
     mv s0, a0
     mv s1, a1
-    csrw mie, zero  # 禁用所有中断
-    csrw satp, zero
 
-    // 将所有异常委托给S模式处理
-    li t0, 0xffff
-    csrw medeleg, t0
-    li t0, 0xffff
-    csrw mideleg, t0
-
-    // 开启sstc拓展
-    csrr t0, mie
-    li t1, 1 << 5
-    or t0, t0, t1
-    csrr t0,menvcfg
-    li t1, 1 << 63
-    or t0, t0, t1
-    csrw menvcfg, t0
-    // 允许s模式使用stimecmp
-    csrr t0, mcounteren
-    li t1, 2
-    or t0, t0, t1
-    csrw mcounteren, t0
-
-    // 整个用户空间设置保护
-    li t0, 0x3fffffffffffff
-    csrw pmpaddr0, t0
-    li t0, 0xf
-    csrw pmpcfg0, t0
-
-    csrr t0, mstatus
-    li t1, ~(3 << 11)      # 清零MPP位的掩码
-    and t0, t0, t1         # 先清零
-    li t1, 1 << 11
-    or t0, t0, t1 
-    csrw mstatus, t0
-    la t0, smode
-    csrw mepc, t0 
-
-    # 调试：打印 mepc 的实际值
-    # csrr a0, mepc
-    # call print_hex64
-    # li t0, 0x10000000
-
-    mret
-smode:
     mv tp, s0               # tp = cpu ID
-
-    #  非 0 号 cpu 自旋等待 CPU0 释放
-    bnez s0, secondary_spin
 
     # CPU 0 继续正常初始化 
     csrw sie, zero  # 禁用所有中断
@@ -121,7 +74,7 @@ smode:
     li t1, 0x2000
     add t0, t0, t1
     mv sp, t0  # 设置早期栈指针
-    csrw sscratch, sp
+    csrw sscratch, zero
 
     la t0, start_kernel
     li t1, 0xffffffff40000000
@@ -130,6 +83,52 @@ smode:
     mv a0, s0
     mv a1, s1
     jr t0
+
+.globl secondary_start
+secondary_start:
+    mv s0, a0               # s0 = hart ID
+    mv s1, a1               # s1 = opaque from SBI hart_start
+    mv tp, s0               # early cpu ID = hart ID
+
+    csrw sie, zero
+    csrw satp, zero
+    sfence.vma x0, x0
+
+    mv t0, tp
+    la t1, secondary_data
+    li t2, 24
+    mul t2, t0, t2
+    add t1, t1, t2
+
+secondary_wait_release:
+    ld t2, 0(t1)
+    beqz t2, secondary_wait_release
+    fence iorw, iorw
+
+    ld sp, 8(t1)
+    ld t2, 16(t1)
+
+    # Temporarily enter the same early kernel mapping as CPU0.
+    la t3, _early_pgtbl_start
+    srli t3, t3, 12
+    li t4, 8
+    slli t4, t4, 60
+    or t3, t3, t4
+    csrw satp, t3
+    sfence.vma x0, x0
+
+    li t3, (1 << 18)
+    csrs sstatus, t3
+
+    la t3, kernel_trap_entry
+    li t4, 0xffffffff40000000
+    add t3, t3, t4
+    csrw stvec, t3
+    csrw sscratch, zero
+
+    mv a0, tp
+    mv a1, s1
+    jr t2
 
 /*
  * 辅助核自旋区
@@ -158,31 +157,31 @@ spin_loop:
     mv a1, s1               # a1 = dtb (from _start)
     jr t2                   # 跳转到 secondary_entry
 
-/*
- * print_hex64(a0 = value)
- * 输出 16 个十六进制字符到 UART0，不带 0x 前缀。
- */
-.globl print_hex64
-print_hex64:
-    li t2, 0x10000000
-    li t3, 16
+# /*
+#  * print_hex64(a0 = value)
+#  * 输出 16 个十六进制字符到 UART0，不带 0x 前缀。
+#  */
+# .globl print_hex64
+# print_hex64:
+#     li t2, 0x10000000
+#     li t3, 16
 
-1:
-    srli t0, a0, 60
-    andi t0, t0, 0xf
-    li t1, 10
-    blt t0, t1, 2f
-    addi t0, t0, 'a' - 10
-    j 3f
+# 1:
+#     srli t0, a0, 60
+#     andi t0, t0, 0xf
+#     li t1, 10
+#     blt t0, t1, 2f
+#     addi t0, t0, 'a' - 10
+#     j 3f
 
-2:
-    addi t0, t0, '0'
+# 2:
+#     addi t0, t0, '0'
 
-3:
-    sb t0, 0(t2)
-    slli a0, a0, 4
-    addi t3, t3, -1
-    bnez t3, 1b
-    ret
+# 3:
+#     sb t0, 0(t2)
+#     slli a0, a0, 4
+#     addi t3, t3, -1
+#     bnez t3, 1b
+#     ret
 
-.end
+# .end

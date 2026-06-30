@@ -4,19 +4,20 @@
 #include <asm/cpu.h>
 #include <os/irq.h>
 #include <os/irqreturn.h>
+#include <os/cpu.h>
 #include <os/timekeeping.h>
 #include <os/timer_chip.h>
 
 struct riscv64_timer_data {
-    bool active;
     int virq;
     int clock_freq;
+    bool active[MAX_CPUS];
 };
 
 static struct riscv64_timer_data riscv64_timer = {
-    .active = false,
     .virq = -1,
     .clock_freq = -1,
+    .active = { false },
 };
 
 static u64 riscv64_timer_read_counter(void)
@@ -35,13 +36,18 @@ static irqreturn_t riscv64_timer_irq_handler(int virq, void *dev_id)
 
 static void riscv64_timer_set_next_event(u64 delta_ns)
 {
+    int cpu = get_cpuid();
     u64 cycles;
 
-    if (!riscv64_timer.active) {
+    if (cpu < 0 || cpu >= MAX_CPUS) {
+        cpu = 0;
+    }
+
+    if (!riscv64_timer.active[cpu]) {
         if (riscv64_timer.virq >= 0) {
             irq_enable(riscv64_timer.virq);
         }
-        riscv64_timer.active = true;
+        riscv64_timer.active[cpu] = true;
     }
 
     if (delta_ns == 0) {
@@ -58,7 +64,13 @@ static void riscv64_timer_set_next_event(u64 delta_ns)
 
 static void riscv64_timer_shutdown(void)
 {
-    riscv64_timer.active = false;
+    int cpu = get_cpuid();
+
+    if (cpu < 0 || cpu >= MAX_CPUS) {
+        cpu = 0;
+    }
+
+    riscv64_timer.active[cpu] = false;
     if (riscv64_timer.virq >= 0) {
         irq_disable(riscv64_timer.virq);
     }
@@ -91,6 +103,9 @@ static int riscv64_timer_of_init(struct device_node *np, struct device_node *par
     }
 
     riscv64_timer.virq = virq;
+    for (int cpu = 0; cpu < MAX_CPUS; cpu++) {
+        riscv64_timer.active[cpu] = false;
+    }
 
     if (clocksource_register("riscv64_time_clocksource",
                              riscv64_timer_read_counter,

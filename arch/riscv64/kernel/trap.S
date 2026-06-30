@@ -35,6 +35,7 @@
 .set PT_STVAL,   272
 .set PT_SIZE,    280
 .set THREAD_SIZE, 8192
+.set TI_CPU,      124
 .set SSTATUS_SPP, 0x100
 
 .section .text.trap, "ax"
@@ -88,6 +89,10 @@ kernel_trap_entry:
     sd t4, PT_T4(sp)
     sd t5, PT_T5(sp)
     sd t6, PT_T6(sp)
+
+    li t0, -THREAD_SIZE
+    and t0, sp, t0
+    lw tp, TI_CPU(t0)
 
     csrr t0, sepc
     sd t0, PT_SEPC(sp)

@@ -10,8 +10,10 @@
 #include <os/string.h>
 #include <os/timekeeping.h>
 #include <os/preempt.h>
+#include <os/errno.h>
 #include <os/syscall_num.h>
 #include <mm/pgtbl.h>
+#include <asm/irq.h>
 #include <asm/switch_to.h>
 #include <asm/ptrace.h>
 
@@ -20,6 +22,73 @@ struct rq *global_rq;
 struct rq *this_rq(void) {
     CHECK(global_rq != NULL, "scheduler: runqueue is not initialized", return NULL;);
     return &global_rq[get_cpuid()];
+}
+
+static int sched_cpu_valid(int cpu)
+{
+    int cpu_num = of_get_cpu_num();
+
+    if (cpu_num <= 0 || cpu_num > MAX_CPUS) {
+        cpu_num = MAX_CPUS;
+    }
+
+    return cpu >= 0 && cpu < cpu_num;
+}
+
+int task_bind_cpu(struct task_struct *task, int cpu)
+{
+    struct thread_info *ti;
+
+    if (task == NULL || !sched_cpu_valid(cpu)) {
+        return -EINVAL;
+    }
+
+    ti = task_thread_info(task);
+    if (ti->cpu == cpu) {
+        return 0;
+    }
+
+    if (task == current || task->status == TASK_RUNNING || task->on_rq ||
+        !list_empty(&task->task_node)) {
+        return -EBUSY;
+    }
+
+    ti->cpu = cpu;
+    return 0;
+}
+
+int sched_select_task_cpu(struct task_struct *task)
+{
+    int current_cpu = get_cpuid();
+    int best_cpu = current_cpu;
+    int best_load;
+
+    if (task == NULL || global_rq == NULL || (task->flags & PF_KTHREAD)) {
+        return current_cpu;
+    }
+
+    if (!sched_cpu_valid(current_cpu)) {
+        current_cpu = 0;
+        best_cpu = 0;
+    }
+
+    best_load = global_rq[best_cpu].nr_running;
+
+    for (int cpu = 0; sched_cpu_valid(cpu); cpu++) {
+        int load;
+
+        if (!cpu_online(cpu)) {
+            continue;
+        }
+
+        load = global_rq[cpu].nr_running;
+        if (load < best_load) {
+            best_load = load;
+            best_cpu = cpu;
+        }
+    }
+
+    return best_cpu;
 }
 
 static const struct sched_class *sched_class_highest(void) {
@@ -100,7 +169,7 @@ static void __sched_fork(struct task_struct *p) {
 /* 复制并初始化task的调度器 */
 void sched_fork(struct task_struct *p) {
 	unsigned long flags;
-	int cpu = get_cpuid();
+	int cpu;
 
 	__sched_fork(p);
 
@@ -116,6 +185,7 @@ void sched_fork(struct task_struct *p) {
 
 	flags = spin_lock_irqsave(&p->lock);
 
+    cpu = sched_select_task_cpu(p);
     task_thread_info(p)->cpu = cpu;
 
 	spin_unlock_irqrestore(&p->lock, flags);
@@ -144,6 +214,24 @@ void sched_handle_user_return(void)
     if (current != NULL && current->need_resched) {
         current->need_resched = 0;
         sched();
+    }
+}
+
+void sched_resched_cpu(int cpu)
+{
+   if (!sched_cpu_valid(cpu)) {
+        return;
+    }
+
+    if (cpu == get_cpuid()) {
+        if (current != NULL) {
+            current->need_resched = 1;
+        }
+        return;
+    }
+
+    if (cpu_online(cpu)) {
+        irq_send_ipi(cpu, IPI_RESCHED);
     }
 }
 

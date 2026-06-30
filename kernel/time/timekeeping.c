@@ -8,6 +8,8 @@
 #include <os/utils.h>
 #include <os/timer_chip.h>
 #include <os/timerqueue.h>
+#include <os/cpu.h>
+#include <os/of_cpu.h>
 
 static struct clocksource *__clocksource;
 
@@ -40,34 +42,57 @@ struct clocksource *sys_clocksource(void) {
     return __clocksource;
 }
 
-static struct clockevent *__clockevent;
-static void set_clockevent(struct clockevent *ce) {
-    if (!__clockevent) {
-        __clockevent = ce;
+static struct clockevent *__clockevent[MAX_CPUS];
+
+static void set_clockevent(int cpu, struct clockevent *ce) {
+    if (cpu < 0 || cpu >= MAX_CPUS) {
+        return;
+    }
+    if (!__clockevent[cpu]) {
+        __clockevent[cpu] = ce;
     }
 }
 
 int clockevent_register(char *name, struct clockevent_ops *ops, bool oneshot) {
+    int cpu_num;
+
     if (name == NULL || ops == NULL || ops->set_next_event == NULL || ops->shutdown == NULL) {
         return -1;
     }
 
-    struct clockevent *ce = (struct clockevent *)kmalloc(sizeof(struct clockevent));
-    if (!ce) {
-        return -1;
+    cpu_num = of_get_cpu_num();
+    if (cpu_num <= 0) {
+        cpu_num = 1;
+    }
+    if (cpu_num > MAX_CPUS) {
+        cpu_num = MAX_CPUS;
     }
 
-    strncpy(ce->name, name, sizeof(ce->name) - 1);
-    ce->ops = ops;
-    ce->oneshot = oneshot;
+    for (int cpu = 0; cpu < cpu_num; cpu++) {
+        struct clockevent *ce = (struct clockevent *)kmalloc(sizeof(struct clockevent));
+        if (!ce) {
+            return -1;
+        }
 
-    set_clockevent(ce);
+        strncpy(ce->name, name, sizeof(ce->name) - 1);
+        ce->name[sizeof(ce->name) - 1] = '\0';
+        ce->ops = ops;
+        ce->oneshot = oneshot;
+
+        set_clockevent(cpu, ce);
+    }
 
     return 0;
 }
 
 struct clockevent *sys_clockevent(void) {
-    return __clockevent;
+    int cpu = get_cpuid();
+
+    if (cpu < 0 || cpu >= MAX_CPUS || __clockevent[cpu] == NULL) {
+        return __clockevent[0];
+    }
+
+    return __clockevent[cpu];
 }
 
 u64 monotonic_ns(void) {

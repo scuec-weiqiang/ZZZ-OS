@@ -320,6 +320,55 @@ pid_t do_fork_kthread(int (*fn)(void *), void *arg) {
     return p->pid;
 
 files_failed:
+    free_stack(p);
+    free_task_struct(p);
+    return err;
+}
+
+pid_t kernel_thread_on_cpu(int (*fn)(void *), void *arg, int cpu)
+{
+    int err = 0;
+    struct files_struct *new_files;
+    struct task_struct *p;
+
+    if (fn == NULL) {
+        return -EINVAL;
+    }
+
+    p = dup_task_struct(current);
+    if (IS_ERR(p)) {
+        return PTR_ERR(p);
+    }
+
+    sched_fork(p);
+    err = task_bind_cpu(p, cpu);
+    if (err < 0) {
+        goto bind_failed;
+    }
+
+    new_files = dup_fd(current->files);
+    if (IS_ERR(new_files)) {
+        err = PTR_ERR(new_files);
+        goto files_failed;
+    }
+    p->files = new_files;
+
+    p->fs = get_fs_struct(current->fs);
+    setup_kthread_context(fn, arg, p);
+
+    p->active_mm = NULL;
+    p->mm = NULL;
+
+    set_parent_child(current, p);
+
+    task_attach_to_rq(p);
+    wake_up_process(p);
+
+    return p->pid;
+
+files_failed:
+bind_failed:
+    free_stack(p);
     free_task_struct(p);
     return err;
 }
@@ -405,10 +454,20 @@ void wake_up_process(struct task_struct *p) {
     p->sched_class->enqueue_task(rq, p);
     spin_unlock_irqrestore(&rq->lock, flags);
 
-    // if (current == rq->idle) {
-    //     printk("waking up cpu %d for pid=%d\n", ti->cpu, p->pid);
-    //     irq_send_ipi(ti->cpu, IPI_RESCHED);
-    // }
+    sched_resched_cpu(ti->cpu);
+}
+
+int wake_up_process_on(struct task_struct *p, int cpu)
+{
+    int ret;
+
+    ret = task_bind_cpu(p, cpu);
+    if (ret < 0) {
+        return ret;
+    }
+
+    wake_up_process(p);
+    return 0;
 }
 
 int sys_fork(struct pt_regs *ctx) {
@@ -445,7 +504,7 @@ int kthreadd(void *arg) {
         if (!list_empty(&kthread_create_list)) {
             list_for_each_entry_safe(info,tmp,&kthread_create_list, struct kthread_create_info, list) {
                 pid = kernel_thread(info->threadfn, info->data);
-                if (IS_ERR((void*)pid)) {
+                if (pid < 0) {
                     panic("kthreadd: failed to create kernel thread for fn=%xu, data=%su, error=%d\n", info->threadfn, info->data, (int)pid);
                 }
                 info->result = find_task_by_pid(pid);

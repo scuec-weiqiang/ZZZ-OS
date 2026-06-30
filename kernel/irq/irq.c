@@ -138,6 +138,16 @@ int irq_percpu_request(int virq, int cpu, irq_handler_t handler, const char *nam
 }
 
 void irq_send_ipi(int cpu_id, int ipi_id) {
-    int hwirq = irq_domain_get_hwirq(__irq_data[ipi_id].domain, ipi_id);
-    __irq_data[ipi_id].chip->ops->ipi->send_ipi(__irq_data[ipi_id].chip, cpu_id, hwirq);
+    for (int virq = 0; virq < IRQ_COUNT; virq++) {
+        struct irq_chip *chip = __irq_data[virq].chip;
+
+        if (chip == NULL || chip->ops == NULL ||
+            chip->ops->ipi == NULL ||
+            chip->ops->ipi->send_ipi == NULL) {
+            continue;
+        }
+
+        chip->ops->ipi->send_ipi(chip, cpu_id, ipi_id);
+        return;
+    }
 }

@@ -15,6 +15,7 @@
 #include <os/sched.h>
 #include <os/fdt.h>
 #include <os/of.h>
+#include <os/of_cpu.h>
 #include <os/of_platform.h>
 #include <fs/fs.h>
 #include <os/irq.h>
@@ -37,7 +38,7 @@
 #include <asm/process.h>
 #include <asm/ptrace.h>
 
-// 从设备树的 /chosen 节点获取根设备路径，如果没有找到则使用默认值
+// 从设备树的 /chosen 节点获取根设备路径，如果没有找到则panic
 static const char *kernel_root_device(void) {
     struct device_node *chosen;
     const char *rootdev;
@@ -50,10 +51,28 @@ static const char *kernel_root_device(void) {
         }
     }
 
-    return "/dev/virt_disk1";
+    panic("No root device specified\n");
+    return NULL; // 这行不会被执行，只是为了避免编译器警告
+}
+
+static const char *kernel_stdio_device(void) {
+    struct device_node *chosen;
+    const char *stdio_dev;
+
+    chosen = of_find_node_by_path("/chosen");
+    if (chosen) {
+        stdio_dev = of_get_property(chosen, "zzz,tty-device", NULL);
+        if (stdio_dev && stdio_dev[0] != '\0') {
+            return stdio_dev;
+        }
+    }
+
+    panic("No stdio device specified\n");
+    return NULL; // 这行不会被执行，只是为了避免编译器警告
 }
 
 int kernel_init(void *arg) {
+    
     arch_initcalls_run();
     core_initcalls_run();
     of_platform_populate(NULL,of_default_bus_match_table,NULL);
@@ -65,12 +84,11 @@ int kernel_init(void *arg) {
     
     late_initcalls_run();
     
-    setup_stdio("/dev/uart0");
-    
+    setup_stdio(kernel_stdio_device());
+
     char *argv[] = { "/bin/init", NULL };
     
     do_execve("/bin/init", argv, NULL);
-
     return 0;
 }
 
@@ -78,30 +96,34 @@ u8 is_init = 0;
 unsigned long cpu_online_map = 0;
 
 int smp_get_cpu_count(void) {
-    struct device_node *cpus_node = of_find_node_by_path("/cpus");
-    if (cpus_node == NULL)
+    int cpu_num = of_get_cpu_num();
+
+    if (cpu_num <= 0) {
         return 1;
-    return of_get_child_node_count(cpus_node);
+    }
+
+    return cpu_num;
 }
 
+
+
 /* 辅助核入口：等待CPU0释放后进入idle循环 */
-void secondary_entry(int cpuid, void *dtb) {
-    (void)dtb;
+void secondary_entry(int cpuid) {
     int cpu = get_cpuid();
     arch_secondary_init();
 
     set_cpu_online(cpu);
     this_rq()->curr = this_rq()->idle;
 
-    printk("CPU %d online\n", cpu);
+    dprintk("CPU %d online\n", cpu);
 
     local_irq_enable();
 
     while (1) {
-        // cpu_idle();
-        // if (current && current->need_resched) {
-        //     sched();
-        // }
+        cpu_idle();
+        if ((current && current->need_resched) || this_rq()->nr_running > 0) {
+            sched();
+        }
     }
 }
 
@@ -146,6 +168,6 @@ void start_kernel(int cpuid, void *dtb) {
         }
         is_init = 1;
     } else {
-        secondary_entry(cpuid, dtb);
+        secondary_entry(cpuid);
     }
 }

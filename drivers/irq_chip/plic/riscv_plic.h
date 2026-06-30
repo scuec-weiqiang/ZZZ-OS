@@ -97,7 +97,7 @@ static  inline void __plic_interrupt_disable(u32 cpu,u32 irqn)
 static  inline void __plic_threshold_set(u32 cpu,u32 threshold)
 {
     volatile u32 *plic_int_thrshold = (volatile u32 *)PLIC_INT_THRSHOLD_BASE;
-    plic_int_thrshold[plic_get_context(cpu) * 0x1000] = threshold;
+    plic_int_thrshold[plic_get_context(cpu) * 0x1000 / 4] = threshold;
 }
 
 /***************************************************************

@@ -51,6 +51,6 @@ void arch_cpu_up(int cpu);
 void arch_smp_init(void);
 
 /* kernel/kernel.c 中的辅助核入口 */
-void secondary_entry(int cpuid, void *dtb);
+void secondary_entry(int cpuid);
 
 #endif

@@ -193,6 +193,8 @@ extern int do_wait(int *status);
 extern struct rq *this_rq(void);
 extern void sched_init();
 extern void sched();
+extern void sched_resched_cpu(int cpu);
+extern int sched_select_task_cpu(struct task_struct *task);
 extern void sched_handle_user_return(void);
 extern void yield();
 extern void sched_tick(void);
@@ -200,11 +202,14 @@ extern void sched_kthread_test(void);
 extern void __noreturn do_exit(int code);
 extern struct rq *global_rq;
 extern void sched_fork(struct task_struct *p);
+extern int task_bind_cpu(struct task_struct *task, int cpu);
 extern int kthreadd(void *arg);
 extern pid_t kernel_thread(int (*fn)(void *), void *arg);
 extern struct task_struct*  kthread_create(int (*fn)(void *), void *arg);
+extern pid_t kernel_thread_on_cpu(int (*fn)(void *), void *arg, int cpu);
 extern void task_destroy(struct task_struct *task);
 extern void wake_up_process(struct task_struct *p);
+extern int wake_up_process_on(struct task_struct *p, int cpu);
 extern struct task_struct* setup_init_task(void);
 
 #endif

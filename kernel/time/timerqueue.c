@@ -14,9 +14,10 @@ struct timer_base {
 };
 
 static struct timer_base *timer_bases;
+static int timer_base_count;
 
 struct timer_base *get_timer_base(int cpu) {
-    if (cpu < 0 || cpu >= of_get_cpu_num()) {
+    if (cpu < 0 || cpu >= timer_base_count) {
         return NULL;
     }
     return &timer_bases[cpu];
@@ -32,9 +33,11 @@ struct timer_base *local_timer_base(void) {
 static int choose_proper_cpuid() {
     int cpuid = 0;
     unsigned int mini = MAX_TIMERS;
-    for (int i = 0; i < of_get_cpu_num(); i++) {
-        if (get_timer_base(i)->heap_size < mini) {
-            mini = get_timer_base(i)->heap_size;
+    for (int i = 0; i < timer_base_count; i++) {
+        struct timer_base *tb = get_timer_base(i);
+
+        if (tb && tb->heap_size < mini) {
+            mini = tb->heap_size;
             cpuid = i;
         }
     }
@@ -53,11 +56,15 @@ static int get_right_child_idx(int idx) {
     return 2 * idx + 2;
 }
 
-static struct timer *heap_top(void) {
-    if (local_timer_base()->heap_size == 0) {
+static struct timer *heap_top_base(struct timer_base *tb) {
+    if (tb == NULL || tb->heap_size == 0) {
         return NULL;
     }
-    return local_timer_base()->heap[0];
+    return tb->heap[0];
+}
+
+static struct timer *heap_top(void) {
+    return heap_top_base(local_timer_base());
 }
 
 static void swap_heap_nodes(struct timer_base *tb ,int idx1, int idx2) {
@@ -112,21 +119,27 @@ static void heap_reorder_node(struct timer_base *tb, int idx) {
 
 static int heap_push(struct timer *t) {
     struct timer_base *tb;
-    int cpuid = -1;
-    if (t->pinned != -1 && t->pinned != get_cpuid()) {
+    int cpuid;
+
+    if (t->pinned != -1) {
         cpuid = t->pinned;
     } else {
         cpuid = choose_proper_cpuid();
     }
-    t->cpu = cpuid;
+
     tb = get_timer_base(cpuid);
+    if (tb == NULL || tb->heap_size >= MAX_TIMERS) {
+        return -1;
+    }
+
+    t->cpu = cpuid;
     tb->heap[tb->heap_size] = t;
     t->heap_idx = tb->heap_size;
     tb->heap_size++;
     
     heapify_up(tb, t->heap_idx);
 
-    return 0;
+    return cpuid;
 }
 
 static struct timer *heap_pop(void) {
@@ -149,6 +162,14 @@ static struct timer *heap_pop(void) {
 
 int timerqueue_init(void) {
     int cpu_num = of_get_cpu_num();
+    if (cpu_num <= 0) {
+        cpu_num = 1;
+    }
+    if (cpu_num > MAX_CPUS) {
+        cpu_num = MAX_CPUS;
+    }
+
+    timer_base_count = cpu_num;
     timer_bases = (struct timer_base *)kmalloc(sizeof(struct timer_base) * cpu_num);
     for (int i = 0; i < cpu_num; i++) {
         spin_lock_init(&timer_bases[i].lock);
@@ -160,12 +181,22 @@ int timerqueue_init(void) {
 }
 
 int timer_start(struct timer *t) {
+    int cpu;
+    struct timer_base *tb;
+
     if (t->active) {
         return -1;
     }
+
     t->active = true;
-    heap_push(t);
-    if (t == heap_top()) {
+    cpu = heap_push(t);
+    if (cpu < 0) {
+        t->active = false;
+        return -1;
+    }
+
+    tb = get_timer_base(cpu);
+    if (cpu == get_cpuid() && t == heap_top_base(tb)) {
         program_next_event(t->expires_ns, monotonic_ns());
     }
 
@@ -192,7 +223,7 @@ int timer_mod(struct timer *t, u64 expires_ns) {
     t->expires_ns = expires_ns;
     heap_reorder_node(tb, t->heap_idx);
 
-    if (tb->heap_size > 0) {
+    if (t->cpu == get_cpuid() && tb->heap_size > 0) {
         program_next_event(tb->heap[0]->expires_ns, monotonic_ns());
     }
 
@@ -218,7 +249,7 @@ int timer_cancel(struct timer *t) {
         heap_reorder_node(tb, idx);
     }
 
-    if (tb->heap_size > 0) {
+    if (t->cpu == get_cpuid() && tb->heap_size > 0) {
         program_next_event(tb->heap[0]->expires_ns, monotonic_ns());
     }
 

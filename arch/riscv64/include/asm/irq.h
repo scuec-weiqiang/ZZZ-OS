@@ -12,4 +12,10 @@
 
 #include <asm-generic/irq.h>
 
+enum ipi_id {
+    IPI_RESCHED = 0,
+    IPI_PREEMPT,
+    IPI_MAX
+};
+
 #endif // _ASM_IRQ_H
