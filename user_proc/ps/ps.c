@@ -38,7 +38,7 @@ int main(void)
                state_name(tasks[i].status),
                tasks[i].on_rq,
                tasks[i].need_resched,
-               (tasks[i].flags & PS_FLAG_KTHREAD) ? "kthread" : "user");
+               (tasks[i].flags & PS_FLAG_KTHREAD) ? "kernel" : "user");
     }
 
     return 0;

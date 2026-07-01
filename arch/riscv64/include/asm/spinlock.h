@@ -9,7 +9,7 @@ static inline void arch_spin_lock(arch_spinlock_t *lock)
     int val = 1;
 
     do {
-        asm volatile(
+        __asm volatile(
             "amoswap.w.aq %0, %1, (%2)"
             : "=r"(old)
             : "r"(val), "r"(&lock->val)
@@ -19,7 +19,7 @@ static inline void arch_spin_lock(arch_spinlock_t *lock)
 
 static inline void arch_spin_unlock(arch_spinlock_t *lock)
 {
-    asm volatile(
+    __asm volatile(
         "amoswap.w.rl zero, zero, (%0)"
         :
         : "r"(&lock->val)
@@ -31,7 +31,7 @@ static inline int arch_spin_trylock(arch_spinlock_t *lock)
     int old;
     int val = 1;
 
-    asm volatile(
+    __asm volatile(
         "amoswap.w.aq %0, %1, (%2)"
         : "=r"(old)
         : "r"(val), "r"(&lock->val)

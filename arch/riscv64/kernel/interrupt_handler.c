@@ -104,11 +104,6 @@ reg_t trap_handler(reg_t ctx)
 
         do_syscall(regs);
 
-        /*
-         * Most syscalls should resume at the instruction after ecall.
-         * But execve/sigreturn may rebuild the user context and set a
-         * brand-new PC, so only advance when the syscall kept sepc intact.
-         */
         if (regs->sepc == old_sepc) {
             regs->sepc += 4;
         }

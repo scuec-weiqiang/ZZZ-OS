@@ -17,11 +17,10 @@
 #include <os/spinlock.h>
 #include <os/wait.h>
 #include <os/string.h>
+#include <os/tty.h>
 
 #define UART_TX_IDLE (1U << 5)
 #define UART_RX_READY (1U << 0)
-
-#define UART_RX_BUF_SIZE 256
 
 struct uart_reg {
     u8 RHR_THR_DLL;
@@ -34,64 +33,17 @@ struct uart_reg {
     u8 SPR;
 };
 
-struct uart_rx_buffer {
-    spinlock_t lock;
-    unsigned int head;
-    unsigned int tail;
-    char data[UART_RX_BUF_SIZE];
-};
-
 struct qemu_uart_info {
     virt_addr_t base;
     dev_t dev_num;
     struct cdev cdev;
     struct platform_device *pdev;
-    struct wait_queue_head read_wait;
-    struct irq_deferred_work rx_deferred;
-    struct uart_rx_buffer rxbuf;
+    struct tty tty;
 };
 
 static struct qemu_uart_info *uart0;
 
 #define UART0 ((volatile struct uart_reg *)(uart0->base))
-
-static inline int uart_rxbuf_is_empty(void)
-{
-    return uart0->rxbuf.head == uart0->rxbuf.tail;
-}
-
-static inline int uart_rxbuf_is_full(void)
-{
-    return ((uart0->rxbuf.head + 1) % UART_RX_BUF_SIZE) == uart0->rxbuf.tail;
-}
-
-static void uart_rxbuf_push(char ch)
-{
-    unsigned long flags = spin_lock_irqsave(&uart0->rxbuf.lock);
-
-    if (!uart_rxbuf_is_full()) {
-        uart0->rxbuf.data[uart0->rxbuf.head] = ch;
-        uart0->rxbuf.head = (uart0->rxbuf.head + 1) % UART_RX_BUF_SIZE;
-    }
-
-    spin_unlock_irqrestore(&uart0->rxbuf.lock, flags);
-}
-
-static int uart_rxbuf_pop(char *ch)
-{
-    unsigned long flags;
-    int ok = 0;
-
-    flags = spin_lock_irqsave(&uart0->rxbuf.lock);
-    if (!uart_rxbuf_is_empty()) {
-        *ch = uart0->rxbuf.data[uart0->rxbuf.tail];
-        uart0->rxbuf.tail = (uart0->rxbuf.tail + 1) % UART_RX_BUF_SIZE;
-        ok = 1;
-    }
-    spin_unlock_irqrestore(&uart0->rxbuf.lock, flags);
-
-    return ok;
-}
 
 static inline int uart_tx_ready(void)
 {
@@ -114,13 +66,6 @@ static void uart_putc(char c)
     while (!uart_tx_ready()) {
     }
     UART0->RHR_THR_DLL = (u8)c;
-}
-
-static char uart_getc_hw(void)
-{
-    while (!uart_rx_ready()) {
-    }
-    return (char)UART0->RHR_THR_DLL;
 }
 
 /* static void uart_puts(const char *s)
@@ -150,12 +95,10 @@ static void uart_reg_init(void)
     UART0->FCR_ISR = 0x07;       /* enable FIFO and clear RX/TX FIFO */
 }
 
-static void uart_rx_deferred(void *arg)
+static void uart_tty_putc(char ch, void *data)
 {
-    (void)arg;
-    if (!uart_rxbuf_is_empty() && !wait_queue_empty(&uart0->read_wait)) {
-        wake_up_one(&uart0->read_wait);
-    }
+    (void)data;
+    uart_putc(ch);
 }
 
 static irqreturn_t uart_irq_handler(int virq, void *dev_id)
@@ -164,11 +107,7 @@ static irqreturn_t uart_irq_handler(int virq, void *dev_id)
     (void)dev_id;
 
     while (uart_rx_ready()) {
-        uart_rxbuf_push((char)UART0->RHR_THR_DLL);
-    }
-
-    if (!uart_rxbuf_is_empty() && !wait_queue_empty(&uart0->read_wait)) {
-        irq_deferred_work_queue(&uart0->rx_deferred);
+        tty_receive_char(&uart0->tty, (char)UART0->RHR_THR_DLL);
     }
 
     return IRQ_HANDLED;
@@ -189,57 +128,38 @@ static int uart_release(struct inode *inode, struct file *file)
 }
 static ssize_t uart_write(struct file *file, const char *buf, size_t size, loff_t *offset)
 {
-    size_t written = 0;
+    ssize_t written;
 
     (void)file;
     if (buf == NULL || offset == NULL) {
         return -1;
     }
 
-    while (written < size) {
-        uart_putc(buf[written]);
-        written++;
+    written = tty_write(&uart0->tty, buf, size);
+    if (written < 0) {
+        return written;
     }
 
     *offset += written;
-    return (ssize_t)written;
+    return written;
 }
 
 static ssize_t uart_read(struct file *file, char *buf, size_t size, loff_t *offset)
 {
-    size_t read = 0;
+    ssize_t read;
 
     (void)file;
     if (buf == NULL || offset == NULL) {
         return -1;
     }
 
-    while (read < size) {
-        char ch;
-
-        if (!uart_rx_ready() && uart_rxbuf_is_empty()) {
-            sleep_on(&uart0->read_wait);
-        }
-
-        if (uart_rxbuf_pop(&ch)) {
-            buf[read++] = ch;
-            continue;
-        }
-
-        if (uart_rx_ready()) {
-            buf[read++] = uart_getc_hw();
-            continue;
-        }
-
-        if (read > 0) {
-            break;
-        }
-
-        buf[read++] = uart_getc_hw();
+    read = tty_read(&uart0->tty, buf, size);
+    if (read < 0) {
+        return read;
     }
 
     *offset += read;
-    return (ssize_t)read;
+    return read;
 }
 
 static const struct file_operations uart_file_ops = {
@@ -261,10 +181,6 @@ static int uart_probe(struct platform_device *pdev)
 
     platform_set_drvdata(pdev, uart0);
     uart0->pdev = pdev;
-    init_waitqueue_head(&uart0->read_wait);
-    spin_lock_init(&uart0->rxbuf.lock);
-    uart0->rxbuf.head = 0;
-    uart0->rxbuf.tail = 0;
 
     uart0->base = platform_ioremap_resource(pdev, 0);
     printk("qemu_uart: base=%lx\n", (unsigned long)uart0->base);
@@ -274,7 +190,7 @@ static int uart_probe(struct platform_device *pdev)
     }
 
     uart_reg_init();
-    irq_deferred_work_register(&uart0->rx_deferred, uart_rx_deferred, NULL);
+    tty_init(&uart0->tty, uart_tty_putc, uart0);
     uart_enable_rx_irq();
 
     virq = platform_get_irq(pdev, 0);

@@ -18,12 +18,14 @@ static inline void spin_lock_init(spinlock_t *lock)
 
 static inline void spin_lock(spinlock_t *lock)
 {
+    preempt_disable();
     arch_spin_lock(&lock->raw_lock);
 }
 
 static inline void spin_unlock(spinlock_t *lock)
 {
     arch_spin_unlock(&lock->raw_lock);
+    preempt_enable();
 }
 
 static inline int spin_trylock(spinlock_t *lock)

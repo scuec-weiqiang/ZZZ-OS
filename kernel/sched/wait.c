@@ -21,6 +21,9 @@ int do_waitpid(pid_t pid, int *status, int options) {
     
             found_child = 1;
             if (child->status == TASK_ZOMBIE) {
+                int release;
+                unsigned long flags;
+
                 // dprintk("waitpid: found zombie child pid=%d, exit code=%d\n", child->pid, child->exit_code);
                 // 取 exit code
                 if (status) {
@@ -35,8 +38,14 @@ int do_waitpid(pid_t pid, int *status, int options) {
 
                 task_detach_from_rq(child);
 
-                // 释放资源
-                task_destroy(child);
+                flags = spin_lock_irqsave(&child->lock);
+                child->status = TASK_DEAD;
+                release = !child->on_cpu;
+                spin_unlock_irqrestore(&child->lock, flags);
+
+                if (release) {
+                    task_destroy(child);
+                }
 
                 return pid;
             }

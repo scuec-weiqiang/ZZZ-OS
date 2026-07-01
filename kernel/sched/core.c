@@ -1,3 +1,4 @@
+#include "os/spinlock.h"
 #include <os/check.h>
 #include <os/cpu.h>
 #include <os/irq.h>
@@ -208,12 +209,34 @@ static void sched_switch_mm(struct task_struct *prev, struct task_struct *next) 
 
 
 void sched_tail(struct task_struct *prev) {
+    int release = 0;
+
+    if (prev == NULL) {
+        return;
+    }
+
     prev->se.sum_exec_runtime += monotonic_ns() - prev->se.exec_start;
+
+    /*
+     * We are now running on the next task's kernel stack.  If the previous
+     * task has already been reaped by its parent, this is the first point
+     * where freeing prev's stack is safe.
+     */
+    unsigned long flags = spin_lock_irqsave(&prev->lock);
+    prev->on_cpu = 0;
+    if (prev->status == TASK_DEAD) {
+        release = 1;
+    }
+    spin_unlock_irqrestore(&prev->lock, flags);
+
+    if (release) {
+        task_destroy(prev);
+    }
 }
 
 void sched_handle_user_return(void)
 {
-    if (current != NULL && current->need_resched) {
+    if (current != NULL && current->need_resched && preempt_count() == 0) {
         current->need_resched = 0;
         sched();
     }
@@ -238,6 +261,11 @@ void sched_resched_cpu(int cpu)
 }
 
 void __sched sched(void) {
+    if (preempt_count() != 0) {
+        current->need_resched = 1;
+        return;
+    }
+
     struct rq *rq = this_rq();
     struct task_struct *next = NULL;
     struct task_struct *prev = NULL;
@@ -254,6 +282,11 @@ void __sched sched(void) {
     next->se.exec_start =  now;
     prev = rq->curr;
     rq->curr = next;
+
+    unsigned long task_flags = spin_lock_irqsave(&next->lock);
+    next->on_cpu = 1;
+    spin_unlock_irqrestore(&next->lock, task_flags);
+
     spin_unlock_irqrestore(&rq->lock, flags);
     timer_mod(&rq->sched_timer, now + next->se.time_slice);
     sched_switch_mm(prev, next);
@@ -267,7 +300,9 @@ void __sched sched(void) {
 void sched_event(struct timer *t, void *arg) {
     struct rq *rq = this_rq();
     const struct sched_class *class;
+    unsigned long flags;
 
+    flags = spin_lock_irqsave(&rq->lock);
     // 1. 通知当前任务的调度类：时间片用完（只计数，不操作队列）
     if (rq->curr->sched_class && rq->curr->sched_class->task_tick)
         rq->curr->sched_class->task_tick(rq, rq->curr);
@@ -279,6 +314,7 @@ void sched_event(struct timer *t, void *arg) {
     }
 
     rq->curr->need_resched = 1;
+    spin_unlock_irqrestore(&rq->lock, flags);
 }
 
 void yield() {
@@ -343,28 +379,37 @@ long sys_ps(struct pt_regs *ctx)
 void sleep_on(struct wait_queue_head *wq_head) {
     // struct task_struct *current_task = this_rq()->curr;
     struct task_struct *current_task = current;
+    struct rq *rq;
+    unsigned long rq_flags;
+    unsigned long wq_flags;
+
     if (current_task->status != TASK_RUNNING) {
         return;
     }
     if (current_task->status == TASK_SLEEPING) {
         return;
     }
+    
+    wq_flags = spin_lock_irqsave(&wq_head->lock);
     current_task->status = TASK_SLEEPING;
 
-    int flags = spin_lock_irqsave(&current_task->lock);
-
     // 从当前 CPU 的运行队列中移除当前任务，放入等待队列
-    current_task->sched_class->dequeue_task(this_rq(), current_task);
+    rq = this_rq();
+    rq_flags = spin_lock_irqsave(&rq->lock);
+    current_task->sched_class->dequeue_task(rq, current_task);
+    spin_unlock_irqrestore(&rq->lock, rq_flags);
+
     current_task->wait.private = current_task;
     wait_queue_add(wq_head, &current_task->wait);
 
-    spin_unlock_irqrestore(&current_task->lock, flags);
+    spin_unlock_irqrestore(&wq_head->lock, wq_flags);
     // dprintk("sleep task:%d\n",current_task->pid);
     sched();
 }
 
 void wake_up_one(struct wait_queue_head *wq_head) {
     struct wait_queue *wq, *tmp;
+    int flags = spin_lock_irqsave(&wq_head->lock);
     list_for_each_entry_safe(wq, tmp, &wq_head->head, struct wait_queue, list) {
         struct task_struct *task = wq->private;
         if (task->status == TASK_SLEEPING) {
@@ -374,10 +419,12 @@ void wake_up_one(struct wait_queue_head *wq_head) {
             break; // 只唤醒一个
         }
     }
+    spin_unlock_irqrestore(&wq_head->lock, flags);
 }
 
 void wake_up_all(struct wait_queue_head *wq_head) {
     struct wait_queue *wq, *tmp;
+    int flags = spin_lock_irqsave(&wq_head->lock);
     list_for_each_entry_safe(wq, tmp, &wq_head->head, struct wait_queue, list) {
         struct task_struct *task = wq->private;
         if (task->status == TASK_SLEEPING) {
@@ -385,6 +432,7 @@ void wake_up_all(struct wait_queue_head *wq_head) {
             wake_up_process(task);
         }
     }
+    spin_unlock_irqrestore(&wq_head->lock,flags);
 }
 // sk-c5765c5aa4e14cb19aefca18c7067d05
 

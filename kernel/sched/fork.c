@@ -432,6 +432,7 @@ struct task_struct* setup_init_task(void) {
     struct task_struct *p = &init_task;
     p->sched_class = &rr_sched_class;
     p->se.exec_start = monotonic_ns();
+    p->on_cpu = 1;
     return &init_task;
 }
 
@@ -494,6 +495,7 @@ struct kthread_create_info {
 
 // 需要创建的内核进程挂在这个链表下，等待kthreadd来处理
 static struct list_head kthread_create_list = LIST_HEAD_INIT(kthread_create_list);
+static struct wait_queue_head kthread_create_wait = WAIT_QUEUE_INIT(kthread_create_wait);
 
 int kthreadd(void *arg) {
     int status = 0;
@@ -501,6 +503,15 @@ int kthreadd(void *arg) {
         // 处理 kthread_create 请求
         struct kthread_create_info *info = NULL, *tmp  = NULL;
         pid_t pid = 0;
+
+        while (do_waitpid(-1, &status, WNOHANG) > 0) {
+        }
+
+        if (list_empty(&kthread_create_list)) {
+            sleep_on(&kthread_create_wait);
+            continue;
+        }
+
         if (!list_empty(&kthread_create_list)) {
             list_for_each_entry_safe(info,tmp,&kthread_create_list, struct kthread_create_info, list) {
                 pid = kernel_thread(info->threadfn, info->data);
@@ -513,8 +524,6 @@ int kthreadd(void *arg) {
                 complete(info->done);
             }
         }
-        do_waitpid(-1, &status, 0);
-        sched();
     }
 }
 
@@ -543,7 +552,7 @@ struct task_struct* kthread_create(int (*fn)(void *), void *arg) {
     INIT_LIST_HEAD(&info->list);
     list_add_tail(&kthread_create_list,&info->list);
 
-    wake_up_process(kthreadd_task);
+    wake_up_one(&kthread_create_wait);
     wait_for_completion(&done);
 
     // dprintk(GREEN("pid=%d, threadfn=%xu, data=%xu, result=%xu\n"), info->result->pid, fn, arg, info->result);

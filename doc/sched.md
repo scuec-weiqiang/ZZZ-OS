@@ -4,15 +4,26 @@
 
 ## 1. 概述
 
-调度器子系统负责进程/线程的创建、调度、切换和销毁。采用可插拔 `sched_class` 设计，支持多种调度策略。目前实现了时间片轮转（Round-Robin）和空闲（Idle）两种调度类。
+调度子系统负责进程/线程的创建、调度、切换和销毁。采用可插拔 `sched_class` 设计，支持多种调度策略。调度只能在安全点发生：中断返回、系统调用返回、主动 sched()、阻塞睡眠。调度子系统的核心数据结构为`struct rq`, 每个cpu都有一个对应的runqueue.
+```c
+struct rq {
+    spinlock_t lock;
 
-核心特性：
-- **可插拔调度类**：`sched_class` 接口支持扩展新调度策略
-- **per-CPU 运行队列**：每个 CPU 独立的 `struct rq`
-- **时间片抢占**：基于 timer 的时间片到期自动触发重调度
-- **进程管理**：fork / execve / exit / waitpid 完整生命周期
-- **内核线程**：`kernel_thread()` 创建内核态线程
+    struct list_head runnable[PRIO_NUMS]; // 可运行任务（不含curr）
+    u32 prio_bitmap; // 位图，标记哪些优先级有可运行任务
+    u64 prio_last_served[PRIO_NUMS];
+    
+    struct list_head tasks; // 当前cpu上的所有任务，包括可运行，等待，睡眠，僵尸等
 
+    struct task_struct *curr; // 当前正在运行的任务
+    struct task_struct *idle;
+
+    struct timer sched_timer;
+    int nr_running;
+    int nr_tasks;
+};
+```
+调度可以通过时间片耗尽自动触发抢占，也可以通过yield主动放弃cpu，进程陷入睡眠同样会触发调度。
 ## 2. 调度类（sched_class）
 
 ```c

@@ -72,7 +72,6 @@ static const char *kernel_stdio_device(void) {
 }
 
 int kernel_init(void *arg) {
-    
     arch_initcalls_run();
     core_initcalls_run();
     of_platform_populate(NULL,of_default_bus_match_table,NULL);
@@ -106,7 +105,6 @@ int smp_get_cpu_count(void) {
 }
 
 
-
 /* 辅助核入口：等待CPU0释放后进入idle循环 */
 void secondary_entry(int cpuid) {
     int cpu = get_cpuid();
@@ -114,6 +112,7 @@ void secondary_entry(int cpuid) {
 
     set_cpu_online(cpu);
     this_rq()->curr = this_rq()->idle;
+    this_rq()->idle->on_cpu = 1;
 
     dprintk("CPU %d online\n", cpu);
 

@@ -64,6 +64,7 @@ enum task_status {
     TASK_RUNNING,     // 正在运行
     TASK_SLEEPING,   
     TASK_ZOMBIE,      // 退出未回收
+    TASK_DEAD,        // 父进程已 wait，可安全延迟释放
 };
 
 struct sched_entity {
@@ -114,6 +115,7 @@ struct task_struct {
     int in_execve;        // 是否正在执行 execve 系统调用
 
     int on_rq;            // 是否在 runnable 队列中
+    int on_cpu;           // 是否仍在某个 CPU 上执行
     int exit_code;
     int prio;             // 有效优先级，aging 可临时提升
     int base_prio;        // 静态优先级，永不改变

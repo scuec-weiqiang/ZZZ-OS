@@ -5,6 +5,7 @@ OBJ_Y += pinctrl/
 OBJ_Y += irq_chip/
 OBJ_Y += clocksource/
 OBJ_Y += i2c/
+OBJ_Y += tty/
 
 OBJ_$(CONFIG_IMX6ULL_UART) += imx6ull_uart.o
 OBJ_$(CONFIG_IMX6ULL_LED) += imx6ull_led.o

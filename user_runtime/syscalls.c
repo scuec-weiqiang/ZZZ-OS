@@ -103,6 +103,7 @@ int _open(const char *path, int flags, int mode) {
 }
 
 int _read(int fd, void *buf, size_t count) {
+    // printf("_read fd=%d len=%d\n", fd, count);
     long ret = __syscall3(SYS_read, fd, (long)buf, count);
     if (ret < 0) {
         errno = -ret;
