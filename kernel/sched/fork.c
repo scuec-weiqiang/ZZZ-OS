@@ -90,12 +90,32 @@ static void free_stack(struct task_struct *task) {
 }
 
 struct task_struct* find_task_by_pid(pid_t pid) {
-    struct task_struct *task;
-    list_for_each_entry(task, &global_rq->tasks, struct task_struct, task_node) {
-        if (task->pid == pid) {
-            return task;
-        }
+    int cpu_num;
+
+    if (global_rq == NULL) {
+        return NULL;
     }
+
+    cpu_num = smp_get_cpu_count();
+    if (cpu_num > MAX_CPUS) {
+        cpu_num = MAX_CPUS;
+    }
+
+    for (int cpu = 0; cpu < cpu_num; cpu++) {
+        struct rq *rq = &global_rq[cpu];
+        struct task_struct *task;
+        unsigned long flags;
+
+        flags = spin_lock_irqsave(&rq->lock);
+        list_for_each_entry(task, &rq->tasks, struct task_struct, task_node) {
+            if (task->pid == pid) {
+                spin_unlock_irqrestore(&rq->lock, flags);
+                return task;
+            }
+        }
+        spin_unlock_irqrestore(&rq->lock, flags);
+    }
+
     return NULL;
 }
 
@@ -137,13 +157,25 @@ static pid_t alloc_pid(void) {
 }
 
 static void set_parent_child(struct task_struct *parent, struct task_struct *child) {
+    unsigned long flags;
+
+    flags = spin_lock_irqsave(&parent->lock);
     child->parent = parent;
     list_add_tail(&parent->children, &child->sibling);
+    spin_unlock_irqrestore(&parent->lock, flags);
 }
 
 static void clear_parent_child(struct task_struct *parent, struct task_struct *child) {
+    unsigned long flags;
+
+    if (parent == NULL) {
+        return;
+    }
+
+    flags = spin_lock_irqsave(&parent->lock);
     child->parent = NULL;
     list_del(&child->sibling);
+    spin_unlock_irqrestore(&parent->lock, flags);
 }
 
 /*
@@ -441,7 +473,7 @@ void wake_up_process(struct task_struct *p) {
     struct thread_info *ti = task_thread_info(p);
     unsigned long flags;
 
-    if (p == NULL || p == &init_task || p->status == TASK_RUNNING) {
+    if (p == NULL || p == &init_task || p->status != TASK_SLEEPING) {
         return;
     }
 

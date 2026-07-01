@@ -7,60 +7,102 @@
 #include <asm/ptrace.h>
 #include <os/uaccess.h>
 
-int do_waitpid(pid_t pid, int *status, int options) {
-    while (1) {
-        int found_child = 0;
-        struct task_struct *child;
-        list_for_each_entry(child, &current->children, struct task_struct, sibling) {
-            if (pid  > 0) {
-                if (child->pid !=  pid)
-                    continue;
-            } else if (pid == -1) {
+static int wait_find_child_locked(pid_t pid, struct task_struct **childp)
+{
+    int found_child = 0;
+    struct task_struct *child;
 
-            }
-    
-            found_child = 1;
-            if (child->status == TASK_ZOMBIE) {
-                int release;
-                unsigned long flags;
-
-                // dprintk("waitpid: found zombie child pid=%d, exit code=%d\n", child->pid, child->exit_code);
-                // 取 exit code
-                if (status) {
-                    // *status = child->exit_code;
-                    copy_to_user((void*)status, (void*)&child->exit_code, sizeof(int));
-                }
-
-                pid_t pid = child->pid;
-                    
-                // 从 children 移除
-                list_del(&child->sibling);
-
-                task_detach_from_rq(child);
-
-                flags = spin_lock_irqsave(&child->lock);
-                child->status = TASK_DEAD;
-                release = !child->on_cpu;
-                spin_unlock_irqrestore(&child->lock, flags);
-
-                if (release) {
-                    task_destroy(child);
-                }
-
-                return pid;
-            }
+    list_for_each_entry(child, &current->children, struct task_struct, sibling) {
+        if (pid > 0 && child->pid != pid) {
+            continue;
         }
 
-        // 没有任何子进程
-        if (!found_child) {
-            // 
+        found_child = 1;
+        if (child->status == TASK_ZOMBIE) {
+            *childp = child;
+            return 1;
+        }
+    }
+
+    *childp = NULL;
+    return found_child ? 0 : -ECHILD;
+}
+
+static void wait_sleep_on_child(void)
+{
+    struct task_struct *current_task = current;
+    struct wait_queue_head *wq_head = &current_task->wait_child;
+    struct rq *rq;
+    unsigned long rq_flags;
+
+    current_task->status = TASK_SLEEPING;
+
+    rq = this_rq();
+    rq_flags = spin_lock_irqsave(&rq->lock);
+    current_task->sched_class->dequeue_task(rq, current_task);
+    spin_unlock_irqrestore(&rq->lock, rq_flags);
+
+    current_task->wait.private = current_task;
+    wait_queue_add(wq_head, &current_task->wait);
+}
+
+int do_waitpid(pid_t pid, int *status, int options) {
+    while (1) {
+        struct task_struct *child;
+        unsigned long child_flags;
+        int found;
+
+        child_flags = spin_lock_irqsave(&current->lock);
+        found = wait_find_child_locked(pid, &child);
+
+        if (found == 1) {
+            int release;
+            unsigned long flags;
+            pid_t child_pid;
+
+            if (status) {
+                copy_to_user((void*)status, (void*)&child->exit_code, sizeof(int));
+            }
+
+            child_pid = child->pid;
+            list_del(&child->sibling);
+            child->parent = NULL;
+            spin_unlock_irqrestore(&current->lock, child_flags);
+
+            task_detach_from_rq(child);
+
+            flags = spin_lock_irqsave(&child->lock);
+            child->status = TASK_DEAD;
+            release = !child->on_cpu;
+            spin_unlock_irqrestore(&child->lock, flags);
+
+            if (release) {
+                task_destroy(child);
+            }
+
+            return child_pid;
+        }
+
+        spin_unlock_irqrestore(&current->lock, child_flags);
+
+        if (found < 0) {
             return -ECHILD;
         }
         
         if (options & WNOHANG)
             return 0;
-        // 有子进程但都没死 → 睡眠
-        sleep_on(&current->wait_child);
+
+        unsigned long wq_flags = spin_lock_irqsave(&current->wait_child.lock);
+        child_flags = spin_lock_irqsave(&current->lock);
+        found = wait_find_child_locked(pid, &child);
+        spin_unlock_irqrestore(&current->lock, child_flags);
+        if (found == 0) {
+            wait_sleep_on_child();
+            spin_unlock_irqrestore(&current->wait_child.lock, wq_flags);
+            sched();
+        } else {
+            spin_unlock_irqrestore(&current->wait_child.lock, wq_flags);
+        }
     }
 }
 

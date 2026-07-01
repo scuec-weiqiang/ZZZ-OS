@@ -53,6 +53,25 @@ static void rr_dequeue_task(struct rq *rq, struct task_struct *p) {
     p->se.consec_ticks = 0;
 }
 
+static void rr_remove_task(struct rq *rq, struct task_struct *p) {
+    int prio;
+
+    if (rq == NULL || p == NULL || !p->on_rq) {
+        return;
+    }
+
+    prio = p->prio;
+    list_del(&p->se.sched_node);
+    INIT_LIST_HEAD(&p->se.sched_node);
+    if (list_empty(&rq->runnable[prio])) {
+        rq->prio_bitmap &= ~BIT(prio);
+    }
+    p->on_rq = 0;
+    if (rq->nr_running > 0) {
+        rq->nr_running--;
+    }
+}
+
 /* 32-bit count trailing zeros — 不依赖 libgcc，bare-metal 安全 */
 static inline int ctz32(u32 x)
 {
@@ -68,38 +87,33 @@ static inline int ctz32(u32 x)
 static struct task_struct *rr_pick_next_task(struct rq *rq) {
     struct list_head *node;
 
-    if (rq == NULL || rq->prio_bitmap == 0) {
+    if (rq == NULL) {
         return NULL;
     }
 
-    if (this_rq()->curr != rq->idle && this_rq()->curr->status == TASK_RUNNING) {
-        struct task_struct *curr = this_rq()->curr;
+    if (rq->curr != rq->idle && rq->curr->status == TASK_RUNNING) {
+        struct task_struct *curr = rq->curr;
         int curr_prio = curr->prio;
 
         // 连续跑满 3 个时间片未 sleep → CPU 密集型，降权
         if (curr->se.consec_ticks >= 3 &&
             curr_prio > PRIO_HIGHEST && curr_prio < PRIO_LOWEST) {
-            int new_prio = curr_prio + 1;
-
-            list_mov_tail(&rq->runnable[new_prio], &curr->se.sched_node);
-            curr->prio = new_prio;
+            curr->prio = curr_prio + 1;
             curr->se.consec_ticks = 0;
-
-            rq->prio_bitmap |= BIT(new_prio);
-            if (list_empty(&rq->runnable[curr_prio]))
-                rq->prio_bitmap &= ~BIT(curr_prio);
-
-            rq->prio_last_served[new_prio] = monotonic_ns();
-        } else {
-            // 正常放回当前优先级队列尾部
-            list_mov_tail(&rq->runnable[curr_prio], &curr->se.sched_node);
         }
+
+        rr_enqueue_task(rq, curr);
+    }
+
+    if (rq->prio_bitmap == 0) {
+        return NULL;
     }
 
     int highest = ctz32(rq->prio_bitmap);
     struct task_struct *p = NULL;
     node = rq->runnable[highest].next;
     p = list_entry(node, struct task_struct, se.sched_node);
+    rr_remove_task(rq, p);
 
     // 记录该优先级最后一次被服务的时间，用于 aging 判断
     rq->prio_last_served[highest] = monotonic_ns();

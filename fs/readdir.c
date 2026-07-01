@@ -12,10 +12,12 @@ int iterate_dir(struct file *file, struct dir_context *ctx) {
 
 	res = -ENOENT;
 	if (S_ISDIR(inode->i_mode)) {
+		int flags = spin_lock_irqsave(&inode->i_lock);
 		ctx->pos = file->f_pos;
 		
 		res = file->f_op->iterate(file, ctx);
 		file->f_pos = ctx->pos;
+		spin_unlock_irqrestore(&inode->i_lock, flags);
 	}
 	
 out:
@@ -136,10 +138,13 @@ int getdents(unsigned int fd, struct linux_dirent __user * dirent, unsigned int 
 	return error;
 }
 
-
+#include <os/cpu.h>
+#include <os/sched.h>
+#include <os/printk.h>
 long sys_getdents(struct pt_regs *ctx) {
 	unsigned int fd = ctx->r[0];
 	struct linux_dirent __user *dirent = (struct linux_dirent __user *)ctx->r[1];
 	unsigned int count = ctx->r[2];
+	// printk("getdents: cpu=%d pid=%d\n", get_cpuid(), current->pid);
 	return getdents(fd, dirent, count);
 }

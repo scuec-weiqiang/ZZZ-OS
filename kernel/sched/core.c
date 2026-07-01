@@ -184,6 +184,7 @@ void sched_fork(struct task_struct *p) {
     INIT_LIST_HEAD(&p->task_node);
     INIT_LIST_HEAD(&p->wait.list);
     INIT_LIST_HEAD(&p->wait_child.head);
+    spin_lock_init(&p->wait_child.lock);
     p->wait.private = p;
 
 	flags = spin_lock_irqsave(&p->lock);
@@ -217,11 +218,6 @@ void sched_tail(struct task_struct *prev) {
 
     prev->se.sum_exec_runtime += monotonic_ns() - prev->se.exec_start;
 
-    /*
-     * We are now running on the next task's kernel stack.  If the previous
-     * task has already been reaped by its parent, this is the first point
-     * where freeing prev's stack is safe.
-     */
     unsigned long flags = spin_lock_irqsave(&prev->lock);
     prev->on_cpu = 0;
     if (prev->status == TASK_DEAD) {
@@ -283,6 +279,14 @@ void __sched sched(void) {
     prev = rq->curr;
     rq->curr = next;
 
+    if (next == prev) {
+        prev->need_resched = 0;
+        spin_unlock_irqrestore(&rq->lock, flags);
+        timer_mod(&rq->sched_timer, now + next->se.time_slice);
+        local_irq_enable();
+        return;
+    }
+
     unsigned long task_flags = spin_lock_irqsave(&next->lock);
     next->on_cpu = 1;
     spin_unlock_irqrestore(&next->lock, task_flags);
@@ -303,11 +307,11 @@ void sched_event(struct timer *t, void *arg) {
     unsigned long flags;
 
     flags = spin_lock_irqsave(&rq->lock);
-    // 1. 通知当前任务的调度类：时间片用完（只计数，不操作队列）
+    // 通知当前任务的调度类：时间片用完（只设置标志位，不操作队列）
     if (rq->curr->sched_class && rq->curr->sched_class->task_tick)
         rq->curr->sched_class->task_tick(rq, rq->curr);
 
-    // 2. 遍历所有调度类，各调度类独立执行老化检查（低优先级 → 提权）
+    //  遍历所有调度类，各调度类独立执行老化检查（低优先级 → 提权）
     for (class = sched_class_highest(); class; class = class->next) {
         if (class->aging)
             class->aging(rq);

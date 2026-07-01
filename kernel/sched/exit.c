@@ -16,16 +16,24 @@ struct task_struct *choose_reaper(struct task_struct *child) {
 
 void reparent_children(struct task_struct *parent) {
     struct task_struct *child, *n, *reaper;
+    unsigned long parent_flags;
+
+    parent_flags = spin_lock_irqsave(&parent->lock);
     list_for_each_entry_safe(child, n, &parent->children, struct task_struct, sibling) {
+        unsigned long reaper_flags;
+
         list_del(&child->sibling);
         // dprintk("reparent child pid=%d to init\n", child->pid);
         reaper = choose_reaper(child);
+        reaper_flags = spin_lock_irqsave(&reaper->lock);
         child->parent = reaper;
         list_add_tail(&reaper->children, &child->sibling);
+        spin_unlock_irqrestore(&reaper->lock, reaper_flags);
 
         if (child->status == TASK_ZOMBIE)
             wake_up_one(&reaper->wait_child);
     }
+    spin_unlock_irqrestore(&parent->lock, parent_flags);
 }
 
 long sys_exit(struct pt_regs *ctx)
@@ -49,17 +57,13 @@ void __noreturn do_exit(int code) {
 
     curr->exit_code = code;
     curr->status = TASK_ZOMBIE;
-
-    /* 唤醒父进程/等待者 */
-    /* cancel 当前 rq 的调度 timer，如有需要 */
+    curr->sched_class->dequeue_task(rq, curr);
 
     spin_unlock_irqrestore(&rq->lock, flags);
     if (code != 0) {
         printk(RED("pid=%xu exit with code %d\n"), (unsigned long)curr->pid, code);
     }
     reparent_children(curr);
-
-    curr->sched_class->dequeue_task(rq, curr);
 
     if (curr->parent) {
         send_signal(curr->parent, SIGCHLD);

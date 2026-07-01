@@ -35,6 +35,10 @@ int main(int argc, char *argv[])
     (void)argv;
   
     int fd = open("/dev/myledcdev",O_RDWR);
+    if (fd < 0) {
+        perror("open");
+        return 1;
+    }
     write(fd, led_on,sizeof(led_on));
     close (fd);
 

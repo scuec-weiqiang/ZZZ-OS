@@ -75,4 +75,5 @@ exec qemu-system-riscv64 \
     -drive "file=${IMAGE},if=none,format=raw,id=disk0" \
     -device virtio-blk-device,drive=disk0,bus=virtio-mmio-bus.0 \
     -global virtio-mmio.force-legacy=false \
+    -S -s \
     "${EXTRA_ARGS[@]}"
