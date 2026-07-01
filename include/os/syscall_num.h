@@ -39,6 +39,7 @@
     X(141, getdents) \
     X(183, getcwd) \
     X(192, mmap) \
+    X(201, ps) \
 
 /* 生成系统调用号枚举 */
 #define X(nr, name) SYSCALL_##name = nr,

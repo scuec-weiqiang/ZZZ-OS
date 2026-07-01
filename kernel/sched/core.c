@@ -12,6 +12,8 @@
 #include <os/preempt.h>
 #include <os/errno.h>
 #include <os/syscall_num.h>
+#include <os/uaccess.h>
+#include <sys/ps.h>
 #include <mm/pgtbl.h>
 #include <asm/irq.h>
 #include <asm/switch_to.h>
@@ -287,6 +289,55 @@ long sys_getpid(struct pt_regs *ctx)
 {
     (void)ctx;
     return current->pid;
+}
+
+long sys_ps(struct pt_regs *ctx)
+{
+    struct ps_info *ubuf;
+    int max;
+    int count = 0;
+
+    if (ctx == NULL || global_rq == NULL) {
+        return -EINVAL;
+    }
+
+    ubuf = (struct ps_info *)ctx->r[0];
+    max = (int)ctx->r[1];
+    if (ubuf == NULL || max < 0) {
+        return -EINVAL;
+    }
+
+    for (int cpu = 0; sched_cpu_valid(cpu) && count < max; cpu++) {
+        struct rq *rq = &global_rq[cpu];
+        struct task_struct *task;
+        unsigned long flags;
+
+        flags = spin_lock_irqsave(&rq->lock);
+        list_for_each_entry(task, &rq->tasks, struct task_struct, task_node) {
+            struct ps_info info;
+
+            if (count >= max) {
+                break;
+            }
+
+            info.pid = task->pid;
+            info.cpu = task_thread_info(task)->cpu;
+            info.status = task->status;
+            info.on_rq = task->on_rq;
+            info.need_resched = task->need_resched;
+            info.flags = task->flags;
+
+            if (copy_to_user((char *)&ubuf[count], (char *)&info, sizeof(info)) < 0) {
+                spin_unlock_irqrestore(&rq->lock, flags);
+                return -EFAULT;
+            }
+
+            count++;
+        }
+        spin_unlock_irqrestore(&rq->lock, flags);
+    }
+
+    return count;
 }
 
 void sleep_on(struct wait_queue_head *wq_head) {

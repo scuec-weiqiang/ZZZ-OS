@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/mman.h>
+#include <sys/ps.h>
 
 void _init(void) {}
 void _fini(void) {}
@@ -48,6 +49,7 @@ extern long __syscall6(long nr, long a0, long a1, long a2, long a3, long a4, lon
 #define SYS_getdents 141
 #define SYS_getcwd 183
 #define SYS_mmap   192
+#define SYS_ps     201
 
 extern char _end;
 extern char **environ;
@@ -256,6 +258,15 @@ int _isatty(int fd) {
 
 int _getpid(void) {
     long ret = __syscall1(SYS_getpid, 0);
+    if (ret < 0) {
+        errno = -ret;
+        return -1;
+    }
+    return ret;
+}
+
+int _ps(struct ps_info *buf, int max) {
+    long ret = __syscall2(SYS_ps, (long)buf, max);
     if (ret < 0) {
         errno = -ret;
         return -1;
