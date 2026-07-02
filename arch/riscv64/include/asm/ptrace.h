@@ -8,6 +8,7 @@
 #define SSTATUS_SIE  (1UL << 1)
 #define SSTATUS_SPIE (1UL << 5)
 #define SSTATUS_SPP  (1UL << 8)
+#define SSTATUS_FS_INITIAL (1UL << 13)
 
 struct pt_regs {
     union {
@@ -73,7 +74,7 @@ static inline void pt_regs_setup_user(struct pt_regs *regs,
     regs->sepc = entry;
     regs->sp = user_sp;
     regs->a0 = arg0;
-    regs->sstatus = SSTATUS_SPIE;
+    regs->sstatus = SSTATUS_SPIE | SSTATUS_FS_INITIAL;
 }
 
 static inline void pt_regs_set_retval(struct pt_regs *regs, long val)

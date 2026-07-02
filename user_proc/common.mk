@@ -57,7 +57,7 @@ $(TARGET): $(OBJS) $(RUNTIME_OBJS) $(RUNTIME_LD)
 	$(CC) $(CFLAGS) \
 		-nostartfiles \
 		-T $(RUNTIME_LD) \
-		$(RUNTIME_OBJS) $(OBJS) -lc -lgcc -o $@
+		$(RUNTIME_OBJS) $(OBJS) -lc $(LDLIBS) -lgcc -o $@
 
 $(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
