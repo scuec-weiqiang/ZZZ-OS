@@ -86,8 +86,9 @@ int kernel_init(void *arg) {
     setup_stdio(kernel_stdio_device());
 
     char *argv[] = { "/bin/init", NULL };
+    char *envp[] = {"/bin/",NULL};
     
-    do_execve("/bin/init", argv, NULL);
+    do_execve("/bin/init", argv, envp);
     return 0;
 }
 

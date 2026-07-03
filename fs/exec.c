@@ -10,6 +10,7 @@
 #include <os/string.h>
 #include <os/kva.h>
 #include <os/uaccess.h>
+#include <os/elf.h>
 
 #include <mm/pgtbl.h>
 #include <asm/ptrace.h>
@@ -17,6 +18,78 @@
 
 static LIST_HEAD(formats);
 #define EXEC_PATH_MAX 256
+
+#define AT_NULL     0
+#define AT_PHDR     3
+#define AT_PHENT    4
+#define AT_PHNUM    5
+#define AT_PAGESZ   6
+#define AT_ENTRY    9
+#define AT_UID      11
+#define AT_EUID     12
+#define AT_GID      13
+#define AT_EGID     14
+#define AT_SECURE   23
+#define AT_RANDOM   25
+
+#define ELF_AUX_ENTRIES 12
+#define ELF_RANDOM_BYTES 16
+
+static int prepare_elf_aux(struct linux_binprm *bprm)
+{
+    struct Elf64_Ehdr *ehdr;
+    struct Elf64_Phdr *phdrs = NULL;
+    size_t phdr_size;
+    int i;
+    int ret = 0;
+
+    if (bprm == NULL)
+        return -EINVAL;
+
+    ehdr = (struct Elf64_Ehdr *)bprm->buf;
+    if (ehdr->e_ident[0] != 0x7f || ehdr->e_ident[1] != 'E' ||
+        ehdr->e_ident[2] != 'L' || ehdr->e_ident[3] != 'F') {
+        return 0;
+    }
+
+    if (ehdr->e_ident[4] != ELFCLASS64 ||
+        ehdr->e_phentsize != sizeof(struct Elf64_Phdr) ||
+        ehdr->e_phnum == 0) {
+        return 0;
+    }
+
+    phdr_size = (size_t)ehdr->e_phentsize * ehdr->e_phnum;
+    phdrs = kmalloc(phdr_size);
+    if (phdrs == NULL)
+        return -ENOMEM;
+
+    if (kernel_read_at(bprm->file, ehdr->e_phoff, (char *)phdrs,
+                       phdr_size) != (ssize_t)phdr_size) {
+        ret = -EIO;
+        goto out;
+    }
+
+    bprm->elf_entry = ehdr->e_entry;
+    bprm->elf_phent = ehdr->e_phentsize;
+    bprm->elf_phnum = ehdr->e_phnum;
+
+    for (i = 0; i < ehdr->e_phnum; i++) {
+        struct Elf64_Phdr *phdr = &phdrs[i];
+
+        if (phdr->p_type != PT_LOAD)
+            continue;
+
+        if (ehdr->e_phoff >= phdr->p_offset &&
+            ehdr->e_phoff < phdr->p_offset + phdr->p_filesz) {
+            bprm->elf_phdr = phdr->p_vaddr + (ehdr->e_phoff - phdr->p_offset);
+            break;
+        }
+    }
+
+out:
+    kfree(phdrs);
+    return ret;
+}
 
 int register_binfmt(struct linux_binfmt *fmt) {
     CHECK(fmt != NULL, "exec: invalid binfmt", return -1;);
@@ -412,6 +485,11 @@ static int create_user_stack_layout(int argc,
     unsigned long *stack_words = NULL;
 
     unsigned long cursor;
+    unsigned long random_user = 0;
+    static const unsigned char random_bytes[ELF_RANDOM_BYTES] = {
+        0x13, 0x57, 0x9b, 0xdf, 0x24, 0x68, 0xac, 0xe0,
+        0x31, 0x75, 0xb9, 0xfd, 0x42, 0x86, 0xca, 0x0e,
+    };
 
     size_t total_words;
     size_t total_bytes;
@@ -475,6 +553,20 @@ static int create_user_stack_layout(int argc,
     envp_user[envc] = 0;
 
     /*
+     * Linux libc expects an auxiliary vector after envp.
+     * AT_RANDOM points at 16 bytes placed in the initial stack area.
+     */
+    bprm->p -= ELF_RANDOM_BYTES;
+    random_user = bprm->p;
+
+    ret = copy_string_to_stack(bprm,
+                               random_user,
+                               (const char *)random_bytes,
+                               ELF_RANDOM_BYTES);
+    if (ret < 0)
+        goto out;
+
+    /*
      * ABI 对齐
      */
     bprm->p = ALIGN_DOWN(bprm->p,
@@ -488,11 +580,14 @@ static int create_user_stack_layout(int argc,
      * NULL
      * envp[]
      * NULL
+     * auxv[]
+     * AT_NULL
      */
     total_words =
         1 +              /* argc */
         (argc + 1) +     /* argv + NULL */
-        (envc + 1);      /* envp + NULL */
+        (envc + 1) +     /* envp + NULL */
+        (ELF_AUX_ENTRIES * 2);
 
     /*
      * 对齐 padding
@@ -542,6 +637,37 @@ static int create_user_stack_layout(int argc,
         stack_words[idx++] = envp_user[i];
     }
 
+    stack_words[idx++] = 0;
+
+    /*
+     * auxv[]
+     *
+     * This is intentionally minimal. It is enough for static libc startup
+     * to stop scanning at AT_NULL and to discover the page size/random seed.
+     */
+    stack_words[idx++] = AT_PHDR;
+    stack_words[idx++] = bprm->elf_phdr;
+    stack_words[idx++] = AT_PHENT;
+    stack_words[idx++] = bprm->elf_phent;
+    stack_words[idx++] = AT_PHNUM;
+    stack_words[idx++] = bprm->elf_phnum;
+    stack_words[idx++] = AT_ENTRY;
+    stack_words[idx++] = bprm->elf_entry;
+    stack_words[idx++] = AT_PAGESZ;
+    stack_words[idx++] = PAGE_SIZE;
+    stack_words[idx++] = AT_UID;
+    stack_words[idx++] = 0;
+    stack_words[idx++] = AT_EUID;
+    stack_words[idx++] = 0;
+    stack_words[idx++] = AT_GID;
+    stack_words[idx++] = 0;
+    stack_words[idx++] = AT_EGID;
+    stack_words[idx++] = 0;
+    stack_words[idx++] = AT_SECURE;
+    stack_words[idx++] = 0;
+    stack_words[idx++] = AT_RANDOM;
+    stack_words[idx++] = random_user;
+    stack_words[idx++] = AT_NULL;
     stack_words[idx++] = 0;
 
     /*
@@ -786,6 +912,11 @@ int do_execve(char *filename, char* argv[], char* envp[]) {
     
     memset(bprm->buf, 0, BINPRM_BUF_SIZE);
     kernel_read(bprm->file, bprm->buf, BINPRM_BUF_SIZE);
+
+    retval = prepare_elf_aux(bprm);
+    if (retval < 0) {
+        goto copy_failed;
+    }
 
     retval = copy_strings(bprm->argc, argv, bprm);
     if (retval < 0) {

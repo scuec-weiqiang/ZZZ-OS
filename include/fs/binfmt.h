@@ -40,6 +40,10 @@ struct linux_binprm {
     struct file *file;                /* 已打开的可执行文件 */
     unsigned long arg_start;
     unsigned long env_start;
+    unsigned long elf_entry;
+    unsigned long elf_phdr;
+    unsigned long elf_phent;
+    unsigned long elf_phnum;
 };
 
 /*

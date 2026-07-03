@@ -22,17 +22,18 @@
 
 void init(){
         GBSH_PID = getpid();
-        GBSH_IS_INTERACTIVE = isatty(STDIN_FILENO);
+        // GBSH_IS_INTERACTIVE = isatty(STDIN_FILENO);
+        GBSH_IS_INTERACTIVE = 1;
 
         if (GBSH_IS_INTERACTIVE) {
             // while (tcgetpgrp(STDIN_FILENO) != (GBSH_PGID = getpgrp()))
             //         kill(GBSH_PID, SIGTTIN);
 
-            act_child.sa_handler = signalHandler_child;
-            act_int.sa_handler = signalHandler_int;
+            // act_child.sa_handler = signalHandler_child;
+            // act_int.sa_handler = signalHandler_int;
 
-            sigaction(SIGCHLD, &act_child, 0);
-            sigaction(SIGINT, &act_int, 0);
+            // sigaction(SIGCHLD, &act_child, 0);
+            // sigaction(SIGINT, &act_int, 0);
 
             // setpgid(GBSH_PID, GBSH_PID);
             // GBSH_PGID = getpgrp();

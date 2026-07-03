@@ -9,36 +9,37 @@
  * 格式: X(编号, 函数名)
  */
 #define SYSCALL_LIST \
-    X(1,  exit)    \
-    X(2,  fork)    \
-    X(3,  read)    \
-    X(4,  write)   \
-    X(5,  open)    \
-    X(6,  close)   \
-    X(7,  fstat)   \
-    X(8,  stat)    \
-    X(9,  kill)    \
-    X(10, dup)      \
-    X(11, dup2)     \
-    X(12, chdir)   \
-    X(13, sigreturn) \
-    X(14, sigaction) \
-    X(19, lseek)   \
-    X(20, getpid)  \
-    X(22, pipe)    \
-    X(33, access)  \
-    X(40, rmdir)   \
-    X(41, unlink)  \
-    X(45, brk)     \
-    X(46, creat)   \
-    X(47, mkdir)  \
-    X(59, execve)  \
-    X(91, munmap)  \
-    X(106, waitpid) \
-    X(125, mprotect) \
-    X(141, getdents) \
-    X(183, getcwd) \
-    X(192, mmap) \
+    X(17, getcwd) \
+    X(23, dup) \
+    X(24, dup3) \
+    X(34, mkdirat) \
+    X(35, unlinkat) \
+    X(48, faccessat) \
+    X(49, chdir) \
+    X(56, openat) \
+    X(57, close) \
+    X(59, pipe2) \
+    X(61, getdents) \
+    X(62, lseek) \
+    X(63, read) \
+    X(64, write) \
+    X(79, newfstatat) \
+    X(80, fstat) \
+    X(93, exit) \
+    X(94, exit_group) \
+    X(113, clock_gettime) \
+    X(114, clock_getres) \
+    X(129, kill) \
+    X(134, sigaction) \
+    X(139, sigreturn) \
+    X(172, getpid) \
+    X(214, brk) \
+    X(215, munmap) \
+    X(220, clone) \
+    X(221, execve) \
+    X(222, mmap) \
+    X(226, mprotect) \
+    X(260, wait4) \
     X(201, ps) \
 
 /* 生成系统调用号枚举 */
@@ -48,7 +49,7 @@ enum {
 };
 #undef X
 
-#define SYSCALL_MAX 256  /* 派发表大小，需大于最大 syscall 编号 */
+#define SYSCALL_MAX 512  /* 派发表大小，需大于最大 syscall 编号 */
 
 /* 统一函数签名：从 pt_regs 中取参数，返回值写入 r[0] */
 typedef long (*syscall_fn_t)(struct pt_regs *ctx);

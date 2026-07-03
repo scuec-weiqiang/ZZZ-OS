@@ -205,7 +205,7 @@ img:
 
 .PHONY: install
 install:
-	tools/deploy/install_disk_image.sh --image build/images/qemu_virt.img --arch riscv64 --cross-compile riscv-none-elf- --board qemu_virt
+	tools/deploy/install_disk_image.sh --image build/images/qemu_virt.img --arch riscv64 --cross-compile riscv64-unknown-linux-gnu- --board qemu_virt
 
 .PHONY: run
 run:
