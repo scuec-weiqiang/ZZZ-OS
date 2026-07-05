@@ -18,10 +18,6 @@ __switch_to:
     sd s10, 96(a1)
     sd s11, 104(a1)
 
-
-    li t0, 0x2
-    csrs sstatus, t0
-
     ld ra, 0(a2)
     ld sp, 8(a2)
     ld s0, 16(a2)

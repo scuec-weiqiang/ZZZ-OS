@@ -3,10 +3,11 @@
 #include <os/console.h>
 #include <os/spinlock.h>
 #include <os/utils.h>
+#include <os/cpu.h>
 
 #define PRINTK_BUF_SIZE (4096U * 4U)
 
-static char printk_buf[PRINTK_BUF_SIZE] __attribute__((aligned(8)));
+static char printk_buf[MAX_CPUS][PRINTK_BUF_SIZE] __attribute__((aligned(8)));
 static char panic_buf[PRINTK_BUF_SIZE] __attribute__((aligned(8)));
 static spinlock_t printk_lock = SPINLOCK_INIT;
 
@@ -268,20 +269,37 @@ static int kvsnprintk(char *buf, size_t size, const char *fmt, va_list ap) {
 
 int printk(const char *fmt, ...)
 {
+    char *buf;
+    int cpu;
     va_list ap;
     unsigned long flags;
     int n;
 
+    flags = arch_local_irq_save();
+    cpu = get_cpuid();
+    if (cpu < 0 || cpu >= MAX_CPUS) {
+        cpu = 0;
+    }
+    buf = printk_buf[cpu];
+
     va_start(ap, fmt);
-    n = kvsnprintk(printk_buf, sizeof(printk_buf), fmt, ap);
+    n = kvsnprintk(buf, PRINTK_BUF_SIZE, fmt, ap);
     va_end(ap);
 
-    // flags = spin_lock_irqsave(&printk_lock);
-    console_puts(printk_buf);
+    if (printk_lock.raw_lock.val != 0 && printk_lock.owner_cpu == cpu) {
+        console_puts(buf);
+        console_flush();
+        arch_local_irq_restore(flags);
+        return n;
+    }
+
+    spin_lock(&printk_lock);
+    console_puts(buf);
     console_flush();
     // extern void _puts(char *s) ;
-    // _puts(printk_buf);
-    // spin_unlock_irqrestore(&printk_lock, flags);
+    // _puts(buf);
+    spin_unlock(&printk_lock);
+    arch_local_irq_restore(flags);
 
     return n;
 }
@@ -294,6 +312,25 @@ int snprintk(char *str, size_t size, const char *fmt, ...) {
     n = kvsnprintk(str, size, fmt, ap);
     va_end(ap);
 
+    return n;
+}
+
+int printk_emergency(const char *fmt, ...)
+{
+    va_list ap;
+    unsigned long flags;
+    int n;
+
+    flags = arch_local_irq_save();
+
+    va_start(ap, fmt);
+    n = kvsnprintk(panic_buf, sizeof(panic_buf), fmt, ap);
+    va_end(ap);
+
+    console_puts(panic_buf);
+    console_flush();
+
+    arch_local_irq_restore(flags);
     return n;
 }
 

@@ -14,6 +14,9 @@ static inline void arch_spin_lock(arch_spinlock_t *lock)
             : "=r"(old)
             : "r"(val), "r"(&lock->val)
             : "memory");
+        if (old != 0) {
+            __asm volatile("nop" ::: "memory");
+        }
     } while (old != 0);
 }
 

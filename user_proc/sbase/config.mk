@@ -11,5 +11,5 @@ CC = riscv64-unknown-linux-gnu-gcc
 RANLIB = ranlib
 
 # -lrt might be needed on some systems
-# CFLAGS   =
+CFLAGS   = -static
 # LDFLAGS  =

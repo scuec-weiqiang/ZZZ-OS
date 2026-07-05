@@ -15,6 +15,7 @@
 #include <mm/vma.h>
 
 struct mm_struct {
+    int refcount;
     pgtable_t *pgdir;          // 页表根目录
 
     // 内核不需要用户空间相关的信息

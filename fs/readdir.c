@@ -1,7 +1,7 @@
 #include <fs/types.h>
 #include <fs/file.h>
 #include <os/err.h>
-#include <os/syscall_num.h>
+#include <asm/syscall_num.h>
 #include <os/uaccess.h>
 
 int iterate_dir(struct file *file, struct dir_context *ctx) {

@@ -27,6 +27,8 @@ void iounmap(virt_addr_t va, size_t size);
 
 void initial_mm_init();
 struct mm_struct *mm_alloc();
+struct mm_struct *mmget(struct mm_struct *mm);
+void mmput(struct mm_struct *mm);
 void mm_destroy(struct mm_struct *mm);
 
 int do_mmap(struct mm_struct *mm, virt_addr_t vaddr, size_t size, pgprot_t flags);

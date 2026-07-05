@@ -6,9 +6,11 @@
 #include <asm/riscv.h>
 #include <asm/trap_handler.h>
 #include <mm/page_fault.h>
+#include <os/cpu.h>
 #include <os/mm.h>
 #include <os/printk.h>
 #include <os/sched.h>
+#include <os/signal.h>
 #include <os/stacktrace.h>
 #include <os/syscall.h>
 #include <os/uaccess.h>
@@ -18,13 +20,46 @@ extern void kernel_trap_entry(void);
 
 static void trap_panic(const char *reason, struct pt_regs *regs)
 {
-    printk("riscv64 trap: %s\n", reason);
+    if (regs != NULL) {
+        printk_emergency("riscv64 trap: %s cpu=%d pid=%d comm=%s "
+                         "sepc=%lx sstatus=%lx scause=%lx stval=%lx sp=%lx satp=%lx\n",
+                         reason,
+                         get_cpuid(),
+                         current ? current->pid : -1,
+                         current ? current->comm : "(none)",
+                         regs->sepc,
+                         regs->sstatus,
+                         regs->scause,
+                         regs->stval,
+                         regs->sp,
+                         satp_r());
+    } else {
+        printk_emergency("riscv64 trap: %s cpu=%d pid=%d comm=%s satp=%lx\n",
+                         reason,
+                         get_cpuid(),
+                         current ? current->pid : -1,
+                         current ? current->comm : "(none)",
+                         satp_r());
+    }
     if (regs != NULL) {
         show_regs(regs);
     }
     dump_stack();
     while (1) {
     }
+}
+
+static void trap_kill_current(const char *reason, struct pt_regs *regs, int sig)
+{
+    printk("riscv64 user trap: %s cpu=%d pid=%d comm=%s\n",
+           reason,
+           get_cpuid(),
+           current ? current->pid : -1,
+           current ? current->comm : "(none)");
+    if (regs != NULL) {
+        show_regs(regs);
+    }
+    do_exit(128 + sig);
 }
 
 void trap_init(void)
@@ -36,8 +71,9 @@ static int handle_page_fault(struct pt_regs *regs, int prot)
 {
     bool user_fault;
     bool kernel_uaccess_fault;
+    struct task_struct *curr_task = this_rq()->curr;
 
-    if (regs == NULL || current == NULL || current->mm == NULL) {
+    if (regs == NULL || curr_task == NULL || curr_task->mm == NULL) {
         return -1;
     }
 
@@ -93,6 +129,9 @@ reg_t trap_handler(reg_t ctx)
 
     switch (code) {
     case 2:
+        if (pt_regs_is_user(regs)) {
+            trap_kill_current("illegal instruction", regs, SIGILL);
+        }
         trap_panic("illegal instruction", regs);
         break;
     case 3:

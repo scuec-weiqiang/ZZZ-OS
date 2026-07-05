@@ -58,6 +58,14 @@ bool pgtbl_table_is_full(pgtable_t *pgtbl, int level, pte_t *table) {
 }
 
 bool pgtbl_table_need_merge(pgtable_t *pgtbl, pte_t *table, int level) {
+    /*
+     * User page tables shallow-copy the kernel half from init_mm.  Merging
+     * frees the child table, which is unsafe if a shared kernel page-table
+     * page ever reaches this path. Keep mappings split until page-table pages
+     * have ownership/reference tracking.
+     */
+    // return false;
+
     if (level == 0) {
         return false; // 已经是顶层，无法合并
     }
@@ -354,7 +362,7 @@ walk_action_t look_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, v
         // printk("find in level %d\n", level);
         // phys_addr_t offset = va % pgtbl_level_page_size(pgtbl, level);
 
-        phys_addr_t offset = mod_u32(va , pgtbl_level_page_size(pgtbl, level) );
+        phys_addr_t offset = va % pgtbl_level_page_size(pgtbl, level);
         res->pa = arch_pgtbl_entry_get_pa(pgtbl,level,PGTBL_DESC_PAGE,pte);
         res->pa += offset;
         // printk("look_cb: pte = %xu\n", pte->val);
@@ -389,9 +397,11 @@ walk_action_t unmap_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, 
         // 向上清理空表
         for (int l = level; l > 0; l--) {
             pte_t *table_base = ctx->table[l];
-            pte_t *current_pte = ctx->pte[l];
-            if (pgtbl_table_is_empty(pgtbl, l,table_base)) {
-                arch_pgtbl_clear_entry(pgtbl, l, type, current_pte);
+            pte_t *parent_pte = ctx->pte[l - 1];
+
+            if (pgtbl_table_is_empty(pgtbl, l, table_base)) {
+                arch_pgtbl_clear_entry(pgtbl, l - 1, PGTBL_DESC_TABLE, parent_pte);
+                arch_pgtbl_sync_range(parent_pte, sizeof(*parent_pte));
                 free_table_va(table_base);
             } else {
                 break;

@@ -87,11 +87,11 @@ arch_user_enter:
 .global ret_from_fork
 ret_from_fork:
     call sched_tail
+    li t0, 0x2
+    csrs sstatus, t0
     beqz s1, 1f
 
     mv a0, s0
-    li t0, 0x2
-    csrs sstatus, t0
     jalr s1
 
     ld t0, PT_SSTATUS(sp)

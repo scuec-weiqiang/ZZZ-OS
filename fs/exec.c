@@ -35,6 +35,22 @@ static LIST_HEAD(formats);
 #define ELF_AUX_ENTRIES 12
 #define ELF_RANDOM_BYTES 16
 
+static const char *exec_basename(const char *path)
+{
+    const char *base = path;
+
+    if (path == NULL)
+        return "";
+
+    while (*path != '\0') {
+        if (*path == '/' && path[1] != '\0')
+            base = path + 1;
+        path++;
+    }
+
+    return base;
+}
+
 static int prepare_elf_aux(struct linux_binprm *bprm)
 {
     struct Elf64_Ehdr *ehdr;
@@ -788,7 +804,7 @@ static void clear_arg_pages(struct linux_binprm *bprm) {
         phys_addr_t pa = pgtbl_lookup(mm->pgdir, va);
         if (pa) {
             unmap(mm->pgdir, va, PAGE_SIZE);
-            kfree((void *)KERNEL_VA(pa));
+            kfree((void *)KERNEL_VA(ALIGN_DOWN(pa, PAGE_SIZE)));
         }
     }
 
@@ -798,7 +814,7 @@ static void clear_arg_pages(struct linux_binprm *bprm) {
         phys_addr_t pa = pgtbl_lookup(mm->pgdir, sigtramp);
         if (pa) {
             unmap(mm->pgdir, sigtramp, PAGE_SIZE);
-            kfree((void *)KERNEL_VA(pa));
+            kfree((void *)KERNEL_VA(ALIGN_DOWN(pa, PAGE_SIZE)));
         }
     }
     vma_delete(mm, sigtramp, PAGE_SIZE);
@@ -837,16 +853,11 @@ static void bprm_mm_deinit(struct linux_binprm *bprm) {
 }
 
 int flush_old_exec(struct linux_binprm *bprm) {
-    struct mm_struct *old_mm;
-
     if (!bprm || !bprm->mm) {
         return -EINVAL;
     }
 
-    old_mm = current->mm;
-
-    current->mm = bprm->mm;
-    current->active_mm = bprm->mm;
+    task_set_mm(current, bprm->mm);
     bprm->mm = NULL;
 
     pgtbl_switch_to(current->active_mm->pgdir);
@@ -855,17 +866,10 @@ int flush_old_exec(struct linux_binprm *bprm) {
     current->flags &= ~PF_KTHREAD;
     current->signal_trampoline = 0;
 
-    if (old_mm && old_mm != &init_mm && old_mm != current->mm) {
-        mm_destroy(old_mm);
-    }
-
     return 0;
 }
 
 int do_execve(char *filename, char* argv[], char* envp[]) {
-    // dprintk("do_execve: filename=%s\n", filename);
-    // dprintk("do_execve: argv[0]=%s\n", argv ? argv[0] : "NULL");
-    // dprintk("do_execve: envp[0]=%s\n", envp ? envp[0] : "NULL");
     struct linux_binprm *bprm = NULL;
     struct file *file;
     int retval = -ENOMEM;
@@ -939,7 +943,14 @@ int do_execve(char *filename, char* argv[], char* envp[]) {
     if (retval < 0) {
         goto bin_failed;
     }
-   
+
+    memset(current->comm, 0, sizeof(current->comm));
+    strncpy(current->comm, exec_basename(filename), sizeof(current->comm) - 1);
+
+    #ifdef SYS_TRACE_ENABLE
+    printk("[exec] pid=%d exec %s ret=%ld\n",current->pid, filename, retval);
+    #endif
+
     return retval;
 
 bin_failed:
@@ -954,7 +965,9 @@ open_failed:
 // files_failed:
     kfree(bprm);
 failed:
-printk("err retval=%d\n", retval);
+    #ifdef SYS_TRACE_ENABLE
+    printk(RED("[exec] pid=%d exec %s ret=%ld\n"),current->pid, filename, retval);
+    #endif
     return retval;
 }
 

@@ -108,6 +108,7 @@ union thread_union {
 
 struct task_struct {
     pid_t pid;            //进程ID
+    pid_t ppid;           //父进程ID
     // pid_t tgid;
     unsigned int flags;
     void *stack;      // 内核栈基址
@@ -144,11 +145,21 @@ struct task_struct {
     struct k_sigaction sigactions[NSIG];
     uintptr_t signal_trampoline;
 
+    char comm[16];
+    const char *wait_reason;
+
     struct timer sleep_timer; // 睡眠定时器
 };
 extern struct task_struct* find_task_by_pid(pid_t pid);
 extern struct task_struct *kthreadd_task;
 extern struct task_struct init_task;
+
+static inline const char *get_wait_reason(struct task_struct *task) {
+    if (task == NULL) {
+        return "NULL";
+    }
+    return task->wait_reason ? task->wait_reason : "NONE";
+}
 
 static inline void setup_thread_stack(struct task_struct *p, struct task_struct *org) {
 	*task_thread_info(p) = *task_thread_info(org);
@@ -193,7 +204,7 @@ extern int do_wait(int *status);
 #define __sched		__attribute__((__section__(".text.sched.")))
 
 extern struct rq *this_rq(void);
-extern void sched_init();
+extern void sched_init(int boot_cpu);
 extern void sched();
 extern void sched_resched_cpu(int cpu);
 extern int sched_select_task_cpu(struct task_struct *task);
@@ -210,6 +221,8 @@ extern pid_t kernel_thread(int (*fn)(void *), void *arg);
 extern struct task_struct*  kthread_create(int (*fn)(void *), void *arg);
 extern pid_t kernel_thread_on_cpu(int (*fn)(void *), void *arg, int cpu);
 extern void task_destroy(struct task_struct *task);
+extern void task_set_mm(struct task_struct *task, struct mm_struct *mm);
+extern void task_drop_mm(struct task_struct *task);
 extern void wake_up_process(struct task_struct *p);
 extern int wake_up_process_on(struct task_struct *p, int cpu);
 extern struct task_struct* setup_init_task(void);

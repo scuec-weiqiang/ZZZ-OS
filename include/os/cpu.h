@@ -13,7 +13,7 @@
 struct secondary_data {
     unsigned long go;
     void *stack;
-    void (*entry)(int cpuid, void *dtb);
+    void (*entry)(int cpuid);
 };
 
 /* CPU online bitmap — 每 bit 代表一个 CPU 是否已上线 */
@@ -48,7 +48,7 @@ int smp_get_cpu_count(void);
 /* 各架构实现的 SMP 接口 */
 void arch_secondary_init(void);
 void arch_cpu_up(int cpu);
-void arch_smp_init(void);
+void arch_smp_init(int boot_cpu);
 
 /* kernel/kernel.c 中的辅助核入口 */
 void secondary_entry(int cpuid);

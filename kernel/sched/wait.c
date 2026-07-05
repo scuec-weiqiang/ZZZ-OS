@@ -40,6 +40,7 @@ static void wait_sleep_on_child(void)
     rq = this_rq();
     rq_flags = spin_lock_irqsave(&rq->lock);
     current_task->sched_class->dequeue_task(rq, current_task);
+    current_task->wait_reason = wq_head->wait_reason;
     spin_unlock_irqrestore(&rq->lock, rq_flags);
 
     current_task->wait.private = current_task;

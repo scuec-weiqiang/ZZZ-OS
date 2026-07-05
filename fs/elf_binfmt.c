@@ -173,6 +173,10 @@ static int load_elf_binary(struct linux_binprm *bprm) {
         goto out_fail;
     }
 
+    // 设置当前进程的 comm 字段为 ELF 文件名
+    memset(current->comm, 0, sizeof(current->comm));
+    memcpy(current->comm, bprm->filename, sizeof(current->comm) - 1);
+    
     current->mm->start_stack = bprm->p;
     current->signal_trampoline = USER_SIGTRAMP_ADDR;
     regs = task_pt_regs(current);

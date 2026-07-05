@@ -12,7 +12,7 @@
 #include <os/timekeeping.h>
 #include <os/preempt.h>
 #include <os/errno.h>
-#include <os/syscall_num.h>
+#include <asm/syscall_num.h>
 #include <os/uaccess.h>
 #include <sys/ps.h>
 #include <mm/pgtbl.h>
@@ -59,7 +59,12 @@ int task_bind_cpu(struct task_struct *task, int cpu)
     ti->cpu = cpu;
     return 0;
 }
-
+/*
+fork 
+    -->sched_fork()
+        -->sched_select_task_cpu(p)
+遍历所有 online CPU, 选择负载最小的 CPU 作为新进程的 CPU
+*/
 int sched_select_task_cpu(struct task_struct *task)
 {
     int current_cpu = get_cpuid();
@@ -76,6 +81,11 @@ int sched_select_task_cpu(struct task_struct *task)
     }
 
     best_load = global_rq[best_cpu].nr_running;
+    if (global_rq[best_cpu].curr != NULL &&
+        global_rq[best_cpu].curr != global_rq[best_cpu].idle &&
+        global_rq[best_cpu].curr->status == TASK_RUNNING) {
+        best_load++;
+    }
 
     for (int cpu = 0; sched_cpu_valid(cpu); cpu++) {
         int load;
@@ -85,7 +95,14 @@ int sched_select_task_cpu(struct task_struct *task)
         }
 
         load = global_rq[cpu].nr_running;
-        if (load < best_load) {
+        if (global_rq[cpu].curr != NULL &&
+            global_rq[cpu].curr != global_rq[cpu].idle &&
+            global_rq[cpu].curr->status == TASK_RUNNING) {
+            load++;
+        }
+
+        if (load < best_load ||
+            (load == best_load && best_cpu == current_cpu && cpu != current_cpu)) {
             best_load = load;
             best_cpu = cpu;
         }
@@ -196,15 +213,43 @@ void sched_fork(struct task_struct *p) {
 }
 
 static void sched_switch_mm(struct task_struct *prev, struct task_struct *next) {
+    struct mm_struct *old_active = NULL;
+
+    if (prev != NULL && prev->mm == NULL &&
+        prev->active_mm != NULL && prev->active_mm != &init_mm) {
+        old_active = prev->active_mm;
+    }
+
     if (next->mm == NULL) {
-        // 考虑线程没有属于自己的地址空间，那就借用上一个进程的地址空间
-        // printk("borrow mm of pid=%d for pid=%d\n", prev->pid, next->pid);
-        next->active_mm = prev->active_mm;
+        struct mm_struct *borrow = NULL;
+
+        if (prev != NULL) {
+            borrow = prev->active_mm;
+        }
+        if (borrow == NULL) {
+            borrow = &init_mm;
+        }
+
+        if (borrow == old_active) {
+            next->active_mm = borrow;
+            prev->active_mm = NULL;
+            old_active = NULL;
+        } else {
+            next->active_mm = mmget(borrow);
+        }
     } else {
         // 有的话就直接切页表
         next->active_mm = next->mm;
+    }
+
+    if (next->active_mm != NULL && next->active_mm->pgdir != NULL) {
         pgtbl_switch_to(next->active_mm->pgdir);
         pgtbl_flush();
+    }
+
+    if (old_active != NULL) {
+        prev->active_mm = NULL;
+        mmput(old_active);
     }
 }
 
@@ -299,6 +344,7 @@ void __sched sched(void) {
 
     switch_to(prev, next, last);
     sched_tail(last);
+    local_irq_enable();
 }
 
 void sched_event(struct timer *t, void *arg) {
@@ -355,12 +401,22 @@ long sys_ps(struct pt_regs *ctx)
         flags = spin_lock_irqsave(&rq->lock);
         list_for_each_entry(task, &rq->tasks, struct task_struct, task_node) {
             struct ps_info info;
+            const char *comm;
+            const char *wait_reason;
 
             if (count >= max) {
                 break;
             }
 
+            memset(&info, 0, sizeof(info));
+
+            comm = task->comm[0] ? task->comm : "";
+            wait_reason = get_wait_reason(task);
+
+            strncpy(info.comm, comm, sizeof(info.comm) - 1);
+            strncpy(info.wait_reason, wait_reason, sizeof(info.wait_reason) - 1);
             info.pid = task->pid;
+            info.ppid = task->parent ? task->parent->pid : task->ppid;
             info.cpu = task_thread_info(task)->cpu;
             info.status = task->status;
             info.on_rq = task->on_rq;
@@ -406,6 +462,8 @@ void sleep_on(struct wait_queue_head *wq_head) {
     current_task->wait.private = current_task;
     wait_queue_add(wq_head, &current_task->wait);
 
+    current_task->wait_reason = wq_head->wait_reason;
+
     spin_unlock_irqrestore(&wq_head->lock, wq_flags);
     // dprintk("sleep task:%d\n",current_task->pid);
     sched();
@@ -419,6 +477,7 @@ void wake_up_one(struct wait_queue_head *wq_head) {
         if (task->status == TASK_SLEEPING) {
             // dprintk("wake up task:%d\n",task->pid);
             wait_queue_remove(wq_head, wq);
+            task->wait_reason = get_wait_reason_name(WAIT_NONE);
             wake_up_process(task);
             break; // 只唤醒一个
         }
@@ -433,6 +492,7 @@ void wake_up_all(struct wait_queue_head *wq_head) {
         struct task_struct *task = wq->private;
         if (task->status == TASK_SLEEPING) {
             wait_queue_remove(wq_head, wq);
+            task->wait_reason = get_wait_reason_name(WAIT_NONE);
             wake_up_process(task);
         }
     }
@@ -494,15 +554,14 @@ static struct task_struct *create_idle_task(int cpu) {
     return idle;
 }
 
-void sched_init(void) {
+void sched_init(int boot_cpu) {
     int cpu_num = of_get_cpu_num();
     CHECK(cpu_num > 0, "scheduler: invalid cpu count", return;);
+    CHECK(boot_cpu >= 0 && boot_cpu < cpu_num,
+          "scheduler: invalid boot cpu", return;);
 
     global_rq = (struct rq *)kmalloc((size_t)cpu_num * sizeof(*global_rq));
     CHECK(global_rq != NULL, "scheduler: alloc runqueue failed", return;);
-
-    global_rq[0].idle = setup_init_task();
-    global_rq[0].curr = global_rq[0].idle;
 
     for (int cpu = 0; cpu < cpu_num; cpu++) {
         struct rq *rq = &global_rq[cpu];
@@ -526,8 +585,15 @@ void sched_init(void) {
         rq->nr_tasks = 0;
     }
 
-    // 为其他 CPU 创建 idle task
-    for (int cpu = 1; cpu < cpu_num; cpu++) {
+    global_rq[boot_cpu].idle = setup_init_task();
+    global_rq[boot_cpu].curr = global_rq[boot_cpu].idle;
+    task_thread_info(global_rq[boot_cpu].idle)->cpu = boot_cpu;
+
+    // 为非 boot CPU 创建 idle task
+    for (int cpu = 0; cpu < cpu_num; cpu++) {
+        if (cpu == boot_cpu) {
+            continue;
+        }
         struct task_struct *idle = create_idle_task(cpu);
         if (idle) {
             global_rq[cpu].idle = idle;

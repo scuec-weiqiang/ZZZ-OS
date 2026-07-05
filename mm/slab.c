@@ -88,6 +88,37 @@ static int slab_obj_is_valid(const struct kmem_cache *cache,
 static void slab_panic_bad_obj(const char *tag,
                                const struct kmem_cache *cache,
                                const struct slab *slab,
+                               const struct free_obj *obj);
+
+// fix: bug太多了。。。之前没有对double free的情况进行检查，结果跑用户态进程导致内核崩溃
+static int slab_obj_is_free(const struct kmem_cache *cache,
+                            const struct slab *slab,
+                            const struct free_obj *obj) {
+    const struct free_obj *cur;
+    unsigned int seen = 0;
+
+    for (cur = slab->free_object.next; cur != NULL; cur = cur->next) {
+        if (!slab_obj_is_valid(cache, slab, cur)) {
+            slab_panic_bad_obj("kmem_cache_free: invalid object on free list",
+                               cache, slab, cur);
+        }
+
+        if (cur == obj) {
+            return 1;
+        }
+
+        if (++seen > cache->objects_per_slab) {
+            panic("kmem_cache_free: free list loop cache=%xu slab=%xu obj_size=%xu\n",
+                  cache, slab, cache->object_size);
+        }
+    }
+
+    return 0;
+}
+
+static void slab_panic_bad_obj(const char *tag,
+                               const struct kmem_cache *cache,
+                               const struct slab *slab,
                                const struct free_obj *obj) {
     panic("%s: cache=%xu obj_size=%xu slab=%xu obj=%xu start=%xu end=%xu inuse=%xu objs=%xu\n",
           tag, cache, cache->object_size, slab, obj,
@@ -244,6 +275,9 @@ void kmem_cache_free(void *obj) {
     struct free_obj *free_obj = (struct free_obj *)obj;
     if (!slab_obj_is_valid(slab->parent, slab, free_obj)) {
         slab_panic_bad_obj("kmem_cache_free: invalid object", slab->parent, slab, free_obj);
+    }
+    if (slab_obj_is_free(slab->parent, slab, free_obj)) {
+        slab_panic_bad_obj("kmem_cache_free: double free", slab->parent, slab, free_obj);
     }
     free_obj->next = slab->free_object.next;
     slab->free_object.next = free_obj;

@@ -38,13 +38,10 @@ static int highest_possible_level(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr
     int level = pgtbl->features->support_levels - 1; // 默认使用最小页大小
     for (int i = 0; i < pgtbl->features->support_levels ; i++) {
         size_t page_size = pgtbl->features->level[i].page_size;
-        // if ((vaddr % page_size == 0) && (paddr % page_size == 0) && (size >= page_size)) {
-        //     level = i;
-        //     break;
-        // }
 
-        if ( (mod_u32(vaddr ,page_size) == 0) 
-            && (mod_u32(paddr , page_size) == 0) && (size >= page_size)) {
+        if ((vaddr % page_size) == 0 &&
+            (paddr % page_size) == 0 &&
+            size >= page_size) {
             level = i;
             break;
         }
@@ -124,6 +121,7 @@ int unmap(pgtable_t *pgtbl, virt_addr_t va, size_t size) {
 }
 
 struct mm_struct init_mm = {
+    .refcount = 1,
     .pgdir = NULL,
     .vma_list = {0, 0, 0, &init_mm, {NULL, NULL}},
     .vma_count = 0,
@@ -135,6 +133,7 @@ struct mm_struct *mm_alloc() {
         return NULL;
     }
     memset(mm, 0, sizeof(*mm));
+    mm->refcount = 1;
     mm->pgdir = new_pgtbl();
     if (!mm->pgdir) {
         kfree(mm);
@@ -145,7 +144,15 @@ struct mm_struct *mm_alloc() {
     return mm;
 }
 
-void mm_destroy(struct mm_struct *mm) {
+struct mm_struct *mmget(struct mm_struct *mm)
+{
+    if (mm != NULL && mm != &init_mm) {
+        __sync_add_and_fetch(&mm->refcount, 1);
+    }
+    return mm;
+}
+
+static void mm_free(struct mm_struct *mm) {
     struct list_head *pos, *n;
 
     if (mm == NULL) {
@@ -168,6 +175,28 @@ void mm_destroy(struct mm_struct *mm) {
     }
 
     kfree(mm);
+}
+
+void mmput(struct mm_struct *mm)
+{
+    int refcount;
+
+    if (mm == NULL || mm == &init_mm) {
+        return;
+    }
+
+    refcount = __sync_sub_and_fetch(&mm->refcount, 1);
+    if (refcount < 0) {
+        panic("mmput: refcount underflow mm=%xu\n", mm);
+    }
+    if (refcount == 0) {
+        mm_free(mm);
+    }
+}
+
+void mm_destroy(struct mm_struct *mm)
+{
+    mmput(mm);
 }
 
 int do_mmap(struct mm_struct * mm, virt_addr_t vaddr, size_t size, pgprot_t flags) {
@@ -228,21 +257,10 @@ void copy_kernel_mapping(struct mm_struct *dest_mm) {
     root_entries = init_mm.pgdir->features->level[0].table_size / sizeof(pte_t);
     kernel_start_index = pgtbl_level_index(init_mm.pgdir, 0, KERNEL_VA_BASE);
 
-    /*
-     * Temporary bring-up mode:
-     * copy the whole root page table so we can rule out missing inherited
-     * mappings while debugging user-mode page-table switches.
-     */
-    pgtbl_copy(dest_mm->pgdir, init_mm.pgdir, 0, 0, root_entries);
-
-    /*
-     * Original Linux-like behavior: only inherit the kernel half.
-     *
-     * CHECK(kernel_start_index >= 0 && kernel_start_index < root_entries,
-     *       "copy_kernel_mapping: invalid kernel start index", return;);
-     * pgtbl_copy(dest_mm->pgdir, init_mm.pgdir, 0,
-     *            kernel_start_index, root_entries - kernel_start_index);
-     */
+    CHECK(kernel_start_index >= 0 && kernel_start_index < root_entries,
+          "copy_kernel_mapping: invalid kernel start index", return;);
+    pgtbl_copy(dest_mm->pgdir, init_mm.pgdir, 0,
+               kernel_start_index, root_entries - kernel_start_index);
 }
 
 
@@ -250,4 +268,3 @@ void copy_kernel_mapping(struct mm_struct *dest_mm) {
 void initial_mm_init() {
     arch_initial_mm_init(); 
 }
-

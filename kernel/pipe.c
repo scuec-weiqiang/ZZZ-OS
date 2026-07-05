@@ -11,6 +11,12 @@
 
 static struct kmem_cache *pipe_inode_info_kcache = NULL;
 
+#define SPLICE_F_MOVE 0x01
+#define SPLICE_F_NONBLOCK 0x02
+#define SPLICE_F_MORE 0x04
+#define SPLICE_F_GIFT 0x08
+#define SPLICE_F_ALL (SPLICE_F_MOVE | SPLICE_F_NONBLOCK | SPLICE_F_MORE | SPLICE_F_GIFT)
+
 int alloc_pipe_inode_info_init(void) {
     pipe_inode_info_kcache = kmem_cache_create("pipe_inode_info",
                                                sizeof(struct pipe_inode_info),
@@ -32,6 +38,10 @@ struct pipe_inode_info *alloc_pipe_inode_info(void) {
     memset(pipe, 0, sizeof(*pipe));
     init_waitqueue_head(&pipe->read_wait);
     init_waitqueue_head(&pipe->write_wait);
+
+    pipe->read_wait.wait_reason = get_wait_reason_name(WAIT_PIPE_READ);
+    pipe->write_wait.wait_reason = get_wait_reason_name(WAIT_PIPE_WRITE);
+    
     spin_lock_init(&pipe->lock);
     pipe->buf = alloc_pages_kva(1);
 
@@ -144,6 +154,91 @@ static ssize_t pipe_read(struct file *file, char *buf, size_t len, loff_t *ppos)
     (void)ppos;
     struct pipe_inode_info *pipe = file->private_data;
     return __pipe_read(pipe, buf, len);
+}
+
+static void pipe_lock_pair(struct pipe_inode_info *a, struct pipe_inode_info *b)
+{
+    if ((uintptr_t)a < (uintptr_t)b) {
+        spin_lock(&a->lock);
+        spin_lock(&b->lock);
+    } else {
+        spin_lock(&b->lock);
+        spin_lock(&a->lock);
+    }
+}
+
+static void pipe_unlock_pair(struct pipe_inode_info *a, struct pipe_inode_info *b)
+{
+    if ((uintptr_t)a < (uintptr_t)b) {
+        spin_unlock(&b->lock);
+        spin_unlock(&a->lock);
+    } else {
+        spin_unlock(&a->lock);
+        spin_unlock(&b->lock);
+    }
+}
+
+static ssize_t pipe_tee(struct pipe_inode_info *in_pipe,
+                        struct pipe_inode_info *out_pipe,
+                        size_t len, unsigned int flags)
+{
+    bool nonblock = (flags & SPLICE_F_NONBLOCK) != 0;
+
+    if (len == 0)
+        return 0;
+
+    if (in_pipe == out_pipe)
+        return -EINVAL;
+
+    while (1) {
+        size_t out_space;
+        size_t bytes;
+        size_t i;
+
+        pipe_lock_pair(in_pipe, out_pipe);
+
+        if (in_pipe->count == 0) {
+            if (in_pipe->writers == 0) {
+                pipe_unlock_pair(in_pipe, out_pipe);
+                return 0;
+            }
+            pipe_unlock_pair(in_pipe, out_pipe);
+            if (nonblock)
+                return -EAGAIN;
+            sleep_on(&in_pipe->read_wait);
+            continue;
+        }
+
+        if (out_pipe->readers == 0) {
+            pipe_unlock_pair(in_pipe, out_pipe);
+            return -EPIPE;
+        }
+
+        out_space = PIPE_BUF_SIZE - out_pipe->count;
+        if (out_space == 0) {
+            pipe_unlock_pair(in_pipe, out_pipe);
+            if (nonblock)
+                return -EAGAIN;
+            sleep_on(&out_pipe->write_wait);
+            continue;
+        }
+
+        bytes = min(len, in_pipe->count);
+        bytes = min(bytes, out_space);
+
+        for (i = 0; i < bytes; i++) {
+            out_pipe->buf[(out_pipe->head + i) % PIPE_BUF_SIZE] =
+                in_pipe->buf[(in_pipe->tail + i) % PIPE_BUF_SIZE];
+        }
+
+        out_pipe->head = (out_pipe->head + bytes) % PIPE_BUF_SIZE;
+        out_pipe->count += bytes;
+
+        pipe_unlock_pair(in_pipe, out_pipe);
+
+        wake_up_one(&out_pipe->read_wait);
+        return (ssize_t)bytes;
+    }
 }
 
 int pipe_release(struct inode *inode, struct file *file) {
@@ -272,3 +367,38 @@ long sys_pipe(struct pt_regs *ctx) {
     return 0;
 }
 
+long sys_tee(struct pt_regs *ctx)
+{
+    int fd_in = (int)ctx->r[0];
+    int fd_out = (int)ctx->r[1];
+    size_t len = (size_t)ctx->r[2];
+    unsigned int flags = (unsigned int)ctx->r[3];
+    struct file *in_file;
+    struct file *out_file;
+    long ret;
+
+    if (flags & ~SPLICE_F_ALL)
+        return -EINVAL;
+
+    in_file = fd_get_file((unsigned int)fd_in);
+    if (in_file == NULL)
+        return -EBADF;
+
+    out_file = fd_get_file((unsigned int)fd_out);
+    if (out_file == NULL) {
+        fd_put_file(in_file);
+        return -EBADF;
+    }
+
+    if (in_file->f_op != &pipe_read_fops || out_file->f_op != &pipe_write_fops) {
+        ret = -EINVAL;
+        goto out_put;
+    }
+
+    ret = pipe_tee(in_file->private_data, out_file->private_data, len, flags);
+
+out_put:
+    fd_put_file(out_file);
+    fd_put_file(in_file);
+    return ret;
+}

@@ -113,6 +113,7 @@ void tty_init(struct tty *tty, void (*putc)(char ch, void *data), void *data)
     memset(tty, 0, sizeof(*tty));
     spin_lock_init(&tty->lock);
     init_waitqueue_head(&tty->read_wait);
+    tty->read_wait.wait_reason = get_wait_reason_name(WAIT_TTY_READ);
     tty->echo = 1;
     tty->canonical = 1;
     tty->putc = putc;

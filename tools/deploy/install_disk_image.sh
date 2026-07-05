@@ -115,9 +115,11 @@ trap cleanup EXIT
 mount_partition "${loopdev}" 1 "${boot_mnt}"
 mount_partition "${loopdev}" 2 "${root_mnt}"
 
-sudo mkdir -p "${boot_mnt}" "${root_mnt}/bin" "${root_mnt}/etc" "${root_mnt}/dev"
+sudo mkdir -p "${boot_mnt}" "${root_mnt}/bin" "${root_mnt}/etc" "${root_mnt}/dev" "${root_mnt}/tmp"
+sudo chmod 1777 "${root_mnt}/tmp"
 sudo cp "${uimage}" "${boot_mnt}/uImage"
 sudo cp "${dtb}" "${boot_mnt}/"
+sudo cp ~/dash/build-riscv64/src/dash "${root_mnt}/bin/"
 
 sudo cp "${boot_cmd}" "${boot_mnt}/"
 sudo cp "${boot_scr}" "${boot_mnt}/"

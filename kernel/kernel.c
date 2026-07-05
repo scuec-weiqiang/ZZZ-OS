@@ -86,13 +86,18 @@ int kernel_init(void *arg) {
     setup_stdio(kernel_stdio_device());
 
     char *argv[] = { "/bin/init", NULL };
-    char *envp[] = {"/bin/",NULL};
+    char *envp[] = {
+    "PATH=/bin",
+    "HOME=/",
+    "TERM=vt100",
+    "PS1=$ ",
+    NULL
+};
     
     do_execve("/bin/init", argv, envp);
     return 0;
 }
 
-u8 is_init = 0;
 unsigned long cpu_online_map = 0;
 
 int smp_get_cpu_count(void) {
@@ -134,40 +139,35 @@ void welcome(){
     printk("\t============================================\n");
 }
 
-void start_kernel(int cpuid, void *dtb) {
+void start_kernel(int boot_cpuid, void *dtb) {
     local_irq_disable();
-    if (cpuid == 0) {
-        symbols_init();
-        welcome();
+    symbols_init();
+    welcome();
 
-        early_malloc_init();
+    early_malloc_init();
 
-        fdt_init(dtb);
-        set_cpu_online(0);
-        
-        memblock_init();
-        initial_mm_init();
-        kmalloc_init();
+    fdt_init(dtb);
+    set_cpu_online(boot_cpuid);
     
-        irq_init();
-        time_init();
-        
-        sched_init();
-       
-        printk("cpu %d starting\n", cpuid);
-        
-        arch_smp_init();
+    memblock_init();
+    initial_mm_init();
+    kmalloc_init();
 
-        kernel_thread(kernel_init, "kernel_init");
-        pid_t pid = kernel_thread(kthreadd, "kthreadd");
-        kthreadd_task = find_task_by_pid(pid);
+    irq_init();
+    time_init();
+    
+    sched_init(boot_cpuid);
+    
+    printk("cpu %d starting\n", boot_cpuid);
 
-        while(1) {
-            sched();
-            cpu_idle();
-        }
-        is_init = 1;
-    } else {
-        secondary_entry(cpuid);
+    arch_smp_init(boot_cpuid);
+
+    kernel_thread(kernel_init, "kernel_init");
+    pid_t pid = kernel_thread(kthreadd, "kthreadd");
+    kthreadd_task = find_task_by_pid(pid);
+
+    while(1) {
+        sched();
+        cpu_idle();
     }
 }

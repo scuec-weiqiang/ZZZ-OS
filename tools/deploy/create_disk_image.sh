@@ -10,7 +10,7 @@ require_cmd losetup
 require_cmd mkfs.ext2
 
 IMAGE=
-IMAGE_SIZE_MIB=16
+IMAGE_SIZE_MIB=64
 BOOT_SIZE_MIB=1
 
 usage() {

@@ -14,6 +14,8 @@
 
 #include <os/config.h>
 
+#define SYS_TRACE_ENABLE
+
 #if SYS_BITS == 64
     typedef signed char         s8;
     typedef signed short        s16;

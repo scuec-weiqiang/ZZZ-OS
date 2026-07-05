@@ -6,6 +6,7 @@ void init_completion(struct completion *x)
 {
     x->done = 0;
     init_waitqueue_head(&x->wait);
+    x->wait.wait_reason = get_wait_reason_name(WAIT_COMPLETION);
 }
 
 void wait_for_completion(struct completion *x)
@@ -14,6 +15,7 @@ void wait_for_completion(struct completion *x)
         int flags = spin_lock_irqsave(&x->wait.lock);
         if (x->done > 0) {
             x->done--;
+            spin_unlock_irqrestore(&x->wait.lock, flags);
             return;
         }
         spin_unlock_irqrestore(&x->wait.lock,flags);

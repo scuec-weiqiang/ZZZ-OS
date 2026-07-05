@@ -2,9 +2,11 @@
 #include <fs/inode.h>
 #include <fs/dcache.h>
 #include <fs/blkdev.h>
+#include <fs/pagecache.h>
 #include <os/err.h>
 #include <os/kmalloc.h>
 #include <os/printk.h>
+#include <os/minmax.h>
 #include <os/string.h>
 #include "ext2_types.h"
 
@@ -177,6 +179,9 @@ struct inode *ext2_new_inode(struct inode *dir, u16 mode) {
 		inode->i_op = &ext2_dir_inode_operations;
 		inode->i_fop = &ext2_dir_operations;
 		inode->i_mapping->a_ops = &ext2_aops;
+	} else if (S_ISLNK(mode)) {
+		inode->i_op = &ext2_symlink_inode_operations;
+		inode->i_mapping->a_ops = &ext2_aops;
 	} else {
 		inode->i_op = &ext2_special_inode_operations;
 	}
@@ -284,6 +289,36 @@ const struct inode_operations ext2_special_inode_operations = {
 };
 
 /* symlink.c */
-const struct inode_operations ext2_symlink_inode_operations = {
+static ssize_t ext2_readlink(struct inode *inode, char *buf, size_t size)
+{
+    struct page *page;
+    size_t len;
+    void *page_buf;
 
+    if (inode == NULL || buf == NULL)
+        return -EINVAL;
+
+    if (!S_ISLNK(inode->i_mode))
+        return -EINVAL;
+
+    if (size == 0)
+        return 0;
+
+    len = min((size_t)inode->i_size, size);
+    if (len == 0)
+        return 0;
+
+    page = ext2_get_page(inode, 0);
+    if (IS_ERR(page))
+        return PTR_ERR(page);
+
+    page_buf = page_address(page);
+    memcpy(buf, page_buf, len);
+    ext2_put_page(page);
+
+    return len;
+}
+
+const struct inode_operations ext2_symlink_inode_operations = {
+    .readlink = ext2_readlink,
 };

@@ -6,7 +6,7 @@ _start:
 
     mv tp, s0               # tp = cpu ID
 
-    # CPU 0 继续正常初始化 
+    # boot CPU 继续正常初始化
     csrw sie, zero  # 禁用所有中断
     csrw satp, zero
     sfence.vma x0, x0

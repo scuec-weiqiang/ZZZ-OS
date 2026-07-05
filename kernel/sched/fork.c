@@ -40,6 +40,7 @@ __aligned(SIZE_8K) union thread_union init_thread_union = {
 
 struct task_struct init_task = {
     .pid = 0,
+    .comm = "swapper",
     .flags = PF_KTHREAD,
     .prio		= 1,
     .base_prio		= 1,
@@ -135,6 +136,7 @@ static struct task_struct *alloc_task_struct(void) {
     memset(task, 0, sizeof(struct task_struct));
 
     task->status = TASK_SLEEPING;
+    task->wait_reason = get_wait_reason_name(WAIT_NONE);
     INIT_LIST_HEAD(&task->task_node);
     INIT_LIST_HEAD(&task->se.sched_node);
     INIT_LIST_HEAD(&task->children);
@@ -151,6 +153,51 @@ static void free_task_struct(struct task_struct *obj) {
     kmem_cache_free(obj);
 }
 
+void task_set_mm(struct task_struct *task, struct mm_struct *mm)
+{
+    struct mm_struct *old_mm;
+    struct mm_struct *old_active_mm;
+
+    if (task == NULL) {
+        return;
+    }
+
+    old_mm = task->mm;
+    old_active_mm = task->active_mm;
+    task->mm = mm;
+    task->active_mm = mm;
+
+    if (old_mm != NULL && old_mm != mm) {
+        mmput(old_mm);
+    }
+    if (old_active_mm != NULL && old_active_mm != old_mm &&
+        old_active_mm != mm && old_active_mm != &init_mm) {
+        mmput(old_active_mm);
+    }
+}
+
+void task_drop_mm(struct task_struct *task)
+{
+    struct mm_struct *mm;
+    struct mm_struct *active_mm;
+
+    if (task == NULL) {
+        return;
+    }
+
+    mm = task->mm;
+    active_mm = task->active_mm;
+    task->mm = NULL;
+    task->active_mm = NULL;
+
+    if (mm != NULL) {
+        mmput(mm);
+    }
+    if (active_mm != NULL && active_mm != mm && active_mm != &init_mm) {
+        mmput(active_mm);
+    }
+}
+
 static pid_t alloc_pid(void) {
     static pid_t next_pid = 1;
     return next_pid++;
@@ -161,6 +208,7 @@ static void set_parent_child(struct task_struct *parent, struct task_struct *chi
 
     flags = spin_lock_irqsave(&parent->lock);
     child->parent = parent;
+    child->ppid = parent->pid;
     list_add_tail(&parent->children, &child->sibling);
     spin_unlock_irqrestore(&parent->lock, flags);
 }
@@ -193,13 +241,15 @@ static struct task_struct *dup_task_struct(struct task_struct *orig) {
 
     tsk->status = TASK_SLEEPING;
     tsk->sched_class = &rr_sched_class;
+    tsk->mm = NULL;
+    tsk->active_mm = NULL;
 
     spin_lock_init(&tsk->lock);
     INIT_LIST_HEAD(&tsk->children);
     INIT_LIST_HEAD(&tsk->sibling);
 
     tsk->pid = alloc_pid();
-
+    tsk->wait_child.wait_reason = get_wait_reason_name(WAIT_CHILD);
     void *stack = alloc_stack();
     if (IS_ERR(stack)) {
         goto stack_failed;
@@ -309,7 +359,7 @@ void task_destroy(struct task_struct *task) {
     }
     free_stack(task);
     clear_parent_child(task->parent, task);
-    mm_destroy(task->mm);
+    task_drop_mm(task);
     put_files_struct(task->files);
     put_fs_struct(task->fs);
     free_task_struct(task);
@@ -328,6 +378,7 @@ pid_t do_fork_kthread(int (*fn)(void *), void *arg) {
     }
 
     sched_fork(p);
+    strncpy(p->comm, "kthread", sizeof(p->comm) - 1);
     // 至此task结构体里除了文件描述符，内存管理等元数据外，调度相关的字段都设置好了
 
     struct files_struct *new_files = dup_fd(current->files);
@@ -445,7 +496,7 @@ pid_t do_fork_uthread(struct pt_regs *regs) {
     setup_uthread_context(p);
 
     set_parent_child(current, p);
-    
+
     task_attach_to_rq(p);
     wake_up_process(p);
     
@@ -531,6 +582,7 @@ static struct wait_queue_head kthread_create_wait = WAIT_QUEUE_INIT(kthread_crea
 
 int kthreadd(void *arg) {
     int status = 0;
+    kthread_create_wait.wait_reason = get_wait_reason_name(WAIT_IDLE);
     while (1) {
         // 处理 kthread_create 请求
         struct kthread_create_info *info = NULL, *tmp  = NULL;

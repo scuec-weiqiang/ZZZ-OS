@@ -13,7 +13,7 @@
 #include <os/atomic.h>
 #include <os/spinlock.h>
 #include <os/sched.h>
-#include <os/syscall_num.h>
+#include <asm/syscall_num.h>
 #include <os/uaccess.h>
 #include <os/minmax.h>
 #include <mm/slab.h>
@@ -40,6 +40,15 @@ void free_file(struct file *file) {
 
 #define SYSCALL_PATH_MAX 256
 #define SYSCALL_IO_CHUNK 512
+
+#define F_DUPFD 0
+#define F_GETFD 1
+#define F_SETFD 2
+#define F_GETFL 3
+#define F_SETFL 4
+#define F_DUPFD_CLOEXEC 1030
+#define FD_CLOEXEC 1
+#define FCNTL_SETTABLE_FLAGS (O_APPEND | O_NONBLOCK)
 /*
     这里没有对用户空间地址有效性做核验
     崩了直接就kernel panic了
@@ -78,6 +87,82 @@ static struct file *sys_fdget(int fd) {
     spin_unlock(&files->file_lock);
 
     return file;
+}
+
+static int fd_get_close_on_exec(int fd)
+{
+    struct files_struct *files;
+    int ret = -EBADF;
+
+    if (fd < 0)
+        return -EBADF;
+
+    files = current->files;
+    if (files == NULL)
+        return -EBADF;
+
+    spin_lock(&files->file_lock);
+    if (fd < files->fdtab.max_fds && fd_is_open(fd, &files->fdtab))
+        ret = close_on_exec(fd, &files->fdtab) ? FD_CLOEXEC : 0;
+    spin_unlock(&files->file_lock);
+
+    return ret;
+}
+
+long sys_fcntl(struct pt_regs *ctx)
+{
+    int fd = (int)ctx->r[0];
+    int cmd = (int)ctx->r[1];
+    unsigned long arg = ctx->r[2];
+    struct file *file;
+    int newfd;
+
+    switch (cmd) {
+    case F_DUPFD:
+    case F_DUPFD_CLOEXEC:
+        if ((int)arg < 0)
+            return -EINVAL;
+
+        file = fd_get_file(fd);
+        if (file == NULL)
+            return -EBADF;
+
+        newfd = alloc_fd((unsigned)arg,
+                         cmd == F_DUPFD_CLOEXEC ? O_CLOEXEC : 0);
+        if (newfd < 0) {
+            fd_put_file(file);
+            return newfd;
+        }
+
+        attach_fd((unsigned)newfd, file);
+        return newfd;
+
+    case F_GETFD:
+        return fd_get_close_on_exec(fd);
+
+    case F_SETFD:
+        if (sys_fdget(fd) == NULL)
+            return -EBADF;
+        set_close_on_exec((unsigned)fd, arg & FD_CLOEXEC);
+        return 0;
+
+    case F_GETFL:
+        file = sys_fdget(fd);
+        if (file == NULL)
+            return -EBADF;
+        return file->f_flags;
+
+    case F_SETFL:
+        file = sys_fdget(fd);
+        if (file == NULL)
+            return -EBADF;
+        file->f_flags = (file->f_flags & ~FCNTL_SETTABLE_FLAGS) |
+                        (arg & FCNTL_SETTABLE_FLAGS);
+        return 0;
+
+    default:
+        return -EINVAL;
+    }
 }
 
 # define	SEEK_SET	0
@@ -229,16 +314,16 @@ long sys_open(struct pt_regs *ctx) {
 
     file = filp_open(path, (u32)flags);
     if (IS_ERR(file)) {
-        if ((flags & O_CREAT) == 0) {
-            return PTR_ERR(file);
-        }
+        long err = PTR_ERR(file);
+
+        if ((flags & O_CREAT) == 0 || err != -ENOENT)
+            return err;
 
         if (vfs_create(path, 0644) == NULL) {
             return -ENOENT;
         }
 
         file = filp_open(path, (u32)flags);
-        here;
         if (IS_ERR(file))
             return PTR_ERR(file);
     }
@@ -279,10 +364,24 @@ long sys_mkdir(struct pt_regs *ctx) {
     if (copy_user_string(path, sizeof(path), user_path) < 0)
         return -EFAULT;
 
-    if (vfs_mkdir(path, (u16)mode) == NULL)
-        return -EIO;
+    mode &= ~current_umask();
 
-    return 0;
+    return vfs_mkdir(path, (u16)mode);
+}
+
+long sys_umask(struct pt_regs *ctx) {
+    int mask = (int)ctx->r[0] & 0777;
+    int old;
+
+    if (current->fs == NULL)
+        return -EINVAL;
+
+    spin_lock(&current->fs->lock);
+    old = current->fs->umask;
+    current->fs->umask = mask;
+    spin_unlock(&current->fs->lock);
+
+    return old;
 }
 
 long sys_access(struct pt_regs *ctx) {
@@ -387,14 +486,21 @@ struct file *filp_open(const char *path, u32 flags) {
     struct path resolved = {0};
     int ret = 0;
 
-    ret = path_lookup(path, &resolved);
+    if (flags & O_NOFOLLOW)
+        ret = path_lookup_nofollow(path, &resolved);
+    else
+        ret = path_lookup(path, &resolved);
     if (ret < 0) {
-         return ERR_PTR(-ENOENT);
+         return ERR_PTR(ret);
         
     }
 
     if (resolved.dentry == NULL || resolved.dentry->d_inode == NULL) {
         ret = -ENOENT;
+        goto err_put_path;
+    }
+    if ((flags & O_NOFOLLOW) && S_ISLNK(resolved.dentry->d_inode->i_mode)) {
+        ret = -ELOOP;
         goto err_put_path;
     }
     
@@ -923,9 +1029,10 @@ long sys_fstat(struct pt_regs *ctx) {
         st.st_atim.tv_sec = inode->i_atime.tv_sec;        // 访问时间
         st.st_mtim.tv_sec = inode->i_mtime.tv_sec;        // 修改时间
         st.st_ctim.tv_sec = inode->i_ctime.tv_sec;        // 创建时间
+        st.st_blksize = 512;
+        st.st_blocks = (inode->i_size + 511) / 512;
 
        
-        // 4. 关键：文件类型
         if (S_ISREG(inode->i_mode)) {
             st.st_mode = S_IFREG | 0644;   // 普通文件
         } else if (S_ISDIR(inode->i_mode)) {
@@ -972,9 +1079,10 @@ long sys_stat(struct pt_regs *ctx) {
         st.st_atim.tv_sec = inode->i_atime.tv_sec;        // 访问时间
         st.st_mtim.tv_sec = inode->i_mtime.tv_sec;        // 修改时间
         st.st_ctim.tv_sec = inode->i_ctime.tv_sec;        // 创建时间
+        st.st_blksize = 512;
+        st.st_blocks = (inode->i_size + 511) / 512;
 
        
-        // 4. 关键：文件类型
         if (S_ISREG(inode->i_mode)) {
             st.st_mode = S_IFREG | 0644;   // 普通文件
         } else if (S_ISDIR(inode->i_mode)) {

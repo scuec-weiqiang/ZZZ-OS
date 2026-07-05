@@ -1,3 +1,3 @@
-TARGET := hello
+TARGET := ps
 
 include ../common.mk

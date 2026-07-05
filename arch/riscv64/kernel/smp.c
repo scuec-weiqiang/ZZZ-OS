@@ -18,7 +18,8 @@
 
 /* boot.S 中通过 secondary_data 符号引用 */
 struct secondary_data secondary_data[MAX_CPUS];
-extern void secondary_start(void);
+extern void secondary_start(int cpuid);
+extern void secondary_entry(int cpuid);
 
 void arch_secondary_init(void)
 {
@@ -38,15 +39,14 @@ void arch_cpu_up(int cpu)
 {
     long err;
 
-    if (cpu <= 0 || cpu >= MAX_CPUS)
+    if (cpu < 0 || cpu >= MAX_CPUS)
         return;
 
     if (secondary_data[cpu].stack == NULL) {
         printk("SMP: CPU%d has no idle stack\n", cpu);
         return;
     }
-    extern void start_kernel(int cpuid, void *dtb);
-    secondary_data[cpu].entry = start_kernel;
+    secondary_data[cpu].entry = secondary_entry;
 
 
     /* 内存屏障确保写入对目标 CPU 可见 */
@@ -54,10 +54,6 @@ void arch_cpu_up(int cpu)
 
     secondary_data[cpu].go = 1;
 
-    /*
-     * SBI HSM expects a physical start address.  On qemu-virt the early
-     * logical CPU number is the same as the hartid, which is enough for now.
-     */
     err = sbi_hart_start((unsigned long)cpu,
                          (unsigned long)KERNEL_PA((unsigned long)secondary_start),
                          0);
@@ -66,7 +62,7 @@ void arch_cpu_up(int cpu)
     }
 }
 
-void arch_smp_init(void) {
+void arch_smp_init(int boot_cpu) {
     int total_cpus = smp_get_cpu_count();
 
     printk("SMP: %d CPUs detected, bringing up secondaries...\n", total_cpus);
@@ -76,7 +72,10 @@ void arch_smp_init(void) {
         return;
     }
 
-    for (int cpu = 1; cpu < total_cpus && cpu < MAX_CPUS; cpu++) {
+    for (int cpu = 0; cpu < total_cpus && cpu < MAX_CPUS; cpu++) {
+        if (cpu == boot_cpu) {
+            continue; // boot CPU 已经启动
+        }
         arch_cpu_up(cpu);
     }
 }

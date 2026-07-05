@@ -66,7 +66,7 @@ echo "  bootm \${kernel_addr_r} - \${fdt_addr_r}"
 
 exec qemu-system-riscv64 \
     -nographic \
-    -smp 1 \
+    -smp 2 \
     -m 256M \
     -machine virt \
     -bios default \

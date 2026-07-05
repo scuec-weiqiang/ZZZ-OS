@@ -1,7 +1,7 @@
 #include <os/sched.h>
 #include <os/printk.h>
 #include <os/cpu.h>
-#include <os/syscall_num.h>
+#include <asm/syscall_num.h>
 #include <os/list.h>
 #include <os/signal.h>
 #include <asm/ptrace.h>
@@ -60,9 +60,11 @@ void __noreturn do_exit(int code) {
     curr->sched_class->dequeue_task(rq, curr);
 
     spin_unlock_irqrestore(&rq->lock, flags);
-    if (code != 0) {
-        printk(RED("pid=%xu exit with code %d\n"), (unsigned long)curr->pid, code);
-    }
+
+    #ifdef SYS_TRACE_ENABLE
+    printk("[exit] pid=%d exit with code %d\n", current->pid, code);
+    #endif
+    
     reparent_children(curr);
 
     if (curr->parent) {

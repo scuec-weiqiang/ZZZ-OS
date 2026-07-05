@@ -2,12 +2,56 @@
 #include <os/sched.h>
 #include <os/errno.h>
 #include <os/syscall.h>
-#include <os/syscall_num.h>
+#include <asm/syscall_num.h>
 #include <os/timekeeping.h>
 #include <os/uaccess.h>
+#include <os/printk.h>
+#include <os/rand.h>
+#include <os/kmalloc.h>
+#include <fs/file.h>
+#include <fs/namei.h>
+#include <fs/dcache.h>
+#include <fs/types.h>
 
 #define CLOCK_REALTIME 0
 #define CLOCK_MONOTONIC 1
+#define AT_SYMLINK_NOFOLLOW 0x100
+#define AT_EACCESS 0x200
+#define AT_EMPTY_PATH 0x1000
+#define TCGETS 0x5401
+#define TCSETS 0x5402
+#define TCSETSW 0x5403
+#define TCSETSF 0x5404
+#define TIOCSCTTY 0x540e
+#define TIOCGPGRP 0x540f
+#define TIOCSPGRP 0x5410
+#define TIOCGWINSZ 0x5413
+#define TIOCSWINSZ 0x5414
+#define RLIM_INFINITY (~0UL)
+
+#define NCCS 19
+#define VINTR 0
+#define VQUIT 1
+#define VERASE 2
+#define VKILL 3
+#define VEOF 4
+#define VTIME 5
+#define VMIN 6
+
+#define ICRNL 0x00000100
+#define IXON 0x00000400
+#define OPOST 0x00000001
+#define CS8 0x00000030
+#define CREAD 0x00000080
+#define HUPCL 0x00000400
+#define ISIG 0x00000001
+#define ICANON 0x00000002
+#define ECHO 0x00000008
+#define ECHOE 0x00000010
+#define ECHOK 0x00000020
+#define ECHOCTL 0x00000200
+#define ECHOKE 0x00000800
+#define IEXTEN 0x00008000
 
 extern long sys_open(struct pt_regs *ctx);
 extern long sys_stat(struct pt_regs *ctx);
@@ -19,6 +63,61 @@ extern long sys_pipe(struct pt_regs *ctx);
 extern long sys_dup2(struct pt_regs *ctx);
 extern long sys_waitpid(struct pt_regs *ctx);
 extern long sys_fork(struct pt_regs *ctx);
+
+struct linux_winsize {
+    unsigned short ws_row;
+    unsigned short ws_col;
+    unsigned short ws_xpixel;
+    unsigned short ws_ypixel;
+};
+
+struct linux_rlimit {
+    unsigned long rlim_cur;
+    unsigned long rlim_max;
+};
+
+struct linux_termios {
+    unsigned int c_iflag;
+    unsigned int c_oflag;
+    unsigned int c_cflag;
+    unsigned int c_lflag;
+    unsigned char c_line;
+    unsigned char c_cc[NCCS];
+};
+
+static struct linux_termios tty_termios = {
+    .c_iflag = ICRNL | IXON,
+    .c_oflag = OPOST,
+    .c_cflag = CS8 | CREAD | HUPCL,
+    .c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE | IEXTEN,
+    .c_cc = {
+        [VINTR] = 3,
+        [VQUIT] = 28,
+        [VERASE] = 127,
+        [VKILL] = 21,
+        [VEOF] = 4,
+        [VTIME] = 0,
+        [VMIN] = 1,
+    },
+};
+
+static int syscall_copy_user_string(char *dst, size_t dst_len, uintptr_t user_ptr)
+{
+    size_t i;
+
+    if (!dst || dst_len == 0 || user_ptr == 0 || current->mm == NULL)
+        return -EINVAL;
+
+    for (i = 0; i < dst_len; i++) {
+        if (copy_from_user(&dst[i], (const char *)user_ptr + i, 1) < 0)
+            return -EFAULT;
+        if (dst[i] == '\0')
+            return 0;
+    }
+
+    dst[dst_len - 1] = '\0';
+    return -ENAMETOOLONG;
+}
 
 const syscall_fn_t syscall_table[SYSCALL_MAX] = {
 #define X(nr, name) [nr] = sys_##name,
@@ -58,6 +157,16 @@ long sys_faccessat(struct pt_regs *ctx)
     return sys_access(&access_ctx);
 }
 
+long sys_faccessat2(struct pt_regs *ctx)
+{
+    unsigned int flags = (unsigned int)ctx->r[3];
+
+    if (flags & ~(AT_SYMLINK_NOFOLLOW | AT_EACCESS | AT_EMPTY_PATH))
+        return -EINVAL;
+
+    return sys_faccessat(ctx);
+}
+
 long sys_mkdirat(struct pt_regs *ctx)
 {
     struct pt_regs mkdir_ctx = *ctx;
@@ -94,6 +203,203 @@ long sys_dup3(struct pt_regs *ctx)
     return sys_dup2(ctx);
 }
 
+long sys_socket(struct pt_regs *ctx)
+{
+    return -EAFNOSUPPORT;
+}
+
+long sys_ioctl(struct pt_regs *ctx)
+{
+    int fd = (int)ctx->r[0];
+    unsigned long request = ctx->r[1];
+    void *argp = (void *)ctx->r[2];
+    struct file *file;
+    struct inode *inode;
+    int pgrp;
+    long ret = 0;
+
+    file = fd_get_file((unsigned int)fd);
+    if (file == NULL)
+        return -EBADF;
+
+    inode = file->f_inode;
+    if (inode == NULL || !S_ISCHR(inode->i_mode)) {
+        ret = -ENOTTY;
+        goto out_put;
+    }
+
+    if (request == TCGETS) {
+        if (argp == NULL) {
+            ret = -EFAULT;
+            goto out_put;
+        }
+
+        if (copy_to_user(argp, (char *)&tty_termios,
+                         sizeof(tty_termios)) < 0)
+            ret = -EFAULT;
+        goto out_put;
+    }
+
+    if (request == TCSETS || request == TCSETSW || request == TCSETSF) {
+        if (argp == NULL) {
+            ret = -EFAULT;
+            goto out_put;
+        }
+
+        if (copy_from_user((char *)&tty_termios, argp,
+                           sizeof(tty_termios)) < 0)
+            ret = -EFAULT;
+        goto out_put;
+    }
+
+    if (request == TIOCGWINSZ) {
+        struct linux_winsize ws = {
+            .ws_row = 24,
+            .ws_col = 80,
+        };
+
+        if (argp == NULL) {
+            ret = -EFAULT;
+            goto out_put;
+        }
+
+        if (copy_to_user(argp, (char *)&ws, sizeof(ws)) < 0)
+            ret = -EFAULT;
+        goto out_put;
+    }
+
+    if (request == TIOCSWINSZ || request == TIOCSCTTY) {
+        ret = 0;
+        goto out_put;
+    }
+
+    if (request == TIOCGPGRP) {
+        if (argp == NULL) {
+            ret = -EFAULT;
+            goto out_put;
+        }
+
+        pgrp = current->pid;
+        if (copy_to_user(argp, (char *)&pgrp, sizeof(pgrp)) < 0)
+            ret = -EFAULT;
+        goto out_put;
+    }
+
+    if (request == TIOCSPGRP) {
+        ret = 0;
+        goto out_put;
+    }
+
+    ret = -ENOTTY;
+
+out_put:
+    fd_put_file(file);
+    return ret;
+}
+
+long sys_readlinkat(struct pt_regs *ctx)
+{
+    const char *pathname = (const char *)ctx->r[1];
+    char *user_buf = (char *)ctx->r[2];
+    size_t bufsiz = ctx->r[3];
+    char path_buf[256];
+    char *kbuf;
+    ssize_t ret;
+
+    if (bufsiz == 0)
+        return -EINVAL;
+
+    if (syscall_copy_user_string(path_buf, sizeof(path_buf), (uintptr_t)pathname) < 0)
+        return -EFAULT;
+
+    kbuf = kmalloc(bufsiz);
+    if (kbuf == NULL)
+        return -ENOMEM;
+
+    ret = vfs_readlink(path_buf, kbuf, bufsiz);
+    if (ret < 0)
+        goto out;
+
+    if (copy_to_user(user_buf, kbuf, ret) < 0) {
+        ret = -EFAULT;
+        goto out;
+    }
+
+out:
+    kfree(kbuf);
+    return ret;
+}
+
+long sys_symlinkat(struct pt_regs *ctx)
+{
+    const char *target = (const char *)ctx->r[0];
+    const char *linkpath = (const char *)ctx->r[2];
+    char target_buf[256];
+    char link_buf[256];
+    struct dentry *dentry;
+
+    if (syscall_copy_user_string(target_buf, sizeof(target_buf), (uintptr_t)target) < 0)
+        return -EFAULT;
+
+    if (syscall_copy_user_string(link_buf, sizeof(link_buf), (uintptr_t)linkpath) < 0)
+        return -EFAULT;
+
+    dentry = vfs_symlink(link_buf, target_buf);
+    if (dentry == NULL)
+        return -EIO;
+
+    dput(dentry);
+    return 0;
+}
+
+long sys_renameat2(struct pt_regs *ctx)
+{
+    const char *old_path = (const char *)ctx->r[1];
+    const char *new_path = (const char *)ctx->r[3];
+    unsigned int flags = ctx->r[4];
+    char old_buf[256];
+    char new_buf[256];
+
+    if (flags != 0)
+        return -EINVAL;
+
+    if (syscall_copy_user_string(old_buf, sizeof(old_buf), (uintptr_t)old_path) < 0)
+        return -EFAULT;
+
+    if (syscall_copy_user_string(new_buf, sizeof(new_buf), (uintptr_t)new_path) < 0)
+        return -EFAULT;
+
+    return vfs_rename(old_buf, new_buf);
+}
+
+long sys_set_tid_address(struct pt_regs *ctx)
+{
+    return current->pid;
+}
+
+long sys_set_robust_list(struct pt_regs *ctx)
+{
+    return 0;
+}
+
+long sys_rt_sigprocmask(struct pt_regs *ctx)
+{
+    void *oldset = (void *)ctx->r[2];
+    size_t sigsetsize = ctx->r[3];
+    u64 empty = 0;
+
+    if (oldset == NULL)
+        return 0;
+
+    if (sigsetsize > sizeof(empty))
+        sigsetsize = sizeof(empty);
+
+    if (copy_to_user(oldset, (char *)&empty, sigsetsize) < 0)
+        return -EFAULT;
+
+    return 0;
+}
+
 long sys_wait4(struct pt_regs *ctx)
 {
     return sys_waitpid(ctx);
@@ -104,7 +410,8 @@ long sys_clone(struct pt_regs *ctx)
     unsigned long flags = ctx->r[0];
     unsigned long supported;
 
-    supported = CSIGNAL | CLONE_CHILD_SETTID | CLONE_CHILD_CLEARTID;
+    supported = CSIGNAL | CLONE_VM | CLONE_VFORK |
+                CLONE_CHILD_SETTID | CLONE_CHILD_CLEARTID;
     if ((flags & ~supported) != 0)
         return -EINVAL;
 
@@ -150,6 +457,182 @@ long sys_clock_getres(struct pt_regs *ctx)
     return 0;
 }
 
+long sys_getuid(struct pt_regs *ctx)
+{
+    /*
+     * We do not have credentials yet.  Return a non-root uid so archive
+     * tools do not try to preserve ownership through chown/lchown.
+     */
+    return 1000;
+}
+
+long sys_geteuid(struct pt_regs *ctx)
+{
+    return sys_getuid(ctx);
+}
+
+long sys_getppid(struct pt_regs *ctx)
+{
+    if (current->parent == NULL)
+        return 0;
+
+    return current->parent->pid;
+}
+
+long sys_fchmodat(struct pt_regs *ctx)
+{
+    const char *pathname = (const char *)ctx->r[1];
+    mode_t mode = (mode_t)ctx->r[2];
+    char path_buf[256];
+    struct path path = {0};
+    struct inode *inode;
+    int ret;
+
+    if (syscall_copy_user_string(path_buf, sizeof(path_buf),
+                                 (uintptr_t)pathname) < 0)
+        return -EFAULT;
+
+    ret = path_lookup(path_buf, &path);
+    if (ret < 0)
+        return ret;
+
+    inode = path.dentry->d_inode;
+    if (inode == NULL) {
+        ret = -ENOENT;
+        goto out;
+    }
+
+    inode->i_mode = (inode->i_mode & S_IFMT) | (mode & 07777);
+    if (inode->i_sb != NULL && inode->i_sb->s_op != NULL &&
+        inode->i_sb->s_op->write_inode != NULL) {
+        ret = inode->i_sb->s_op->write_inode(inode);
+    } else {
+        ret = 0;
+    }
+
+out:
+    path_put(&path);
+    return ret;
+}
+
+long sys_utimensat(struct pt_regs *ctx)
+{
+    const char *pathname = (const char *)ctx->r[1];
+    const timespec_t *user_times = (const timespec_t *)ctx->r[2];
+    int flags = (int)ctx->r[3];
+    char path_buf[256];
+    struct path path = {0};
+    struct inode *inode;
+    timespec_t times[2];
+    timespec_t now;
+    int ret;
+
+    if (flags & ~0x100)
+        return -EINVAL;
+
+    if (syscall_copy_user_string(path_buf, sizeof(path_buf),
+                                 (uintptr_t)pathname) < 0)
+        return -EFAULT;
+
+    ret = (flags & 0x100) ? path_lookup_nofollow(path_buf, &path)
+                          : path_lookup(path_buf, &path);
+    if (ret < 0)
+        return ret;
+
+    inode = path.dentry->d_inode;
+    if (inode == NULL) {
+        ret = -ENOENT;
+        goto out;
+    }
+
+    if (user_times != NULL) {
+        if (copy_from_user((char *)times, (char *)user_times,
+                           sizeof(times)) < 0) {
+            ret = -EFAULT;
+            goto out;
+        }
+        inode->i_atime = times[0];
+        inode->i_mtime = times[1];
+    } else {
+        u64 ns = monotonic_ns();
+        now.tv_sec = ns / NSEC_PER_SEC;
+        now.tv_nsec = ns % NSEC_PER_SEC;
+        inode->i_atime = now;
+        inode->i_mtime = now;
+    }
+
+    if (inode->i_sb != NULL && inode->i_sb->s_op != NULL &&
+        inode->i_sb->s_op->write_inode != NULL) {
+        ret = inode->i_sb->s_op->write_inode(inode);
+    } else {
+        ret = 0;
+    }
+
+out:
+    path_put(&path);
+    return ret;
+}
+
+long sys_riscv_hwprobe(struct pt_regs *ctx)
+{
+    return -ENOSYS;
+}
+
+long sys_prlimit64(struct pt_regs *ctx)
+{
+    unsigned int resource = ctx->r[1];
+    const struct linux_rlimit *new_limit = (const struct linux_rlimit *)ctx->r[2];
+    struct linux_rlimit *old_limit = (struct linux_rlimit *)ctx->r[3];
+    struct linux_rlimit limit = {
+        .rlim_cur = RLIM_INFINITY,
+        .rlim_max = RLIM_INFINITY,
+    };
+
+    if (new_limit != NULL)
+        return -EPERM;
+
+    if (resource == 3) {
+        limit.rlim_cur = 8UL * 1024 * 1024;
+        limit.rlim_max = 8UL * 1024 * 1024;
+    } else if (resource == 7) {
+        limit.rlim_cur = 256;
+        limit.rlim_max = 256;
+    }
+
+    if (old_limit != NULL &&
+        copy_to_user((char *)old_limit, (char *)&limit, sizeof(limit)) < 0)
+        return -EFAULT;
+
+    return 0;
+}
+
+long sys_getrandom(struct pt_regs *ctx)
+{
+    char *buf = (char *)ctx->r[0];
+    size_t buflen = ctx->r[1];
+    size_t done = 0;
+
+    while (done < buflen) {
+        unsigned int value = (unsigned int)rand() ^ (unsigned int)monotonic_ns();
+        size_t chunk = buflen - done;
+
+        if (chunk > sizeof(value))
+            chunk = sizeof(value);
+
+        if (copy_to_user(buf + done, (char *)&value, chunk) < 0)
+            return -EFAULT;
+
+        done += chunk;
+    }
+
+    return done;
+}
+
+long sys_rseq(struct pt_regs *ctx)
+{
+    return -ENOSYS;
+}
+
 void do_syscall(struct pt_regs *ctx) {
     long ret = -ENOSYS;
     u32 nr;
@@ -160,14 +643,20 @@ void do_syscall(struct pt_regs *ctx) {
     nr = ctx->r[7];
     // dprintk("syscall: nr=%u\n", nr);
     current_thread_info()->syscall = nr;
-
-    if (nr < SYSCALL_MAX && syscall_table[nr] != NULL)
+    if (nr < SYSCALL_MAX && syscall_table[nr] != NULL) {
         ret = syscall_table[nr](ctx);
-
+    } else {
+        dprintk("syscall: nr=%u not implemented\n", nr);
+    }
+        
     if (nr == SYSCALL_sigreturn) {
-
+        // 
     } else {
         ctx->r[0] = (reg_t)ret;
     }
+
+    #ifdef SYS_TRACE_ENABLE
+    printk("[syscall %d] %s called by pid=%d ret=%ld\n", nr, syscall_names[nr], current->pid,  ret);
+    #endif
         
 }

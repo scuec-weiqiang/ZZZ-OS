@@ -123,6 +123,10 @@ struct inode_operations {
     int (*mknod)(struct inode *dir, struct dentry *dentry, u16 mode, dev_t dev);
     int (*unlink)(struct inode *dir, struct dentry *dentry);
     int (*rmdir)(struct inode *dir, struct dentry *dentry);
+    int (*rename)(struct inode *old_dir, struct dentry *old_dentry,
+                  struct inode *new_dir, struct dentry *new_dentry);
+    int (*symlink)(struct inode *dir, struct dentry *dentry, const char *target);
+    ssize_t (*readlink)(struct inode *inode, char *buf, size_t size);
 };
 
 struct file_operations {
@@ -299,20 +303,20 @@ struct fs_struct {
 typedef long blksize_t;
 typedef long blkcnt_t;
 
-typedef unsigned short user_dev_t;
-typedef unsigned short user_ino_t;
-typedef unsigned int   user_mode_t;
-typedef unsigned short user_nlink_t;
-typedef unsigned short user_uid_t;
-typedef unsigned short user_gid_t;
-typedef long           user_off_t;
-typedef long long      user_time_t;
-typedef long           user_blkcnt_t;
-typedef long           user_blksize_t;
+typedef u64            user_dev_t;
+typedef u64            user_ino_t;
+typedef u32            user_mode_t;
+typedef u32            user_nlink_t;
+typedef u32            user_uid_t;
+typedef u32            user_gid_t;
+typedef s64            user_off_t;
+typedef s64            user_time_t;
+typedef s64            user_blkcnt_t;
+typedef s32            user_blksize_t;
 
 struct user_timespec {
-    user_time_t tv_sec;   // 8 bytes
-    long        tv_nsec;  // 4 bytes
+    user_time_t tv_sec;
+    long        tv_nsec;
 };
 
 struct user_stat {
@@ -323,14 +327,17 @@ struct user_stat {
     user_uid_t     st_uid;
     user_gid_t     st_gid;
     user_dev_t     st_rdev;
+    user_dev_t     __pad1;
     user_off_t     st_size;
+
+    user_blksize_t st_blksize;
+    int            __pad2;
+    user_blkcnt_t  st_blocks;
 
     struct user_timespec st_atim;
     struct user_timespec st_mtim;
     struct user_timespec st_ctim;
 
-    user_blksize_t st_blksize;
-    user_blkcnt_t  st_blocks;
-    long           st_spare4[2];
+    int            __glibc_reserved[2];
 };
 #endif

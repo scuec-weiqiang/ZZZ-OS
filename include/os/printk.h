@@ -27,6 +27,7 @@
 #define STRIKE(msg)         "\033[9m" msg "\033[0m"
 
 extern int printk(const char* s, ...);
+extern int printk_emergency(const char* s, ...);
 extern int snprintk(char *str, size_t size, const char *fmt, ...);
 extern void panic(const char* s, ...);
 
@@ -36,9 +37,17 @@ extern void panic(const char* s, ...);
 #ifdef PRINTK_DEBUG
 #define dprintk(fmt, ...) \
     printk(YELLOW("[DBG] %s:%d:%s: ") fmt, __FILE__, __LINE__, __func__, ##__VA_ARGS__)
+
+#define info(fmt, ...) \
+    printk(BLUE("[INFO] %s: ") fmt, __func__,  ##__VA_ARGS__)
 #else
 #define dprintk(fmt, ...) do { } while (0)
+
+#define info(fmt, ...) \
+    printk(BLUE("[INFO] %s: ") fmt, ##__VA_ARGS__)
 #endif
+
+
 
 #define here dprintk(RED("here: %s:%d\n"), __FILE__, __LINE__)
 

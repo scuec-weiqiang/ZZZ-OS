@@ -16,6 +16,13 @@ CONFIG_FILE ?= .config.$(ARCH)
 DEPLOY_DIR ?= $(BUILD_DIR)/deploy/$(ARCH)/$(BOARD)
 DEPLOY_BOOT_CMD := $(DEPLOY_DIR)/boot.cmd
 DEPLOY_BOOT_SCR := $(DEPLOY_DIR)/boot.scr
+SBASE_DIR := user_proc/sbase
+SBASE_BOX := $(SBASE_DIR)/sbase-box
+SBASE_BINS ?= ls cat echo mv true false touch mkdir\
+rmdir rm ln uname cp date find head tail pwd ed which time tar\
+kill\
+
+SBASE_BOX_LINKS ?=
 
 #--------------输出目录---------------#
 BUILD_DIR := build
@@ -153,7 +160,6 @@ $(BUILD_DIR)/%.o: %.s $(ASM_LINK) $(KBUILD_FILE)
 
 clean:
 	rm -rf $(BUILD_DIR) $(KBUILD_FILE) $(CONFIG_FILE)
-	$(MAKE) -C ./user_runtime/ clean
 	@echo "clean complete"
 
 .PHONY: all clean artifacts dist os
@@ -220,9 +226,50 @@ u:
 	@set -e; \
 	for d in user_proc/*; do \
 		if [ -d "$$d" ] && [ -f "$$d/Makefile" ]; then \
-			$(MAKE) -C "$$d" all; \
+			if [ "$$d" = "$(SBASE_DIR)" ]; then \
+				$(MAKE) sbase-install INSTALL_DIR="$(INSTALL_DIR)" SBASE_BINS="$(SBASE_BINS)"; \
+			else \
+				$(MAKE) -C "$$d" all; \
+			fi; \
 		fi; \
 	done
+
+.PHONY: sbase-box
+sbase-box:
+	$(MAKE) -C $(SBASE_DIR) sbase-box
+
+.PHONY: sbase-bins
+sbase-bins:
+	@test -n "$(SBASE_BINS)" || \
+		( echo "SBASE_BINS is empty; pass SBASE_BINS=\"cat echo ls\"" && exit 1 )
+	$(MAKE) -C $(SBASE_DIR) $(SBASE_BINS)
+
+.PHONY: sbase-install
+sbase-install:
+	@if [ -n "$(SBASE_BINS)" ]; then \
+		$(MAKE) sbase-bins-install INSTALL_DIR="$(INSTALL_DIR)" SBASE_BINS="$(SBASE_BINS)"; \
+	else \
+		$(MAKE) sbase-box-install INSTALL_DIR="$(INSTALL_DIR)" SBASE_BOX_LINKS="$(SBASE_BOX_LINKS)"; \
+	fi
+
+.PHONY: sbase-bins-install
+sbase-bins-install: sbase-bins
+	@test -d "$(INSTALL_DIR)" || \
+		( echo "install target '$(INSTALL_DIR)' is not a directory; mount the image first" && exit 1 )
+	@for name in $(SBASE_BINS); do \
+		sudo cp "$(SBASE_DIR)/$$name" "$(INSTALL_DIR)/"; \
+	done
+
+.PHONY: sbase-box-install
+sbase-box-install: sbase-box
+	@test -d "$(INSTALL_DIR)" || \
+		( echo "install target '$(INSTALL_DIR)' is not a directory; mount the image first" && exit 1 )
+	sudo cp $(SBASE_BOX) "$(INSTALL_DIR)/"
+	@if [ -n "$(SBASE_BOX_LINKS)" ]; then \
+		for name in $(SBASE_BOX_LINKS); do \
+			sudo ln -sf sbase-box "$(INSTALL_DIR)/$$name"; \
+		done; \
+	fi
 
 .PHONY: uc
 uc:

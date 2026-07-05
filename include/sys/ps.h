@@ -2,12 +2,15 @@
 #define _SYS_PS_H
 
 struct ps_info {
+    char comm[16];
     int pid;
+    int ppid;
     int cpu;
     int status;
     int on_rq;
     int need_resched;
     unsigned int flags;
+    char wait_reason[32];
 };
 
 #define PS_FLAG_KTHREAD 0x00200000U

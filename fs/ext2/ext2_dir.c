@@ -198,9 +198,13 @@ static struct ext2_dir_entry_2 *ext2_find_entry(struct inode *dir, struct qstr *
         }
         buf = (char *)page_address(page);
         u32 valid_bytes_in_page = last_valid_byte(dir, i);
-        char *end = (char*)(valid_bytes_in_page - rec_len);
+        if (valid_bytes_in_page < rec_len) {
+            ext2_put_page(page);
+            continue;
+        }
+        u32 end = valid_bytes_in_page - rec_len;
         u32 offset = 0;
-        while (offset < (u32)end) {
+        while (offset <= end) {
             struct ext2_dir_entry_2 *entry = (struct ext2_dir_entry_2 *)(buf + offset);
             if (entry->inode != 0 && entry->name_len == child->len &&
                 memcmp(entry->name, child->name, child->len) == 0) {
@@ -330,7 +334,7 @@ int ext2_find_slot(struct inode *dir, size_t name_len, dir_slot_t *slot_out) {
         ext2_put_page(page);
     }
 
-    return -ENOMEM;
+    return 0;
 }
 
 static void ext2_init_dir_entry(struct ext2_dir_entry_2 *de, u32 ino, u16 mode, const char *name, u32 name_len, u16 rec_len) {
@@ -459,10 +463,11 @@ int ext2_init_dot_entries(struct inode *new_dir, u32 parent_ino) {
     memset(buf, 0, block_size);
 
     dot = (struct ext2_dir_entry_2 *)buf;
-    ext2_init_dir_entry(dot,new_dir->i_ino,EXT2_FT_DIR,".",1,dot_rec_len);
+    ext2_init_dir_entry(dot, new_dir->i_ino, S_IFDIR, ".", 1, dot_rec_len);
 
     dotdot = (struct ext2_dir_entry_2 *)(buf + dot_rec_len);
-    ext2_init_dir_entry(dotdot,parent_ino,EXT2_FT_DIR,"..",2,block_size - dot_rec_len);
+    ext2_init_dir_entry(dotdot, parent_ino, S_IFDIR, "..", 2,
+                        block_size - dot_rec_len);
     SetPageDirty(page);
     ret = pagecache_write_page(page); // 立即写回
     if (ret < 0) {
@@ -471,7 +476,9 @@ int ext2_init_dot_entries(struct inode *new_dir, u32 parent_ino) {
     }
     
     ext2_put_page(page);
-    return ret;
+
+    new_dir->i_size = block_size;
+    return ext2_write_inode(new_dir);
 }
 
 static int ext2_add_entry_to_slot(struct inode *parent, const char *name, u32 name_len, 
@@ -479,6 +486,7 @@ static int ext2_add_entry_to_slot(struct inode *parent, const char *name, u32 na
     struct page *page;
     char *buf;
     struct ext2_dir_entry_2 *new_entry;
+    int ret;
 
     page = ext2_get_page(parent, slot->page_index);
     if (IS_ERR(page))
@@ -495,9 +503,11 @@ static int ext2_add_entry_to_slot(struct inode *parent, const char *name, u32 na
     new_entry = (struct ext2_dir_entry_2 *)(buf + slot->offset);
     ext2_init_dir_entry(new_entry, ino, mode, name, name_len, slot->free_len);
     SetPageDirty(page);
-    pagecache_write_page(page); // 立即写回
+    ret = pagecache_write_page(page); // 立即写回
 
     ext2_put_page(page);
+    if (ret < 0)
+        return ret;
 
     return ext2_write_inode(parent);
 }
@@ -648,6 +658,77 @@ static int ext2_mknod(struct inode *dir, struct dentry *dentry, u16 mode, dev_t 
     return 0;
 }
 
+static int ext2_write_symlink_target(struct inode *inode, const char *target)
+{
+    size_t len;
+    struct page *page;
+    char *buf;
+    int ret;
+
+    if (inode == NULL || target == NULL)
+        return -EINVAL;
+
+    len = strlen(target);
+    if (len >= PAGE_SIZE)
+        return -ENAMETOOLONG;
+
+    ret = ext2_block_set_mapping(inode, 0);
+    if (ret < 0)
+        return ret;
+
+    page = ext2_get_page(inode, 0);
+    if (IS_ERR(page))
+        return PTR_ERR(page);
+
+    buf = page_address(page);
+    memset(buf, 0, PAGE_SIZE);
+    memcpy(buf, target, len);
+
+    SetPageUptodate(page);
+    SetPageDirty(page);
+    ret = pagecache_write_page(page);
+    ext2_put_page(page);
+    if (ret < 0)
+        return ret;
+
+    inode->i_size = len;
+    return ext2_write_inode(inode);
+}
+
+static int ext2_symlink(struct inode *dir, struct dentry *dentry, const char *target)
+{
+    struct inode *inode;
+    int ret;
+
+    if (dir == NULL || dentry == NULL || target == NULL)
+        return -EINVAL;
+
+    inode = ext2_new_inode(dir, S_IFLNK | 0777);
+    if (IS_ERR(inode))
+        return PTR_ERR(inode);
+
+    ret = ext2_write_symlink_target(inode, target);
+    if (ret < 0) {
+        ext2_release_ino(dir->i_sb, inode->i_ino);
+        return ret;
+    }
+
+    d_add(dentry, inode);
+
+    ret = ext2_add_entry(dir, dentry->d_name.name, dentry->d_name.len,
+                         inode->i_ino, S_IFLNK);
+    if (ret < 0) {
+        ext2_release_ino(dir->i_sb, inode->i_ino);
+        dentry->d_inode = NULL;
+        return ret;
+    }
+
+    dir->i_mtime = dir->i_ctime;
+    ext2_write_inode(dir);
+
+    return 0;
+}
+
 static int ext2_unlink(struct inode *dir, struct dentry *dentry) {
     struct inode *inode;
     struct ext2_inode_info *ei;
@@ -741,6 +822,48 @@ static int ext2_rmdir(struct inode *dir, struct dentry *dentry) {
     return 0;
 }
 
+static int ext2_rename(struct inode *old_dir, struct dentry *old_dentry,
+                       struct inode *new_dir, struct dentry *new_dentry) {
+    struct inode *inode;
+    timespec_t now;
+    int ret;
+
+    if (old_dir == NULL || old_dentry == NULL || new_dir == NULL ||
+        new_dentry == NULL || old_dentry->d_inode == NULL)
+        return -EINVAL;
+
+    inode = old_dentry->d_inode;
+    if (new_dentry->d_inode != NULL)
+        return -EEXIST;
+
+    ret = ext2_add_entry(new_dir, new_dentry->d_name.name,
+                         new_dentry->d_name.len, inode->i_ino,
+                         inode->i_mode);
+    if (ret < 0)
+        return ret;
+
+    ret = ext2_delete_entry(old_dir, &old_dentry->d_name);
+    if (ret < 0)
+        return ret;
+
+    now = ext2_now();
+    old_dir->i_mtime = old_dir->i_ctime = now;
+    new_dir->i_mtime = new_dir->i_ctime = now;
+    inode->i_ctime = now;
+
+    ret = ext2_write_inode(old_dir);
+    if (ret < 0)
+        return ret;
+
+    if (new_dir != old_dir) {
+        ret = ext2_write_inode(new_dir);
+        if (ret < 0)
+            return ret;
+    }
+
+    return ext2_write_inode(inode);
+}
+
 const struct inode_operations ext2_dir_inode_operations = {
     .lookup = ext2_lookup,
     .create = ext2_create,
@@ -748,4 +871,6 @@ const struct inode_operations ext2_dir_inode_operations = {
     .mknod = ext2_mknod,
     .unlink = ext2_unlink,
     .rmdir = ext2_rmdir,
+    .rename = ext2_rename,
+    .symlink = ext2_symlink,
 };

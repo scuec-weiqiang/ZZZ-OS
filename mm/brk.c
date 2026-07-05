@@ -1,6 +1,6 @@
 #include <os/sched.h>
 #include <os/mm.h>
-#include <os/syscall_num.h>
+#include <asm/syscall_num.h>
 #include <fs/binfmt.h>
 
 long sys_brk(struct pt_regs *ctx)

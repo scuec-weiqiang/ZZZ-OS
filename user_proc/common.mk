@@ -44,6 +44,7 @@ install: $(TARGET)
 	@test -d $(INSTALL_DIR) || \
 		( echo "install target '$(INSTALL_DIR)' is not a directory; mount the image first" && exit 1 )
 	sudo cp $(TARGET) $(INSTALL_DIR)/
+	
 
 
 $(TARGET): $(OBJS)
