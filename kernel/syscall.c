@@ -1,57 +1,24 @@
 #include <asm/ptrace.h>
-#include <os/sched.h>
-#include <os/errno.h>
-#include <os/syscall.h>
 #include <asm/syscall_num.h>
-#include <os/timekeeping.h>
-#include <os/uaccess.h>
-#include <os/printk.h>
-#include <os/rand.h>
-#include <os/kmalloc.h>
+#include <fs/dcache.h>
 #include <fs/file.h>
 #include <fs/namei.h>
-#include <fs/dcache.h>
 #include <fs/types.h>
+#include <os/errno.h>
+#include <os/kmalloc.h>
+#include <os/printk.h>
+#include <os/rand.h>
+#include <os/sched.h>
+#include <os/syscall.h>
+#include <os/timekeeping.h>
+#include <os/uaccess.h>
 
 #define CLOCK_REALTIME 0
 #define CLOCK_MONOTONIC 1
 #define AT_SYMLINK_NOFOLLOW 0x100
 #define AT_EACCESS 0x200
 #define AT_EMPTY_PATH 0x1000
-#define TCGETS 0x5401
-#define TCSETS 0x5402
-#define TCSETSW 0x5403
-#define TCSETSF 0x5404
-#define TIOCSCTTY 0x540e
-#define TIOCGPGRP 0x540f
-#define TIOCSPGRP 0x5410
-#define TIOCGWINSZ 0x5413
-#define TIOCSWINSZ 0x5414
 #define RLIM_INFINITY (~0UL)
-
-#define NCCS 19
-#define VINTR 0
-#define VQUIT 1
-#define VERASE 2
-#define VKILL 3
-#define VEOF 4
-#define VTIME 5
-#define VMIN 6
-
-#define ICRNL 0x00000100
-#define IXON 0x00000400
-#define OPOST 0x00000001
-#define CS8 0x00000030
-#define CREAD 0x00000080
-#define HUPCL 0x00000400
-#define ISIG 0x00000001
-#define ICANON 0x00000002
-#define ECHO 0x00000008
-#define ECHOE 0x00000010
-#define ECHOK 0x00000020
-#define ECHOCTL 0x00000200
-#define ECHOKE 0x00000800
-#define IEXTEN 0x00008000
 
 extern long sys_open(struct pt_regs *ctx);
 extern long sys_stat(struct pt_regs *ctx);
@@ -64,45 +31,12 @@ extern long sys_dup2(struct pt_regs *ctx);
 extern long sys_waitpid(struct pt_regs *ctx);
 extern long sys_fork(struct pt_regs *ctx);
 
-struct linux_winsize {
-    unsigned short ws_row;
-    unsigned short ws_col;
-    unsigned short ws_xpixel;
-    unsigned short ws_ypixel;
-};
-
 struct linux_rlimit {
     unsigned long rlim_cur;
     unsigned long rlim_max;
 };
 
-struct linux_termios {
-    unsigned int c_iflag;
-    unsigned int c_oflag;
-    unsigned int c_cflag;
-    unsigned int c_lflag;
-    unsigned char c_line;
-    unsigned char c_cc[NCCS];
-};
-
-static struct linux_termios tty_termios = {
-    .c_iflag = ICRNL | IXON,
-    .c_oflag = OPOST,
-    .c_cflag = CS8 | CREAD | HUPCL,
-    .c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE | IEXTEN,
-    .c_cc = {
-        [VINTR] = 3,
-        [VQUIT] = 28,
-        [VERASE] = 127,
-        [VKILL] = 21,
-        [VEOF] = 4,
-        [VTIME] = 0,
-        [VMIN] = 1,
-    },
-};
-
-static int syscall_copy_user_string(char *dst, size_t dst_len, uintptr_t user_ptr)
-{
+static int syscall_copy_user_string(char *dst, size_t dst_len, uintptr_t user_ptr) {
     size_t i;
 
     if (!dst || dst_len == 0 || user_ptr == 0 || current->mm == NULL)
@@ -125,13 +59,7 @@ const syscall_fn_t syscall_table[SYSCALL_MAX] = {
 #undef X
 };
 
-long sys_exit_group(struct pt_regs *ctx)
-{
-    return sys_exit(ctx);
-}
-
-long sys_openat(struct pt_regs *ctx)
-{
+long sys_openat(struct pt_regs *ctx) {
     struct pt_regs open_ctx = *ctx;
 
     open_ctx.r[0] = ctx->r[1];
@@ -139,8 +67,7 @@ long sys_openat(struct pt_regs *ctx)
     return sys_open(&open_ctx);
 }
 
-long sys_newfstatat(struct pt_regs *ctx)
-{
+long sys_newfstatat(struct pt_regs *ctx) {
     struct pt_regs stat_ctx = *ctx;
 
     stat_ctx.r[0] = ctx->r[1];
@@ -148,8 +75,7 @@ long sys_newfstatat(struct pt_regs *ctx)
     return sys_stat(&stat_ctx);
 }
 
-long sys_faccessat(struct pt_regs *ctx)
-{
+long sys_faccessat(struct pt_regs *ctx) {
     struct pt_regs access_ctx = *ctx;
 
     access_ctx.r[0] = ctx->r[1];
@@ -157,8 +83,7 @@ long sys_faccessat(struct pt_regs *ctx)
     return sys_access(&access_ctx);
 }
 
-long sys_faccessat2(struct pt_regs *ctx)
-{
+long sys_faccessat2(struct pt_regs *ctx) {
     unsigned int flags = (unsigned int)ctx->r[3];
 
     if (flags & ~(AT_SYMLINK_NOFOLLOW | AT_EACCESS | AT_EMPTY_PATH))
@@ -167,8 +92,7 @@ long sys_faccessat2(struct pt_regs *ctx)
     return sys_faccessat(ctx);
 }
 
-long sys_mkdirat(struct pt_regs *ctx)
-{
+long sys_mkdirat(struct pt_regs *ctx) {
     struct pt_regs mkdir_ctx = *ctx;
 
     mkdir_ctx.r[0] = ctx->r[1];
@@ -176,8 +100,7 @@ long sys_mkdirat(struct pt_regs *ctx)
     return sys_mkdir(&mkdir_ctx);
 }
 
-long sys_unlinkat(struct pt_regs *ctx)
-{
+long sys_unlinkat(struct pt_regs *ctx) {
     struct pt_regs unlink_ctx = *ctx;
 
     unlink_ctx.r[0] = ctx->r[1];
@@ -187,118 +110,25 @@ long sys_unlinkat(struct pt_regs *ctx)
     return sys_unlink(&unlink_ctx);
 }
 
-long sys_pipe2(struct pt_regs *ctx)
-{
+long sys_pipe2(struct pt_regs *ctx) {
     if (ctx->r[1] != 0)
         return -EINVAL;
 
     return sys_pipe(ctx);
 }
 
-long sys_dup3(struct pt_regs *ctx)
-{
+long sys_dup3(struct pt_regs *ctx) {
     if (ctx->r[2] != 0)
         return -EINVAL;
 
     return sys_dup2(ctx);
 }
 
-long sys_socket(struct pt_regs *ctx)
-{
+long sys_socket(struct pt_regs *ctx) {
     return -EAFNOSUPPORT;
 }
 
-long sys_ioctl(struct pt_regs *ctx)
-{
-    int fd = (int)ctx->r[0];
-    unsigned long request = ctx->r[1];
-    void *argp = (void *)ctx->r[2];
-    struct file *file;
-    struct inode *inode;
-    int pgrp;
-    long ret = 0;
-
-    file = fd_get_file((unsigned int)fd);
-    if (file == NULL)
-        return -EBADF;
-
-    inode = file->f_inode;
-    if (inode == NULL || !S_ISCHR(inode->i_mode)) {
-        ret = -ENOTTY;
-        goto out_put;
-    }
-
-    if (request == TCGETS) {
-        if (argp == NULL) {
-            ret = -EFAULT;
-            goto out_put;
-        }
-
-        if (copy_to_user(argp, (char *)&tty_termios,
-                         sizeof(tty_termios)) < 0)
-            ret = -EFAULT;
-        goto out_put;
-    }
-
-    if (request == TCSETS || request == TCSETSW || request == TCSETSF) {
-        if (argp == NULL) {
-            ret = -EFAULT;
-            goto out_put;
-        }
-
-        if (copy_from_user((char *)&tty_termios, argp,
-                           sizeof(tty_termios)) < 0)
-            ret = -EFAULT;
-        goto out_put;
-    }
-
-    if (request == TIOCGWINSZ) {
-        struct linux_winsize ws = {
-            .ws_row = 24,
-            .ws_col = 80,
-        };
-
-        if (argp == NULL) {
-            ret = -EFAULT;
-            goto out_put;
-        }
-
-        if (copy_to_user(argp, (char *)&ws, sizeof(ws)) < 0)
-            ret = -EFAULT;
-        goto out_put;
-    }
-
-    if (request == TIOCSWINSZ || request == TIOCSCTTY) {
-        ret = 0;
-        goto out_put;
-    }
-
-    if (request == TIOCGPGRP) {
-        if (argp == NULL) {
-            ret = -EFAULT;
-            goto out_put;
-        }
-
-        pgrp = current->pid;
-        if (copy_to_user(argp, (char *)&pgrp, sizeof(pgrp)) < 0)
-            ret = -EFAULT;
-        goto out_put;
-    }
-
-    if (request == TIOCSPGRP) {
-        ret = 0;
-        goto out_put;
-    }
-
-    ret = -ENOTTY;
-
-out_put:
-    fd_put_file(file);
-    return ret;
-}
-
-long sys_readlinkat(struct pt_regs *ctx)
-{
+long sys_readlinkat(struct pt_regs *ctx) {
     const char *pathname = (const char *)ctx->r[1];
     char *user_buf = (char *)ctx->r[2];
     size_t bufsiz = ctx->r[3];
@@ -330,8 +160,7 @@ out:
     return ret;
 }
 
-long sys_symlinkat(struct pt_regs *ctx)
-{
+long sys_symlinkat(struct pt_regs *ctx) {
     const char *target = (const char *)ctx->r[0];
     const char *linkpath = (const char *)ctx->r[2];
     char target_buf[256];
@@ -352,8 +181,7 @@ long sys_symlinkat(struct pt_regs *ctx)
     return 0;
 }
 
-long sys_renameat2(struct pt_regs *ctx)
-{
+long sys_renameat2(struct pt_regs *ctx) {
     const char *old_path = (const char *)ctx->r[1];
     const char *new_path = (const char *)ctx->r[3];
     unsigned int flags = ctx->r[4];
@@ -372,18 +200,16 @@ long sys_renameat2(struct pt_regs *ctx)
     return vfs_rename(old_buf, new_buf);
 }
 
-long sys_set_tid_address(struct pt_regs *ctx)
-{
+long sys_set_tid_address(struct pt_regs *ctx) {
+    current->clear_child_tid = (int __user *)ctx->r[0];
     return current->pid;
 }
 
-long sys_set_robust_list(struct pt_regs *ctx)
-{
+long sys_set_robust_list(struct pt_regs *ctx) {
     return 0;
 }
 
-long sys_rt_sigprocmask(struct pt_regs *ctx)
-{
+long sys_rt_sigprocmask(struct pt_regs *ctx) {
     void *oldset = (void *)ctx->r[2];
     size_t sigsetsize = ctx->r[3];
     u64 empty = 0;
@@ -400,26 +226,11 @@ long sys_rt_sigprocmask(struct pt_regs *ctx)
     return 0;
 }
 
-long sys_wait4(struct pt_regs *ctx)
-{
+long sys_wait4(struct pt_regs *ctx) {
     return sys_waitpid(ctx);
 }
 
-long sys_clone(struct pt_regs *ctx)
-{
-    unsigned long flags = ctx->r[0];
-    unsigned long supported;
-
-    supported = CSIGNAL | CLONE_VM | CLONE_VFORK |
-                CLONE_CHILD_SETTID | CLONE_CHILD_CLEARTID;
-    if ((flags & ~supported) != 0)
-        return -EINVAL;
-
-    return sys_fork(ctx);
-}
-
-long sys_clock_gettime(struct pt_regs *ctx)
-{
+long sys_clock_gettime(struct pt_regs *ctx) {
     int clockid = (int)ctx->r[0];
     timespec_t ts;
     u64 now;
@@ -437,8 +248,7 @@ long sys_clock_gettime(struct pt_regs *ctx)
     return 0;
 }
 
-long sys_clock_getres(struct pt_regs *ctx)
-{
+long sys_clock_getres(struct pt_regs *ctx) {
     int clockid = (int)ctx->r[0];
     timespec_t ts = {
         .tv_sec = 0,
@@ -457,8 +267,7 @@ long sys_clock_getres(struct pt_regs *ctx)
     return 0;
 }
 
-long sys_getuid(struct pt_regs *ctx)
-{
+long sys_getuid(struct pt_regs *ctx) {
     /*
      * We do not have credentials yet.  Return a non-root uid so archive
      * tools do not try to preserve ownership through chown/lchown.
@@ -466,21 +275,18 @@ long sys_getuid(struct pt_regs *ctx)
     return 1000;
 }
 
-long sys_geteuid(struct pt_regs *ctx)
-{
+long sys_geteuid(struct pt_regs *ctx) {
     return sys_getuid(ctx);
 }
 
-long sys_getppid(struct pt_regs *ctx)
-{
+long sys_getppid(struct pt_regs *ctx) {
     if (current->parent == NULL)
         return 0;
 
     return current->parent->pid;
 }
 
-long sys_fchmodat(struct pt_regs *ctx)
-{
+long sys_fchmodat(struct pt_regs *ctx) {
     const char *pathname = (const char *)ctx->r[1];
     mode_t mode = (mode_t)ctx->r[2];
     char path_buf[256];
@@ -488,8 +294,7 @@ long sys_fchmodat(struct pt_regs *ctx)
     struct inode *inode;
     int ret;
 
-    if (syscall_copy_user_string(path_buf, sizeof(path_buf),
-                                 (uintptr_t)pathname) < 0)
+    if (syscall_copy_user_string(path_buf, sizeof(path_buf), (uintptr_t)pathname) < 0)
         return -EFAULT;
 
     ret = path_lookup(path_buf, &path);
@@ -515,8 +320,7 @@ out:
     return ret;
 }
 
-long sys_utimensat(struct pt_regs *ctx)
-{
+long sys_utimensat(struct pt_regs *ctx) {
     const char *pathname = (const char *)ctx->r[1];
     const timespec_t *user_times = (const timespec_t *)ctx->r[2];
     int flags = (int)ctx->r[3];
@@ -530,12 +334,10 @@ long sys_utimensat(struct pt_regs *ctx)
     if (flags & ~0x100)
         return -EINVAL;
 
-    if (syscall_copy_user_string(path_buf, sizeof(path_buf),
-                                 (uintptr_t)pathname) < 0)
+    if (syscall_copy_user_string(path_buf, sizeof(path_buf), (uintptr_t)pathname) < 0)
         return -EFAULT;
 
-    ret = (flags & 0x100) ? path_lookup_nofollow(path_buf, &path)
-                          : path_lookup(path_buf, &path);
+    ret = (flags & 0x100) ? path_lookup_nofollow(path_buf, &path) : path_lookup(path_buf, &path);
     if (ret < 0)
         return ret;
 
@@ -546,8 +348,7 @@ long sys_utimensat(struct pt_regs *ctx)
     }
 
     if (user_times != NULL) {
-        if (copy_from_user((char *)times, (char *)user_times,
-                           sizeof(times)) < 0) {
+        if (copy_from_user((char *)times, (char *)user_times, sizeof(times)) < 0) {
             ret = -EFAULT;
             goto out;
         }
@@ -573,13 +374,11 @@ out:
     return ret;
 }
 
-long sys_riscv_hwprobe(struct pt_regs *ctx)
-{
+long sys_riscv_hwprobe(struct pt_regs *ctx) {
     return -ENOSYS;
 }
 
-long sys_prlimit64(struct pt_regs *ctx)
-{
+long sys_prlimit64(struct pt_regs *ctx) {
     unsigned int resource = ctx->r[1];
     const struct linux_rlimit *new_limit = (const struct linux_rlimit *)ctx->r[2];
     struct linux_rlimit *old_limit = (struct linux_rlimit *)ctx->r[3];
@@ -599,15 +398,13 @@ long sys_prlimit64(struct pt_regs *ctx)
         limit.rlim_max = 256;
     }
 
-    if (old_limit != NULL &&
-        copy_to_user((char *)old_limit, (char *)&limit, sizeof(limit)) < 0)
+    if (old_limit != NULL && copy_to_user((char *)old_limit, (char *)&limit, sizeof(limit)) < 0)
         return -EFAULT;
 
     return 0;
 }
 
-long sys_getrandom(struct pt_regs *ctx)
-{
+long sys_getrandom(struct pt_regs *ctx) {
     char *buf = (char *)ctx->r[0];
     size_t buflen = ctx->r[1];
     size_t done = 0;
@@ -628,8 +425,7 @@ long sys_getrandom(struct pt_regs *ctx)
     return done;
 }
 
-long sys_rseq(struct pt_regs *ctx)
-{
+long sys_rseq(struct pt_regs *ctx) {
     return -ENOSYS;
 }
 
@@ -648,15 +444,14 @@ void do_syscall(struct pt_regs *ctx) {
     } else {
         dprintk("syscall: nr=%u not implemented\n", nr);
     }
-        
+
     if (nr == SYSCALL_sigreturn) {
-        // 
+        //
     } else {
         ctx->r[0] = (reg_t)ret;
     }
 
-    #ifdef SYS_TRACE_ENABLE
-    printk("[syscall %d] %s called by pid=%d ret=%ld\n", nr, syscall_names[nr], current->pid,  ret);
-    #endif
-        
+#ifdef SYS_TRACE_ENABLE
+    printk("[syscall %d] %s called by pid=%d ret=%ld\n", nr, syscall_names[nr], current->pid, ret);
+#endif
 }

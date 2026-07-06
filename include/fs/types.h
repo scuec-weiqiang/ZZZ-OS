@@ -135,6 +135,7 @@ struct file_operations {
     int (*release)(struct inode *inode, struct file *file);
     ssize_t (*read)(struct file *file, char *buf, size_t len, loff_t *ppos);
     ssize_t (*write)(struct file *file, const char *buf, size_t len, loff_t *ppos);
+    long (*ioctl)(struct file *file, unsigned long request, unsigned long arg);
     int (*iterate) (struct file *, struct dir_context *);
     off_t (*lseek)(struct file *, off_t offset, int whence);
 };

@@ -42,7 +42,7 @@ struct file *fd_get_file(unsigned int fd);
 void fd_put_file(struct file *file);
 
 void attach_fd(unsigned int fd, struct file *file);
-struct files_struct *dup_fd(struct files_struct *oldf);
+struct files_struct *dup_fd(struct files_struct *oldf, unsigned long clone_flags);
 void put_files_struct(struct files_struct *files);
 int setup_stdio(const char *path);
 
@@ -54,6 +54,7 @@ void free_files_struct(struct files_struct *files);
 
 void do_close_on_exec(struct files_struct *files);
 void set_close_on_exec(unsigned int fd, int flag);
+int unshare_files_struct(void);
 
 struct files_struct *get_files_struct(struct task_struct *task);
 void put_files_struct(struct files_struct *files);

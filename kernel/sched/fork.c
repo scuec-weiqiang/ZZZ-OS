@@ -24,6 +24,7 @@
 #include <os/completion.h>
 #include <mm/slab.h>
 #include <asm/process.h>
+#include <os/uaccess.h>
 
 struct rq *global_rq __weak;
 
@@ -40,6 +41,7 @@ __aligned(SIZE_8K) union thread_union init_thread_union = {
 
 struct task_struct init_task = {
     .pid = 0,
+    .tgid = 0,
     .comm = "swapper",
     .flags = PF_KTHREAD,
     .prio		= 1,
@@ -53,8 +55,11 @@ struct task_struct init_task = {
         .private = &init_task,
     },
     .parent = &init_task,
+    .group_leader = &init_task,
     .children = LIST_HEAD_INIT(init_task.children),
     .sibling = LIST_HEAD_INIT(init_task.sibling),
+    .thread_group = LIST_HEAD_INIT(init_task.thread_group),
+    .thread_node = LIST_HEAD_INIT(init_task.thread_node),
     .wait_child.head = LIST_HEAD_INIT(init_task.wait_child.head),
 
     .files = &init_files,
@@ -74,6 +79,15 @@ struct task_struct init_task = {
 
 struct task_struct *kthreadd_task;
 struct kmem_cache *task_struct_cache;
+
+struct kernel_clone_args {
+    unsigned long flags;
+    unsigned long stack;
+    int __user *parent_tid;
+    int __user *child_tid;
+    unsigned long tls;
+    int exit_signal;
+};
 
 static void *alloc_stack(void) {
     void *stack = kmalloc(THREAD_SIZE);
@@ -151,6 +165,30 @@ static struct task_struct *alloc_task_struct(void) {
 static void free_task_struct(struct task_struct *obj) {
     if (!obj) return;
     kmem_cache_free(obj);
+}
+
+static int put_user_int_to_mm(struct mm_struct *mm, int __user *uaddr, int val)
+{
+    unsigned char *src = (unsigned char *)&val;
+
+    if (uaddr == NULL) {
+        return -EFAULT;
+    }
+    if (mm == NULL || mm->pgdir == NULL) {
+        return -EFAULT;
+    }
+
+    for (size_t i = 0; i < sizeof(val); i++) {
+        virt_addr_t va = (virt_addr_t)uaddr + i;
+        phys_addr_t pa = pgtbl_lookup(mm->pgdir, va);
+
+        if (pa == 0) {
+            return -EFAULT;
+        }
+        *(unsigned char *)KERNEL_VA(pa) = src[i];
+    }
+
+    return 0;
 }
 
 void task_set_mm(struct task_struct *task, struct mm_struct *mm)
@@ -243,12 +281,19 @@ static struct task_struct *dup_task_struct(struct task_struct *orig) {
     tsk->sched_class = &rr_sched_class;
     tsk->mm = NULL;
     tsk->active_mm = NULL;
+    tsk->vfork_done = NULL;
+    tsk->set_child_tid = NULL;
+    tsk->clear_child_tid = NULL;
 
     spin_lock_init(&tsk->lock);
     INIT_LIST_HEAD(&tsk->children);
     INIT_LIST_HEAD(&tsk->sibling);
+    INIT_LIST_HEAD(&tsk->thread_group);
+    INIT_LIST_HEAD(&tsk->thread_node);
 
     tsk->pid = alloc_pid();
+    tsk->tgid = tsk->pid;
+    tsk->group_leader = tsk;
     tsk->wait_child.wait_reason = get_wait_reason_name(WAIT_CHILD);
     void *stack = alloc_stack();
     if (IS_ERR(stack)) {
@@ -269,10 +314,20 @@ task_failed:
 }
 
 /* 目前实现为直接复制mm_struct */
-static struct mm_struct *dup_mm(struct mm_struct *oldmm) {
+static struct mm_struct *dup_mm(struct mm_struct *oldmm, unsigned long flags) {
     struct mm_struct *mm;
     struct vma *pos = NULL;
+    unsigned long lock_flags;
     int ret = -ENOMEM;
+
+    if (oldmm == NULL) {
+        return ERR_PTR(-EINVAL);
+    }
+
+    if (flags & CLONE_VM) {
+        mmget(oldmm);
+        return oldmm;
+    }
 
     mm = mm_alloc();
     if (!mm) {
@@ -280,6 +335,8 @@ static struct mm_struct *dup_mm(struct mm_struct *oldmm) {
         ret = -ENOMEM;
         goto fail;
     }
+
+    lock_flags = spin_lock_irqsave(&oldmm->lock);
     
     mm->start_stack = oldmm->start_stack;
     mm->stack_top = oldmm->stack_top;
@@ -302,7 +359,7 @@ static struct mm_struct *dup_mm(struct mm_struct *oldmm) {
         if (IS_ERR(new_vma)) {
             ret = PTR_ERR(new_vma);
             
-            goto fail;
+            goto fail_unlock;
         }
 
         /*
@@ -318,7 +375,7 @@ static struct mm_struct *dup_mm(struct mm_struct *oldmm) {
         if (ret < 0) {
             
             vma_destroy(new_vma);
-            goto fail;
+            goto fail_unlock;
         }
 
         for (virt_addr_t addr = ALIGN_DOWN(start, PAGE_SIZE); addr < end; addr += PAGE_SIZE) {
@@ -333,20 +390,23 @@ static struct mm_struct *dup_mm(struct mm_struct *oldmm) {
             newkva = page_alloc(1);
             if (!newkva) {
                 ret = -ENOMEM;
-                goto fail;
+                goto fail_unlock;
             }
 
             memcpy(newkva, (void *)KERNEL_VA(oldpa), PAGE_SIZE);
          
             ret = map(mm->pgdir, addr, KERNEL_PA(newkva), PAGE_SIZE, flags);
             if (ret < 0) {
-                goto fail;
+                goto fail_unlock;
             }
         }
     }
 
+    spin_unlock_irqrestore(&oldmm->lock, lock_flags);
     return mm;
 
+fail_unlock:
+    spin_unlock_irqrestore(&oldmm->lock, lock_flags);
 fail:
     mm_destroy(mm);
     return ERR_PTR(ret);
@@ -381,7 +441,7 @@ pid_t do_fork_kthread(int (*fn)(void *), void *arg) {
     strncpy(p->comm, "kthread", sizeof(p->comm) - 1);
     // 至此task结构体里除了文件描述符，内存管理等元数据外，调度相关的字段都设置好了
 
-    struct files_struct *new_files = dup_fd(current->files);
+    struct files_struct *new_files = dup_fd(current->files, 0);
     if (IS_ERR(new_files)) {
         goto files_failed;
     }
@@ -429,7 +489,7 @@ pid_t kernel_thread_on_cpu(int (*fn)(void *), void *arg, int cpu)
         goto bind_failed;
     }
 
-    new_files = dup_fd(current->files);
+    new_files = dup_fd(current->files, 0);
     if (IS_ERR(new_files)) {
         err = PTR_ERR(new_files);
         goto files_failed;
@@ -456,9 +516,18 @@ bind_failed:
     return err;
 }
 
-pid_t do_fork_uthread(struct pt_regs *regs) {
+pid_t do_fork_uthread(struct pt_regs *regs, const struct kernel_clone_args *args) {
+    struct completion vfork;
+  
+    unsigned long clone_flags = args ? args->flags : SIGCHLD;
+
     if (regs == NULL) {
         return -EINVAL;
+    }
+
+    int do_vfork = clone_flags & CLONE_VFORK;
+    if (do_vfork) {
+        init_completion(&vfork);
     }
 
     int err = 0;
@@ -469,43 +538,78 @@ pid_t do_fork_uthread(struct pt_regs *regs) {
         return PTR_ERR(p);
     }
 
-
     sched_fork(p);
     // 至此task结构体里除了文件描述符，内存管理等元数据外，调度相关的字段都设置好了
     
-    struct files_struct *new_files = dup_fd(current->files);
+    struct files_struct *new_files = NULL;
+    struct fs_struct *new_fs = NULL;
+    struct mm_struct *new_mm = NULL;
+
+    new_files = dup_fd(current->files, clone_flags);
     if (IS_ERR(new_files)) {
+        err = PTR_ERR(new_files);
         goto files_failed;
     }
 
-    struct fs_struct *new_fs = copy_fs_struct(current->fs);
+    new_fs = copy_fs_struct(current->fs, clone_flags);
     if (IS_ERR(new_fs)) {
-        
+        err = PTR_ERR(new_fs);
         goto fs_failed;
     }
-    struct mm_struct *new_mm = dup_mm(current->mm);
+    
+    new_mm = dup_mm(current->mm, clone_flags);
     if (IS_ERR(new_mm)) {
-        
+        err = PTR_ERR(new_mm);
         goto mm_failed;
     }
+
     p->fs = new_fs;
     p->files = new_files;
     p->active_mm = NULL;
     p->mm = new_mm;
+    p->set_child_tid = (args && (clone_flags & CLONE_CHILD_SETTID)) ?
+        args->child_tid : NULL;
+    p->clear_child_tid = (args && (clone_flags & CLONE_CHILD_CLEARTID)) ?
+        args->child_tid : NULL;
+    p->vfork_done = do_vfork ? &vfork : NULL;
     
-    setup_uthread_context(p);
+    setup_uthread_context(p, args ? args->stack : 0,
+                          args ? args->tls : 0, clone_flags);
+
+    if (clone_flags & CLONE_CHILD_SETTID) {
+        err = put_user_int_to_mm(p->mm, p->set_child_tid, p->pid);
+        if (err < 0) {
+            goto child_tid_failed;
+        }
+    }
 
     set_parent_child(current, p);
 
+    if (clone_flags & CLONE_PARENT_SETTID) {
+        err = copy_to_user((char *)args->parent_tid, (char *)&p->pid,
+                           sizeof(p->pid));
+        if (err < 0) {
+            goto parent_tid_failed;
+        }
+    }
+
     task_attach_to_rq(p);
     wake_up_process(p);
+
+    if (do_vfork) {
+        wait_for_completion(&vfork);
+    }
     
     return p->pid;
 
+parent_tid_failed:
+    clear_parent_child(current, p);
+child_tid_failed:
+    mm_destroy(new_mm);
 mm_failed:
-    free_fs_struct(new_fs);
+    put_fs_struct(new_fs);
 fs_failed:
-    free_files_struct(new_files);
+    put_files_struct(new_files);
 files_failed:
     free_task_struct(p);
     return err;
@@ -554,8 +658,49 @@ int wake_up_process_on(struct task_struct *p, int cpu)
     return 0;
 }
 
-int sys_fork(struct pt_regs *ctx) {
-    return do_fork_uthread(ctx);
+long sys_clone(struct pt_regs *ctx)
+{
+    unsigned long flags = ctx->r[0];
+    unsigned long new_stack = ctx->r[1];
+    unsigned long parent_tid = ctx->r[2];
+    unsigned long tls = ctx->r[3];
+    unsigned long child_tid = ctx->r[4];
+    struct kernel_clone_args args;
+    unsigned long supported;
+
+    supported = CSIGNAL | CLONE_FS | CLONE_FILES | CLONE_SETTLS | CLONE_PARENT_SETTID |
+                CLONE_CHILD_SETTID | CLONE_CHILD_CLEARTID | CLONE_VFORK | CLONE_VM;
+    if ((flags & ~supported) != 0) {
+        return -EINVAL;
+    }
+
+    memset(&args, 0, sizeof(args));
+    args.flags = flags;
+    args.stack = new_stack;
+    args.parent_tid = (int __user *)parent_tid;
+    args.child_tid = (int __user *)child_tid;
+    args.tls = tls;
+    args.exit_signal = flags & CSIGNAL;
+
+    if ((flags & CLONE_PARENT_SETTID) && args.parent_tid == NULL) {
+        return -EINVAL;
+    }
+    if ((flags & (CLONE_CHILD_SETTID | CLONE_CHILD_CLEARTID)) &&
+        args.child_tid == NULL) {
+        return -EINVAL;
+    }
+
+    return do_fork_uthread(ctx, &args);
+}
+
+long sys_fork(struct pt_regs *ctx) {
+    struct kernel_clone_args args;
+
+    memset(&args, 0, sizeof(args));
+    args.flags = SIGCHLD;
+    args.exit_signal = SIGCHLD;
+
+    return do_fork_uthread(ctx, &args);
 }
 
 /*

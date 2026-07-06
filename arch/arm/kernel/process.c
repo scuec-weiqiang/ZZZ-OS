@@ -117,7 +117,8 @@ int setup_kthread_context(int (*fn)(void *), void *arg, struct task_struct *p) {
 	return 0;
 }
 
-int setup_uthread_context(struct task_struct *p) {
+int setup_uthread_context(struct task_struct *p, unsigned long stack,
+                          unsigned long tls, unsigned long flags) {
 	struct thread_info *thread = task_thread_info(p);
 	struct pt_regs *childregs = task_pt_regs(p);
 
@@ -125,6 +126,11 @@ int setup_uthread_context(struct task_struct *p) {
 
 	*childregs = *current_pt_regs();
 	childregs->r[0] = 0;
+	if (stack != 0) {
+		childregs->sp = stack;
+	}
+	(void)tls;
+	(void)flags;
 	
 	thread->cpu_context.pc = (unsigned long)ret_from_fork;
 	thread->cpu_context.sp = (unsigned long)childregs;

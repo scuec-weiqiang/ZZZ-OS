@@ -1,20 +1,26 @@
+#include <asm/ptrace.h>
+#include <fs/file.h>
+#include <fs/types.h>
 #include <os/errno.h>
+#include <os/sched.h>
 #include <os/string.h>
 #include <os/tty.h>
-#include <os/sched.h>
+#include <os/uaccess.h>
 
-static int tty_inbuf_full(struct tty *tty)
-{
+static void tty_apply_termios(struct tty *tty) {
+    tty->echo = (tty->termios.c_lflag & TTY_ECHO) != 0;
+    tty->canonical = (tty->termios.c_lflag & TTY_ICANON) != 0;
+}
+
+static int tty_inbuf_full(struct tty *tty) {
     return tty->count == TTY_BUF_SIZE;
 }
 
-static int tty_inbuf_empty(struct tty *tty)
-{
+static int tty_inbuf_empty(struct tty *tty) {
     return tty->count == 0;
 }
 
-static void tty_inbuf_push(struct tty *tty, char ch)
-{
+static void tty_inbuf_push(struct tty *tty, char ch) {
     if (tty_inbuf_full(tty)) {
         return;
     }
@@ -24,8 +30,7 @@ static void tty_inbuf_push(struct tty *tty, char ch)
     tty->count++;
 }
 
-static int tty_inbuf_pop(struct tty *tty, char *ch)
-{
+static int tty_inbuf_pop(struct tty *tty, char *ch) {
     if (tty_inbuf_empty(tty)) {
         return 0;
     }
@@ -36,15 +41,13 @@ static int tty_inbuf_pop(struct tty *tty, char *ch)
     return 1;
 }
 
-static void tty_putc(struct tty *tty, char ch)
-{
+static void tty_putc(struct tty *tty, char ch) {
     if (tty->putc) {
         tty->putc(ch, tty->driver_data);
     }
 }
 
-static void tty_echo_char(struct tty *tty, char ch)
-{
+static void tty_echo_char(struct tty *tty, char ch) {
     if (!tty->echo) {
         return;
     }
@@ -57,8 +60,7 @@ static void tty_echo_char(struct tty *tty, char ch)
     }
 }
 
-static void tty_flush_line(struct tty *tty)
-{
+static void tty_flush_line(struct tty *tty) {
     unsigned int i;
 
     for (i = 0; i < tty->line_len; i++) {
@@ -67,8 +69,7 @@ static void tty_flush_line(struct tty *tty)
     tty->line_len = 0;
 }
 
-static int tty_sleep_if_empty(struct tty *tty)
-{
+static int tty_sleep_if_empty(struct tty *tty) {
     struct task_struct *task = current;
     struct rq *rq;
     unsigned long rq_flags;
@@ -104,8 +105,7 @@ static int tty_sleep_if_empty(struct tty *tty)
     return 1;
 }
 
-void tty_init(struct tty *tty, void (*putc)(char ch, void *data), void *data)
-{
+void tty_init(struct tty *tty, void (*putc)(char ch, void *data), void *data) {
     if (tty == NULL) {
         return;
     }
@@ -114,14 +114,27 @@ void tty_init(struct tty *tty, void (*putc)(char ch, void *data), void *data)
     spin_lock_init(&tty->lock);
     init_waitqueue_head(&tty->read_wait);
     tty->read_wait.wait_reason = get_wait_reason_name(WAIT_TTY_READ);
-    tty->echo = 1;
-    tty->canonical = 1;
+    tty->termios.c_iflag = TTY_ICRNL | TTY_IXON;
+    tty->termios.c_oflag = TTY_OPOST;
+    tty->termios.c_cflag = TTY_CS8 | TTY_CREAD | TTY_HUPCL;
+    tty->termios.c_lflag = TTY_ISIG | TTY_ICANON | TTY_ECHO | TTY_ECHOE | TTY_ECHOK | TTY_ECHOCTL |
+                           TTY_ECHOKE | TTY_IEXTEN;
+    tty->termios.c_cc[TTY_VINTR] = 3;
+    tty->termios.c_cc[TTY_VQUIT] = 28;
+    tty->termios.c_cc[TTY_VERASE] = 127;
+    tty->termios.c_cc[TTY_VKILL] = 21;
+    tty->termios.c_cc[TTY_VEOF] = 4;
+    tty->termios.c_cc[TTY_VTIME] = 0;
+    tty->termios.c_cc[TTY_VMIN] = 1;
+    tty->winsize.ws_row = 24;
+    tty->winsize.ws_col = 80;
+    tty->pgrp = 0;
+    tty_apply_termios(tty);
     tty->putc = putc;
     tty->driver_data = data;
 }
 
-void tty_receive_char(struct tty *tty, char ch)
-{
+void tty_receive_char(struct tty *tty, char ch) {
     unsigned long flags;
     int wake = 0;
     int echo_backspace = 0;
@@ -131,13 +144,13 @@ void tty_receive_char(struct tty *tty, char ch)
         return;
     }
 
-    if (ch == '\r') {
+    if ((tty->termios.c_iflag & TTY_ICRNL) && ch == '\r') {
         ch = '\n';
     }
 
     flags = spin_lock_irqsave(&tty->lock);
 
-    if (tty->canonical && (ch == '\b' || ch == 127)) {
+    if (tty->canonical && (ch == '\b' || ch == tty->termios.c_cc[TTY_VERASE])) {
         if (tty->line_len > 0) {
             tty->line_len--;
             echo_backspace = 1;
@@ -179,8 +192,7 @@ void tty_receive_char(struct tty *tty, char ch)
     }
 }
 
-ssize_t tty_read(struct tty *tty, char *buf, size_t size)
-{
+ssize_t tty_read(struct tty *tty, char *buf, size_t size) {
     size_t read = 0;
 
     if (tty == NULL || buf == NULL) {
@@ -215,8 +227,7 @@ ssize_t tty_read(struct tty *tty, char *buf, size_t size)
     return (ssize_t)read;
 }
 
-ssize_t tty_write(struct tty *tty, const char *buf, size_t size)
-{
+ssize_t tty_write(struct tty *tty, const char *buf, size_t size) {
     size_t written = 0;
 
     if (tty == NULL || buf == NULL) {
@@ -232,4 +243,141 @@ ssize_t tty_write(struct tty *tty, const char *buf, size_t size)
     }
 
     return (ssize_t)written;
+}
+
+long tty_ioctl(struct tty *tty, unsigned long request, unsigned long arg) {
+    unsigned long flags;
+    void *argp = (void *)arg;
+    struct linux_termios termios;
+    struct linux_winsize winsize;
+    int pgrp;
+
+    if (tty == NULL) {
+        return -ENOTTY;
+    }
+
+    switch (request) {
+    case TTY_TCGETS:
+        if (argp == NULL) {
+            return -EFAULT;
+        }
+
+        flags = spin_lock_irqsave(&tty->lock);
+        termios = tty->termios;
+        spin_unlock_irqrestore(&tty->lock, flags);
+
+        if (copy_to_user(argp, (char *)&termios, sizeof(termios)) < 0) {
+            return -EFAULT;
+        }
+        return 0;
+
+    case TTY_TCSETS:
+    case TTY_TCSETSW:
+    case TTY_TCSETSF:
+        if (argp == NULL) {
+            return -EFAULT;
+        }
+
+        if (copy_from_user((char *)&termios, argp, sizeof(termios)) < 0) {
+            return -EFAULT;
+        }
+
+        flags = spin_lock_irqsave(&tty->lock);
+        tty->termios = termios;
+        tty_apply_termios(tty);
+        spin_unlock_irqrestore(&tty->lock, flags);
+        return 0;
+
+    case TTY_TIOCGWINSZ:
+        if (argp == NULL) {
+            return -EFAULT;
+        }
+
+        flags = spin_lock_irqsave(&tty->lock);
+        winsize = tty->winsize;
+        spin_unlock_irqrestore(&tty->lock, flags);
+
+        if (copy_to_user(argp, (char *)&winsize, sizeof(winsize)) < 0) {
+            return -EFAULT;
+        }
+        return 0;
+
+    case TTY_TIOCSWINSZ:
+        if (argp == NULL) {
+            return -EFAULT;
+        }
+
+        if (copy_from_user((char *)&winsize, argp, sizeof(winsize)) < 0) {
+            return -EFAULT;
+        }
+
+        flags = spin_lock_irqsave(&tty->lock);
+        tty->winsize = winsize;
+        spin_unlock_irqrestore(&tty->lock, flags);
+        return 0;
+
+    case TTY_TIOCSCTTY:
+        return 0;
+
+    case TTY_TIOCGPGRP:
+        if (argp == NULL) {
+            return -EFAULT;
+        }
+
+        flags = spin_lock_irqsave(&tty->lock);
+        pgrp = tty->pgrp ? tty->pgrp : current->pid;
+        spin_unlock_irqrestore(&tty->lock, flags);
+
+        if (copy_to_user(argp, (char *)&pgrp, sizeof(pgrp)) < 0) {
+            return -EFAULT;
+        }
+        return 0;
+
+    case TTY_TIOCSPGRP:
+        if (argp == NULL) {
+            return -EFAULT;
+        }
+
+        if (copy_from_user((char *)&pgrp, argp, sizeof(pgrp)) < 0) {
+            return -EFAULT;
+        }
+
+        flags = spin_lock_irqsave(&tty->lock);
+        tty->pgrp = pgrp;
+        spin_unlock_irqrestore(&tty->lock, flags);
+        return 0;
+
+    default:
+        return -ENOTTY;
+    }
+}
+
+long sys_ioctl(struct pt_regs *ctx) {
+    int fd = (int)ctx->r[0];
+    unsigned long request = ctx->r[1];
+    unsigned long arg = ctx->r[2];
+    struct file *file;
+    struct inode *inode;
+    long ret;
+
+    file = fd_get_file((unsigned int)fd);
+    if (file == NULL) {
+        return -EBADF;
+    }
+
+    inode = file->f_inode;
+    if (inode == NULL || !S_ISCHR(inode->i_mode)) {
+        ret = -ENOTTY;
+        goto out_put;
+    }
+
+    if (file->f_op == NULL || file->f_op->ioctl == NULL) {
+        ret = -ENOTTY;
+    } else {
+        ret = file->f_op->ioctl(file, request, arg);
+    }
+
+out_put:
+    fd_put_file(file);
+    return ret;
 }

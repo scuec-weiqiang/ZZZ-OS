@@ -11,11 +11,13 @@
 #define __KERNEL_MM_TYPES_H
 
 #include <os/types.h>
+#include <os/spinlock.h>
 #include <mm/pgtbl_types.h>
 #include <mm/vma.h>
 
 struct mm_struct {
     int refcount;
+    spinlock_t lock;
     pgtable_t *pgdir;          // 页表根目录
 
     // 内核不需要用户空间相关的信息

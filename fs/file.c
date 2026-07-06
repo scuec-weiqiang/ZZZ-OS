@@ -683,9 +683,17 @@ static void file_release_last_ref(struct file *file) {
     }
 }
 
-struct files_struct *dup_fd(struct files_struct *oldf) {
+struct files_struct *dup_fd(struct files_struct *oldf, unsigned long clone_flags) {
 	struct files_struct *newf;
 	int i;
+
+	if (oldf == NULL) {
+		return ERR_PTR(-EINVAL);
+	}
+	if (clone_flags & CLONE_FILES) {
+		atomic_inc(&oldf->refcount);
+		return oldf;
+	}
 
 	newf = alloc_files_struct();
 	if (IS_ERR(newf)) {
@@ -991,7 +999,7 @@ struct files_struct *get_files_struct(struct task_struct *task) {
 	files = task->files;
 	if (files)
 		atomic_inc(&files->refcount);
-	spin_lock(&task->lock);
+	spin_unlock(&task->lock);
 
 	return files;
 }
@@ -1007,6 +1015,33 @@ void put_files_struct(struct files_struct *files) {
 
     close_files(files);
     kmem_cache_free(files);
+}
+
+int unshare_files_struct(void)
+{
+    struct files_struct *old_files;
+    struct files_struct *new_files;
+
+    old_files = current->files;
+    if (old_files == NULL) {
+        return -EINVAL;
+    }
+
+    if (atomic_read(&old_files->refcount) <= 1) {
+        return 0;
+    }
+
+    new_files = dup_fd(old_files, 0);
+    if (IS_ERR(new_files)) {
+        return PTR_ERR(new_files);
+    }
+
+    spin_lock(&current->lock);
+    current->files = new_files;
+    spin_unlock(&current->lock);
+
+    put_files_struct(old_files);
+    return 0;
 }
 
 long sys_fstat(struct pt_regs *ctx) {

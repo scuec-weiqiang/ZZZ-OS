@@ -55,22 +55,6 @@ static const char *kernel_root_device(void) {
     return NULL; // 这行不会被执行，只是为了避免编译器警告
 }
 
-static const char *kernel_stdio_device(void) {
-    struct device_node *chosen;
-    const char *stdio_dev;
-
-    chosen = of_find_node_by_path("/chosen");
-    if (chosen) {
-        stdio_dev = of_get_property(chosen, "zzz,tty-device", NULL);
-        if (stdio_dev && stdio_dev[0] != '\0') {
-            return stdio_dev;
-        }
-    }
-
-    panic("No stdio device specified\n");
-    return NULL; // 这行不会被执行，只是为了避免编译器警告
-}
-
 int kernel_init(void *arg) {
     arch_initcalls_run();
     core_initcalls_run();
@@ -83,8 +67,6 @@ int kernel_init(void *arg) {
     
     late_initcalls_run();
     
-    setup_stdio(kernel_stdio_device());
-
     char *argv[] = { "/bin/init", NULL };
     char *envp[] = {
     "PATH=/bin",

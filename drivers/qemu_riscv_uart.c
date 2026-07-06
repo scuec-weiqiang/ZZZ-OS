@@ -162,11 +162,23 @@ static ssize_t uart_read(struct file *file, char *buf, size_t size, loff_t *offs
     return read;
 }
 
+static long uart_ioctl(struct file *file, unsigned long request, unsigned long arg)
+{
+    struct qemu_uart_info *info = file ? file->private_data : uart0;
+
+    if (info == NULL) {
+        return -ENOTTY;
+    }
+
+    return tty_ioctl(&info->tty, request, arg);
+}
+
 static const struct file_operations uart_file_ops = {
     .open = uart_open,
     .release = uart_release,
     .read = uart_read,
     .write = uart_write,
+    .ioctl = uart_ioctl,
 };
 
 static int uart_probe(struct platform_device *pdev)
@@ -214,6 +226,10 @@ static int uart_probe(struct platform_device *pdev)
     if (ret) {
         goto err_unmap;
     }
+    devnode_register("ttyS0", DEV_CHAR, uart0->dev_num, &uart_file_ops, uart0);
+    devnode_register("tty", DEV_CHAR, uart0->dev_num, &uart_file_ops, uart0);
+    devnode_register("console", DEV_CHAR, uart0->dev_num, &uart_file_ops, uart0);
+   
 
     console_register(uart_putc);
     printk("qemu_uart: registered console and cdev\n");

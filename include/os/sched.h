@@ -108,8 +108,8 @@ union thread_union {
 
 struct task_struct {
     pid_t pid;            //进程ID
-    pid_t ppid;           //父进程ID
-    // pid_t tgid;
+    pid_t tgid;           //线程组ID
+
     unsigned int flags;
     void *stack;      // 内核栈基址
     enum task_status status;         //进程状态
@@ -135,13 +135,23 @@ struct task_struct {
     struct wait_queue wait; // 进程等待队列头
     int need_resched;
 
+    struct task_struct *group_leader;	/* threadgroup leader */
+    pid_t ppid;           //父进程ID
     struct task_struct *parent;
     struct list_head children;
     struct list_head sibling;
     struct wait_queue_head wait_child; 
 
+    struct completion *vfork_done;		/* for vfork() */
+	int __user *set_child_tid;		/* CLONE_CHILD_SETTID */
+	int __user *clear_child_tid;		/* CLONE_CHILD_CLEARTID */
+
+    struct list_head thread_group;
+	struct list_head thread_node;
+
     unsigned long signal_pending;
     unsigned long signal_blocked;
+    unsigned long signal_flags;
     struct k_sigaction sigactions[NSIG];
     uintptr_t signal_trampoline;
 

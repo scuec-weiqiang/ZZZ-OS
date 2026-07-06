@@ -96,9 +96,15 @@ void put_fs_struct(struct fs_struct *fs) {
 
 
 
-struct fs_struct *copy_fs_struct(struct fs_struct *old) {
-	struct fs_struct *fs = alloc_fs_struct();
+struct fs_struct *copy_fs_struct(struct fs_struct *old, unsigned long clone_flags) {
+	struct fs_struct *fs;
 
+	if (!old)
+		return ERR_PTR(-EINVAL);
+	if (clone_flags & CLONE_FS)
+		return get_fs_struct(old);
+
+	fs = alloc_fs_struct();
 	if (fs) {
 		fs->users = 1;
 		spin_lock_init(&fs->lock);
@@ -116,7 +122,7 @@ struct fs_struct *copy_fs_struct(struct fs_struct *old) {
 
 int unshare_fs_struct(void) {
 	struct fs_struct *fs = current->fs;
-	struct fs_struct *new_fs = copy_fs_struct(fs);
+	struct fs_struct *new_fs = copy_fs_struct(fs, 0);
 	int kill;
 
 	if (!new_fs)

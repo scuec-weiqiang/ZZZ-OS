@@ -158,9 +158,6 @@ static int load_elf_binary(struct linux_binprm *bprm) {
         goto out_fail;
     }
 
-    // dprintk("entry=%xu, phnum=%du, size=%du\n",
-    //        elf_info->entry, elf_info->phnum, (int)elf_info->file_size);
-
     for (i = 0; i < elf_info->phnum; i++) {
         ret = elf_map_segment(bprm, bprm->mm, &elf_info->segs[i], elf_info->file_size);
         if (ret < 0) {
@@ -176,28 +173,12 @@ static int load_elf_binary(struct linux_binprm *bprm) {
     // 设置当前进程的 comm 字段为 ELF 文件名
     memset(current->comm, 0, sizeof(current->comm));
     memcpy(current->comm, bprm->filename, sizeof(current->comm) - 1);
-    
+
     current->mm->start_stack = bprm->p;
     current->signal_trampoline = USER_SIGTRAMP_ADDR;
     regs = task_pt_regs(current);
 
-    // dprintk("exec: entry=%x start_code=%x end_code=%x start_data=%x end_data=%x start_brk=%x brk=%x start_stack=%x p=%x\n",
-    //         (unsigned int)elf_info->entry,
-    //         (unsigned int)current->mm->start_code,
-    //         (unsigned int)current->mm->end_code,
-    //         (unsigned int)current->mm->start_data,
-    //         (unsigned int)current->mm->end_data,
-    //         (unsigned int)current->mm->start_brk,
-    //         (unsigned int)current->mm->brk,
-    //         (unsigned int)current->mm->start_stack,
-    //         (unsigned int)bprm->p);
-
     start_thread(regs, elf_info->entry, bprm->p);
-
-    // dprintk("exec: regs pc=%x sp=%x cpsr=%x\n",
-    //         (unsigned int)regs->pc,
-    //         (unsigned int)regs->sp,
-    //         (unsigned int)regs->cpsr);
 
     elf_free(elf_info);
     return 0;

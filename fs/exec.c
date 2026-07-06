@@ -588,17 +588,7 @@ static int create_user_stack_layout(int argc,
     bprm->p = ALIGN_DOWN(bprm->p,
                          USER_STACK_ALIGN);
 
-    /*
-     * 栈布局：
-     *
-     * argc
-     * argv[]
-     * NULL
-     * envp[]
-     * NULL
-     * auxv[]
-     * AT_NULL
-     */
+
     total_words =
         1 +              /* argc */
         (argc + 1) +     /* argv + NULL */
@@ -747,6 +737,7 @@ static int setup_arg_pages(struct linux_binprm *bprm) {
     }
         
 
+    // 分配用户栈页并映射
     for (int i = 0; i < USER_STACK_PAGES; i++) {
         void *kva = page_alloc(1);
         if (!kva)
@@ -763,6 +754,7 @@ static int setup_arg_pages(struct linux_binprm *bprm) {
         
     }
 
+    // 分配信号处理 trampoline 页并映射
     {
         void *kva;
         pgprot_t sig_prot = PROT_USER | PROT_READ | PROT_EXEC;
@@ -820,6 +812,7 @@ static void clear_arg_pages(struct linux_binprm *bprm) {
     vma_delete(mm, sigtramp, PAGE_SIZE);
 }
 
+
 static int bprm_mm_init(struct linux_binprm *bprm) {
 	int err;
 	struct mm_struct *mm = NULL;
@@ -852,6 +845,8 @@ static void bprm_mm_deinit(struct linux_binprm *bprm) {
     bprm->mm = NULL;
 }
 
+#include <os/completion.h>
+
 int flush_old_exec(struct linux_binprm *bprm) {
     if (!bprm || !bprm->mm) {
         return -EINVAL;
@@ -863,8 +858,15 @@ int flush_old_exec(struct linux_binprm *bprm) {
     pgtbl_switch_to(current->active_mm->pgdir);
     pgtbl_flush();
 
+    if (current->vfork_done) {
+        complete(current->vfork_done);
+        current->vfork_done = NULL;
+    }
+
     current->flags &= ~PF_KTHREAD;
     current->signal_trampoline = 0;
+    current->set_child_tid = NULL;
+    current->clear_child_tid = NULL;
 
     return 0;
 }
@@ -885,7 +887,6 @@ int do_execve(char *filename, char* argv[], char* envp[]) {
     }
     
     current->in_execve = 1;
-    do_close_on_exec(current->files);
     
     file = filp_open(filename, O_RDONLY);
     if (IS_ERR(file)) {
@@ -897,6 +898,7 @@ int do_execve(char *filename, char* argv[], char* envp[]) {
     bprm->filename = filename;
     bprm->interp = filename;
     
+    // 赋值内核页表，并分配用户栈页和信号 trampoline 页
     retval = bprm_mm_init(bprm);
     if (retval < 0) {
         goto mm_failed;
@@ -917,6 +919,7 @@ int do_execve(char *filename, char* argv[], char* envp[]) {
     memset(bprm->buf, 0, BINPRM_BUF_SIZE);
     kernel_read(bprm->file, bprm->buf, BINPRM_BUF_SIZE);
 
+    // 
     retval = prepare_elf_aux(bprm);
     if (retval < 0) {
         goto copy_failed;
@@ -934,15 +937,33 @@ int do_execve(char *filename, char* argv[], char* envp[]) {
     }
     bprm->env_start = bprm->p;
 
+    /*
+     * 栈布局：
+     *
+     * argc
+     * argv[]
+     * NULL
+     * envp[]
+     * NULL
+     * auxv[]
+     * AT_NULL
+     */
     retval = create_user_stack_layout(bprm->argc, argv, bprm->envc, envp, bprm);
     if (retval < 0) {
         goto create_failed;
     }
-    
+
+    retval = unshare_files_struct();
+    if (retval < 0) {
+        goto create_failed;
+    }
+
     retval = search_binary_handler(bprm);
     if (retval < 0) {
         goto bin_failed;
     }
+
+    do_close_on_exec(current->files);
 
     memset(current->comm, 0, sizeof(current->comm));
     strncpy(current->comm, exec_basename(filename), sizeof(current->comm) - 1);

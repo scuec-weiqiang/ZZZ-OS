@@ -10,6 +10,7 @@
 #include <os/mm.h>
 #include <os/pfn.h>
 #include <os/sched.h>
+#include <os/spinlock.h>
 #include <uapi/mman_defs.h>
 
 static int mmap_user_prot_to_kernel(int prot, pgprot_t *out)
@@ -172,6 +173,7 @@ long sys_mmap(struct pt_regs *ctx)
     long offset = (long)ctx->r[5];
     pgprot_t kprot;
     virt_addr_t target;
+    unsigned long irq_flags;
     int ret;
 
     if (mm == NULL || mm->pgdir == NULL) {
@@ -193,13 +195,17 @@ long sys_mmap(struct pt_regs *ctx)
         return ret;
     }
 
+    irq_flags = spin_lock_irqsave(&mm->lock);
+
     if (flags & MAP_FIXED) {
         if ((addr & (PAGE_SIZE - 1)) != 0) {
-            return -EINVAL;
+            ret = -EINVAL;
+            goto out_unlock;
         }
         target = addr;
         if (!vma_range_is_free(mm, target, len)) {
-            return -ENOMEM;
+            ret = -ENOMEM;
+            goto out_unlock;
         }
     } else {
         virt_addr_t hint = addr ? ALIGN_DOWN(addr, PAGE_SIZE) : 0;
@@ -210,16 +216,22 @@ long sys_mmap(struct pt_regs *ctx)
             target = find_free_range(mm, hint, len);
         }
         if (target == 0) {
-            return -ENOMEM;
+            ret = -ENOMEM;
+            goto out_unlock;
         }
     }
 
     ret = do_mmap(mm, target, len, kprot);
     if (ret < 0) {
-        return ret == -EFAULT ? -ENOMEM : ret;
+        ret = ret == -EFAULT ? -ENOMEM : ret;
+        goto out_unlock;
     }
 
-    return (long)target;
+    ret = (long)target;
+
+out_unlock:
+    spin_unlock_irqrestore(&mm->lock, irq_flags);
+    return ret;
 }
 
 long sys_munmap(struct pt_regs *ctx)
@@ -227,6 +239,7 @@ long sys_munmap(struct pt_regs *ctx)
     struct mm_struct *mm = current->mm;
     virt_addr_t addr = (virt_addr_t)ctx->r[0];
     size_t len = (size_t)ctx->r[1];
+    unsigned long irq_flags;
     int ret;
 
     if (mm == NULL || mm->pgdir == NULL) {
@@ -242,14 +255,18 @@ long sys_munmap(struct pt_regs *ctx)
         return -EINVAL;
     }
 
+    irq_flags = spin_lock_irqsave(&mm->lock);
+
     free_mapped_pages(mm, addr, len);
 
     ret = do_unmap(mm, addr, len);
     if (ret < 0) {
-        return ret;
+        goto out_unlock;
     }
 
-    return 0;
+out_unlock:
+    spin_unlock_irqrestore(&mm->lock, irq_flags);
+    return ret;
 }
 
 long sys_mprotect(struct pt_regs *ctx)
@@ -261,6 +278,7 @@ long sys_mprotect(struct pt_regs *ctx)
     pgprot_t kprot;
     virt_addr_t va;
     virt_addr_t end;
+    unsigned long irq_flags;
     int ret;
 
     if (mm == NULL || mm->pgdir == NULL) {
@@ -281,9 +299,11 @@ long sys_mprotect(struct pt_regs *ctx)
         return ret;
     }
 
+    irq_flags = spin_lock_irqsave(&mm->lock);
+
     ret = vma_protect(mm, addr, len, kprot);
     if (ret < 0) {
-        return ret;
+        goto out_unlock;
     }
 
     end = addr + len;
@@ -292,9 +312,14 @@ long sys_mprotect(struct pt_regs *ctx)
             continue;
         }
         if (remap(mm->pgdir, va, PAGE_SIZE, kprot) < 0) {
-            return -EFAULT;
+            ret = -EFAULT;
+            goto out_unlock;
         }
     }
 
-    return 0;
+    ret = 0;
+
+out_unlock:
+    spin_unlock_irqrestore(&mm->lock, irq_flags);
+    return ret;
 }

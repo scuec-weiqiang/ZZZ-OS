@@ -60,13 +60,13 @@ int devnode_register(const char *name, int type, dev_t devt,const struct file_op
     struct devnode *node;
     struct list_head *pos;
 
-    list_for_each(pos, &g_devnodes) {
-        struct devnode *iter = list_entry(pos, struct devnode, list);
+    // list_for_each(pos, &g_devnodes) {
+    //     struct devnode *iter = list_entry(pos, struct devnode, list);
 
-        if (iter->devt == devt || strcmp(iter->name, name) == 0) {
-            return -EEXIST;
-        }
-    }
+    //     if (iter->devt == devt || strcmp(iter->name, name) == 0) {
+    //         return -EEXIST;
+    //     }
+    // }
 
     node = kzalloc(sizeof(*node));
     if (!node)

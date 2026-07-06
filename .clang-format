@@ -20,5 +20,5 @@ SpacesInParentheses: false  # 括号内不加空格（如 (a + b) 而非 ( a + b
 SpacesInSquareBrackets: false # 方括号内不加空格
 
 # 换行规则
-ColumnLimit: 0         # 每行最大字符数（超过自动换行）
+ColumnLimit: 100         # 每行最大字符数（超过自动换行）
 AllowShortFunctionsOnASingleLine: Inline  # 短函数是否单行（Inline 仅内联函数）
