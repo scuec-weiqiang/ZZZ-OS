@@ -8,6 +8,8 @@
 #include <asm/ptrace.h>
 #include <mm/buddy.h>
 #include <os/sched.h>
+#include <fs/fs.h>
+#include <fs/dcache.h>
 
 static struct kmem_cache *pipe_inode_info_kcache = NULL;
 
@@ -367,6 +369,13 @@ long sys_pipe(struct pt_regs *ctx) {
     return 0;
 }
 
+long sys_pipe2(struct pt_regs *ctx) {
+    if (ctx->r[1] != 0)
+        return -EINVAL;
+
+    return sys_pipe(ctx);
+}
+
 long sys_tee(struct pt_regs *ctx)
 {
     int fd_in = (int)ctx->r[0];
@@ -402,3 +411,5 @@ out_put:
     fd_put_file(in_file);
     return ret;
 }
+
+

@@ -4,6 +4,9 @@
 #include <os/types.h>
 #include <os/utils.h>
 
+#define CLOCK_REALTIME 0
+#define CLOCK_MONOTONIC 1
+
 struct clocksource {
     char name[32];
     u64 (*read_counter)(void);

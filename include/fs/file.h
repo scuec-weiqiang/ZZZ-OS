@@ -5,6 +5,10 @@
 #include <os/atomic.h>
 #include <uapi/fcntl_defs.h>
 
+#define AT_SYMLINK_NOFOLLOW 0x100
+#define AT_EACCESS 0x200
+#define AT_EMPTY_PATH 0x1000
+
 struct file *alloc_file(void);
 void free_file(struct file *file);
 struct file *filp_open(const char *path, u32 flags);

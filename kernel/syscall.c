@@ -13,11 +13,7 @@
 #include <os/timekeeping.h>
 #include <os/uaccess.h>
 
-#define CLOCK_REALTIME 0
-#define CLOCK_MONOTONIC 1
-#define AT_SYMLINK_NOFOLLOW 0x100
-#define AT_EACCESS 0x200
-#define AT_EMPTY_PATH 0x1000
+
 #define RLIM_INFINITY (~0UL)
 
 extern long sys_open(struct pt_regs *ctx);
@@ -36,168 +32,14 @@ struct linux_rlimit {
     unsigned long rlim_max;
 };
 
-static int syscall_copy_user_string(char *dst, size_t dst_len, uintptr_t user_ptr) {
-    size_t i;
-
-    if (!dst || dst_len == 0 || user_ptr == 0 || current->mm == NULL)
-        return -EINVAL;
-
-    for (i = 0; i < dst_len; i++) {
-        if (copy_from_user(&dst[i], (const char *)user_ptr + i, 1) < 0)
-            return -EFAULT;
-        if (dst[i] == '\0')
-            return 0;
-    }
-
-    dst[dst_len - 1] = '\0';
-    return -ENAMETOOLONG;
-}
-
 const syscall_fn_t syscall_table[SYSCALL_MAX] = {
 #define X(nr, name) [nr] = sys_##name,
     SYSCALL_LIST
 #undef X
 };
 
-long sys_openat(struct pt_regs *ctx) {
-    struct pt_regs open_ctx = *ctx;
-
-    open_ctx.r[0] = ctx->r[1];
-    open_ctx.r[1] = ctx->r[2];
-    return sys_open(&open_ctx);
-}
-
-long sys_newfstatat(struct pt_regs *ctx) {
-    struct pt_regs stat_ctx = *ctx;
-
-    stat_ctx.r[0] = ctx->r[1];
-    stat_ctx.r[1] = ctx->r[2];
-    return sys_stat(&stat_ctx);
-}
-
-long sys_faccessat(struct pt_regs *ctx) {
-    struct pt_regs access_ctx = *ctx;
-
-    access_ctx.r[0] = ctx->r[1];
-    access_ctx.r[1] = ctx->r[2];
-    return sys_access(&access_ctx);
-}
-
-long sys_faccessat2(struct pt_regs *ctx) {
-    unsigned int flags = (unsigned int)ctx->r[3];
-
-    if (flags & ~(AT_SYMLINK_NOFOLLOW | AT_EACCESS | AT_EMPTY_PATH))
-        return -EINVAL;
-
-    return sys_faccessat(ctx);
-}
-
-long sys_mkdirat(struct pt_regs *ctx) {
-    struct pt_regs mkdir_ctx = *ctx;
-
-    mkdir_ctx.r[0] = ctx->r[1];
-    mkdir_ctx.r[1] = ctx->r[2];
-    return sys_mkdir(&mkdir_ctx);
-}
-
-long sys_unlinkat(struct pt_regs *ctx) {
-    struct pt_regs unlink_ctx = *ctx;
-
-    unlink_ctx.r[0] = ctx->r[1];
-    if (ctx->r[2] & 0x200)
-        return sys_rmdir(&unlink_ctx);
-
-    return sys_unlink(&unlink_ctx);
-}
-
-long sys_pipe2(struct pt_regs *ctx) {
-    if (ctx->r[1] != 0)
-        return -EINVAL;
-
-    return sys_pipe(ctx);
-}
-
-long sys_dup3(struct pt_regs *ctx) {
-    if (ctx->r[2] != 0)
-        return -EINVAL;
-
-    return sys_dup2(ctx);
-}
-
 long sys_socket(struct pt_regs *ctx) {
     return -EAFNOSUPPORT;
-}
-
-long sys_readlinkat(struct pt_regs *ctx) {
-    const char *pathname = (const char *)ctx->r[1];
-    char *user_buf = (char *)ctx->r[2];
-    size_t bufsiz = ctx->r[3];
-    char path_buf[256];
-    char *kbuf;
-    ssize_t ret;
-
-    if (bufsiz == 0)
-        return -EINVAL;
-
-    if (syscall_copy_user_string(path_buf, sizeof(path_buf), (uintptr_t)pathname) < 0)
-        return -EFAULT;
-
-    kbuf = kmalloc(bufsiz);
-    if (kbuf == NULL)
-        return -ENOMEM;
-
-    ret = vfs_readlink(path_buf, kbuf, bufsiz);
-    if (ret < 0)
-        goto out;
-
-    if (copy_to_user(user_buf, kbuf, ret) < 0) {
-        ret = -EFAULT;
-        goto out;
-    }
-
-out:
-    kfree(kbuf);
-    return ret;
-}
-
-long sys_symlinkat(struct pt_regs *ctx) {
-    const char *target = (const char *)ctx->r[0];
-    const char *linkpath = (const char *)ctx->r[2];
-    char target_buf[256];
-    char link_buf[256];
-    struct dentry *dentry;
-
-    if (syscall_copy_user_string(target_buf, sizeof(target_buf), (uintptr_t)target) < 0)
-        return -EFAULT;
-
-    if (syscall_copy_user_string(link_buf, sizeof(link_buf), (uintptr_t)linkpath) < 0)
-        return -EFAULT;
-
-    dentry = vfs_symlink(link_buf, target_buf);
-    if (dentry == NULL)
-        return -EIO;
-
-    dput(dentry);
-    return 0;
-}
-
-long sys_renameat2(struct pt_regs *ctx) {
-    const char *old_path = (const char *)ctx->r[1];
-    const char *new_path = (const char *)ctx->r[3];
-    unsigned int flags = ctx->r[4];
-    char old_buf[256];
-    char new_buf[256];
-
-    if (flags != 0)
-        return -EINVAL;
-
-    if (syscall_copy_user_string(old_buf, sizeof(old_buf), (uintptr_t)old_path) < 0)
-        return -EFAULT;
-
-    if (syscall_copy_user_string(new_buf, sizeof(new_buf), (uintptr_t)new_path) < 0)
-        return -EFAULT;
-
-    return vfs_rename(old_buf, new_buf);
 }
 
 long sys_set_tid_address(struct pt_regs *ctx) {
@@ -221,47 +63,6 @@ long sys_rt_sigprocmask(struct pt_regs *ctx) {
         sigsetsize = sizeof(empty);
 
     if (copy_to_user(oldset, (char *)&empty, sigsetsize) < 0)
-        return -EFAULT;
-
-    return 0;
-}
-
-long sys_wait4(struct pt_regs *ctx) {
-    return sys_waitpid(ctx);
-}
-
-long sys_clock_gettime(struct pt_regs *ctx) {
-    int clockid = (int)ctx->r[0];
-    timespec_t ts;
-    u64 now;
-
-    if (clockid != CLOCK_REALTIME && clockid != CLOCK_MONOTONIC)
-        return -EINVAL;
-
-    now = monotonic_ns();
-    ts.tv_sec = now / NSEC_PER_SEC;
-    ts.tv_nsec = now % NSEC_PER_SEC;
-
-    if (copy_to_user((char *)ctx->r[1], (char *)&ts, sizeof(ts)) < 0)
-        return -EFAULT;
-
-    return 0;
-}
-
-long sys_clock_getres(struct pt_regs *ctx) {
-    int clockid = (int)ctx->r[0];
-    timespec_t ts = {
-        .tv_sec = 0,
-        .tv_nsec = 1,
-    };
-
-    if (clockid != CLOCK_REALTIME && clockid != CLOCK_MONOTONIC)
-        return -EINVAL;
-
-    if (ctx->r[1] == 0)
-        return 0;
-
-    if (copy_to_user((char *)ctx->r[1], (char *)&ts, sizeof(ts)) < 0)
         return -EFAULT;
 
     return 0;
@@ -294,7 +95,7 @@ long sys_fchmodat(struct pt_regs *ctx) {
     struct inode *inode;
     int ret;
 
-    if (syscall_copy_user_string(path_buf, sizeof(path_buf), (uintptr_t)pathname) < 0)
+    if (copy_user_string(path_buf, sizeof(path_buf), (uintptr_t)pathname) < 0)
         return -EFAULT;
 
     ret = path_lookup(path_buf, &path);
@@ -308,60 +109,6 @@ long sys_fchmodat(struct pt_regs *ctx) {
     }
 
     inode->i_mode = (inode->i_mode & S_IFMT) | (mode & 07777);
-    if (inode->i_sb != NULL && inode->i_sb->s_op != NULL &&
-        inode->i_sb->s_op->write_inode != NULL) {
-        ret = inode->i_sb->s_op->write_inode(inode);
-    } else {
-        ret = 0;
-    }
-
-out:
-    path_put(&path);
-    return ret;
-}
-
-long sys_utimensat(struct pt_regs *ctx) {
-    const char *pathname = (const char *)ctx->r[1];
-    const timespec_t *user_times = (const timespec_t *)ctx->r[2];
-    int flags = (int)ctx->r[3];
-    char path_buf[256];
-    struct path path = {0};
-    struct inode *inode;
-    timespec_t times[2];
-    timespec_t now;
-    int ret;
-
-    if (flags & ~0x100)
-        return -EINVAL;
-
-    if (syscall_copy_user_string(path_buf, sizeof(path_buf), (uintptr_t)pathname) < 0)
-        return -EFAULT;
-
-    ret = (flags & 0x100) ? path_lookup_nofollow(path_buf, &path) : path_lookup(path_buf, &path);
-    if (ret < 0)
-        return ret;
-
-    inode = path.dentry->d_inode;
-    if (inode == NULL) {
-        ret = -ENOENT;
-        goto out;
-    }
-
-    if (user_times != NULL) {
-        if (copy_from_user((char *)times, (char *)user_times, sizeof(times)) < 0) {
-            ret = -EFAULT;
-            goto out;
-        }
-        inode->i_atime = times[0];
-        inode->i_mtime = times[1];
-    } else {
-        u64 ns = monotonic_ns();
-        now.tv_sec = ns / NSEC_PER_SEC;
-        now.tv_nsec = ns % NSEC_PER_SEC;
-        inode->i_atime = now;
-        inode->i_mtime = now;
-    }
-
     if (inode->i_sb != NULL && inode->i_sb->s_op != NULL &&
         inode->i_sb->s_op->write_inode != NULL) {
         ret = inode->i_sb->s_op->write_inode(inode);

@@ -1,5 +1,7 @@
 #include <asm/uaccess.h>
 #include <os/pfn.h>
+#include <os/errno.h>
+#include <os/sched.h>
 
 int copy_from_user(char *dst, const char* src, size_t len) {
     int ret = 0;
@@ -53,4 +55,21 @@ int copy_to_user(char *dst, char* src, size_t len) {
 
     restore_user_access(t);
     return len - copied;
+}
+
+int copy_user_string(char *dst, size_t dst_len, uintptr_t user_ptr) {
+    size_t i;
+
+    if (!dst || dst_len == 0 || user_ptr == 0 || current->mm == NULL)
+        return -EINVAL;
+
+    for (i = 0; i < dst_len; i++) {
+        if (copy_from_user(&dst[i], (const char *)user_ptr + i, 1) < 0)
+            return -EFAULT;
+        if (dst[i] == '\0')
+            return 0;
+    }
+
+    dst[dst_len - 1] = '\0';
+    return -ENAMETOOLONG;
 }

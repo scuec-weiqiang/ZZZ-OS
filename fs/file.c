@@ -49,26 +49,6 @@ void free_file(struct file *file) {
 #define F_DUPFD_CLOEXEC 1030
 #define FD_CLOEXEC 1
 #define FCNTL_SETTABLE_FLAGS (O_APPEND | O_NONBLOCK)
-/*
-    这里没有对用户空间地址有效性做核验
-    崩了直接就kernel panic了
-*/
-static int copy_user_string(char *dst, size_t dst_len, uintptr_t user_ptr) {
-    size_t i;
-
-    if (!dst || dst_len == 0 || user_ptr == 0 || current->mm == NULL)
-        return -EINVAL;
-
-    for (i = 0; i < dst_len; i++) {
-        if (copy_from_user(&dst[i], (char *)user_ptr + i, 1) < 0)
-            return -EFAULT;
-        if (dst[i] == '\0')
-            return 0;
-    }
-
-    dst[dst_len - 1] = '\0';
-    return -ENAMETOOLONG;
-}
 
 static struct file *sys_fdget(int fd) {
     struct files_struct *files;
@@ -478,6 +458,35 @@ long sys_lseek(struct pt_regs *ctx) {
 
     return new_pos;
 }
+
+long sys_mkdirat(struct pt_regs *ctx) {
+    struct pt_regs mkdir_ctx = *ctx;
+
+    mkdir_ctx.r[0] = ctx->r[1];
+    mkdir_ctx.r[1] = ctx->r[2];
+    return sys_mkdir(&mkdir_ctx);
+}
+
+long sys_unlinkat(struct pt_regs *ctx) {
+    struct pt_regs unlink_ctx = *ctx;
+
+    unlink_ctx.r[0] = ctx->r[1];
+    if (ctx->r[2] & 0x200)
+        return sys_rmdir(&unlink_ctx);
+
+    return sys_unlink(&unlink_ctx);
+}
+
+
+
+long sys_openat(struct pt_regs *ctx) {
+    struct pt_regs open_ctx = *ctx;
+
+    open_ctx.r[0] = ctx->r[1];
+    open_ctx.r[1] = ctx->r[2];
+    return sys_open(&open_ctx);
+}
+
 
 struct file *filp_open(const char *path, u32 flags) {
     struct cdev *cdev = NULL;
@@ -1144,6 +1153,14 @@ out_put_path:
     return ret; // 成功
 }
 
+long sys_newfstatat(struct pt_regs *ctx) {
+    struct pt_regs stat_ctx = *ctx;
+
+    stat_ctx.r[0] = ctx->r[1];
+    stat_ctx.r[1] = ctx->r[2];
+    return sys_stat(&stat_ctx);
+}
+
 long sys_dup(struct pt_regs *ctx) {
     int oldfd = ctx->r[0];
     struct file *file;
@@ -1181,4 +1198,60 @@ long sys_dup2(struct pt_regs *ctx) {
     attach_fd(newfd, file);
 
     return newfd;
+}
+
+long sys_dup3(struct pt_regs *ctx) {
+    if (ctx->r[2] != 0)
+        return -EINVAL;
+
+    return sys_dup2(ctx);
+}
+
+long sys_faccessat(struct pt_regs *ctx) {
+    struct pt_regs access_ctx = *ctx;
+
+    access_ctx.r[0] = ctx->r[1];
+    access_ctx.r[1] = ctx->r[2];
+    return sys_access(&access_ctx);
+}
+
+long sys_faccessat2(struct pt_regs *ctx) {
+    unsigned int flags = (unsigned int)ctx->r[3];
+
+    if (flags & ~(AT_SYMLINK_NOFOLLOW | AT_EACCESS | AT_EMPTY_PATH))
+        return -EINVAL;
+
+    return sys_faccessat(ctx);
+}
+
+long sys_readlinkat(struct pt_regs *ctx) {
+    const char *pathname = (const char *)ctx->r[1];
+    char *user_buf = (char *)ctx->r[2];
+    size_t bufsiz = ctx->r[3];
+    char path_buf[256];
+    char *kbuf;
+    ssize_t ret;
+
+    if (bufsiz == 0)
+        return -EINVAL;
+
+    if (copy_user_string(path_buf, sizeof(path_buf), (uintptr_t)pathname) < 0)
+        return -EFAULT;
+
+    kbuf = kmalloc(bufsiz);
+    if (kbuf == NULL)
+        return -ENOMEM;
+
+    ret = vfs_readlink(path_buf, kbuf, bufsiz);
+    if (ret < 0)
+        goto out;
+
+    if (copy_to_user(user_buf, kbuf, ret) < 0) {
+        ret = -EFAULT;
+        goto out;
+    }
+
+out:
+    kfree(kbuf);
+    return ret;
 }

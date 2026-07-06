@@ -119,7 +119,7 @@ sudo mkdir -p "${boot_mnt}" "${root_mnt}/bin" "${root_mnt}/etc" "${root_mnt}/dev
 sudo chmod 1777 "${root_mnt}/tmp"
 sudo cp "${uimage}" "${boot_mnt}/uImage"
 sudo cp "${dtb}" "${boot_mnt}/"
-sudo cp ~/dash/build-riscv64/src/dash "${root_mnt}/bin/"
+# sudo cp ~/dash/build-riscv64/src/dash "${root_mnt}/bin/"
 
 sudo cp "${boot_cmd}" "${boot_mnt}/"
 sudo cp "${boot_scr}" "${boot_mnt}/"

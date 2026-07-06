@@ -10,6 +10,7 @@
 #include <fs/inode.h>
 #include <os/sched.h>
 #include <os/err.h>
+#include <os/uaccess.h>
 
 struct path_cursor {
     const char *path;
@@ -924,3 +925,99 @@ out_put_paths:
     path_put(&root);
     return ret;
 }
+
+ long sys_utimensat(struct pt_regs *ctx) {
+    const char *pathname = (const char *)ctx->r[1];
+    const timespec_t *user_times = (const timespec_t *)ctx->r[2];
+    int flags = (int)ctx->r[3];
+    char path_buf[256];
+    struct path path = {0};
+    struct inode *inode;
+    timespec_t times[2];
+    timespec_t now;
+    int ret;
+
+    if (flags & ~0x100)
+        return -EINVAL;
+
+    if (copy_user_string(path_buf, sizeof(path_buf), (uintptr_t)pathname) < 0)
+        return -EFAULT;
+
+    ret = (flags & 0x100) ? path_lookup_nofollow(path_buf, &path) : path_lookup(path_buf, &path);
+    if (ret < 0)
+        return ret;
+
+    inode = path.dentry->d_inode;
+    if (inode == NULL) {
+        ret = -ENOENT;
+        goto out;
+    }
+
+    if (user_times != NULL) {
+        if (copy_from_user((char *)times, (char *)user_times, sizeof(times)) < 0) {
+            ret = -EFAULT;
+            goto out;
+        }
+        inode->i_atime = times[0];
+        inode->i_mtime = times[1];
+    } else {
+        u64 ns = monotonic_ns();
+        now.tv_sec = ns / NSEC_PER_SEC;
+        now.tv_nsec = ns % NSEC_PER_SEC;
+        inode->i_atime = now;
+        inode->i_mtime = now;
+    }
+
+    if (inode->i_sb != NULL && inode->i_sb->s_op != NULL &&
+        inode->i_sb->s_op->write_inode != NULL) {
+        ret = inode->i_sb->s_op->write_inode(inode);
+    } else {
+        ret = 0;
+    }
+
+out:
+    path_put(&path);
+    return ret;
+}
+
+long sys_renameat2(struct pt_regs *ctx) {
+    const char *old_path = (const char *)ctx->r[1];
+    const char *new_path = (const char *)ctx->r[3];
+    unsigned int flags = ctx->r[4];
+    char old_buf[256];
+    char new_buf[256];
+
+    if (flags != 0)
+        return -EINVAL;
+
+    if (copy_user_string(old_buf, sizeof(old_buf), (uintptr_t)old_path) < 0)
+        return -EFAULT;
+
+    if (copy_user_string(new_buf, sizeof(new_buf), (uintptr_t)new_path) < 0)
+        return -EFAULT;
+
+    return vfs_rename(old_buf, new_buf);
+}
+
+long sys_symlinkat(struct pt_regs *ctx) {
+    const char *target = (const char *)ctx->r[0];
+    const char *linkpath = (const char *)ctx->r[2];
+    char target_buf[256];
+    char link_buf[256];
+    struct dentry *dentry;
+
+    if (copy_user_string(target_buf, sizeof(target_buf), (uintptr_t)target) < 0)
+        return -EFAULT;
+
+    if (copy_user_string(link_buf, sizeof(link_buf), (uintptr_t)linkpath) < 0)
+        return -EFAULT;
+
+    dentry = vfs_symlink(link_buf, target_buf);
+    if (dentry == NULL)
+        return -EIO;
+
+    dput(dentry);
+    return 0;
+}
+
+

@@ -10,6 +10,9 @@
 #include <os/timerqueue.h>
 #include <os/cpu.h>
 #include <os/of_cpu.h>
+#include <os/uaccess.h>
+#include <os/err.h>
+#include <asm/ptrace.h>
 
 static struct clocksource *__clocksource;
 
@@ -141,4 +144,41 @@ void time_init(void) {
     timer_chip_init();
     timerqueue_init();
     dprintk("time int success\n");
+}
+
+long sys_clock_gettime(struct pt_regs *ctx) {
+    int clockid = (int)ctx->r[0];
+    timespec_t ts;
+    u64 now;
+
+    if (clockid != CLOCK_REALTIME && clockid != CLOCK_MONOTONIC)
+        return -EINVAL;
+
+    now = monotonic_ns();
+    ts.tv_sec = now / NSEC_PER_SEC;
+    ts.tv_nsec = now % NSEC_PER_SEC;
+
+    if (copy_to_user((char *)ctx->r[1], (char *)&ts, sizeof(ts)) < 0)
+        return -EFAULT;
+
+    return 0;
+}
+
+long sys_clock_getres(struct pt_regs *ctx) {
+    int clockid = (int)ctx->r[0];
+    timespec_t ts = {
+        .tv_sec = 0,
+        .tv_nsec = 1,
+    };
+
+    if (clockid != CLOCK_REALTIME && clockid != CLOCK_MONOTONIC)
+        return -EINVAL;
+
+    if (ctx->r[1] == 0)
+        return 0;
+
+    if (copy_to_user((char *)ctx->r[1], (char *)&ts, sizeof(ts)) < 0)
+        return -EFAULT;
+
+    return 0;
 }
