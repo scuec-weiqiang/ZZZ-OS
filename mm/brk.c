@@ -4,7 +4,7 @@
 #include <asm/syscall_num.h>
 #include <fs/binfmt.h>
 
-long sys_brk(struct pt_regs *ctx)
+__SYSCALL__ long sys_brk(struct pt_regs *ctx)
 {
     struct mm_struct *mm = current->mm;
     unsigned long new_brk = ctx->r[0];

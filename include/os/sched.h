@@ -52,7 +52,6 @@
 #define CLONE_NEWNET		0x40000000	/* New network namespace */
 #define CLONE_IO		0x80000000	/* Clone io context */
 
-typedef int pid_t;
 struct rq;
 struct task_struct;
 struct elf_info;
@@ -85,7 +84,7 @@ struct sched_class {
     void (*enqueue_task)(struct rq *rq, struct task_struct *p);
     void (*dequeue_task)(struct rq *rq, struct task_struct *p);
     struct task_struct *(*pick_next_task)(struct rq *rq);
-    void (*aging)(struct rq *rq);   // 老化机制：防止低优先级饥饿，NULL = 不支持
+    void (*aging)(struct rq *rq);   // 老化机制,防止低优先级饥饿，NULL = 不支持
     void (*task_tick)(struct rq *rq, struct task_struct *curr); // 时间片到期回调，NULL = 不处理
 };
 
@@ -154,6 +153,7 @@ struct task_struct {
     unsigned long signal_flags;
     struct k_sigaction sigactions[NSIG];
     uintptr_t signal_trampoline;
+    struct signal_struct *signal;
 
     char comm[16];
     const char *wait_reason;
@@ -161,6 +161,7 @@ struct task_struct {
     struct timer sleep_timer; // 睡眠定时器
 };
 extern struct task_struct* find_task_by_pid(pid_t pid);
+extern int task_pgrp_exists(pid_t pgid);
 extern struct task_struct *kthreadd_task;
 extern struct task_struct init_task;
 

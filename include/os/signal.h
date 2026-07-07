@@ -4,6 +4,9 @@
 
 #include <os/types.h>
 #include <asm/ptrace.h>
+
+struct task_struct;
+struct tty_struct;
 /*
  * Bits in flags field of signal_struct.
  */
@@ -46,11 +49,18 @@ struct k_sigaction {
 struct signal_frame {
     u32 magic;
     u32 signo;
-
     struct pt_regs saved_tf;
     unsigned long old_blocked;
 };
 
+struct signal_struct {
+    pid_t pgrp;
+    pid_t session;
+    struct tty_struct *tty;
+    int tty_old_pgrp;
+};
+
 void send_signal(struct task_struct *t, int sig);
+int send_signal_to_pgrp(pid_t pgid, int sig);
 
 #endif

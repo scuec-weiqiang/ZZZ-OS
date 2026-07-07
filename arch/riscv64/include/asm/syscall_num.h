@@ -41,6 +41,10 @@
     X(134, sigaction) \
     X(135, rt_sigprocmask) \
     X(139, sigreturn) \
+    X(154, setpgid) \
+    X(155, getpgid) \
+    X(156, getsid) \
+    X(157, setsid) \
     X(166, umask) \
     X(172, getpid) \
     X(173, getppid) \

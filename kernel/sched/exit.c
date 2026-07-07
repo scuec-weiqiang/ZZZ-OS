@@ -86,7 +86,7 @@ void reparent_children(struct task_struct *parent) {
     spin_unlock_irqrestore(&parent->lock, parent_flags);
 }
 
-long sys_exit(struct pt_regs *ctx)
+__SYSCALL__ long sys_exit(struct pt_regs *ctx)
 {
     do_exit((int)ctx->r[0]);
     return 0;
@@ -133,7 +133,7 @@ void __noreturn do_exit(int code) {
     __builtin_unreachable();
 }
 
-long sys_exit_group(struct pt_regs *ctx)
+__SYSCALL__ long sys_exit_group(struct pt_regs *ctx)
 {
     return sys_exit(ctx);
 }

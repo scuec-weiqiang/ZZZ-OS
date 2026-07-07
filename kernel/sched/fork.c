@@ -241,6 +241,33 @@ static pid_t alloc_pid(void) {
     return next_pid++;
 }
 
+static struct signal_struct *copy_signal_struct(struct task_struct *orig,
+                                                struct task_struct *tsk) {
+    struct signal_struct *sig;
+
+    sig = kmalloc(sizeof(*sig));
+    if (sig == NULL) {
+        return ERR_PTR(-ENOMEM);
+    }
+
+    if (orig != NULL && orig->signal != NULL &&
+        orig->signal->pgrp > 0 && orig->signal->session > 0) {
+        *sig = *orig->signal;
+    } else {
+        memset(sig, 0, sizeof(*sig));
+        sig->pgrp = tsk->pid;
+        sig->session = tsk->pid;
+    }
+
+    return sig;
+}
+
+static void free_signal_struct(struct signal_struct *sig) {
+    if (sig != NULL) {
+        kfree(sig);
+    }
+}
+
 static void set_parent_child(struct task_struct *parent, struct task_struct *child) {
     unsigned long flags;
 
@@ -294,6 +321,10 @@ static struct task_struct *dup_task_struct(struct task_struct *orig) {
     tsk->pid = alloc_pid();
     tsk->tgid = tsk->pid;
     tsk->group_leader = tsk;
+    tsk->signal = copy_signal_struct(orig, tsk);
+    if (IS_ERR(tsk->signal)) {
+        goto signal_failed;
+    }
     tsk->wait_child.wait_reason = get_wait_reason_name(WAIT_CHILD);
     void *stack = alloc_stack();
     if (IS_ERR(stack)) {
@@ -308,6 +339,8 @@ static struct task_struct *dup_task_struct(struct task_struct *orig) {
     return tsk;
 
 stack_failed:
+    free_signal_struct(tsk->signal);
+signal_failed:
     free_task_struct(tsk);
 task_failed:
     return ERR_PTR(-ENOMEM);
@@ -422,6 +455,8 @@ void task_destroy(struct task_struct *task) {
     task_drop_mm(task);
     put_files_struct(task->files);
     put_fs_struct(task->fs);
+    free_signal_struct(task->signal);
+    task->signal = NULL;
     free_task_struct(task);
 }
 
@@ -463,6 +498,7 @@ pid_t do_fork_kthread(int (*fn)(void *), void *arg) {
     return p->pid;
 
 files_failed:
+    free_signal_struct(p->signal);
     free_stack(p);
     free_task_struct(p);
     return err;
@@ -511,6 +547,7 @@ pid_t kernel_thread_on_cpu(int (*fn)(void *), void *arg, int cpu)
 
 files_failed:
 bind_failed:
+    free_signal_struct(p->signal);
     free_stack(p);
     free_task_struct(p);
     return err;
@@ -611,12 +648,23 @@ mm_failed:
 fs_failed:
     put_files_struct(new_files);
 files_failed:
+    free_signal_struct(p->signal);
+    free_stack(p);
     free_task_struct(p);
     return err;
 }
 
 struct task_struct* setup_init_task(void) {
     struct task_struct *p = &init_task;
+    if (p->signal == NULL) {
+        p->signal = kmalloc(sizeof(*p->signal));
+        if (p->signal == NULL) {
+            panic("failed to allocate init signal_struct");
+        }
+        memset(p->signal, 0, sizeof(*p->signal));
+        p->signal->pgrp = p->pid;
+        p->signal->session = p->pid;
+    }
     p->sched_class = &rr_sched_class;
     p->se.exec_start = monotonic_ns();
     p->on_cpu = 1;
@@ -658,7 +706,7 @@ int wake_up_process_on(struct task_struct *p, int cpu)
     return 0;
 }
 
-long sys_clone(struct pt_regs *ctx)
+__SYSCALL__ long sys_clone(struct pt_regs *ctx)
 {
     unsigned long flags = ctx->r[0];
     unsigned long new_stack = ctx->r[1];
@@ -693,7 +741,7 @@ long sys_clone(struct pt_regs *ctx)
     return do_fork_uthread(ctx, &args);
 }
 
-long sys_fork(struct pt_regs *ctx) {
+__SYSCALL__ long sys_fork(struct pt_regs *ctx) {
     struct kernel_clone_args args;
 
     memset(&args, 0, sizeof(args));

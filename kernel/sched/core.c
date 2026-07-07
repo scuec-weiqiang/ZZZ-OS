@@ -371,13 +371,13 @@ void yield() {
     sched();
 }
 
-long sys_getpid(struct pt_regs *ctx)
+__SYSCALL__ long sys_getpid(struct pt_regs *ctx)
 {
     (void)ctx;
     return current->pid;
 }
 
-long sys_ps(struct pt_regs *ctx)
+__SYSCALL__ long sys_ps(struct pt_regs *ctx)
 {
     struct ps_info *ubuf;
     int max;

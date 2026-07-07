@@ -38,20 +38,20 @@ const syscall_fn_t syscall_table[SYSCALL_MAX] = {
 #undef X
 };
 
-long sys_socket(struct pt_regs *ctx) {
+__SYSCALL__ long sys_socket(struct pt_regs *ctx) {
     return -EAFNOSUPPORT;
 }
 
-long sys_set_tid_address(struct pt_regs *ctx) {
+__SYSCALL__ long sys_set_tid_address(struct pt_regs *ctx) {
     current->clear_child_tid = (int __user *)ctx->r[0];
     return current->pid;
 }
 
-long sys_set_robust_list(struct pt_regs *ctx) {
+__SYSCALL__ long sys_set_robust_list(struct pt_regs *ctx) {
     return 0;
 }
 
-long sys_rt_sigprocmask(struct pt_regs *ctx) {
+__SYSCALL__ long sys_rt_sigprocmask(struct pt_regs *ctx) {
     void *oldset = (void *)ctx->r[2];
     size_t sigsetsize = ctx->r[3];
     u64 empty = 0;
@@ -68,7 +68,7 @@ long sys_rt_sigprocmask(struct pt_regs *ctx) {
     return 0;
 }
 
-long sys_getuid(struct pt_regs *ctx) {
+__SYSCALL__ long sys_getuid(struct pt_regs *ctx) {
     /*
      * We do not have credentials yet.  Return a non-root uid so archive
      * tools do not try to preserve ownership through chown/lchown.
@@ -76,18 +76,18 @@ long sys_getuid(struct pt_regs *ctx) {
     return 1000;
 }
 
-long sys_geteuid(struct pt_regs *ctx) {
+__SYSCALL__ long sys_geteuid(struct pt_regs *ctx) {
     return sys_getuid(ctx);
 }
 
-long sys_getppid(struct pt_regs *ctx) {
+__SYSCALL__ long sys_getppid(struct pt_regs *ctx) {
     if (current->parent == NULL)
         return 0;
 
     return current->parent->pid;
 }
 
-long sys_fchmodat(struct pt_regs *ctx) {
+__SYSCALL__ long sys_fchmodat(struct pt_regs *ctx) {
     const char *pathname = (const char *)ctx->r[1];
     mode_t mode = (mode_t)ctx->r[2];
     char path_buf[256];
@@ -121,11 +121,11 @@ out:
     return ret;
 }
 
-long sys_riscv_hwprobe(struct pt_regs *ctx) {
+__SYSCALL__ long sys_riscv_hwprobe(struct pt_regs *ctx) {
     return -ENOSYS;
 }
 
-long sys_prlimit64(struct pt_regs *ctx) {
+__SYSCALL__ long sys_prlimit64(struct pt_regs *ctx) {
     unsigned int resource = ctx->r[1];
     const struct linux_rlimit *new_limit = (const struct linux_rlimit *)ctx->r[2];
     struct linux_rlimit *old_limit = (struct linux_rlimit *)ctx->r[3];
@@ -151,7 +151,7 @@ long sys_prlimit64(struct pt_regs *ctx) {
     return 0;
 }
 
-long sys_getrandom(struct pt_regs *ctx) {
+__SYSCALL__ long sys_getrandom(struct pt_regs *ctx) {
     char *buf = (char *)ctx->r[0];
     size_t buflen = ctx->r[1];
     size_t done = 0;
@@ -172,7 +172,7 @@ long sys_getrandom(struct pt_regs *ctx) {
     return done;
 }
 
-long sys_rseq(struct pt_regs *ctx) {
+__SYSCALL__ long sys_rseq(struct pt_regs *ctx) {
     return -ENOSYS;
 }
 

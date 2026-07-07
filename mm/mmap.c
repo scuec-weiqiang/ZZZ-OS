@@ -162,7 +162,7 @@ static void free_mapped_pages(struct mm_struct *mm, virt_addr_t start, size_t le
     }
 }
 
-long sys_mmap(struct pt_regs *ctx)
+__SYSCALL__ long sys_mmap(struct pt_regs *ctx)
 {
     struct mm_struct *mm = current->mm;
     virt_addr_t addr = (virt_addr_t)ctx->r[0];
@@ -234,7 +234,7 @@ out_unlock:
     return ret;
 }
 
-long sys_munmap(struct pt_regs *ctx)
+__SYSCALL__ long sys_munmap(struct pt_regs *ctx)
 {
     struct mm_struct *mm = current->mm;
     virt_addr_t addr = (virt_addr_t)ctx->r[0];
@@ -269,7 +269,7 @@ out_unlock:
     return ret;
 }
 
-long sys_mprotect(struct pt_regs *ctx)
+__SYSCALL__ long sys_mprotect(struct pt_regs *ctx)
 {
     struct mm_struct *mm = current->mm;
     virt_addr_t addr = (virt_addr_t)ctx->r[0];

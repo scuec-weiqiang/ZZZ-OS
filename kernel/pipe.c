@@ -298,7 +298,7 @@ static void pipe_setup_file(struct file *file, const struct file_operations *fop
     atomic_set(&file->f_count, 1);
 }
 
-long sys_pipe(struct pt_regs *ctx) {
+__SYSCALL__ long sys_pipe(struct pt_regs *ctx) {
     uintptr_t user_fds = ctx->r[0];
     int fd0, fd1;
     int fds[2];
@@ -369,14 +369,14 @@ long sys_pipe(struct pt_regs *ctx) {
     return 0;
 }
 
-long sys_pipe2(struct pt_regs *ctx) {
+__SYSCALL__ long sys_pipe2(struct pt_regs *ctx) {
     if (ctx->r[1] != 0)
         return -EINVAL;
 
     return sys_pipe(ctx);
 }
 
-long sys_tee(struct pt_regs *ctx)
+__SYSCALL__ long sys_tee(struct pt_regs *ctx)
 {
     int fd_in = (int)ctx->r[0];
     int fd_out = (int)ctx->r[1];

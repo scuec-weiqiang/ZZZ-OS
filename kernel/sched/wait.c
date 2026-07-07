@@ -111,13 +111,13 @@ int do_wait(int *status) {
     return do_waitpid(-1, status, 0);
 }
 
-long sys_waitpid(struct pt_regs *ctx) {
+__SYSCALL__ long sys_waitpid(struct pt_regs *ctx) {
     pid_t pid = (pid_t)ctx->r[0];
     int *status = (int *)ctx->r[1];
     int options = (int)ctx->r[2];
     return do_waitpid(pid, status, options);
 }
 
-long sys_wait4(struct pt_regs *ctx) {
+__SYSCALL__ long sys_wait4(struct pt_regs *ctx) {
     return sys_waitpid(ctx);
 }

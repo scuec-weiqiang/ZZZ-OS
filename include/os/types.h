@@ -73,6 +73,7 @@ typedef uintptr_t     reg_t;
 typedef uintptr_t     phys_addr_t;
 typedef uintptr_t     virt_addr_t;
 typedef uintptr_t     addr_t;
+typedef int           pid_t;
 
 typedef enum { false, true } bool;
 
@@ -91,6 +92,7 @@ typedef enum { false, true } bool;
 #define __out
 #define __user
 #define __iomem
+#define __SYSCALL__
 
 typedef unsigned long dev_t;
 

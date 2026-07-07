@@ -2,7 +2,7 @@
 #ifndef __ASM_GENERIC_TERMBITS_H
 #define __ASM_GENERIC_TERMBITS_H
 
-#include <asm-generic/termbits-common.h>
+#include <uapi/asm-generic/termbits-common.h>
 
 typedef unsigned int	tcflag_t;
 

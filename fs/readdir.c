@@ -141,7 +141,7 @@ int getdents(unsigned int fd, struct linux_dirent __user * dirent, unsigned int 
 #include <os/cpu.h>
 #include <os/sched.h>
 #include <os/printk.h>
-long sys_getdents(struct pt_regs *ctx) {
+__SYSCALL__ long sys_getdents(struct pt_regs *ctx) {
 	unsigned int fd = ctx->r[0];
 	struct linux_dirent __user *dirent = (struct linux_dirent __user *)ctx->r[1];
 	unsigned int count = ctx->r[2];

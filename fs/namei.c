@@ -926,7 +926,7 @@ out_put_paths:
     return ret;
 }
 
- long sys_utimensat(struct pt_regs *ctx) {
+ __SYSCALL__ long sys_utimensat(struct pt_regs *ctx) {
     const char *pathname = (const char *)ctx->r[1];
     const timespec_t *user_times = (const timespec_t *)ctx->r[2];
     int flags = (int)ctx->r[3];
@@ -980,7 +980,7 @@ out:
     return ret;
 }
 
-long sys_renameat2(struct pt_regs *ctx) {
+__SYSCALL__ long sys_renameat2(struct pt_regs *ctx) {
     const char *old_path = (const char *)ctx->r[1];
     const char *new_path = (const char *)ctx->r[3];
     unsigned int flags = ctx->r[4];
@@ -999,7 +999,7 @@ long sys_renameat2(struct pt_regs *ctx) {
     return vfs_rename(old_buf, new_buf);
 }
 
-long sys_symlinkat(struct pt_regs *ctx) {
+__SYSCALL__ long sys_symlinkat(struct pt_regs *ctx) {
     const char *target = (const char *)ctx->r[0];
     const char *linkpath = (const char *)ctx->r[2];
     char target_buf[256];

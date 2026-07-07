@@ -89,7 +89,7 @@ static int fd_get_close_on_exec(int fd)
     return ret;
 }
 
-long sys_fcntl(struct pt_regs *ctx)
+__SYSCALL__ long sys_fcntl(struct pt_regs *ctx)
 {
     int fd = (int)ctx->r[0];
     int cmd = (int)ctx->r[1];
@@ -180,7 +180,7 @@ off_t generic_file_lseek(struct file *file, off_t offset, int whence) {
     return newpos;
 }
 
-long sys_read(struct pt_regs *ctx) {
+__SYSCALL__ long sys_read(struct pt_regs *ctx) {
     int fd = (int)ctx->r[0];
     char *user_buf = (char *)ctx->r[1];
     size_t len = ctx->r[2];
@@ -230,7 +230,7 @@ long sys_read(struct pt_regs *ctx) {
     return (ssize_t)done;
 }
 
-long sys_write(struct pt_regs *ctx) {
+__SYSCALL__ long sys_write(struct pt_regs *ctx) {
     int fd = (int)ctx->r[0];
     const char *user_buf = (const char *)ctx->r[1];
     size_t len = ctx->r[2];
@@ -281,7 +281,7 @@ long sys_write(struct pt_regs *ctx) {
     return (ssize_t)done;
 }
 
-long sys_open(struct pt_regs *ctx) {
+__SYSCALL__ long sys_open(struct pt_regs *ctx) {
     uintptr_t user_path = ctx->r[0];
     int flags = (int)ctx->r[1];
     char path[SYSCALL_PATH_MAX];
@@ -318,11 +318,11 @@ long sys_open(struct pt_regs *ctx) {
     return fd;
 }
 
-long sys_close(struct pt_regs *ctx) {
+__SYSCALL__ long sys_close(struct pt_regs *ctx) {
     return close_fd((unsigned)ctx->r[0]);
 }
 
-long sys_creat(struct pt_regs *ctx) {
+__SYSCALL__ long sys_creat(struct pt_regs *ctx) {
     uintptr_t user_path = ctx->r[0];
     int mode = (int)ctx->r[1];
     char path[SYSCALL_PATH_MAX];
@@ -336,7 +336,7 @@ long sys_creat(struct pt_regs *ctx) {
     return sys_open(ctx);
 }
 
-long sys_mkdir(struct pt_regs *ctx) {
+__SYSCALL__ long sys_mkdir(struct pt_regs *ctx) {
     uintptr_t user_path = ctx->r[0];
     int mode = (int)ctx->r[1];
     char path[SYSCALL_PATH_MAX];
@@ -349,7 +349,7 @@ long sys_mkdir(struct pt_regs *ctx) {
     return vfs_mkdir(path, (u16)mode);
 }
 
-long sys_umask(struct pt_regs *ctx) {
+__SYSCALL__ long sys_umask(struct pt_regs *ctx) {
     int mask = (int)ctx->r[0] & 0777;
     int old;
 
@@ -364,7 +364,7 @@ long sys_umask(struct pt_regs *ctx) {
     return old;
 }
 
-long sys_access(struct pt_regs *ctx) {
+__SYSCALL__ long sys_access(struct pt_regs *ctx) {
     uintptr_t user_path = ctx->r[0];
     int mode = (int)ctx->r[1];
     char path[SYSCALL_PATH_MAX];
@@ -378,7 +378,7 @@ long sys_access(struct pt_regs *ctx) {
     return vfs_access(path, mode);
 }
 
-long sys_rmdir(struct pt_regs *ctx) {
+__SYSCALL__ long sys_rmdir(struct pt_regs *ctx) {
     uintptr_t user_path = ctx->r[0];
     char path[SYSCALL_PATH_MAX];
 
@@ -388,7 +388,7 @@ long sys_rmdir(struct pt_regs *ctx) {
     return vfs_rmdir(path);
 }
 
-long sys_unlink(struct pt_regs *ctx) {
+__SYSCALL__ long sys_unlink(struct pt_regs *ctx) {
     uintptr_t user_path = ctx->r[0];
     char path[SYSCALL_PATH_MAX];
 
@@ -398,7 +398,7 @@ long sys_unlink(struct pt_regs *ctx) {
     return vfs_unlink(path);
 }
 
-long sys_chdir(struct pt_regs *ctx) {
+__SYSCALL__ long sys_chdir(struct pt_regs *ctx) {
     uintptr_t user_path = ctx->r[0];
     char path[SYSCALL_PATH_MAX];
 
@@ -408,7 +408,7 @@ long sys_chdir(struct pt_regs *ctx) {
     return vfs_chdir(path);
 }
 
-long sys_getcwd(struct pt_regs *ctx) {
+__SYSCALL__ long sys_getcwd(struct pt_regs *ctx) {
     uintptr_t user_buf = ctx->r[0];
     size_t size = (size_t)ctx->r[1];
     char *kbuf;
@@ -438,7 +438,7 @@ long sys_getcwd(struct pt_regs *ctx) {
     return len;
 }
 
-long sys_lseek(struct pt_regs *ctx) {
+__SYSCALL__ long sys_lseek(struct pt_regs *ctx) {
     int fd = (int)ctx->r[0];
     off_t offset = (off_t)ctx->r[1];
     int whence = (int)ctx->r[2];
@@ -459,7 +459,7 @@ long sys_lseek(struct pt_regs *ctx) {
     return new_pos;
 }
 
-long sys_mkdirat(struct pt_regs *ctx) {
+__SYSCALL__ long sys_mkdirat(struct pt_regs *ctx) {
     struct pt_regs mkdir_ctx = *ctx;
 
     mkdir_ctx.r[0] = ctx->r[1];
@@ -467,7 +467,7 @@ long sys_mkdirat(struct pt_regs *ctx) {
     return sys_mkdir(&mkdir_ctx);
 }
 
-long sys_unlinkat(struct pt_regs *ctx) {
+__SYSCALL__ long sys_unlinkat(struct pt_regs *ctx) {
     struct pt_regs unlink_ctx = *ctx;
 
     unlink_ctx.r[0] = ctx->r[1];
@@ -479,7 +479,7 @@ long sys_unlinkat(struct pt_regs *ctx) {
 
 
 
-long sys_openat(struct pt_regs *ctx) {
+__SYSCALL__ long sys_openat(struct pt_regs *ctx) {
     struct pt_regs open_ctx = *ctx;
 
     open_ctx.r[0] = ctx->r[1];
@@ -1053,7 +1053,7 @@ int unshare_files_struct(void)
     return 0;
 }
 
-long sys_fstat(struct pt_regs *ctx) {
+__SYSCALL__ long sys_fstat(struct pt_regs *ctx) {
     int fd = (int)ctx->r[0];
     void* user_st = (void*)ctx->r[1];
     struct user_stat st;
@@ -1099,7 +1099,7 @@ long sys_fstat(struct pt_regs *ctx) {
     return 0; // 成功
 }
 
-long sys_stat(struct pt_regs *ctx) {
+__SYSCALL__ long sys_stat(struct pt_regs *ctx) {
     uintptr_t user_path = ctx->r[0];
     void* user_st = (void*)ctx->r[1];
     char path[SYSCALL_PATH_MAX];
@@ -1153,7 +1153,7 @@ out_put_path:
     return ret; // 成功
 }
 
-long sys_newfstatat(struct pt_regs *ctx) {
+__SYSCALL__ long sys_newfstatat(struct pt_regs *ctx) {
     struct pt_regs stat_ctx = *ctx;
 
     stat_ctx.r[0] = ctx->r[1];
@@ -1161,7 +1161,7 @@ long sys_newfstatat(struct pt_regs *ctx) {
     return sys_stat(&stat_ctx);
 }
 
-long sys_dup(struct pt_regs *ctx) {
+__SYSCALL__ long sys_dup(struct pt_regs *ctx) {
     int oldfd = ctx->r[0];
     struct file *file;
     int newfd;
@@ -1181,7 +1181,7 @@ long sys_dup(struct pt_regs *ctx) {
     return newfd;
 }
 
-long sys_dup2(struct pt_regs *ctx) {   
+__SYSCALL__ long sys_dup2(struct pt_regs *ctx) {   
     int oldfd = ctx->r[0];
     int newfd = ctx->r[1];
     struct file *file;
@@ -1200,14 +1200,14 @@ long sys_dup2(struct pt_regs *ctx) {
     return newfd;
 }
 
-long sys_dup3(struct pt_regs *ctx) {
+__SYSCALL__ long sys_dup3(struct pt_regs *ctx) {
     if (ctx->r[2] != 0)
         return -EINVAL;
 
     return sys_dup2(ctx);
 }
 
-long sys_faccessat(struct pt_regs *ctx) {
+__SYSCALL__ long sys_faccessat(struct pt_regs *ctx) {
     struct pt_regs access_ctx = *ctx;
 
     access_ctx.r[0] = ctx->r[1];
@@ -1215,7 +1215,7 @@ long sys_faccessat(struct pt_regs *ctx) {
     return sys_access(&access_ctx);
 }
 
-long sys_faccessat2(struct pt_regs *ctx) {
+__SYSCALL__ long sys_faccessat2(struct pt_regs *ctx) {
     unsigned int flags = (unsigned int)ctx->r[3];
 
     if (flags & ~(AT_SYMLINK_NOFOLLOW | AT_EACCESS | AT_EMPTY_PATH))
@@ -1224,7 +1224,7 @@ long sys_faccessat2(struct pt_regs *ctx) {
     return sys_faccessat(ctx);
 }
 
-long sys_readlinkat(struct pt_regs *ctx) {
+__SYSCALL__ long sys_readlinkat(struct pt_regs *ctx) {
     const char *pathname = (const char *)ctx->r[1];
     char *user_buf = (char *)ctx->r[2];
     size_t bufsiz = ctx->r[3];

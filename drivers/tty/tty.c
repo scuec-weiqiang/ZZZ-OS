@@ -8,8 +8,38 @@
 #include <os/uaccess.h>
 
 static void tty_apply_termios(struct tty *tty) {
-    tty->echo = (tty->termios.c_lflag & TTY_ECHO) != 0;
-    tty->canonical = (tty->termios.c_lflag & TTY_ICANON) != 0;
+    tty->echo = (tty->termios.c_lflag & ECHO) != 0;
+    tty->canonical = (tty->termios.c_lflag & ICANON) != 0;
+}
+
+static void tty_termios_to_user(struct termios *dst, const struct ktermios *src) {
+    unsigned int i;
+
+    dst->c_iflag = src->c_iflag;
+    dst->c_oflag = src->c_oflag;
+    dst->c_cflag = src->c_cflag;
+    dst->c_lflag = src->c_lflag;
+    dst->c_line = src->c_line;
+    for (i = 0; i < NCCS; i++) {
+        dst->c_cc[i] = src->c_cc[i];
+    }
+}
+
+static void tty_termios_from_user(struct ktermios *dst, const struct termios *src) {
+    unsigned int i;
+    speed_t ispeed = dst->c_ispeed;
+    speed_t ospeed = dst->c_ospeed;
+
+    dst->c_iflag = src->c_iflag;
+    dst->c_oflag = src->c_oflag;
+    dst->c_cflag = src->c_cflag;
+    dst->c_lflag = src->c_lflag;
+    dst->c_line = src->c_line;
+    for (i = 0; i < NCCS; i++) {
+        dst->c_cc[i] = src->c_cc[i];
+    }
+    dst->c_ispeed = ispeed;
+    dst->c_ospeed = ospeed;
 }
 
 static int tty_inbuf_full(struct tty *tty) {
@@ -114,18 +144,18 @@ void tty_init(struct tty *tty, void (*putc)(char ch, void *data), void *data) {
     spin_lock_init(&tty->lock);
     init_waitqueue_head(&tty->read_wait);
     tty->read_wait.wait_reason = get_wait_reason_name(WAIT_TTY_READ);
-    tty->termios.c_iflag = TTY_ICRNL | TTY_IXON;
-    tty->termios.c_oflag = TTY_OPOST;
-    tty->termios.c_cflag = TTY_CS8 | TTY_CREAD | TTY_HUPCL;
-    tty->termios.c_lflag = TTY_ISIG | TTY_ICANON | TTY_ECHO | TTY_ECHOE | TTY_ECHOK | TTY_ECHOCTL |
-                           TTY_ECHOKE | TTY_IEXTEN;
-    tty->termios.c_cc[TTY_VINTR] = 3;
-    tty->termios.c_cc[TTY_VQUIT] = 28;
-    tty->termios.c_cc[TTY_VERASE] = 127;
-    tty->termios.c_cc[TTY_VKILL] = 21;
-    tty->termios.c_cc[TTY_VEOF] = 4;
-    tty->termios.c_cc[TTY_VTIME] = 0;
-    tty->termios.c_cc[TTY_VMIN] = 1;
+    tty->termios.c_iflag = ICRNL | IXON;
+    tty->termios.c_oflag = OPOST;
+    tty->termios.c_cflag = CS8 | CREAD | HUPCL;
+    tty->termios.c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHOCTL |
+                           ECHOKE | IEXTEN;
+    tty->termios.c_cc[VINTR] = 3;
+    tty->termios.c_cc[VQUIT] = 28;
+    tty->termios.c_cc[VERASE] = 127;
+    tty->termios.c_cc[VKILL] = 21;
+    tty->termios.c_cc[VEOF] = 4;
+    tty->termios.c_cc[VTIME] = 0;
+    tty->termios.c_cc[VMIN] = 1;
     tty->winsize.ws_row = 24;
     tty->winsize.ws_col = 80;
     tty->pgrp = 0;
@@ -144,13 +174,13 @@ void tty_receive_char(struct tty *tty, char ch) {
         return;
     }
 
-    if ((tty->termios.c_iflag & TTY_ICRNL) && ch == '\r') {
+    if ((tty->termios.c_iflag & ICRNL) && ch == '\r') {
         ch = '\n';
     }
 
     flags = spin_lock_irqsave(&tty->lock);
 
-    if (tty->canonical && (ch == '\b' || ch == tty->termios.c_cc[TTY_VERASE])) {
+    if (tty->canonical && (ch == '\b' || ch == tty->termios.c_cc[VERASE])) {
         if (tty->line_len > 0) {
             tty->line_len--;
             echo_backspace = 1;
@@ -248,8 +278,8 @@ ssize_t tty_write(struct tty *tty, const char *buf, size_t size) {
 long tty_ioctl(struct tty *tty, unsigned long request, unsigned long arg) {
     unsigned long flags;
     void *argp = (void *)arg;
-    struct linux_termios termios;
-    struct linux_winsize winsize;
+    struct termios termios;
+    struct winsize winsize;
     int pgrp;
 
     if (tty == NULL) {
@@ -257,13 +287,13 @@ long tty_ioctl(struct tty *tty, unsigned long request, unsigned long arg) {
     }
 
     switch (request) {
-    case TTY_TCGETS:
+    case TCGETS:
         if (argp == NULL) {
             return -EFAULT;
         }
 
         flags = spin_lock_irqsave(&tty->lock);
-        termios = tty->termios;
+        tty_termios_to_user(&termios, &tty->termios);
         spin_unlock_irqrestore(&tty->lock, flags);
 
         if (copy_to_user(argp, (char *)&termios, sizeof(termios)) < 0) {
@@ -271,9 +301,9 @@ long tty_ioctl(struct tty *tty, unsigned long request, unsigned long arg) {
         }
         return 0;
 
-    case TTY_TCSETS:
-    case TTY_TCSETSW:
-    case TTY_TCSETSF:
+    case TCSETS:
+    case TCSETSW:
+    case TCSETSF:
         if (argp == NULL) {
             return -EFAULT;
         }
@@ -283,12 +313,12 @@ long tty_ioctl(struct tty *tty, unsigned long request, unsigned long arg) {
         }
 
         flags = spin_lock_irqsave(&tty->lock);
-        tty->termios = termios;
+        tty_termios_from_user(&tty->termios, &termios);
         tty_apply_termios(tty);
         spin_unlock_irqrestore(&tty->lock, flags);
         return 0;
 
-    case TTY_TIOCGWINSZ:
+    case TIOCGWINSZ:
         if (argp == NULL) {
             return -EFAULT;
         }
@@ -302,7 +332,7 @@ long tty_ioctl(struct tty *tty, unsigned long request, unsigned long arg) {
         }
         return 0;
 
-    case TTY_TIOCSWINSZ:
+    case TIOCSWINSZ:
         if (argp == NULL) {
             return -EFAULT;
         }
@@ -316,10 +346,10 @@ long tty_ioctl(struct tty *tty, unsigned long request, unsigned long arg) {
         spin_unlock_irqrestore(&tty->lock, flags);
         return 0;
 
-    case TTY_TIOCSCTTY:
+    case TIOCSCTTY:
         return 0;
 
-    case TTY_TIOCGPGRP:
+    case TIOCGPGRP:
         if (argp == NULL) {
             return -EFAULT;
         }
@@ -333,7 +363,7 @@ long tty_ioctl(struct tty *tty, unsigned long request, unsigned long arg) {
         }
         return 0;
 
-    case TTY_TIOCSPGRP:
+    case TIOCSPGRP:
         if (argp == NULL) {
             return -EFAULT;
         }
@@ -352,7 +382,7 @@ long tty_ioctl(struct tty *tty, unsigned long request, unsigned long arg) {
     }
 }
 
-long sys_ioctl(struct pt_regs *ctx) {
+__SYSCALL__ long sys_ioctl(struct pt_regs *ctx) {
     int fd = (int)ctx->r[0];
     unsigned long request = ctx->r[1];
     unsigned long arg = ctx->r[2];

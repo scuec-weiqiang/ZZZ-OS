@@ -1,20 +1,33 @@
 #include <os/types.h>
 #include <os/sched.h>
 #include <os/signal.h>
+#include <os/syscall.h>
 #include <os/err.h>
 #include <os/uaccess.h>
 #include <os/magic.h>
 
 #include <asm/ptrace.h>
 
-long sys_kill(struct pt_regs *ctx) {
-    int pid = ctx->r[0];
-    int sig = ctx->r[1];
-    
+SYSCALL_DEFINE2(kill, int, pid, int, sig) {
     struct task_struct *t;
 
     if (sig < 0 || sig >= NSIG)
         return -EINVAL;
+
+    if (pid == 0) {
+        if (current == NULL || current->signal == NULL) {
+            return -ESRCH;
+        }
+        return send_signal_to_pgrp(current->signal->pgrp, sig);
+    }
+
+    if (pid < -1) {
+        return send_signal_to_pgrp(-pid, sig);
+    }
+
+    if (pid == -1) {
+        return -EINVAL;
+    }
 
     t = find_task_by_pid(pid);
     if (!t)
@@ -100,7 +113,7 @@ void handle_pending_signal(struct pt_regs *regs) {
     }
 }
 
-long sys_sigreturn(struct pt_regs *ctx) {
+__SYSCALL__ long sys_sigreturn(struct pt_regs *ctx) {
     struct signal_frame frame;
     uintptr_t usp = ctx->sp;
 
@@ -117,7 +130,7 @@ long sys_sigreturn(struct pt_regs *ctx) {
     return 0;
 }
 
-long sys_sigaction(struct pt_regs *ctx) {
+__SYSCALL__ long sys_sigaction(struct pt_regs *ctx) {
     int sig = ctx->r[0];
     struct k_sigaction *act = (struct k_sigaction *)ctx->r[1];
     struct k_sigaction *oldact = (struct k_sigaction *)ctx->r[2];

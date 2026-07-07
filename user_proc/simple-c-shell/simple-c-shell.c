@@ -22,27 +22,27 @@
 
 void init(){
         GBSH_PID = getpid();
-        // GBSH_IS_INTERACTIVE = isatty(STDIN_FILENO);
-        GBSH_IS_INTERACTIVE = 1;
+        GBSH_IS_INTERACTIVE = isatty(STDIN_FILENO);
+        // GBSH_IS_INTERACTIVE = 1;
 
         if (GBSH_IS_INTERACTIVE) {
-            // while (tcgetpgrp(STDIN_FILENO) != (GBSH_PGID = getpgrp()))
-            //         kill(GBSH_PID, SIGTTIN);
+            while (tcgetpgrp(STDIN_FILENO) != (GBSH_PGID = getpgrp()))
+                    kill(GBSH_PID, SIGTTIN);
 
-            // act_child.sa_handler = signalHandler_child;
-            // act_int.sa_handler = signalHandler_int;
+            act_child.sa_handler = signalHandler_child;
+            act_int.sa_handler = signalHandler_int;
 
-            // sigaction(SIGCHLD, &act_child, 0);
-            // sigaction(SIGINT, &act_int, 0);
+            sigaction(SIGCHLD, &act_child, 0);
+            sigaction(SIGINT, &act_int, 0);
 
-            // setpgid(GBSH_PID, GBSH_PID);
-            // GBSH_PGID = getpgrp();
-            // if (GBSH_PID != GBSH_PGID) {
-            //         printf("Error, the shell is not process group leader");
-            //         exit(EXIT_FAILURE);
-            // }
-            // tcsetpgrp(STDIN_FILENO, GBSH_PGID);
-            // tcgetattr(STDIN_FILENO, &GBSH_TMODES);
+            setpgid(GBSH_PID, GBSH_PID);
+            GBSH_PGID = getpgrp();
+            if (GBSH_PID != GBSH_PGID) {
+                    printf("Error, the shell is not process group leader");
+                    exit(EXIT_FAILURE);
+            }
+            tcsetpgrp(STDIN_FILENO, GBSH_PGID);
+            tcgetattr(STDIN_FILENO, &GBSH_TMODES);
             currentDirectory = (char*) calloc(1024, sizeof(char));
         } else {
                 printf("Could not make the shell interactive.\n");

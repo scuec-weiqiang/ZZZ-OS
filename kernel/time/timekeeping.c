@@ -146,7 +146,7 @@ void time_init(void) {
     dprintk("time int success\n");
 }
 
-long sys_clock_gettime(struct pt_regs *ctx) {
+__SYSCALL__ long sys_clock_gettime(struct pt_regs *ctx) {
     int clockid = (int)ctx->r[0];
     timespec_t ts;
     u64 now;
@@ -164,7 +164,7 @@ long sys_clock_gettime(struct pt_regs *ctx) {
     return 0;
 }
 
-long sys_clock_getres(struct pt_regs *ctx) {
+__SYSCALL__ long sys_clock_getres(struct pt_regs *ctx) {
     int clockid = (int)ctx->r[0];
     timespec_t ts = {
         .tv_sec = 0,
