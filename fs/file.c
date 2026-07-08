@@ -17,6 +17,7 @@
 #include <os/uaccess.h>
 #include <os/minmax.h>
 #include <mm/slab.h>
+#include <os/syscall.h>
 
 struct kmem_cache *file_kmem_cache = NULL;
 
@@ -1253,5 +1254,37 @@ __SYSCALL__ long sys_readlinkat(struct pt_regs *ctx) {
 
 out:
     kfree(kbuf);
+    return ret;
+}
+
+SYSCALL_DEFINE3(ioctl, int, fd, unsigned long, request, unsigned long, arg) {
+    struct file *file;
+    struct inode *inode;
+    long ret;
+
+    file = fd_get_file((unsigned int)fd);
+    if (file == NULL) {
+        return -EBADF;
+    }
+
+    inode = file->f_inode;
+    if (inode == NULL || !S_ISCHR(inode->i_mode)) {
+        ret = -ENOTTY;
+        goto out_put;
+    }
+
+    if (file->f_op == NULL || file->f_op->ioctl == NULL) {
+        ret = -ENOTTY;
+    } else {
+        ret = file->f_op->ioctl(file, request, arg);
+    }
+
+out_put:
+    fd_put_file(file);
+#ifdef SYS_TRACE_ENABLE
+    if (ret == -ENOTTY) {
+        printk("[ioctl] fd=%d request=%lx arg=%lx ret=%ld\n", fd, request, arg, ret);
+    }
+#endif
     return ret;
 }

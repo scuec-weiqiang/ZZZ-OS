@@ -159,5 +159,5 @@ void send_signal(struct task_struct *t, int sig) {
         return;
 
     t->signal_pending |= 1UL << sig;
-    // wake_up_process(t);
+    wake_up_process(t);
 }

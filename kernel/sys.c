@@ -61,14 +61,17 @@ int send_signal_to_pgrp(pid_t pgid, int sig) {
 
     for (int cpu = 0; cpu < cpu_num; cpu++) {
         struct rq *rq = &global_rq[cpu];
-        struct task_struct *task;
+        struct task_struct *task, *tmp;
         unsigned long flags;
 
         flags = spin_lock_irqsave(&rq->lock);
-        list_for_each_entry(task, &rq->tasks, struct task_struct, task_node) {
+        list_for_each_entry_safe(task, tmp, &rq->tasks, struct task_struct, task_node) {
             if (task->signal != NULL && task->signal->pgrp == pgid) {
-                send_signal(task, sig);
+                task->signal_pending |= 1UL << sig;
                 sent++;
+                spin_unlock_irqrestore(&rq->lock, flags);
+                wake_up_process(task);
+                flags = spin_lock_irqsave(&rq->lock);
             }
         }
         spin_unlock_irqrestore(&rq->lock, flags);

@@ -3,21 +3,20 @@
  * @Description  : QEMU RISC-V virt UART driver
  */
 
-#include <fs/cdev.h>
 #include <os/console.h>
+#include <os/errno.h>
 #include <os/irq.h>
 #include <os/irqreturn.h>
 #include <os/kmalloc.h>
-#include <os/errno.h>
 #include <os/mm.h>
 #include <os/of.h>
 #include <os/platform_device.h>
 #include <os/printk.h>
 #include <os/sched.h>
+#include <os/serial_core.h>
 #include <os/spinlock.h>
-#include <os/wait.h>
 #include <os/string.h>
-#include <os/tty.h>
+#include <os/wait.h>
 
 #define UART_TX_IDLE (1U << 5)
 #define UART_RX_READY (1U << 0)
@@ -33,39 +32,41 @@ struct uart_reg {
     u8 SPR;
 };
 
-struct qemu_uart_info {
+struct serial_16550_info {
     virt_addr_t base;
-    dev_t dev_num;
-    struct cdev cdev;
     struct platform_device *pdev;
-    struct tty tty;
+    struct uart_port port;
 };
 
-static struct qemu_uart_info *uart0;
+static struct serial_16550_info *uart_info;
 
-#define UART0 ((volatile struct uart_reg *)(uart0->base))
-
-static inline int uart_tx_ready(void)
-{
-    return (UART0->LSR & UART_TX_IDLE) != 0;
+static inline volatile struct uart_reg *serial_16550_regs(struct serial_16550_info *info) {
+    return (volatile struct uart_reg *)info->base;
 }
 
-static inline int uart_rx_ready(void)
-{
-    return (UART0->LSR & UART_RX_READY) != 0;
+static inline int uart_tx_ready(struct serial_16550_info *info) {
+    return (serial_16550_regs(info)->LSR & UART_TX_IDLE) != 0;
 }
 
-static inline void uart_enable_rx_irq(void)
-{
+static inline int uart_rx_ready(struct serial_16550_info *info) {
+    return (serial_16550_regs(info)->LSR & UART_RX_READY) != 0;
+}
+
+static inline void uart_enable_rx_irq(struct serial_16550_info *info) {
     /* ns16550a IER bit0: received data available interrupt */
-    UART0->IER_DLM = 0x01;
+    serial_16550_regs(info)->IER_DLM = 0x01;
 }
 
-static void uart_putc(char c)
-{
-    while (!uart_tx_ready()) {
+static void uart_putc_info(struct serial_16550_info *info, char c) {
+    while (!uart_tx_ready(info)) {
     }
-    UART0->RHR_THR_DLL = (u8)c;
+    serial_16550_regs(info)->RHR_THR_DLL = (u8)c;
+}
+
+static void uart_putc(char c) {
+    if (uart_info != NULL) {
+        uart_putc_info(uart_info, c);
+    }
 }
 
 /* static void uart_puts(const char *s)
@@ -76,8 +77,9 @@ static void uart_putc(char c)
  * }
  */
 
-static void uart_reg_init(void)
-{
+static void uart_reg_init(struct serial_16550_info *info) {
+    volatile struct uart_reg *regs = serial_16550_regs(info);
+
     /*
      * ns16550a on QEMU virt:
      * - disable interrupts
@@ -85,175 +87,120 @@ static void uart_reg_init(void)
      * - set divisor
      * - set 8N1
      */
-    UART0->IER_DLM = 0x00;
-    UART0->LCR |= (1U << 7);
-    UART0->RHR_THR_DLL = 0x03;   /* divisor low */
-    UART0->IER_DLM = 0x00;       /* divisor high */
-    UART0->LCR &= ~(1U << 7);
-    UART0->LCR = (UART0->LCR & ~0x03U) | 0x03U;
-    UART0->LCR &= ~(1U << 2);
-    UART0->FCR_ISR = 0x07;       /* enable FIFO and clear RX/TX FIFO */
+    regs->IER_DLM = 0x00;
+    regs->LCR |= (1U << 7);
+    regs->RHR_THR_DLL = 0x03; /* divisor low */
+    regs->IER_DLM = 0x00;     /* divisor high */
+    regs->LCR &= ~(1U << 7);
+    regs->LCR = (regs->LCR & ~0x03U) | 0x03U;
+    regs->LCR &= ~(1U << 2);
+    regs->FCR_ISR = 0x07; /* enable FIFO and clear RX/TX FIFO */
 }
 
-static void uart_tty_putc(char ch, void *data)
-{
-    (void)data;
-    uart_putc(ch);
+static void serial_16550_put_char(struct uart_port *port, char ch) {
+    struct serial_16550_info *info = port ? port->private_data : uart_info;
+
+    if (info != NULL) {
+        uart_putc_info(info, ch);
+    }
 }
 
-static irqreturn_t uart_irq_handler(int virq, void *dev_id)
-{
+static const struct uart_ops serial_16550_ops = {
+    .put_char = serial_16550_put_char,
+};
+
+static struct uart_driver serial_16550_driver = {
+    .driver_name = "serial 16550",
+    .dev_name = "ttyS",
+    .nr = 1,
+};
+
+static irqreturn_t uart_irq_handler(int virq, void *dev_id) {
     (void)virq;
     (void)dev_id;
 
-    while (uart_rx_ready()) {
-        tty_receive_char(&uart0->tty, (char)UART0->RHR_THR_DLL);
+    while (uart_rx_ready(uart_info)) {
+        uart_receive_char(&uart_info->port, (char)serial_16550_regs(uart_info)->RHR_THR_DLL);
     }
 
     return IRQ_HANDLED;
 }
 
-static int uart_open(struct inode *inode, struct file *file)
-{
-    (void)inode;
-    file->private_data = uart0;
-    return 0;
-}
-
-static int uart_release(struct inode *inode, struct file *file)
-{
-    (void)inode;
-    file->private_data = NULL;
-    return 0;
-}
-static ssize_t uart_write(struct file *file, const char *buf, size_t size, loff_t *offset)
-{
-    ssize_t written;
-
-    (void)file;
-    if (buf == NULL || offset == NULL) {
-        return -1;
-    }
-
-    written = tty_write(&uart0->tty, buf, size);
-    if (written < 0) {
-        return written;
-    }
-
-    *offset += written;
-    return written;
-}
-
-static ssize_t uart_read(struct file *file, char *buf, size_t size, loff_t *offset)
-{
-    ssize_t read;
-
-    (void)file;
-    if (buf == NULL || offset == NULL) {
-        return -1;
-    }
-
-    read = tty_read(&uart0->tty, buf, size);
-    if (read < 0) {
-        return read;
-    }
-
-    *offset += read;
-    return read;
-}
-
-static long uart_ioctl(struct file *file, unsigned long request, unsigned long arg)
-{
-    struct qemu_uart_info *info = file ? file->private_data : uart0;
-
-    if (info == NULL) {
-        return -ENOTTY;
-    }
-
-    return tty_ioctl(&info->tty, request, arg);
-}
-
-static const struct file_operations uart_file_ops = {
-    .open = uart_open,
-    .release = uart_release,
-    .read = uart_read,
-    .write = uart_write,
-    .ioctl = uart_ioctl,
-};
-
-static int uart_probe(struct platform_device *pdev)
-{
+static int uart_probe(struct platform_device *pdev) {
     int ret;
     int virq;
 
-    uart0 = kzalloc(sizeof(*uart0));
-    if (uart0 == NULL) {
+    uart_info = kzalloc(sizeof(*uart_info));
+    if (uart_info == NULL) {
         return -ENOMEM;
     }
 
-    platform_set_drvdata(pdev, uart0);
-    uart0->pdev = pdev;
+    platform_set_drvdata(pdev, uart_info);
+    uart_info->pdev = pdev;
 
-    uart0->base = platform_ioremap_resource(pdev, 0);
-    printk("qemu_uart: base=%lx\n", (unsigned long)uart0->base);
-    if (uart0->base == 0) {
+    uart_info->base = platform_ioremap_resource(pdev, 0);
+    printk("serial_16550: base=%lx\n", (unsigned long)uart_info->base);
+    if (uart_info->base == 0) {
         ret = -ENODEV;
         goto err_free;
     }
 
-    uart_reg_init();
-    tty_init(&uart0->tty, uart_tty_putc, uart0);
-    uart_enable_rx_irq();
+    uart_reg_init(uart_info);
+    uart_info->port.line = 0;
+    uart_info->port.private_data = uart_info;
+    uart_info->port.ops = &serial_16550_ops;
+
+    ret = uart_register_driver(&serial_16550_driver);
+    if (ret && ret != -EBUSY) {
+        goto err_unmap;
+    }
+
+    ret = uart_add_one_port(&serial_16550_driver, &uart_info->port);
+    if (ret) {
+        goto err_unregister_uart;
+    }
+
+    uart_enable_rx_irq(uart_info);
 
     virq = platform_get_irq(pdev, 0);
     if (virq >= 0) {
-        if (irq_request(virq, uart_irq_handler, "qemu_uart", NULL) == 0) {
+        if (irq_request(virq, uart_irq_handler, "serial_16550", NULL) == 0) {
             irq_enable(virq);
-            printk("qemu_uart: irq=%d\n", virq);
+            printk("serial_16550: irq=%d\n", virq);
         } else {
-            printk("qemu_uart: irq=%d request failed\n", virq);
+            printk("serial_16550: irq=%d request failed\n", virq);
         }
     } else {
-        printk("qemu_uart: no irq found\n");
+        printk("serial_16550: no irq found\n");
     }
-
-    ret = alloc_chrdev_region(&uart0->dev_num, 1);
-    if (ret) {
-        goto err_unmap;
-    }
-
-    ret = cdev_register("uart0", uart0->dev_num, &uart_file_ops, uart0);
-    if (ret) {
-        goto err_unmap;
-    }
-    devnode_register("ttyS0", DEV_CHAR, uart0->dev_num, &uart_file_ops, uart0);
-    devnode_register("tty", DEV_CHAR, uart0->dev_num, &uart_file_ops, uart0);
-    devnode_register("console", DEV_CHAR, uart0->dev_num, &uart_file_ops, uart0);
-   
 
     console_register(uart_putc);
-    printk("qemu_uart: registered console and cdev\n");
+    printk("serial_16550: registered console and uart port\n");
     return 0;
 
+err_unregister_uart:
+    uart_unregister_driver(&serial_16550_driver);
 err_unmap:
-    if (uart0->base) {
-        iounmap(uart0->base, sizeof(struct uart_reg));
-        uart0->base = 0;
+    if (uart_info->base) {
+        iounmap(uart_info->base, sizeof(struct uart_reg));
+        uart_info->base = 0;
     }
 err_free:
-    kfree(uart0);
-    uart0 = NULL;
+    kfree(uart_info);
+    uart_info = NULL;
     return ret;
 }
 
-static int uart_remove(struct platform_device *pdev)
-{
-    struct qemu_uart_info *info = platform_get_drvdata(pdev);
+static int uart_remove(struct platform_device *pdev) {
+    struct serial_16550_info *info = platform_get_drvdata(pdev);
 
     (void)pdev;
     if (!info) {
         return 0;
     }
+
+    uart_remove_one_port(&serial_16550_driver, &info->port);
+    uart_unregister_driver(&serial_16550_driver);
 
     if (info->base) {
         iounmap(info->base, sizeof(struct uart_reg));
@@ -261,22 +208,23 @@ static int uart_remove(struct platform_device *pdev)
     }
 
     kfree(info);
-    uart0 = NULL;
+    uart_info = NULL;
     return 0;
 }
 
 static const struct of_device_id uart_of_match[] = {
-    { .compatible = "wq,uart" },
-    { /* sentinel */ },
+    {.compatible = "wq,uart"},
+    {/* sentinel */},
 };
 
-static struct platform_driver uart_driver = {
-    .name = "qemu_riscv_uart",
+static struct platform_driver serial_16550_platform_driver = {
+    .name = "serial 16550",
     .probe = uart_probe,
     .remove = uart_remove,
-    .driver = {
-        .of_match_table = uart_of_match,
-    },
+    .driver =
+        {
+            .of_match_table = uart_of_match,
+        },
 };
 
-module_platform_driver(uart_driver);
+module_platform_driver(serial_16550_platform_driver);

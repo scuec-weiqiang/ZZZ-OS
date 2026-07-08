@@ -4,6 +4,7 @@
 #include <malloc.h>
 #include <sched.h>
 #include <sys/wait.h>
+#include <sys/ioctl.h>
 
 int main(int argc, char *argv[])
 {
@@ -11,12 +12,13 @@ int main(int argc, char *argv[])
     (void)argv;
     printf("init process started, pid=%d\n", getpid());
 
-    int fd = open("/dev/console", O_RDWR);
+    setsid();
+    int fd = open("/dev/ttyS0", O_RDWR);
+    ioctl(fd, TIOCSCTTY, 0);
     dup2(fd, 0);
     dup2(fd, 1);
     dup2(fd, 2);
-    if (fd > 2) close(fd);
-
+   
     pid_t pid = fork();
 
     printf("after fork, pid=%d\n", pid);

@@ -3,7 +3,7 @@
 #include <os/types.h>
 
 static const u32 sigtramp_code[] = {
-    0x00d00793, /* li a7, 13          (sigreturn 系统调用号) */
+    0x08b00893, /* li a7, 139         (sigreturn system call) */
     0x00000073, /* ecall              (触发系统调用)        */
     0x0000006f, /* j .                (无限循环，jal x0, 0) */
 };

@@ -135,17 +135,19 @@ reg_t trap_handler(reg_t ctx)
         trap_panic("illegal instruction", regs);
         break;
     case 3:
-        trap_panic("breakpoint", regs);
+        // trap_panic("breakpoint", regs);
         break;
     case 8:
     {
         reg_t old_sepc = regs->sepc;
 
         do_syscall(regs);
-
         if (regs->sepc == old_sepc) {
             regs->sepc += 4;
         }
+
+        extern void handle_pending_signal(struct pt_regs *regs);
+        handle_pending_signal(regs);
         break;
     }
     case 12:

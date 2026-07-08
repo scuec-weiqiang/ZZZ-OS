@@ -47,6 +47,11 @@ static void wait_sleep_on_child(void)
     wait_queue_add(wq_head, &current_task->wait);
 }
 
+static int wait_signal_pending(void)
+{
+    return (current->signal_pending & ~current->signal_blocked) != 0;
+}
+
 int do_waitpid(pid_t pid, int *status, int options) {
     while (1) {
         struct task_struct *child;
@@ -93,6 +98,10 @@ int do_waitpid(pid_t pid, int *status, int options) {
         if (options & WNOHANG)
             return 0;
 
+        if (wait_signal_pending()) {
+            return -EINTR;
+        }
+
         unsigned long wq_flags = spin_lock_irqsave(&current->wait_child.lock);
         child_flags = spin_lock_irqsave(&current->lock);
         found = wait_find_child_locked(pid, &child);
@@ -101,6 +110,14 @@ int do_waitpid(pid_t pid, int *status, int options) {
             wait_sleep_on_child();
             spin_unlock_irqrestore(&current->wait_child.lock, wq_flags);
             sched();
+            wq_flags = spin_lock_irqsave(&current->wait_child.lock);
+            if (!list_empty(&current->wait.list)) {
+                wait_queue_remove(&current->wait_child, &current->wait);
+            }
+            spin_unlock_irqrestore(&current->wait_child.lock, wq_flags);
+            if (wait_signal_pending()) {
+                return -EINTR;
+            }
         } else {
             spin_unlock_irqrestore(&current->wait_child.lock, wq_flags);
         }
