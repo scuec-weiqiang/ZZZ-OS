@@ -5,41 +5,6 @@
 #include <os/list.h>
 #include <os/spinlock.h>
 
-struct wait_queue {
-    void *private;
-    struct list_head list;
-};
-
-struct wait_queue_head {
-    spinlock_t lock;
-    const char *wait_reason;
-    struct list_head head;
-};
-
-#define WAIT_QUEUE_INIT(name) { \
-    .lock = SPINLOCK_INIT, \
-    .head = LIST_HEAD_INIT((name).head), \
-}
-
-static inline void init_waitqueue_head(struct wait_queue_head *wq_head) {
-    spin_lock_init(&wq_head->lock);
-    INIT_LIST_HEAD(&wq_head->head);
-}
-
-static inline int wait_queue_empty(struct wait_queue_head *wq_head) {
-    int empty = list_empty(&wq_head->head);
-    return empty;
-}
-
-static inline void wait_queue_add(struct wait_queue_head *wq_head, struct wait_queue *wait) {
-    list_add_tail(&wq_head->head, &wait->list);
-}
-
-static inline void wait_queue_remove(struct wait_queue_head *wq_head, struct wait_queue *wait) {
-    list_del(&wait->list);
-}
-
-
 #define X(name) WAIT_##name,
 
 #define WAIT_REASON_LIST \
@@ -48,16 +13,17 @@ static inline void wait_queue_remove(struct wait_queue_head *wq_head, struct wai
     X(IDLE) \
     X(FUTEX) \
     X(COMPLETION) \
-    X(PIPE_READ) \
-    X(PIPE_WRITE) \
-    X(TTY_READ) \
-    X(TTY_WRITE) \
+    X(OPEN) \
+    X(CLOSE) \
+    X(READ) \
+    X(WRITE) \
     X(SEM) \
     X(MUTEX) \
     X(CONDVAR) \
     X(EVENT) \
     X(SIGNAL) \
-    X(OTHER)
+    X(OTHER) \
+    X(WORKQUEUE) \
 
 enum {
     WAIT_REASON_LIST
@@ -77,6 +43,47 @@ static inline const char *get_wait_reason_name(int reason) {
     }
     return wait_reason_names[reason];
 }
+
+static inline const char *set_wait_reason(int reason) {
+   return get_wait_reason_name(reason);
+}
+
+struct wait_queue {
+    void *private;
+    struct list_head list;
+};
+
+struct wait_queue_head {
+    spinlock_t lock;
+    const char *wait_reason;
+    struct list_head head;
+};
+
+#define WAIT_QUEUE_INIT(name) { \
+    .lock = SPINLOCK_INIT, \
+    .head = LIST_HEAD_INIT((name).head), \
+}
+
+static inline void init_waitqueue_head(struct wait_queue_head *wq_head, int wait_reason) {
+    spin_lock_init(&wq_head->lock);
+    INIT_LIST_HEAD(&wq_head->head);
+    wq_head->wait_reason = set_wait_reason(wait_reason);
+}
+
+static inline int wait_queue_empty(struct wait_queue_head *wq_head) {
+    int empty = list_empty(&wq_head->head);
+    return empty;
+}
+
+static inline void wait_queue_add(struct wait_queue_head *wq_head, struct wait_queue *wait) {
+    list_add_tail(&wq_head->head, &wait->list);
+}
+
+static inline void wait_queue_remove(struct wait_queue_head *wq_head, struct wait_queue *wait) {
+    list_del(&wait->list);
+}
+
+
 
 // #define set_wait_reason(task, reason) do { \
 //     if (task) { \

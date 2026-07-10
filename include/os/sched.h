@@ -165,7 +165,7 @@ extern int task_pgrp_exists(pid_t pgid);
 extern struct task_struct *kthreadd_task;
 extern struct task_struct init_task;
 
-static inline const char *get_wait_reason(struct task_struct *task) {
+static inline const char *get_task_wait_reason(struct task_struct *task) {
     if (task == NULL) {
         return "NULL";
     }

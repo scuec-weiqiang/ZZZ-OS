@@ -7,6 +7,7 @@ OBJ_Y += pipe.o
 OBJ_Y += syscall.o
 OBJ_Y += kallsyms.o
 OBJ_Y += stacktrace.o
+OBJ_Y += workqueue.o
 OBJ_Y += sched/
 OBJ_Y += console.o
 OBJ_Y += irq/

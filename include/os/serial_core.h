@@ -12,7 +12,7 @@ struct uart_ops {
     int (*startup)(struct uart_port *port);
     void (*shutdown)(struct uart_port *port);
     void (*set_termios)(struct uart_port *port, const struct ktermios *old);
-    void (*put_char)(struct uart_port *port, char ch);
+    void (*put_char)(struct uart_port *port, char ch); // 发送一个字符
     unsigned int (*tx_empty)(struct uart_port *port);
 };
 

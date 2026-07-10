@@ -411,7 +411,7 @@ __SYSCALL__ long sys_ps(struct pt_regs *ctx)
             memset(&info, 0, sizeof(info));
 
             comm = task->comm[0] ? task->comm : "";
-            wait_reason = get_wait_reason(task);
+            wait_reason = get_task_wait_reason(task);
 
             strncpy(info.comm, comm, sizeof(info.comm) - 1);
             strncpy(info.wait_reason, wait_reason, sizeof(info.wait_reason) - 1);

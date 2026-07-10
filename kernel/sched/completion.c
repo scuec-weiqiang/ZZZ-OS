@@ -1,3 +1,4 @@
+#include "os/wait.h"
 #include <os/completion.h>
 #include <os/sched.h>
 #include <os/printk.h>
@@ -5,8 +6,7 @@
 void init_completion(struct completion *x)
 {
     x->done = 0;
-    init_waitqueue_head(&x->wait);
-    x->wait.wait_reason = get_wait_reason_name(WAIT_COMPLETION);
+    init_waitqueue_head(&x->wait, WAIT_COMPLETION);
 }
 
 void wait_for_completion(struct completion *x)

@@ -18,28 +18,16 @@
 extern void kernel_trap_entry(void);
 #define SSTATUS_SUM (1UL << 18)
 
-static void trap_panic(const char *reason, struct pt_regs *regs)
-{
+static void trap_panic(const char *reason, struct pt_regs *regs) {
     if (regs != NULL) {
         printk_emergency("riscv64 trap: %s cpu=%d pid=%d comm=%s "
                          "sepc=%lx sstatus=%lx scause=%lx stval=%lx sp=%lx satp=%lx\n",
-                         reason,
-                         get_cpuid(),
-                         current ? current->pid : -1,
-                         current ? current->comm : "(none)",
-                         regs->sepc,
-                         regs->sstatus,
-                         regs->scause,
-                         regs->stval,
-                         regs->sp,
-                         satp_r());
+                         reason, get_cpuid(), current ? current->pid : -1,
+                         current ? current->comm : "(none)", regs->sepc, regs->sstatus,
+                         regs->scause, regs->stval, regs->sp, satp_r());
     } else {
-        printk_emergency("riscv64 trap: %s cpu=%d pid=%d comm=%s satp=%lx\n",
-                         reason,
-                         get_cpuid(),
-                         current ? current->pid : -1,
-                         current ? current->comm : "(none)",
-                         satp_r());
+        printk_emergency("riscv64 trap: %s cpu=%d pid=%d comm=%s satp=%lx\n", reason, get_cpuid(),
+                         current ? current->pid : -1, current ? current->comm : "(none)", satp_r());
     }
     if (regs != NULL) {
         show_regs(regs);
@@ -49,26 +37,20 @@ static void trap_panic(const char *reason, struct pt_regs *regs)
     }
 }
 
-static void trap_kill_current(const char *reason, struct pt_regs *regs, int sig)
-{
-    printk("riscv64 user trap: %s cpu=%d pid=%d comm=%s\n",
-           reason,
-           get_cpuid(),
-           current ? current->pid : -1,
-           current ? current->comm : "(none)");
+static void trap_kill_current(const char *reason, struct pt_regs *regs, int sig) {
+    printk("riscv64 user trap: %s cpu=%d pid=%d comm=%s\n", reason, get_cpuid(),
+           current ? current->pid : -1, current ? current->comm : "(none)");
     if (regs != NULL) {
         show_regs(regs);
     }
     do_exit(128 + sig);
 }
 
-void trap_init(void)
-{
+void trap_init(void) {
     stvec_w((reg_t)kernel_trap_entry);
 }
 
-static int handle_page_fault(struct pt_regs *regs, int prot)
-{
+static int handle_page_fault(struct pt_regs *regs, int prot) {
     bool user_fault;
     bool kernel_uaccess_fault;
     struct task_struct *curr_task = this_rq()->curr;
@@ -79,9 +61,7 @@ static int handle_page_fault(struct pt_regs *regs, int prot)
 
     user_fault = pt_regs_is_user(regs);
     kernel_uaccess_fault =
-        !user_fault &&
-        (regs->sstatus & SSTATUS_SUM) != 0 &&
-        access_ok((void *)regs->stval, 1);
+        !user_fault && (regs->sstatus & SSTATUS_SUM) != 0 && access_ok((void *)regs->stval, 1);
 
     if (!user_fault && !kernel_uaccess_fault) {
         return -1;
@@ -90,15 +70,13 @@ static int handle_page_fault(struct pt_regs *regs, int prot)
     return do_page_fault(current->mm, regs->stval, prot);
 }
 
-struct pt_regs *trap_prepare_user_return(struct pt_regs *regs)
-{
+struct pt_regs *trap_prepare_user_return(struct pt_regs *regs) {
     (void)regs;
     sched_handle_user_return();
     return task_pt_regs(current);
 }
 
-reg_t trap_handler(reg_t ctx)
-{
+reg_t trap_handler(reg_t ctx) {
     struct pt_regs *regs = (struct pt_regs *)ctx;
     reg_t cause = regs->scause;
     reg_t code = cause & MCAUSE_MASK_CAUSECODE;
@@ -113,7 +91,7 @@ reg_t trap_handler(reg_t ctx)
             }
             break;
         case CLINT_IRQ_EXTERN:
-           if (handle_arch_irq != NULL) {
+            if (handle_arch_irq != NULL) {
                 handle_arch_irq((reg_t *)regs);
             } else {
                 trap_panic("no external IRQ handler registered", regs);
@@ -122,7 +100,6 @@ reg_t trap_handler(reg_t ctx)
         default:
             trap_panic("unknown interrupt cause", regs);
         }
-
         irq_run_deferred_works();
         return regs->sepc;
     }
@@ -131,14 +108,14 @@ reg_t trap_handler(reg_t ctx)
     case 2:
         if (pt_regs_is_user(regs)) {
             trap_kill_current("illegal instruction", regs, SIGILL);
+        } else {
+            trap_panic("illegal instruction", regs);
         }
-        trap_panic("illegal instruction", regs);
         break;
     case 3:
         // trap_panic("breakpoint", regs);
         break;
-    case 8:
-    {
+    case 8: {
         reg_t old_sepc = regs->sepc;
 
         do_syscall(regs);
@@ -146,7 +123,7 @@ reg_t trap_handler(reg_t ctx)
             regs->sepc += 4;
         }
 
-        extern void handle_pending_signal(struct pt_regs *regs);
+        extern void handle_pending_signal(struct pt_regs * regs);
         handle_pending_signal(regs);
         break;
     }
@@ -154,19 +131,32 @@ reg_t trap_handler(reg_t ctx)
         if (handle_page_fault(regs, PROT_USER | PROT_EXEC) == 0) {
             break;
         }
-        trap_panic("instruction page fault", regs);
+        if (pt_regs_is_user(regs)) {
+            trap_kill_current("instruction page fault", regs, SIGILL);
+        } else {
+            trap_panic("instruction page fault", regs);
+        }
         break;
     case 13:
         if (handle_page_fault(regs, PROT_USER | PROT_READ) == 0) {
             break;
         }
-        trap_panic("load page fault", regs);
+         if (pt_regs_is_user(regs)) {
+            trap_kill_current("instruction page fault", regs, SIGILL);
+        } else {
+            trap_panic("load page fault", regs);
+        }
         break;
     case 15:
         if (handle_page_fault(regs, PROT_USER | PROT_READ | PROT_WRITE) == 0) {
             break;
         }
-        trap_panic("store page fault", regs);
+
+        if (pt_regs_is_user(regs)) {
+            trap_kill_current("instruction page fault", regs, SIGILL);
+        } else {
+            trap_panic("store page fault", regs);
+        }
         break;
     default:
         trap_panic("unknown synchronous exception", regs);

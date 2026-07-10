@@ -1,4 +1,5 @@
 #include "os/syscall.h"
+#include "os/wait.h"
 #include "uapi/asm-generic/ioctls.h"
 #include <asm/ptrace.h>
 #include <fs/cdev.h>
@@ -82,9 +83,7 @@ static void tty_termios2_from_user(struct ktermios *dst, const struct termios2 *
     dst->c_ospeed = src->c_ospeed;
 }
 
-static void tty_make_name(char *buf, size_t size, const char *prefix,
-                          unsigned int index)
-{
+static void tty_make_name(char *buf, size_t size, const char *prefix, unsigned int index) {
     char digits[16];
     unsigned int pos = 0;
     size_t len = 0;
@@ -114,8 +113,7 @@ static void tty_make_name(char *buf, size_t size, const char *prefix,
     buf[len] = '\0';
 }
 
-static int tty_fops_open(struct inode *inode, struct file *file)
-{
+static int tty_fops_open(struct inode *inode, struct file *file) {
     struct tty_struct *tty = file ? file->private_data : NULL;
 
     (void)inode;
@@ -124,16 +122,14 @@ static int tty_fops_open(struct inode *inode, struct file *file)
     }
 
     tty->count++;
-    if (tty->driver != NULL && tty->driver->ops != NULL &&
-        tty->driver->ops->open != NULL) {
+    if (tty->driver != NULL && tty->driver->ops != NULL && tty->driver->ops->open != NULL) {
         return tty->driver->ops->open(tty, file);
     }
 
     return 0;
 }
 
-static int tty_fops_release(struct inode *inode, struct file *file)
-{
+static int tty_fops_release(struct inode *inode, struct file *file) {
     struct tty_struct *tty = file ? file->private_data : NULL;
 
     (void)inode;
@@ -141,8 +137,7 @@ static int tty_fops_release(struct inode *inode, struct file *file)
         return 0;
     }
 
-    if (tty->driver != NULL && tty->driver->ops != NULL &&
-        tty->driver->ops->close != NULL) {
+    if (tty->driver != NULL && tty->driver->ops != NULL && tty->driver->ops->close != NULL) {
         tty->driver->ops->close(tty, file);
     }
 
@@ -153,9 +148,7 @@ static int tty_fops_release(struct inode *inode, struct file *file)
     return 0;
 }
 
-static ssize_t tty_fops_read(struct file *file, char *buf, size_t size,
-                             loff_t *offset)
-{
+static ssize_t tty_fops_read(struct file *file, char *buf, size_t size, loff_t *offset) {
     struct tty_struct *tty = file ? file->private_data : NULL;
     ssize_t ret;
 
@@ -170,9 +163,7 @@ static ssize_t tty_fops_read(struct file *file, char *buf, size_t size,
     return ret;
 }
 
-static ssize_t tty_fops_write(struct file *file, const char *buf, size_t size,
-                              loff_t *offset)
-{
+static ssize_t tty_fops_write(struct file *file, const char *buf, size_t size, loff_t *offset) {
     struct tty_struct *tty = file ? file->private_data : NULL;
     ssize_t ret;
 
@@ -187,9 +178,7 @@ static ssize_t tty_fops_write(struct file *file, const char *buf, size_t size,
     return ret;
 }
 
-static long tty_fops_ioctl(struct file *file, unsigned long request,
-                           unsigned long arg)
-{
+static long tty_fops_ioctl(struct file *file, unsigned long request, unsigned long arg) {
     struct tty_struct *tty = file ? file->private_data : NULL;
 
     if (tty == NULL) {
@@ -207,8 +196,7 @@ static const struct file_operations tty_fops = {
     .ioctl = tty_fops_ioctl,
 };
 
-static int tty_current_fops_open(struct inode *inode, struct file *file)
-{
+static int tty_current_fops_open(struct inode *inode, struct file *file) {
     struct tty_struct *tty;
 
     (void)inode;
@@ -230,8 +218,7 @@ static const struct file_operations tty_current_fops = {
     .ioctl = tty_fops_ioctl,
 };
 
-static int tty_register_current_device(void)
-{
+static int tty_register_current_device(void) {
     static int registered;
     dev_t dev;
     int ret;
@@ -254,10 +241,9 @@ static int tty_register_current_device(void)
     return 0;
 }
 
-int tty_register_driver(struct tty_driver *driver)
-{
-    if (driver == NULL || driver->name == NULL || driver->num <= 0 ||
-        driver->ttys == NULL || driver->ports == NULL) {
+int tty_register_driver(struct tty_driver *driver) {
+    if (driver == NULL || driver->name == NULL || driver->num <= 0 || driver->ttys == NULL ||
+        driver->ports == NULL) {
         return -EINVAL;
     }
 
@@ -274,8 +260,7 @@ int tty_register_device(struct tty_driver *driver, int index) {
     dev_t dev;
     int ret;
 
-    if (driver == NULL || driver->ttys == NULL || index < 0 ||
-        index >= driver->num) {
+    if (driver == NULL || driver->ttys == NULL || index < 0 || index >= driver->num) {
         return -EINVAL;
     }
 
@@ -349,8 +334,7 @@ static int tty_inbuf_pop(struct tty_struct *tty, char *ch) {
 }
 
 static void tty_putc(struct tty_struct *tty, char ch) {
-    if (tty->driver != NULL && tty->driver->ops != NULL &&
-        tty->driver->ops->write != NULL) {
+    if (tty->driver != NULL && tty->driver->ops != NULL && tty->driver->ops->write != NULL) {
         tty->driver->ops->write(tty, &ch, 1);
     }
 }
@@ -392,8 +376,7 @@ static int tty_sleep_if_empty(struct tty_struct *tty) {
     unsigned long tty_flags;
     unsigned long wq_flags;
 
-    if (task == NULL || task->status != TASK_RUNNING || tty == NULL ||
-        tty->port == NULL) {
+    if (task == NULL || task->status != TASK_RUNNING || tty == NULL || tty->port == NULL) {
         return 0;
     }
 
@@ -430,15 +413,14 @@ void tty_port_init(struct tty_port *port) {
 
     memset(port, 0, sizeof(*port));
     spin_lock_init(&port->lock);
-    init_waitqueue_head(&port->open_wait);
-    init_waitqueue_head(&port->close_wait);
-    init_waitqueue_head(&port->read_wait);
-    init_waitqueue_head(&port->write_wait);
-    port->read_wait.wait_reason = get_wait_reason_name(WAIT_TTY_READ);
+    init_waitqueue_head(&port->open_wait, WAIT_OPEN);
+    init_waitqueue_head(&port->close_wait, WAIT_CLOSE);
+    init_waitqueue_head(&port->read_wait, WAIT_READ);
+    init_waitqueue_head(&port->write_wait, WAIT_WRITE);
 }
 
-void tty_init(struct tty_struct *tty, struct tty_driver *driver,
-              struct tty_port *port, int index, void *driver_data) {
+void tty_init(struct tty_struct *tty, struct tty_driver *driver, struct tty_port *port, int index,
+              void *driver_data) {
     if (tty == NULL) {
         return;
     }
@@ -456,8 +438,7 @@ void tty_init(struct tty_struct *tty, struct tty_driver *driver,
     tty->termios.c_iflag = ICRNL | IXON;
     tty->termios.c_oflag = OPOST;
     tty->termios.c_cflag = CS8 | CREAD | HUPCL;
-    tty->termios.c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHOCTL |
-                           ECHOKE | IEXTEN;
+    tty->termios.c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE | IEXTEN;
     tty->termios.c_cc[VINTR] = 3;
     tty->termios.c_cc[VQUIT] = 28;
     tty->termios.c_cc[VERASE] = 127;
@@ -650,7 +631,7 @@ long tty_ioctl(struct tty_struct *tty, unsigned long request, unsigned long arg)
 
     case TCSETS:
     case TCSETSW:
-    
+
     case TCSETSF:
         if (argp == NULL) {
             return -EFAULT;

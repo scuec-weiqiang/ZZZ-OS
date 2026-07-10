@@ -1,3 +1,4 @@
+#include "os/wait.h"
 #include <fs/file.h>
 #include <os/pipe.h>
 #include <os/string.h>
@@ -38,11 +39,8 @@ struct pipe_inode_info *alloc_pipe_inode_info(void) {
         return ERR_PTR(-ENOMEM);
 
     memset(pipe, 0, sizeof(*pipe));
-    init_waitqueue_head(&pipe->read_wait);
-    init_waitqueue_head(&pipe->write_wait);
-
-    pipe->read_wait.wait_reason = get_wait_reason_name(WAIT_PIPE_READ);
-    pipe->write_wait.wait_reason = get_wait_reason_name(WAIT_PIPE_WRITE);
+    init_waitqueue_head(&pipe->read_wait, WAIT_READ);
+    init_waitqueue_head(&pipe->write_wait,WAIT_WRITE);
     
     spin_lock_init(&pipe->lock);
     pipe->buf = alloc_pages_kva(1);
