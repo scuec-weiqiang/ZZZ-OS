@@ -10,7 +10,7 @@
 
 #include <os/kmalloc.h>
 #include <os/string.h>
-#define __NO_BUILTIN_STRING
+// #define __NO_BUILTIN_STRING
 
 #ifdef __NO_BUILTIN_STRING
 /**

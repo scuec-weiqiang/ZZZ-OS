@@ -1,1 +1,2 @@
 OBJ_Y += serial_core.o
+OBJ_$(CONFIG_SERIAL_16550) += serial_16550.o

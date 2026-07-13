@@ -1,422 +1,384 @@
 /* SPDX-License-Identifier: GPL-2.0 */
-#ifndef __LINUX_COMPILER_ATTRIBUTES_H
-#define __LINUX_COMPILER_ATTRIBUTES_H
+#ifndef __LINUX_COMPILER_H
+#define __LINUX_COMPILER_H
+
+#include <os/compiler_types.h>
+
+#ifndef __ASSEMBLY__
+
+#ifdef __KERNEL__
 
 /*
- * Older compilers may not provide feature-test builtins like
- * __has_attribute(). Treat unknown queries as "attribute unsupported"
- * so the optional attribute wrappers below degrade cleanly.
+ * Note: DISABLE_BRANCH_PROFILING can be used by special lowlevel code
+ * to disable branch tracing on a per file basis.
  */
-#ifndef __has_attribute
-#define __has_attribute(x) 0
-#endif
+void ftrace_likely_update(struct ftrace_likely_data *f, int val,
+			  int expect, int is_constant);
+#if defined(CONFIG_TRACE_BRANCH_PROFILING) \
+    && !defined(DISABLE_BRANCH_PROFILING) && !defined(__CHECKER__)
+#define likely_notrace(x)	__builtin_expect(!!(x), 1)
+#define unlikely_notrace(x)	__builtin_expect(!!(x), 0)
+
+#define __branch_check__(x, expect, is_constant) ({			\
+			long ______r;					\
+			static struct ftrace_likely_data		\
+				__aligned(4)				\
+				__section("_ftrace_annotated_branch")	\
+				______f = {				\
+				.data.func = __func__,			\
+				.data.file = __FILE__,			\
+				.data.line = __LINE__,			\
+			};						\
+			______r = __builtin_expect(!!(x), expect);	\
+			ftrace_likely_update(&______f, ______r,		\
+					     expect, is_constant);	\
+			______r;					\
+		})
 
 /*
- * The attributes in this file are unconditionally defined and they directly
- * map to compiler attribute(s), unless one of the compilers does not support
- * the attribute. In that case, __has_attribute is used to check for support
- * and the reason is stated in its comment ("Optional: ...").
- *
- * Any other "attributes" (i.e. those that depend on a configuration option,
- * on a compiler, on an architecture, on plugins, on other attributes...)
- * should be defined elsewhere (e.g. compiler_types.h or compiler-*.h).
- * The intention is to keep this file as simple as possible, as well as
- * compiler- and version-agnostic (e.g. avoiding GCC_VERSION checks).
- *
- * This file is meant to be sorted (by actual attribute name,
- * not by #define identifier). Use the __attribute__((__name__)) syntax
- * (i.e. with underscores) to avoid future collisions with other macros.
- * Provide links to the documentation of each supported compiler, if it exists.
+ * Using __builtin_constant_p(x) to ignore cases where the return
+ * value is always the same.  This idea is taken from a similar patch
+ * written by Daniel Walker.
  */
+# ifndef likely
+#  define likely(x)	(__branch_check__(x, 1, __builtin_constant_p(x)))
+# endif
+# ifndef unlikely
+#  define unlikely(x)	(__branch_check__(x, 0, __builtin_constant_p(x)))
+# endif
 
+#ifdef CONFIG_PROFILE_ALL_BRANCHES
 /*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-alias-function-attribute
+ * "Define 'is'", Bill Clinton
+ * "Define 'if'", Steven Rostedt
  */
-#define __alias(symbol)                 __attribute__((__alias__(#symbol)))
+#define if(cond, ...) if ( __trace_if_var( !!(cond , ## __VA_ARGS__) ) )
 
-/*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-aligned-function-attribute
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Type-Attributes.html#index-aligned-type-attribute
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-aligned-variable-attribute
- */
-#define __aligned(x)                    __attribute__((__aligned__(x)))
-#define __aligned_largest               __attribute__((__aligned__))
+#define __trace_if_var(cond) (__builtin_constant_p(cond) ? (cond) : __trace_if_value(cond))
 
-#define notrace __attribute__((no_instrument_function))
-/*
- * Note: do not use this directly. Instead, use __alloc_size() since it is conditionally
- * available and includes other attributes. For GCC < 9.1, __alloc_size__ gets undefined
- * in compiler-gcc.h, due to misbehaviors.
- *
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-alloc_005fsize-function-attribute
- * clang: https://clang.llvm.org/docs/AttributeReference.html#alloc-size
- */
-#define __alloc_size__(x, ...)		__attribute__((__alloc_size__(x, ## __VA_ARGS__)))
+#define __trace_if_value(cond) ({			\
+	static struct ftrace_branch_data		\
+		__aligned(4)				\
+		__section("_ftrace_branch")		\
+		__if_trace = {				\
+			.func = __func__,		\
+			.file = __FILE__,		\
+			.line = __LINE__,		\
+		};					\
+	(cond) ?					\
+		(__if_trace.miss_hit[1]++,1) :		\
+		(__if_trace.miss_hit[0]++,0);		\
+})
 
-/*
- * Note: users of __always_inline currently do not write "inline" themselves,
- * which seems to be required by gcc to apply the attribute according
- * to its docs (and also "warning: always_inline function might not be
- * inlinable [-Wattributes]" is emitted).
- *
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-always_005finline-function-attribute
- * clang: mentioned
- */
-#define __always_inline                 inline __attribute__((__always_inline__))
+#endif /* CONFIG_PROFILE_ALL_BRANCHES */
 
-/*
- * The second argument is optional (default 0), so we use a variadic macro
- * to make the shorthand.
- *
- * Beware: Do not apply this to functions which may return
- * ERR_PTRs. Also, it is probably unwise to apply it to functions
- * returning extra information in the low bits (but in that case the
- * compiler should see some alignment anyway, when the return value is
- * massaged by 'flags = ptr & 3; ptr &= ~3;').
- *
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-assume_005faligned-function-attribute
- * clang: https://clang.llvm.org/docs/AttributeReference.html#assume-aligned
- */
-#define __assume_aligned(a, ...)        __attribute__((__assume_aligned__(a, ## __VA_ARGS__)))
-
-/*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-cleanup-variable-attribute
- * clang: https://clang.llvm.org/docs/AttributeReference.html#cleanup
- */
-#define __cleanup(func)			__attribute__((__cleanup__(func)))
-
-/*
- * Note the long name.
- *
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-const-function-attribute
- */
-#define __attribute_const__             __attribute__((__const__))
-
-/*
- * Optional: only supported since gcc >= 9
- * Optional: not supported by clang
- *
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-copy-function-attribute
- */
-#if __has_attribute(__copy__)
-# define __copy(symbol)                 __attribute__((__copy__(symbol)))
 #else
-# define __copy(symbol)
+# define likely(x)	__builtin_expect(!!(x), 1)
+# define unlikely(x)	__builtin_expect(!!(x), 0)
+# define likely_notrace(x)	likely(x)
+# define unlikely_notrace(x)	unlikely(x)
 #endif
 
+/* Optimization barrier */
+#ifndef barrier
+/* The "volatile" is due to gcc bugs */
+# define barrier() __asm__ __volatile__("": : :"memory")
+#endif
+
+#ifndef barrier_data
 /*
- * Optional: not supported by gcc
- * Optional: only supported since clang >= 14.0
- *
- * clang: https://clang.llvm.org/docs/AttributeReference.html#diagnose_as_builtin
+ * This version is i.e. to prevent dead stores elimination on @ptr
+ * where gcc and llvm may behave differently when otherwise using
+ * normal barrier(): while gcc behavior gets along with a normal
+ * barrier(), llvm needs an explicit input variable to be assumed
+ * clobbered. The issue is as follows: while the inline asm might
+ * access any memory it wants, the compiler could have fit all of
+ * @ptr into memory registers instead, and since @ptr never escaped
+ * from that, it proved that the inline asm wasn't touching any of
+ * it. This version works well with both compilers, i.e. we're telling
+ * the compiler that the inline asm absolutely may see the contents
+ * of @ptr. See also: https://llvm.org/bugs/show_bug.cgi?id=15495
  */
-#if __has_attribute(__diagnose_as_builtin__)
-# define __diagnose_as(builtin...)	__attribute__((__diagnose_as_builtin__(builtin)))
+# define barrier_data(ptr) __asm__ __volatile__("": :"r"(ptr) :"memory")
+#endif
+
+/* workaround for GCC PR82365 if needed */
+#ifndef barrier_before_unreachable
+# define barrier_before_unreachable() do { } while (0)
+#endif
+
+/* Unreachable code */
+#ifdef CONFIG_OBJTOOL
+/* Annotate a C jump table to allow objtool to follow the code flow */
+#define __annotate_jump_table __section(".data.rel.ro.c_jump_table")
+#else /* !CONFIG_OBJTOOL */
+#define __annotate_jump_table
+#endif /* CONFIG_OBJTOOL */
+
+/*
+ * Mark a position in code as unreachable.  This can be used to
+ * suppress control flow warnings after asm blocks that transfer
+ * control elsewhere.
+ */
+#define unreachable() do {		\
+	barrier_before_unreachable();	\
+	__builtin_unreachable();	\
+} while (0)
+
+/*
+ * KENTRY - kernel entry point
+ * This can be used to annotate symbols (functions or data) that are used
+ * without their linker symbol being referenced explicitly. For example,
+ * interrupt vector handlers, or functions in the kernel image that are found
+ * programatically.
+ *
+ * Not required for symbols exported with EXPORT_SYMBOL, or initcalls. Those
+ * are handled in their own way (with KEEP() in linker scripts).
+ *
+ * KENTRY can be avoided if the symbols in question are marked as KEEP() in the
+ * linker script. For example an architecture could KEEP() its entire
+ * boot/exception vector code rather than annotate each function and data.
+ */
+#ifndef KENTRY
+# define KENTRY(sym)						\
+	extern typeof(sym) sym;					\
+	static const unsigned long __kentry_##sym		\
+	__used							\
+	__attribute__((__section__("___kentry+" #sym)))		\
+	= (unsigned long)&sym;
+#endif
+
+#ifndef RELOC_HIDE
+# define RELOC_HIDE(ptr, off)					\
+  ({ unsigned long __ptr;					\
+     __ptr = (unsigned long) (ptr);				\
+    (typeof(ptr)) (__ptr + (off)); })
+#endif
+
+#define absolute_pointer(val)	RELOC_HIDE((void *)(val), 0)
+
+#ifndef OPTIMIZER_HIDE_VAR
+/* Make the optimizer believe the variable can be manipulated arbitrarily. */
+#define OPTIMIZER_HIDE_VAR(var)						\
+	__asm__ ("" : "=r" (var) : "0" (var))
+#endif
+
+#define __UNIQUE_ID(prefix) __PASTE(__PASTE(__UNIQUE_ID_, prefix), __COUNTER__)
+
+/**
+ * data_race - mark an expression as containing intentional data races
+ *
+ * This data_race() macro is useful for situations in which data races
+ * should be forgiven.  One example is diagnostic code that accesses
+ * shared variables but is not a part of the core synchronization design.
+ * For example, if accesses to a given variable are protected by a lock,
+ * except for diagnostic code, then the accesses under the lock should
+ * be plain C-language accesses and those in the diagnostic code should
+ * use data_race().  This way, KCSAN will complain if buggy lockless
+ * accesses to that variable are introduced, even if the buggy accesses
+ * are protected by READ_ONCE() or WRITE_ONCE().
+ *
+ * This macro *does not* affect normal code generation, but is a hint
+ * to tooling that data races here are to be ignored.  If the access must
+ * be atomic *and* KCSAN should ignore the access, use both data_race()
+ * and READ_ONCE(), for example, data_race(READ_ONCE(x)).
+ */
+#define data_race(expr)							\
+({									\
+	__kcsan_disable_current();					\
+	__auto_type __v = (expr);					\
+	__kcsan_enable_current();					\
+	__v;								\
+})
+
+#ifdef __CHECKER__
+#define __BUILD_BUG_ON_ZERO_MSG(e, msg, ...) (0)
+#else /* __CHECKER__ */
+#define __BUILD_BUG_ON_ZERO_MSG(e, msg, ...) ((int)sizeof(struct {_Static_assert(!(e), msg);}))
+#endif /* __CHECKER__ */
+
+/* &a[0] degrades to a pointer: a different type from an array */
+#define __is_array(a)		(!__same_type((a), &(a)[0]))
+#define __must_be_array(a)	__BUILD_BUG_ON_ZERO_MSG(!__is_array(a), \
+							"must be array")
+
+#define __is_byte_array(a)	(__is_array(a) && sizeof((a)[0]) == 1)
+#define __must_be_byte_array(a)	__BUILD_BUG_ON_ZERO_MSG(!__is_byte_array(a), \
+							"must be byte array")
+
+/*
+ * If the "nonstring" attribute isn't available, we have to return true
+ * so the __must_*() checks pass when "nonstring" isn't supported.
+ */
+#if __has_attribute(__nonstring__) && defined(__annotated)
+#define __is_cstr(a)		(!__annotated(a, nonstring))
+#define __is_noncstr(a)		(__annotated(a, nonstring))
 #else
-# define __diagnose_as(builtin...)
+#define __is_cstr(a)		(true)
+#define __is_noncstr(a)		(true)
+#endif
+
+/* Require C Strings (i.e. NUL-terminated) lack the "nonstring" attribute. */
+#define __must_be_cstr(p) \
+	__BUILD_BUG_ON_ZERO_MSG(!__is_cstr(p), \
+				"must be C-string (NUL-terminated)")
+#define __must_be_noncstr(p) \
+	__BUILD_BUG_ON_ZERO_MSG(!__is_noncstr(p), \
+				"must be non-C-string (not NUL-terminated)")
+
+/*
+ * Use __typeof_unqual__() when available.
+ *
+ * XXX: Remove test for __CHECKER__ once
+ * sparse learns about __typeof_unqual__().
+ */
+#if CC_HAS_TYPEOF_UNQUAL && !defined(__CHECKER__)
+# define USE_TYPEOF_UNQUAL 1
 #endif
 
 /*
- * Don't. Just don't. See commit 771c035372a0 ("deprecate the '__deprecated'
- * attribute warnings entirely and for good") for more information.
- *
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-deprecated-function-attribute
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Type-Attributes.html#index-deprecated-type-attribute
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-deprecated-variable-attribute
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Enumerator-Attributes.html#index-deprecated-enumerator-attribute
- * clang: https://clang.llvm.org/docs/AttributeReference.html#deprecated
+ * Define TYPEOF_UNQUAL() to use __typeof_unqual__() as typeof
+ * operator when available, to return an unqualified type of the exp.
  */
-#define __deprecated
-
-/*
- * Optional: not supported by clang
- *
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Type-Attributes.html#index-designated_005finit-type-attribute
- */
-#if __has_attribute(__designated_init__)
-# define __designated_init              __attribute__((__designated_init__))
+#if defined(USE_TYPEOF_UNQUAL)
+# define TYPEOF_UNQUAL(exp) __typeof_unqual__(exp)
 #else
-# define __designated_init
+# define TYPEOF_UNQUAL(exp) __typeof__(exp)
 #endif
 
+#endif /* __KERNEL__ */
+
+#if defined(CONFIG_CFI_CLANG) && !defined(__DISABLE_EXPORTS) && !defined(BUILD_VDSO)
 /*
- * Optional: only supported since clang >= 14.0
- *
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-error-function-attribute
+ * Force a reference to the external symbol so the compiler generates
+ * __kcfi_typid.
  */
-#if __has_attribute(__error__)
-# define __compiletime_error(msg)       __attribute__((__error__(msg)))
+#define KCFI_REFERENCE(sym) __ADDRESSABLE(sym)
 #else
-# define __compiletime_error(msg)
+#define KCFI_REFERENCE(sym)
 #endif
 
-/*
- * Optional: not supported by clang
- *
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-externally_005fvisible-function-attribute
+/**
+ * offset_to_ptr - convert a relative memory offset to an absolute pointer
+ * @off:	the address of the 32-bit offset value
  */
-#if __has_attribute(__externally_visible__)
-# define __visible                      __attribute__((__externally_visible__))
+static inline void *offset_to_ptr(const int *off)
+{
+	return (void *)((unsigned long)off + *off);
+}
+
+#endif /* __ASSEMBLY__ */
+
+#ifdef CONFIG_64BIT
+#define ARCH_SEL(a,b) a
 #else
-# define __visible
+#define ARCH_SEL(a,b) b
 #endif
 
 /*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-format-function-attribute
- * clang: https://clang.llvm.org/docs/AttributeReference.html#format
+ * Force the compiler to emit 'sym' as a symbol, so that we can reference
+ * it from inline assembler. Necessary in case 'sym' could be inlined
+ * otherwise, or eliminated entirely due to lack of references that are
+ * visible to the compiler.
  */
-#define __printf(a, b)                  __attribute__((__format__(printf, a, b)))
-#define __scanf(a, b)                   __attribute__((__format__(scanf, a, b)))
+#define ___ADDRESSABLE(sym, __attrs)						\
+	static void * __used __attrs						\
+	__UNIQUE_ID(__PASTE(__addressable_,sym)) = (void *)(uintptr_t)&sym;
+
+#define __ADDRESSABLE(sym) \
+	___ADDRESSABLE(sym, __section(".discard.addressable"))
 
 /*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-gnu_005finline-function-attribute
- * clang: https://clang.llvm.org/docs/AttributeReference.html#gnu-inline
- */
-#define __gnu_inline                    __attribute__((__gnu_inline__))
-
-/*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-kmalloc-function-attribute
- * clang: https://clang.llvm.org/docs/AttributeReference.html#kmalloc
- */
-#define __malloc                        __attribute__((__malloc__))
-
-/*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Type-Attributes.html#index-mode-type-attribute
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-mode-variable-attribute
- */
-#define __mode(x)                       __attribute__((__mode__(x)))
-
-/*
- * Optional: only supported since gcc >= 7
+ * This returns a constant expression while determining if an argument is
+ * a constant expression, most importantly without evaluating the argument.
+ * Glory to Martin Uecker <Martin.Uecker@med.uni-goettingen.de>
  *
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/x86-Function-Attributes.html#index-no_005fcaller_005fsaved_005fregisters-function-attribute_002c-x86
- * clang: https://clang.llvm.org/docs/AttributeReference.html#no-caller-saved-registers
+ * Details:
+ * - sizeof() return an integer constant expression, and does not evaluate
+ *   the value of its operand; it only examines the type of its operand.
+ * - The results of comparing two integer constant expressions is also
+ *   an integer constant expression.
+ * - The first literal "8" isn't important. It could be any literal value.
+ * - The second literal "8" is to avoid warnings about unaligned pointers;
+ *   this could otherwise just be "1".
+ * - (long)(x) is used to avoid warnings about 64-bit types on 32-bit
+ *   architectures.
+ * - The C Standard defines "null pointer constant", "(void *)0", as
+ *   distinct from other void pointers.
+ * - If (x) is an integer constant expression, then the "* 0l" resolves
+ *   it into an integer constant expression of value 0. Since it is cast to
+ *   "void *", this makes the second operand a null pointer constant.
+ * - If (x) is not an integer constant expression, then the second operand
+ *   resolves to a void pointer (but not a null pointer constant: the value
+ *   is not an integer constant 0).
+ * - The conditional operator's third operand, "(int *)8", is an object
+ *   pointer (to type "int").
+ * - The behavior (including the return type) of the conditional operator
+ *   ("operand1 ? operand2 : operand3") depends on the kind of expressions
+ *   given for the second and third operands. This is the central mechanism
+ *   of the macro:
+ *   - When one operand is a null pointer constant (i.e. when x is an integer
+ *     constant expression) and the other is an object pointer (i.e. our
+ *     third operand), the conditional operator returns the type of the
+ *     object pointer operand (i.e. "int *"). Here, within the sizeof(), we
+ *     would then get:
+ *       sizeof(*((int *)(...))  == sizeof(int)  == 4
+ *   - When one operand is a void pointer (i.e. when x is not an integer
+ *     constant expression) and the other is an object pointer (i.e. our
+ *     third operand), the conditional operator returns a "void *" type.
+ *     Here, within the sizeof(), we would then get:
+ *       sizeof(*((void *)(...)) == sizeof(void) == 1
+ * - The equality comparison to "sizeof(int)" therefore depends on (x):
+ *     sizeof(int) == sizeof(int)     (x) was a constant expression
+ *     sizeof(int) != sizeof(void)    (x) was not a constant expression
  */
-#if __has_attribute(__no_caller_saved_registers__)
-# define __no_caller_saved_registers	__attribute__((__no_caller_saved_registers__))
-#else
-# define __no_caller_saved_registers
-#endif
+#define __is_constexpr(x) \
+	(sizeof(int) == sizeof(*(8 ? ((void *)((long)(x) * 0l)) : (int *)8)))
 
 /*
- * Optional: not supported by clang
+ * Whether 'type' is a signed type or an unsigned type. Supports scalar types,
+ * bool and also pointer types.
+ */
+#define is_signed_type(type) (((type)(-1)) < (__force type)1)
+#define is_unsigned_type(type) (!is_signed_type(type))
+
+/*
+ * Useful shorthand for "is this condition known at compile-time?"
  *
- *  gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-noclone-function-attribute
+ * Note that the condition may involve non-constant values,
+ * but the compiler may know enough about the details of the
+ * values to determine that the condition is statically true.
  */
-#if __has_attribute(__noclone__)
-# define __noclone                      __attribute__((__noclone__))
-#else
-# define __noclone
-#endif
+#define statically_true(x) (__builtin_constant_p(x) && (x))
 
 /*
- * Add the pseudo keyword 'fallthrough' so case statement blocks
- * must end with any of these keywords:
- *   break;
- *   fallthrough;
- *   continue;
- *   goto <label>;
- *   return [expression];
+ * Similar to statically_true() but produces a constant expression
  *
- *  gcc: https://gcc.gnu.org/onlinedocs/gcc/Statement-Attributes.html#Statement-Attributes
- */
-#if __has_attribute(__fallthrough__)
-# define fallthrough                    __attribute__((__fallthrough__))
-#else
-# define fallthrough                    do {} while (0)  /* fallthrough */
-#endif
-
-/*
- * gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#Common-Function-Attributes
- * clang: https://clang.llvm.org/docs/AttributeReference.html#flatten
- */
-# define __flatten			__attribute__((flatten))
-
-/*
- * Note the missing underscores.
+ * To be used in conjunction with macros, such as BUILD_BUG_ON_ZERO(),
+ * which require their input to be a constant expression and for which
+ * statically_true() would otherwise fail.
  *
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-noinline-function-attribute
- * clang: mentioned
- */
-#define   noinline                      __attribute__((__noinline__))
-
-/*
- * Optional: only supported since gcc >= 8
- * Optional: not supported by clang
+ * This is a trade-off: const_true() requires all its operands to be
+ * compile time constants. Else, it would always returns false even on
+ * the most trivial cases like:
  *
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-nonstring-variable-attribute
- */
-#if __has_attribute(__nonstring__)
-# define __nonstring                    __attribute__((__nonstring__))
-#else
-# define __nonstring
-#endif
-
-/*
- * Optional: only supported since GCC >= 7.1, clang >= 13.0.
+ *   true || non_const_var
  *
- *      gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-no_005fprofile_005finstrument_005ffunction-function-attribute
- *    clang: https://clang.llvm.org/docs/AttributeReference.html#no-profile-instrument-function
- */
-#if __has_attribute(__no_profile_instrument_function__)
-# define __no_profile                  __attribute__((__no_profile_instrument_function__))
-#else
-# define __no_profile
-#endif
-
-/*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-noreturn-function-attribute
- * clang: https://clang.llvm.org/docs/AttributeReference.html#noreturn
- * clang: https://clang.llvm.org/docs/AttributeReference.html#id1
- */
-#define __noreturn                      __attribute__((__noreturn__))
-
-/*
- * Optional: only supported since GCC >= 11.1, clang >= 7.0.
+ * On the opposite, statically_true() is able to fold more complex
+ * tautologies and will return true on expressions such as:
  *
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-no_005fstack_005fprotector-function-attribute
- *   clang: https://clang.llvm.org/docs/AttributeReference.html#no-stack-protector-safebuffers
- */
-#if __has_attribute(__no_stack_protector__)
-# define __no_stack_protector		__attribute__((__no_stack_protector__))
-#else
-# define __no_stack_protector
-#endif
-
-/*
- * Optional: not supported by gcc.
+ *   !(non_const_var * 8 % 4)
  *
- * clang: https://clang.llvm.org/docs/AttributeReference.html#overloadable
+ * For the general case, statically_true() is better.
  */
-#if __has_attribute(__overloadable__)
-# define __overloadable			__attribute__((__overloadable__))
-#else
-# define __overloadable
-#endif
+#define const_true(x) __builtin_choose_expr(__is_constexpr(x), x, false)
 
 /*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Type-Attributes.html#index-packed-type-attribute
- * clang: https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-packed-variable-attribute
+ * This is needed in functions which generate the stack canary, see
+ * arch/x86/kernel/smpboot.c::start_secondary() for an example.
  */
-#define __packed                        __attribute__((__packed__))
+#define prevent_tail_call_optimization()	mb()
 
-/*
- * Note: the "type" argument should match any __builtin_object_size(p, type) usage.
- *
- * Optional: not supported by gcc.
- *
- * clang: https://clang.llvm.org/docs/AttributeReference.html#pass-object-size-pass-dynamic-object-size
- */
-#if __has_attribute(__pass_dynamic_object_size__)
-# define __pass_dynamic_object_size(type)	__attribute__((__pass_dynamic_object_size__(type)))
-#else
-# define __pass_dynamic_object_size(type)
-#endif
-#if __has_attribute(__pass_object_size__)
-# define __pass_object_size(type)	__attribute__((__pass_object_size__(type)))
-#else
-# define __pass_object_size(type)
-#endif
+// #include <asm/rwonce.h>
 
-/*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-pure-function-attribute
- */
-#define __pure                          __attribute__((__pure__))
-
-/*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-section-function-attribute
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-section-variable-attribute
- * clang: https://clang.llvm.org/docs/AttributeReference.html#section-declspec-allocate
- */
-#define __section(section)              __attribute__((__section__(section)))
-
-/*
- * Optional: only supported since gcc >= 12
- *
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-uninitialized-variable-attribute
- * clang: https://clang.llvm.org/docs/AttributeReference.html#uninitialized
- */
-#if __has_attribute(__uninitialized__)
-# define __uninitialized		__attribute__((__uninitialized__))
-#else
-# define __uninitialized
-#endif
-
-/*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-unused-function-attribute
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Type-Attributes.html#index-unused-type-attribute
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-unused-variable-attribute
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Label-Attributes.html#index-unused-label-attribute
- * clang: https://clang.llvm.org/docs/AttributeReference.html#maybe-unused-unused
- */
-#define __always_unused                 __attribute__((__unused__))
-#define __maybe_unused                  __attribute__((__unused__))
-
-/*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-used-function-attribute
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-used-variable-attribute
- */
-#define __used                          __attribute__((__used__))
-
-/*
- * The __used attribute guarantees that the attributed variable will be
- * always emitted by a compiler. It doesn't prevent the compiler from
- * throwing 'unused' warnings when it can't detect how the variable is
- * actually used. It's a compiler implementation details either emit
- * the warning in that case or not.
- *
- * The combination of both 'used' and 'unused' attributes ensures that
- * the variable would be emitted, and will not trigger 'unused' warnings.
- * The attribute is applicable for functions, static and global variables.
- */
-#define __always_used			__used __maybe_unused
-
-/*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-warn_005funused_005fresult-function-attribute
- * clang: https://clang.llvm.org/docs/AttributeReference.html#nodiscard-warn-unused-result
- */
-#define __must_check                    __attribute__((__warn_unused_result__))
-
-/*
- * Optional: only supported since clang >= 14.0
- *
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-warning-function-attribute
- */
-#if __has_attribute(__warning__)
-# define __compiletime_warning(msg)     __attribute__((__warning__(msg)))
-#else
-# define __compiletime_warning(msg)
-#endif
-
-/*
- * Optional: only supported since clang >= 14.0
- *
- * clang: https://clang.llvm.org/docs/AttributeReference.html#disable-sanitizer-instrumentation
- *
- * disable_sanitizer_instrumentation is not always similar to
- * no_sanitize((<sanitizer-name>)): the latter may still let specific sanitizers
- * insert code into functions to prevent false positives. Unlike that,
- * disable_sanitizer_instrumentation prevents all kinds of instrumentation to
- * functions with the attribute.
- */
-#if __has_attribute(disable_sanitizer_instrumentation)
-# define __disable_sanitizer_instrumentation \
-	 __attribute__((disable_sanitizer_instrumentation))
-#else
-# define __disable_sanitizer_instrumentation
-#endif
-
-/*
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html#index-weak-function-attribute
- *   gcc: https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#index-weak-variable-attribute
- */
-#define __weak                          __attribute__((__weak__))
-
-/*
- * Used by functions that use '__builtin_return_address'. These function
- * don't want to be splited or made inline, which can make
- * the '__builtin_return_address' get unexpected address.
- */
-#define __fix_address noinline __noclone
-
-#endif /* __LINUX_COMPILER_ATTRIBUTES_H */
+#endif /* __LINUX_COMPILER_H */

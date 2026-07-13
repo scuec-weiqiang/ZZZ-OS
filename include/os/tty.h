@@ -5,11 +5,11 @@
 #include <os/types.h>
 #include <os/wait.h>
 #include <uapi/asm-generic/termios.h>
+#include <os/tty_buffer.h>
+#include <os/tty_port.h>
+#include <uapi/linux/tty.h>
 
-#define TTY_BUF_SIZE 512
 #define TTY_LINE_SIZE 256
-
-
 
 struct file;
 struct tty_driver;
@@ -22,10 +22,12 @@ struct tty_struct {
     int index;
     dev_t dev;
     int count;
+    
+    unsigned int receive_room;
 
     struct tty_driver *driver;
     struct tty_port *port;
-    const struct tty_ldisc_ops *ldisc;
+    struct tty_ldisc *ldisc;
 
     struct ktermios termios;
     struct winsize winsize;
@@ -33,7 +35,7 @@ struct tty_struct {
     pid_t pgrp;
     pid_t session;
 
-    char inbuf[TTY_BUF_SIZE];
+    // char inbuf[TTY_BUF_SIZE];
     unsigned int head;
     unsigned int tail;
     unsigned int inbuf_count;
@@ -43,18 +45,6 @@ struct tty_struct {
 
     int echo;
     int canonical;
-
-    void *driver_data;
-};
-
-struct tty_port {
-    spinlock_t lock;
-    struct tty_struct *tty;
-
-    struct wait_queue_head open_wait;
-    struct wait_queue_head close_wait;
-    struct wait_queue_head read_wait;
-    struct wait_queue_head write_wait;
 
     void *driver_data;
 };

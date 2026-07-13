@@ -238,4 +238,11 @@ extern void wake_up_process(struct task_struct *p);
 extern int wake_up_process_on(struct task_struct *p, int cpu);
 extern struct task_struct* setup_init_task(void);
 
+
+static inline void cond_resched(void)
+{
+    if (!in_interrupt() && current && current->need_resched)
+        sched();
+}
+
 #endif

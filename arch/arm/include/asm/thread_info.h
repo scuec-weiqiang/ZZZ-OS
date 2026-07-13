@@ -88,4 +88,13 @@ static inline struct thread_info *current_thread_info(void)
 #define thread_saved_fp(tsk)	\
 	((unsigned long)(task_thread_info(tsk)->cpu_context.r7))
 
+// 硬中断计数：高16位中的bit16~23
+#define irq_count()     (current_thread_info()->preempt_count >> 16)
+// 软中断计数：bit8~15
+#define softirq_count() ((current_thread_info()->preempt_count >> 8) & 0xff)
+
+#define in_interrupt()  (irq_count() || softirq_count())
+#define in_irq()        (irq_count())        // 仅判断硬中断上下文
+#define in_softirq()    (softirq_count())    // 仅判断软中断上下文
+
 #endif /* __ASM_ARM_THREAD_INFO_H */

@@ -1,3 +1,4 @@
+#include "asm-generic/irq.h"
 #include <asm/clint.h>
 #include <asm/irq.h>
 #include <asm/ptrace.h>

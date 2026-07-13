@@ -40,6 +40,26 @@ static inline void __check_fail(const char *expr, const char *file, int line, co
                 ret\
             }\
         }while(0)
+    
+    #define WARN_ONCE(expr,msg,...)\
+        do{\
+            static int warned = 0;\
+            if(!(expr) && !warned)\
+            {\
+                __check_fail(#expr, __FILE__, __LINE__, __func__);\
+                if(msg) { printk("%s\n", msg, ##__VA_ARGS__); }\
+                warned = 1;\
+            }\
+        }while(0)
+
+        #define WARN(expr,msg,...)\
+        do{\
+            if(!(expr))\
+            {\
+                __check_fail(#expr, __FILE__, __LINE__, __func__);\
+                if(msg) { printk("%s\n", msg, ##__VA_ARGS__); }\
+            }\
+        }while(0)
 #endif
 
 #define RETURN_ERR_IF(cond, err) \

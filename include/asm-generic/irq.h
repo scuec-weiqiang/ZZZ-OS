@@ -20,7 +20,6 @@ typedef reg_t (*handle_arch_irq_t)(reg_t *ctx);
 extern handle_arch_irq_t handle_arch_irq;
 extern void set_handle_irq(reg_t (*handle_irq)(reg_t *));
 extern void arch_irq_init();
-
 extern void local_irq_enable(void);
 extern void local_irq_disable(void);
 

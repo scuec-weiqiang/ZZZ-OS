@@ -20,4 +20,5 @@
 #ifndef __ASM_CONFIG_H
 #define __ASM_CONFIG_H
 #define SYS_BITS 64
+#define CONFIG_64BIT
 #endif // __ASM_CONFIG_H

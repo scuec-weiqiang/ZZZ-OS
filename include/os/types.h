@@ -75,7 +75,10 @@ typedef uintptr_t     virt_addr_t;
 typedef uintptr_t     addr_t;
 typedef int           pid_t;
 
-typedef enum { false, true } bool;
+typedef enum {
+    false,
+    true
+} bool;
 
 #define NULL ((void *)0)
 

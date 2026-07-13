@@ -36,7 +36,7 @@ KALLSYMS_STUB_SRC := $(BUILD_DIR)/kallsyms_stub.c
 KALLSYMS_STUB_OBJ := $(BUILD_DIR)/kallsyms_stub.o
 
 #--------------编译器---------------#
-CFLAGS = -g -Wall -fno-builtin -std=c11 -ffreestanding -fno-pic -fno-pie -no-pie 
+CFLAGS = -g -Wall -fno-builtin -std=c11 -ffreestanding -fno-pic -fno-pie -no-pie -D__KERNEL__
 LDFLAGS = -Tarch/$(ARCH)/config/link.ld 
 
 include $(ARCH_CONFIG_MK)

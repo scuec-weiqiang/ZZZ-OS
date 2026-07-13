@@ -1,2 +1,5 @@
 CompileFlags:
     Remove: [-f*, -m*]
+    Add:
+    - -std=gnu11
+    - -Dtypeof=__typeof__
