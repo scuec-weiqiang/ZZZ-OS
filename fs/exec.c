@@ -710,7 +710,7 @@ int search_binary_handler(struct linux_binprm *bprm) {
 
     CHECK(bprm != NULL, "exec: bprm is NULL", return -EINVAL;);
 
-    list_for_each_entry(fmt, &formats, struct linux_binfmt, lh) {
+    list_for_each_entry(fmt, &formats, lh) {
         ret = fmt->load_binary(bprm);
         if (ret == 0) {
             set_binfmt(fmt);

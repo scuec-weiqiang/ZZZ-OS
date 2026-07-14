@@ -4,17 +4,11 @@
 #include <os/container_of.h>
 #include <os/types.h>
 
-
-
 #define LIST_HEAD_INIT(name) {&(name), &(name)}
 
 // 用这个宏声明的变量会自动初始化，不需要手动调用INIT_LIST_HEAD函数来初始化链表头
 #define LIST_HEAD(name) \
     struct list_head name = LIST_HEAD_INIT(name);
-
-// 这玩意可以用来声明一个不带初始化的链表头，用这个宏声明的变量需要用INIT_LIST_HEAD初始化
-#define THIS_IS_LIST_HEAD(name) \
-    struct list_head name;
 
 #define INIT_LIST_HEAD(ptr)  \
     do                       \
@@ -209,19 +203,19 @@ static inline void list_splice_init(struct list_head *head, struct list_head *no
  * @struct_type: 结构体类型,如tcb_t
  * @struct_member: 结构体中链表成员的名字
  ***************************************************************/
-#define list_for_each_entry(pos, head, struct_type, struct_member)     \
-    for ((pos) = list_entry((head)->next, struct_type, struct_member); \
+#define list_for_each_entry(pos, head, struct_member)     \
+    for ((pos) = list_entry((head)->next, typeof(*pos), struct_member); \
          &(pos->struct_member) != (head);\
-         (pos) = list_entry((pos->struct_member.next), struct_type, struct_member))
-
-#define list_for_each_entry_safe(pos, n, head, struct_type, struct_member) \
-    for ((pos) = list_entry((head)->next, struct_type, struct_member), (n) = list_entry((pos->struct_member.next), struct_type, struct_member);  \
+         (pos) = list_entry((pos->struct_member.next), typeof(*pos), struct_member))
+ 
+#define list_for_each_entry_safe(pos, n, head, struct_member) \
+    for ((pos) = list_entry((head)->next, typeof(*pos), struct_member), (n) = list_entry((pos->struct_member.next), typeof(*pos), struct_member);  \
          &(pos->struct_member) != (head);                            \
-         (pos) = (n), (n) = list_entry((n->struct_member.next), struct_type, struct_member))
+         (pos) = (n), (n) = list_entry((n->struct_member.next), typeof(*pos), struct_member))
 
-#define list_for_each_entry_prev(pos, head, struct_type, struct_member) \
-    for ((pos) = list_entry((head)->prev, struct_type, struct_member); \
+#define list_for_each_entry_prev(pos, head, struct_member) \
+    for ((pos) = list_entry((head)->prev, typeof(*pos), struct_member); \
          &(pos->struct_member) != (head);\
-         (pos) = list_entry((pos->struct_member.prev), struct_type, struct_member))
+         (pos) = list_entry((pos->struct_member.prev), typeof(*pos), struct_member))
 
 #endif

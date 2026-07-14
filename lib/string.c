@@ -8,6 +8,7 @@
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2025.
  */
 
+#include "os/types.h"
 #include <os/kmalloc.h>
 #include <os/string.h>
 // #define __NO_BUILTIN_STRING
@@ -144,6 +145,10 @@ int strcpy(char *dest, const char *src) {
 int strncpy(char *dest, const char *src, size_t n) {
     return (int)__builtin_strncpy(dest, src, n);
 }
+
+// int strlcpy(char *dest, const char *src, size_t n) {
+//     return (int)__builtin_strlcpy(dest, src, n);
+// }
 
 int strlen(const char *s) {
     return (int)__builtin_strlen(s);

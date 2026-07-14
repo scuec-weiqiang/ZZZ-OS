@@ -13,7 +13,7 @@ static struct pinctrl_device *of_find_pinctrl_by_node(struct device_node *np)
 {
     struct pinctrl_device *pctldev;
 
-    list_for_each_entry(pctldev, &pinctrl_devices, struct pinctrl_device, node) {
+    list_for_each_entry(pctldev, &pinctrl_devices, node) {
         if (pctldev->of_node == np) {
             return pctldev;
         }

@@ -34,7 +34,7 @@ int task_pgrp_exists(pid_t pgid) {
         unsigned long flags;
 
         flags = spin_lock_irqsave(&rq->lock);
-        list_for_each_entry(task, &rq->tasks, struct task_struct, task_node) {
+        list_for_each_entry(task, &rq->tasks, task_node) {
             if (task->signal != NULL && task->signal->pgrp == pgid) {
                 spin_unlock_irqrestore(&rq->lock, flags);
                 return 1;

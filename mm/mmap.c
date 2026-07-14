@@ -84,7 +84,7 @@ static int vma_range_is_free(struct mm_struct *mm, virt_addr_t start, size_t len
         return 0;
     }
 
-    list_for_each_entry(vma, &mm->vma_list.node, struct vma, node) {
+    list_for_each_entry(vma, &mm->vma_list.node, node) {
         if (vma->end <= start) {
             continue;
         }
@@ -107,7 +107,7 @@ static virt_addr_t find_free_range_from(struct mm_struct *mm, virt_addr_t start,
         return 0;
     }
 
-    list_for_each_entry(vma, &mm->vma_list.node, struct vma, node) {
+    list_for_each_entry(vma, &mm->vma_list.node, node) {
         if (vma->end <= cursor) {
             continue;
         }

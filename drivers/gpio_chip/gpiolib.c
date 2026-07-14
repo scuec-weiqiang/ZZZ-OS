@@ -32,7 +32,7 @@ void gpiochip_remove(struct gpio_chip *chip) {
 
 struct gpio_chip *of_find_gpiochip_by_node(struct device_node *np) {
     struct gpio_chip *chip;
-    list_for_each_entry(chip, &gpio_chips, struct gpio_chip, list) {
+    list_for_each_entry(chip, &gpio_chips, list) {
         if (chip->dev->of_node == np)
             return chip;
     }

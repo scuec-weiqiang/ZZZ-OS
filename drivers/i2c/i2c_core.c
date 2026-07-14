@@ -191,7 +191,7 @@ int i2c_del_adapter(struct i2c_adapter *adap) {
 
 struct i2c_adapter* i2c_get_adapter(int nr) {
     struct device *dev;
-    list_for_each_entry(dev, &i2c_bus_type.devices, struct device, node) {
+    list_for_each_entry(dev, &i2c_bus_type.devices,node) {
         struct i2c_adapter *adap = to_i2c_adapter(dev);
         if (adap->nr == nr) {
             return adap;

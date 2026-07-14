@@ -97,7 +97,7 @@ typedef enum {
 #define __iomem
 #define __SYSCALL__
 
-typedef unsigned long dev_t;
+typedef u32 dev_t;
 
 #define MINORBITS	20
 #define MINORMASK	((1U << MINORBITS) - 1)

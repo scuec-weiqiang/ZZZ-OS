@@ -193,7 +193,7 @@ void buddy_init(void) {
     }
 
     struct memblock_region *pos = NULL;
-    list_for_each_entry(pos, &memblock.memory.region_head.node, struct memblock_region, node) {
+    list_for_each_entry(pos, &memblock.memory.region_head.node, node) {
         phys_addr_t base = pos->base;
         phys_addr_t end  = pos->base + pos->size;
 
@@ -235,7 +235,7 @@ void check_free_area(void) {
         int cnt = 0;
         struct page *p;
 
-        list_for_each_entry(p, &free_area[order].free_list, struct page, buddy_node) {
+        list_for_each_entry(p, &free_area[order].free_list, buddy_node) {
             cnt++;
         }
 

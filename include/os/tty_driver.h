@@ -15,31 +15,27 @@
 #include <uapi/linux/termios.h>
 #include <os/err.h>
 
+struct tty_driver;
 struct tty_struct;
 struct file;
 
 struct tty_operations {
-    int (*open)(struct tty_struct *tty, struct file *file);
-    void (*close)(struct tty_struct *tty, struct file *file);
-    ssize_t (*write)(struct tty_struct *tty, const char *buf, size_t count);
-    int (*write_room)(struct tty_struct *tty);
-    int (*chars_in_buffer)(struct tty_struct *tty);
-    void (*flush_buffer)(struct tty_struct *tty);
-    int (*ioctl)(struct tty_struct *tty, unsigned int cmd, unsigned long arg);
-    void (*set_termios)(struct tty_struct *tty, const struct ktermios *old);
-    void (*throttle)(struct tty_struct *tty);
-    void (*unthrottle)(struct tty_struct *tty);
+	int  (*install)(struct tty_driver *driver, struct tty_struct *tty);
+	void (*remove)(struct tty_driver *driver, struct tty_struct *tty);
+	int  (*open)(struct tty_struct * tty, struct file * filp);
+	void (*close)(struct tty_struct * tty, struct file * filp);
+	ssize_t (*write)(struct tty_struct *tty, const u8 *buf, size_t count);
+	unsigned int (*write_room)(struct tty_struct *tty);
+	void (*set_termios)(struct tty_struct *tty, const struct ktermios *old);
 };
 
 struct tty_driver {
-    const char *driver_name;          // "ttyS"
+    const char *driver_name;
     const char *name;                 // "ttyS"
-    int	name_base;	/* offset of printed name */
+    struct cdev **cdevs;
     int major;
     int minor_start;
     int num;                   // 设备数量
-    short	type;		/* type of tty driver */
-	// short	subtype;	/* subtype of tty driver */
 
     struct ktermios init_termios; /* Initial termios */
 
@@ -55,7 +51,7 @@ struct tty_driver {
 extern struct list_head tty_drivers;
 /* Use TTY_DRIVER_* flags below */
 #define tty_alloc_driver(lines, flags) \
-		__tty_alloc_driver(lines, THIS_MODULE, flags)
+		__tty_alloc_driver(lines,flags)
 
 /*
  * DEPRECATED Do not use this in new code, use tty_alloc_driver instead.
@@ -67,6 +63,12 @@ static inline struct tty_driver *alloc_tty_driver(unsigned int lines)
 	if (IS_ERR(ret))
 		return NULL;
 	return ret;
+}
+
+static inline void tty_set_operations(struct tty_driver *driver,
+		const struct tty_operations *op)
+{
+	driver->ops = op;
 }
 
 /* tty driver types */

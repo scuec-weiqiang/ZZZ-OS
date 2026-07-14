@@ -1,6 +1,8 @@
-#include "os/syscall.h"
-#include "os/wait.h"
-#include "uapi/asm-generic/ioctls.h"
+#include <os/mutex.h>
+#include <os/syscall.h>
+#include <os/tty_buffer.h>
+#include <os/wait.h>
+#include <uapi/asm-generic/ioctls.h>
 #include <asm/ptrace.h>
 #include <fs/cdev.h>
 #include <fs/file.h>
@@ -13,6 +15,7 @@
 #include <os/string.h>
 #include <os/tty.h>
 #include <os/uaccess.h>
+
 
 ssize_t tty_read(struct tty_struct *tty, char *buf, size_t size);
 ssize_t tty_write(struct tty_struct *tty, const char *buf, size_t size);
@@ -83,118 +86,9 @@ static void tty_termios2_from_user(struct ktermios *dst, const struct termios2 *
     dst->c_ospeed = src->c_ospeed;
 }
 
-static void tty_make_name(char *buf, size_t size, const char *prefix, unsigned int index) {
-    char digits[16];
-    unsigned int pos = 0;
-    size_t len = 0;
 
-    if (buf == NULL || size == 0) {
-        return;
-    }
 
-    buf[0] = '\0';
-    if (prefix == NULL) {
-        return;
-    }
 
-    while (prefix[len] != '\0' && len + 1 < size) {
-        buf[len] = prefix[len];
-        len++;
-    }
-
-    do {
-        digits[pos++] = (char)('0' + (index % 10));
-        index /= 10;
-    } while (index != 0 && pos < sizeof(digits));
-
-    while (pos > 0 && len + 1 < size) {
-        buf[len++] = digits[--pos];
-    }
-    buf[len] = '\0';
-}
-
-static int tty_fops_open(struct inode *inode, struct file *file) {
-    struct tty_struct *tty = file ? file->private_data : NULL;
-
-    (void)inode;
-    if (tty == NULL) {
-        return -ENODEV;
-    }
-
-    tty->count++;
-    if (tty->driver != NULL && tty->driver->ops != NULL && tty->driver->ops->open != NULL) {
-        return tty->driver->ops->open(tty, file);
-    }
-
-    return 0;
-}
-
-static int tty_fops_release(struct inode *inode, struct file *file) {
-    struct tty_struct *tty = file ? file->private_data : NULL;
-
-    (void)inode;
-    if (tty == NULL) {
-        return 0;
-    }
-
-    if (tty->driver != NULL && tty->driver->ops != NULL && tty->driver->ops->close != NULL) {
-        tty->driver->ops->close(tty, file);
-    }
-
-    if (tty->count > 0) {
-        tty->count--;
-    }
-    file->private_data = NULL;
-    return 0;
-}
-
-static ssize_t tty_fops_read(struct file *file, char *buf, size_t size, loff_t *offset) {
-    struct tty_struct *tty = file ? file->private_data : NULL;
-    ssize_t ret;
-
-    if (tty == NULL || buf == NULL || offset == NULL) {
-        return -EINVAL;
-    }
-
-    ret = tty_read(tty, buf, size);
-    if (ret > 0) {
-        *offset += ret;
-    }
-    return ret;
-}
-
-static ssize_t tty_fops_write(struct file *file, const char *buf, size_t size, loff_t *offset) {
-    struct tty_struct *tty = file ? file->private_data : NULL;
-    ssize_t ret;
-
-    if (tty == NULL || buf == NULL || offset == NULL) {
-        return -EINVAL;
-    }
-
-    ret = tty_write(tty, buf, size);
-    if (ret > 0) {
-        *offset += ret;
-    }
-    return ret;
-}
-
-static long tty_fops_ioctl(struct file *file, unsigned long request, unsigned long arg) {
-    struct tty_struct *tty = file ? file->private_data : NULL;
-
-    if (tty == NULL) {
-        return -ENOTTY;
-    }
-
-    return tty_ioctl(tty, request, arg);
-}
-
-static const struct file_operations tty_fops = {
-    .open = tty_fops_open,
-    .release = tty_fops_release,
-    .read = tty_fops_read,
-    .write = tty_fops_write,
-    .ioctl = tty_fops_ioctl,
-};
 
 static int tty_current_fops_open(struct inode *inode, struct file *file) {
     struct tty_struct *tty;
@@ -241,68 +135,8 @@ static int tty_register_current_device(void) {
     return 0;
 }
 
-int tty_register_driver(struct tty_driver *driver) {
-    if (driver == NULL || driver->name == NULL || driver->num <= 0 || driver->ttys == NULL ||
-        driver->ports == NULL) {
-        return -EINVAL;
-    }
 
-    return 0;
-}
 
-void tty_unregister_driver(struct tty_driver *driver) {
-    (void)driver;
-}
-
-int tty_register_device(struct tty_driver *driver, int index) {
-    char name[32];
-    struct tty_struct *tty;
-    dev_t dev;
-    int ret;
-
-    if (driver == NULL || driver->ttys == NULL || index < 0 || index >= driver->num) {
-        return -EINVAL;
-    }
-
-    tty = driver->ttys[index];
-    if (tty == NULL) {
-        return -ENODEV;
-    }
-
-    if (tty->dev != 0) {
-        return 0;
-    }
-
-    ret = alloc_chrdev_region(&dev, 1);
-    if (ret) {
-        return ret;
-    }
-
-    tty->dev = dev;
-    if (driver->major == 0) {
-        driver->major = MAJOR(dev);
-    }
-    if (index == 0) {
-        driver->minor_start = MINOR(dev);
-    }
-
-    tty_make_name(name, sizeof(name), driver->name, (unsigned int)index);
-    ret = cdev_register(name, dev, &tty_fops, tty);
-    if (ret) {
-        tty->dev = 0;
-        return ret;
-    }
-
-    if (index == 0) {
-        devnode_register("console", DEV_CHAR, dev, &tty_fops, tty);
-        ret = tty_register_current_device();
-        if (ret) {
-            return ret;
-        }
-    }
-
-    return 0;
-}
 
 static int tty_inbuf_full(struct tty_struct *tty) {
     return tty->inbuf_count == TTY_BUF_SIZE;
@@ -407,16 +241,16 @@ static int tty_sleep_if_empty(struct tty_struct *tty) {
 }
 
 void tty_port_init(struct tty_port *port) {
-    if (port == NULL) {
-        return;
-    }
-
     memset(port, 0, sizeof(*port));
-    spin_lock_init(&port->lock);
+    tty_buffer_init(port);
+    mutex_init(&port->mutex);
+    mutex_init(&port->buf_mutex);
     init_waitqueue_head(&port->open_wait, WAIT_OPEN);
     init_waitqueue_head(&port->close_wait, WAIT_CLOSE);
     init_waitqueue_head(&port->read_wait, WAIT_READ);
     init_waitqueue_head(&port->write_wait, WAIT_WRITE);
+    spin_lock_init(&port->lock);
+    port->client_ops = &tty_port_default_client_ops;
 }
 
 void tty_init(struct tty_struct *tty, struct tty_driver *driver, struct tty_port *port, int index,

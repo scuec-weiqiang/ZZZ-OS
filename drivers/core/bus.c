@@ -57,7 +57,7 @@ struct bus_type* bus_get_by_name(const char *name) {
     }
 
     struct bus_type *bt;
-    list_for_each_entry(bt, &global_bus_list, struct bus_type, node) {
+    list_for_each_entry(bt, &global_bus_list, node) {
         if (strcmp(bt->name, name) == 0) {
             return bt;  
         }

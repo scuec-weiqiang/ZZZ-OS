@@ -122,7 +122,7 @@ struct task_struct* find_task_by_pid(pid_t pid) {
         unsigned long flags;
 
         flags = spin_lock_irqsave(&rq->lock);
-        list_for_each_entry(task, &rq->tasks, struct task_struct, task_node) {
+        list_for_each_entry(task, &rq->tasks, task_node) {
             if (task->pid == pid) {
                 spin_unlock_irqrestore(&rq->lock, flags);
                 return task;
@@ -384,7 +384,7 @@ static struct mm_struct *dup_mm(struct mm_struct *oldmm, unsigned long flags) {
 
     copy_kernel_mapping(mm);
     // 
-    list_for_each_entry(pos, &oldmm->vma_list.node, struct vma, node) {
+    list_for_each_entry(pos, &oldmm->vma_list.node, node) {
         struct vma *new_vma = vma_clone(pos);
         virt_addr_t start;
         virt_addr_t end;

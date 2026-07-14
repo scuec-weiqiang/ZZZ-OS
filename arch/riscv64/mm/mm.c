@@ -23,7 +23,7 @@ void arch_initial_mm_init() {
         panic("failed to create kernel pgtable");
     }
     struct memblock_region *region = NULL;
-    list_for_each_entry(region, &memblock.memory.region_head.node, struct memblock_region, node) {
+    list_for_each_entry(region, &memblock.memory.region_head.node, node) {
         map(init_mm.pgdir, KERNEL_VA(region->base), region->base, region->size, PAGE_KERNEL|PROT_EXEC);
     }
     // map(init_mm.pgdir, 0x02020000,0x02020000, PAGE_SIZE, PAGE_DEVICE);

@@ -12,7 +12,7 @@ static int wait_find_child_locked(pid_t pid, struct task_struct **childp)
     int found_child = 0;
     struct task_struct *child;
 
-    list_for_each_entry(child, &current->children, struct task_struct, sibling) {
+    list_for_each_entry(child, &current->children, sibling) {
         if (pid > 0 && child->pid != pid) {
             continue;
         }

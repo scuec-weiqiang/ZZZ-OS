@@ -399,7 +399,7 @@ __SYSCALL__ long sys_ps(struct pt_regs *ctx)
         unsigned long flags;
 
         flags = spin_lock_irqsave(&rq->lock);
-        list_for_each_entry(task, &rq->tasks, struct task_struct, task_node) {
+        list_for_each_entry(task, &rq->tasks, task_node) {
             struct ps_info info;
             const char *comm;
             const char *wait_reason;

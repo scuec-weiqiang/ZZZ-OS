@@ -295,31 +295,12 @@ struct uart_port;
  *  本接口禁止睡眠阻塞
  */
 struct uart_ops {
-	unsigned int	(*tx_empty)(struct uart_port *);
-	void		(*set_mctrl)(struct uart_port *, unsigned int mctrl);
-	unsigned int	(*get_mctrl)(struct uart_port *);
 	void		(*stop_tx)(struct uart_port *);
 	void		(*start_tx)(struct uart_port *);
-	void		(*throttle)(struct uart_port *);
-	void		(*unthrottle)(struct uart_port *);
-	void		(*send_xchar)(struct uart_port *, char ch);
-	void		(*stop_rx)(struct uart_port *);
-	void		(*start_rx)(struct uart_port *);
-	void		(*enable_ms)(struct uart_port *);
-	void		(*break_ctl)(struct uart_port *, int ctl);
 	int		(*startup)(struct uart_port *);
 	void		(*shutdown)(struct uart_port *);
-	void		(*flush_buffer)(struct uart_port *);
 	void		(*set_termios)(struct uart_port *, struct ktermios *new,
 				       const struct ktermios *old);
-	void		(*set_ldisc)(struct uart_port *, struct ktermios *);
-	void		(*pm)(struct uart_port *, unsigned int state,
-			      unsigned int oldstate);
-	const char	*(*type)(struct uart_port *);
-	void		(*release_port)(struct uart_port *);
-	int		(*request_port)(struct uart_port *);
-	void		(*config_port)(struct uart_port *, int);
-	int		(*ioctl)(struct uart_port *, unsigned int, unsigned long);
 };
 
 struct uart_port {
@@ -331,33 +312,14 @@ struct uart_port {
     void *membase;
     unsigned char		regshift;		/* reg offset shift */
 
-    u32			(*serial_in)(struct uart_port *, unsigned int offset);
-	void		(*serial_out)(struct uart_port *, unsigned int offset, u32 val);
-    void			(*set_termios)(struct uart_port *,
-				               struct ktermios *new,
-				               const struct ktermios *old);
-	void			(*set_ldisc)(struct uart_port *,
-					     struct ktermios *);
-    unsigned int		(*get_divisor)(struct uart_port *,
-					       unsigned int baud,
-					       unsigned int *frac);
-	void			(*set_divisor)(struct uart_port *,
-					       unsigned int baud,
-					       unsigned int quot,
-					       unsigned int quot_frac);
-    int			(*startup)(struct uart_port *port);
-	void			(*shutdown)(struct uart_port *port);
-    int			(*handle_irq)(struct uart_port *);
-
-	struct uart_state	*state;			/* pointer to parent state */
-
+	struct uart_ops *ops;
     void *private_data;
 };
 
 struct uart_state {
     struct tty_port port;
 	struct uart_port *uart_port;
-	struct ringbuffer xmit;
+	struct ringbuffer tx_buf;
 };
 
 struct uart_driver {
@@ -374,11 +336,11 @@ int uart_register_driver(struct uart_driver *driver);
 void uart_unregister_driver(struct uart_driver *driver);
 int uart_add_one_port(struct uart_driver *driver, struct uart_port *port);
 void uart_remove_one_port(struct uart_driver *driver, struct uart_port *port);
-
 void uart_port_init(struct uart_port *port);
-void uart_write_char(struct uart_port *port, char ch);
-ssize_t uart_write(struct uart_port *port, const char *buf, size_t size);
-void uart_receive_char(struct uart_port *port, char ch);
-struct tty_struct *uart_port_tty(struct uart_port *port);
 
+void uart_insert_char(struct uart_port *port, unsigned char ch);
+void uart_write_wakeup(struct uart_port *port);
+
+
+struct tty_struct *uart_port_tty(struct uart_port *port);
 #endif

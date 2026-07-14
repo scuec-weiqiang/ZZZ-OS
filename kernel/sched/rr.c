@@ -141,7 +141,7 @@ static void rr_aging(struct rq *rq) {
 
         // 遍历队列中所有 task，同步更新其有效优先级
         struct task_struct *p;
-        list_for_each_entry(p, &rq->runnable[prio],struct task_struct, se.sched_node) {
+        list_for_each_entry(p, &rq->runnable[prio], se.sched_node) {
             p->prio = new_prio;
         }
 

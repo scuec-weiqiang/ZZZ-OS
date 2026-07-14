@@ -31,7 +31,7 @@ void vma_destroy(struct vma *vma) {
 
 struct vma *vma_find(struct mm_struct *mm, virt_addr_t va) {
     struct vma *vma;
-    list_for_each_entry(vma, &mm->vma_list.node, struct vma, node) {
+    list_for_each_entry(vma, &mm->vma_list.node, node) {
         if (vma->start <= va && vma->end > va && vma->flags) {
             return vma;
         }
@@ -91,7 +91,7 @@ int vma_insert(struct mm_struct *mm, struct vma *new) {
     if (list_empty(head)) {
         list_add_after(head, &new->node);
     } else {
-        list_for_each_entry(pos, head, struct vma, node) {
+        list_for_each_entry(pos, head, node) {
             if (new->end <= pos->start) {
                 list_add_before(&pos->node, &new->node);
                 goto merged;
@@ -152,7 +152,7 @@ static bool vma_range_is_mapped(struct mm_struct *mm, virt_addr_t start,
         return false;
     }
 
-    list_for_each_entry(vma, &mm->vma_list.node, struct vma, node) {
+    list_for_each_entry(vma, &mm->vma_list.node, node) {
         if (vma->end <= cursor) {
             continue;
         }
@@ -218,7 +218,7 @@ int vma_delete(struct mm_struct *mm, virt_addr_t start, size_t len) {
     }
 
     head = &mm->vma_list.node;
-    list_for_each_entry(vma, head, struct vma, node) {
+    list_for_each_entry(vma, head, node) {
         if (vma->end <= start) {
             continue;
         }
@@ -234,7 +234,7 @@ int vma_delete(struct mm_struct *mm, virt_addr_t start, size_t len) {
         break;
     }
 
-    list_for_each_entry(vma, head, struct vma, node) {
+    list_for_each_entry(vma, head, node) {
         if (vma->end <= end) {
             continue;
         }
@@ -246,7 +246,7 @@ int vma_delete(struct mm_struct *mm, virt_addr_t start, size_t len) {
         break;
     }
 
-    list_for_each_entry_safe(vma, next, head, struct vma, node) {
+    list_for_each_entry_safe(vma, next, head, node) {
         if (vma->end <= start) {
             continue;
         }
@@ -295,7 +295,7 @@ int vma_protect(struct mm_struct *mm, virt_addr_t start, size_t len,
         break;
     }
 
-    list_for_each_entry(vma, head, struct vma, node) {
+    list_for_each_entry(vma, head, node) {
         if (vma->end <= end) {
             continue;
         }
@@ -307,7 +307,7 @@ int vma_protect(struct mm_struct *mm, virt_addr_t start, size_t len,
         break;
     }
 
-    list_for_each_entry(vma, head, struct vma, node) {
+    list_for_each_entry(vma, head, node) {
         if (vma->end <= start) {
             continue;
         }
@@ -326,7 +326,7 @@ int vma_protect(struct mm_struct *mm, virt_addr_t start, size_t len,
 void vma_dump(struct mm_struct *mm) {
     struct vma *vma;
     printk("VMA Dump:\n");
-    list_for_each_entry(vma, &mm->vma_list.node, struct vma, node) {
+    list_for_each_entry(vma, &mm->vma_list.node, node) {
         printk("VMA: start=%x, end=%x, flags=%x\n", vma->start, vma->end, vma->flags);
     }
 }

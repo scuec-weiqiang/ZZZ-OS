@@ -72,7 +72,7 @@ void physmem_init(void) {
     phys_addr_t high = 0;
     
     struct memblock_region *pos;
-    list_for_each_entry(pos, &memblock.memory.region_head.node, struct memblock_region, node) {
+    list_for_each_entry(pos, &memblock.memory.region_head.node, node) {
         if (pos->flags != 0) {
             continue;
         }
@@ -105,7 +105,7 @@ void physmem_init(void) {
         INIT_LIST_HEAD(&pg->buddy_node);
     }
 
-    list_for_each_entry(pos, &memblock.reserved.region_head.node, struct memblock_region, node) {
+    list_for_each_entry(pos, &memblock.reserved.region_head.node, node) {
         mark_reserved_page_by_range(pos->base, pos->size);
     }    
     // 内核链接到高地址，导出的符号是虚拟地址，要转换一下
