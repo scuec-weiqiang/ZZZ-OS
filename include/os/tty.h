@@ -7,6 +7,7 @@
 #include <uapi/asm-generic/termios.h>
 #include <os/tty_buffer.h>
 #include <os/tty_port.h>
+#include <os/tty_driver.h>
 #include <uapi/linux/tty.h>
 
 #define TTY_LINE_SIZE 256
@@ -49,28 +50,7 @@ struct tty_struct {
     void *driver_data;
 };
 
-struct tty_operations {
-    int (*open)(struct tty_struct *tty, struct file *file);
-    void (*close)(struct tty_struct *tty, struct file *file);
-    ssize_t (*write)(struct tty_struct *tty, const char *buf, size_t count);
-    int (*write_room)(struct tty_struct *tty);
-    int (*chars_in_buffer)(struct tty_struct *tty);
-    void (*flush_buffer)(struct tty_struct *tty);
-    int (*ioctl)(struct tty_struct *tty, unsigned int cmd, unsigned long arg);
-    void (*set_termios)(struct tty_struct *tty, const struct ktermios *old);
-    void (*throttle)(struct tty_struct *tty);
-    void (*unthrottle)(struct tty_struct *tty);
-};
 
-struct tty_driver {
-    const char *name;          // "ttyS"
-    int major;
-    int minor_start;
-    int num;                   // 设备数量
-    struct tty_struct **ttys;  // 每个 index 对应一个 tty
-    struct tty_port **ports;   // 每个 index 对应一个 port
-    const struct tty_operations *ops;
-};
 
 
 int tty_register_driver(struct tty_driver *driver);

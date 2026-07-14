@@ -23,11 +23,44 @@ static void uart_tty_set_termios(struct tty_struct *tty, const struct ktermios *
     }
 }
 
-static const struct tty_operations uart_tty_ops = {
-    .write = uart_tty_write,
-    .set_termios = uart_tty_set_termios,
+static const struct tty_operations uart_ops = {
+// 	.open		= uart_open,
+// 	.close		= uart_close,
+// 	.write		= uart_write,
+// 	.put_char	= uart_put_char,
+// 	.flush_chars	= uart_flush_chars,
+// 	.write_room	= uart_write_room,
+// 	.chars_in_buffer= uart_chars_in_buffer,
+// 	.flush_buffer	= uart_flush_buffer,
+// 	.ioctl		= uart_ioctl,
+// 	.throttle	= uart_throttle,
+// 	.unthrottle	= uart_unthrottle,
+// 	.send_xchar	= uart_send_xchar,
+// 	.set_termios	= uart_set_termios,
+// 	.set_ldisc	= uart_set_ldisc,
+// 	.stop		= uart_stop,
+// 	.start		= uart_start,
+// 	.hangup		= uart_hangup,
+// 	.break_ctl	= uart_break_ctl,
+// 	.wait_until_sent= uart_wait_until_sent,
+// #ifdef CONFIG_PROC_FS
+// 	.proc_fops	= &uart_proc_fops,
+// #endif
+// 	.tiocmget	= uart_tiocmget,
+// 	.tiocmset	= uart_tiocmset,
+// 	.get_icount	= uart_get_icount,
+// #ifdef CONFIG_CONSOLE_POLL
+// 	.poll_init	= uart_poll_init,
+// 	.poll_get_char	= uart_poll_get_char,
+// 	.poll_put_char	= uart_poll_put_char,
+// #endif
 };
-
+static const struct tty_port_operations uart_port_ops = {
+	// .activate	= uart_port_activate,
+	// .shutdown	= uart_port_shutdown,
+	// .carrier_raised = uart_carrier_raised,
+	// .dtr_rts	= uart_dtr_rts,
+};
 void uart_port_init(struct uart_port *port) {
     if (port == NULL) {
         return;
@@ -37,52 +70,75 @@ void uart_port_init(struct uart_port *port) {
     tty_port_init(&port->tty_port);
     port->tty_port.driver_data = port;
 }
+/**
+ *	uart_register_driver - register a driver with the uart core layer
+ *	@drv: low level driver structure
+ *
+ *	Register a uart driver with the core driver.  We in turn register
+ *	with the tty layer, and initialise the core driver per-port state.
+ *
+ *	We have a proc file in /proc/tty/driver which is named after the
+ *	normal driver.
+ *
+ *	drv->port should be NULL, and the per-port structures should be
+ *	registered using uart_add_one_port after this call has succeeded.
+ */
+int uart_register_driver(struct uart_driver *drv)
+{
+	struct tty_driver *normal;
+	int i, retval;
 
-int uart_register_driver(struct uart_driver *driver) {
-    if (driver == NULL || driver->nr == 0) {
-        return -EINVAL;
-    }
+	/*
+	 * Maybe we should be using a slab cache for this, especially if
+	 * we have a large number of ports to handle.
+	 */
+	drv->state = kzalloc(sizeof(struct uart_state) * drv->nr);
+	if (!drv->state)
+		goto out;
 
-    if (driver->state != NULL) {
-        return -EBUSY;
-    }
+	normal = alloc_tty_driver(drv->nr);
+	if (!normal)
+		goto out_kfree;
 
-    driver->state = kzalloc(sizeof(*driver->state) * driver->nr);
-    if (driver->state == NULL) {
-        return -ENOMEM;
-    }
+	drv->tty_driver = normal;
 
-    driver->tty_driver = kzalloc(sizeof(*driver->tty_driver));
-    if (driver->tty_driver == NULL) {
-        goto err_free_state;
-    }
+	normal->driver_name	= drv->driver_name;
+	normal->name		= drv->dev_name;
+	normal->major		= drv->major;
+	normal->minor_start	= drv->minor;
+	normal->type		= TTY_DRIVER_TYPE_SERIAL;
+	// normal->subtype		= SERIAL_TYPE_NORMAL;
+	normal->init_termios	= tty_std_termios;
+	normal->init_termios.c_cflag = B9600 | CS8 | CREAD | HUPCL | CLOCAL;
+	normal->init_termios.c_ispeed = normal->init_termios.c_ospeed = 9600;
+	// normal->flags		= TTY_DRIVER_REAL_RAW | TTY_DRIVER_DYNAMIC_DEV;
+	normal->driver_state    = drv;
+	tty_set_operations(normal, &uart_ops);
 
-    driver->tty_driver->ttys = kzalloc(sizeof(*driver->tty_driver->ttys) * driver->nr);
-    if (driver->tty_driver->ttys == NULL) {
-        goto err_free_tty_driver;
-    }
+	/*
+	 * Initialise the UART state(s).
+	 */
+	for (i = 0; i < drv->nr; i++) {
+		struct uart_state *state = drv->state + i;
+		struct tty_port *port = &state->port;
 
-    driver->tty_driver->ports = kzalloc(sizeof(*driver->tty_driver->ports) * driver->nr);
-    if (driver->tty_driver->ports == NULL) {
-        goto err_free_ttys;
-    }
+		tty_port_init(port);
+		port->ops = &uart_port_ops;
+	}
 
-    driver->tty_driver->name = driver->dev_name;
-    driver->tty_driver->num = driver->nr;
-    driver->tty_driver->ops = &uart_tty_ops;
+	retval = tty_register_driver(normal);
+	if (retval >= 0)
+		return retval;
 
-    return tty_register_driver(driver->tty_driver);
-
-err_free_ttys:
-    kfree(driver->tty_driver->ttys);
-err_free_tty_driver:
-    kfree(driver->tty_driver);
-    driver->tty_driver = NULL;
-err_free_state:
-    kfree(driver->state);
-    driver->state = NULL;
-    return -ENOMEM;
+	for (i = 0; i < drv->nr; i++)
+		tty_port_destroy(&drv->state[i].port);
+	put_tty_driver(normal);
+out_kfree:
+	kfree(drv->state);
+out:
+	return -ENOMEM;
 }
+
 
 void uart_unregister_driver(struct uart_driver *driver) {
     if (driver == NULL) {

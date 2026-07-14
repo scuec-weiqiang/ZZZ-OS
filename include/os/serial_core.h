@@ -4,14 +4,9 @@
 #include <os/spinlock.h>
 #include <os/types.h>
 #include <os/tty.h>
+#include <os/ringbuffer.h>
 
-struct uart_driver;
 struct uart_port;
-
-struct uart_state {
-    struct uart_port *port;
-    struct tty_struct tty;
-};
 
 /** 从linux内核搬来的
  * 结构体 uart_ops —— serial_core 串口核心层与底层驱动之间的操作接口
@@ -327,7 +322,6 @@ struct uart_ops {
 	int		(*ioctl)(struct uart_port *, unsigned int, unsigned long);
 };
 
-
 struct uart_port {
     spinlock_t lock;
 
@@ -355,13 +349,16 @@ struct uart_port {
 	void			(*shutdown)(struct uart_port *port);
     int			(*handle_irq)(struct uart_port *);
 
-
-    struct uart_driver *uart_driver;
-    struct tty_port tty_port;
+	struct uart_state	*state;			/* pointer to parent state */
 
     void *private_data;
 };
 
+struct uart_state {
+    struct tty_port port;
+	struct uart_port *uart_port;
+	struct ringbuffer xmit;
+};
 
 struct uart_driver {
     const char *driver_name;   // "qemu_uart"
@@ -369,8 +366,8 @@ struct uart_driver {
     unsigned int major;
     unsigned int minor;
     unsigned int nr;           // 最大端口数
-    struct tty_driver *tty_driver;
     struct uart_state *state;
+    struct tty_driver *tty_driver;
 };
 
 int uart_register_driver(struct uart_driver *driver);

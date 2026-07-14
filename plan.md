@@ -1,341 +1,104 @@
-可以，而且如果目标是 **Linux 平台程序 + glibc 兼容**，我会建议你不要从 “tty 驱动” 入手，而是从 **Linux/POSIX ABI 语义** 入手重构。更颠覆一点说：`drivers/tty` 不应该只是串口输入输出层，它应该变成内核里 **terminal subsystem**，串口只是其中一个后端。
-
-我会按这个方向设计：
-
-```text
-             glibc / dash / vim / ssh / busybox
-                         |
-        open/read/write/ioctl/tcgetattr/tcsetattr/isatty
-                         |
-                  Linux-compatible tty ABI
-                         |
-        +----------------+----------------+
-        |                                 |
-      tty core                         devpts/pty
-        |                                 |
-   line discipline n_tty              /dev/ptmx
-        |
- +------+------+
- |             |
-serial core   virtual console
- |
-uart drivers
-```
-
-**最关键的改变**
-你现在的 tty 是“串口驱动内嵌一个 `struct tty`”。更优雅的模型应该反过来：
-
-```text
-tty 是核心对象
-serial/pty/console 都只是 tty 的 backend
-```
-
-也就是说，`struct tty_struct` 不是 UART 的成员，而是 tty core 分配和管理的对象。UART 驱动注册 `uart_port`，pty 驱动注册 master/slave，console 注册 console backend。用户态永远只看到 Linux 兼容的 `/dev/ttyS0`、`/dev/tty`、`/dev/console`、`/dev/ptmx`、`/dev/pts/N`。
-
-**第一层：ABI 先行**
-如果要和 glibc 兼容，最重要的不是内部像不像 Linux，而是外部 ABI 像不像 Linux。
-
-建议把这些从 `include/os/tty.h` 里拆出去：
-
-```text
-include/uapi/asm-generic/termbits.h
-include/uapi/asm-generic/ioctls.h
-include/uapi/linux/termios.h
-include/uapi/linux/tty.h
-```
-
-里面放 Linux 兼容的：
+可以按“先把骨架改像 Linux，再逐步补行为”的方式来做。你现在最该重构的点是：`uart_port` 不应该自己嵌一个 `tty_port`，`tty_struct->driver_data` 也不应该直接指向 `uart_port`。Linux 的主线关系是：
 
 ```c
-TCGETS
-TCSETS
-TCSETSW
-TCSETSF
-TIOCGWINSZ
-TIOCSWINSZ
-TIOCSCTTY
-TIOCGPGRP
-TIOCSPGRP
-TIOCNOTTY
-TIOCGETD
-TIOCSETD
-FIONREAD
+uart_driver
+  -> state[line] : struct uart_state
+       -> port       : struct tty_port
+       -> uart_port  : struct uart_port *
+uart_port
+  -> state      : struct uart_state *
+tty_struct
+  -> driver_data: struct uart_state *
 ```
 
-还有真正 Linux 风格的 `struct termios`、`struct winsize`。这样 glibc 的 `isatty()`、`tcgetattr()`、`tcsetattr()`、`tcgetpgrp()`、`tcsetpgrp()` 才能自然工作。
+对照 Linux：`struct uart_state` 里有 `struct tty_port port` 和 `struct uart_port *uart_port`，见 [/home/wei/linux-imx/include/linux/serial_core.h:277](</home/wei/linux-imx/include/linux/serial_core.h:277>)。你的当前代码则是在 [serial_core.c:133](/home/wei/ZZZ-OS/drivers/tty/serial/serial_core.c:133) 直接 `tty_init(..., &port->tty_port, ..., port)`，这会让 tty 生命周期和硬件端口注册绑死，后面 open/close、startup/shutdown、flip buffer 都不好长。
 
-你现在 `include/os/tty.h` 里有一份 `linux_termios`，这是好起点，但建议改成：**内核内部结构和 UAPI 结构分离**。例如：
+**建议第一阶段这样改：**
+
+1. 先改数据结构  
+   在 [include/os/serial_core.h](/home/wei/ZZZ-OS/include/os/serial_core.h:331) 里把：
 
 ```c
-struct ktermios {
-    tcflag_t c_iflag;
-    tcflag_t c_oflag;
-    tcflag_t c_cflag;
-    tcflag_t c_lflag;
-    cc_t c_cc[NCCS];
-    speed_t c_ispeed;
-    speed_t c_ospeed;
+struct uart_state {
+    struct uart_port *port;
+    struct tty_struct tty;
 };
 ```
 
-用户态复制进来的是 UAPI `struct termios`，内核内部用 `struct ktermios`。
-
-**第二层：进程模型必须升级**
-这是最“颠覆”的部分：为了 dash/job control/glibc，tty 不能脱离 session/process group 存在。
-
-你现在 [task_struct](/home/wei/ZZZ-OS/include/os/sched.h:109) 里还没有 `pgid`、`sid`、`signal_struct`、controlling tty。建议加一层 POSIX 进程信号对象：
+改成类似：
 
 ```c
-struct signal_struct {
-    pid_t pgrp;
-    pid_t session;
-    struct tty_struct *tty;
-    int tty_old_pgrp;
-};
-
-struct task_struct {
-    ...
-    struct signal_struct *signal;
+struct uart_state {
+    struct tty_port port;
+    struct tty_struct tty;          /* 先保留，适配你当前 tty_register_device */
+    struct uart_port *uart_port;
 };
 ```
 
-如果短期不做线程共享 signal，也可以先直接放进 `task_struct`：
+然后 `struct uart_port` 里不要放 `struct tty_port tty_port`，改成：
 
 ```c
-pid_t pgid;
-pid_t sid;
-struct tty_struct *signal_tty;
+struct uart_state *state;
 ```
 
-但长期为了 glibc/pthread，最好模仿 Linux：线程组共享 `signal_struct`。
+Linux 原版没有在 `uart_port` 中嵌 `tty_port`，而是通过 `uport->state = state` 回指，见 [/home/wei/linux-imx/drivers/tty/serial/serial_core.c:2680](</home/wei/linux-imx/drivers/tty/serial/serial_core.c:2680>)。
 
-需要补这些 syscall：
+2. 改 `uart_register_driver()`  
+   不要等 `uart_add_one_port()` 才初始化 `tty_port`。Linux 是注册 driver 时为每个 `state` 初始化 `tty_port`，见 [/home/wei/linux-imx/drivers/tty/serial/serial_core.c:2426](</home/wei/linux-imx/drivers/tty/serial/serial_core.c:2426>)。
+
+   你的简化版可以做：
 
 ```c
-setsid()
-getsid()
-setpgid()
-getpgid()
-getpgrp()
-kill(-pgid, sig)
+for (i = 0; i < driver->nr; i++) {
+    tty_port_init(&driver->state[i].port);
+    driver->tty_driver->ports[i] = &driver->state[i].port;
+}
 ```
 
-你的 [kernel/signal.c](/home/wei/ZZZ-OS/kernel/signal.c:10) 目前 `kill(pid, sig)` 只按单个 pid 查任务。Linux 兼容需要：
+3. 改 `uart_add_one_port()`  
+   它只做“把底层 `uart_port` 挂到 state 上 + 注册 tty 设备”，不要在这里 `startup()`。Linux 的 `uart_add_one_port()` 只是 attach/register device，真正硬件启动在 open 路径，见 [/home/wei/linux-imx/drivers/tty/serial/serial_core.c:2657](</home/wei/linux-imx/drivers/tty/serial/serial_core.c:2657>)。
 
-```text
-pid > 0   给指定进程发信号
-pid == 0  给当前进程组发信号
-pid < -1  给 -pid 这个进程组发信号
-pid == -1 广播给有权限的进程
-```
-
-没有这个，`Ctrl-C`、后台任务、dash job control 都会不完整。
-
-**第三层：重做 tty core 对象**
-建议把 `struct tty` 拆成 Linux 风格的几个对象：
+   你的过渡版可以是：
 
 ```c
-struct tty_struct {
-    spinlock_t lock;
+state = &driver->state[port->line];
 
-    int index;
-    dev_t dev;
-    int count;
+state->uart_port = port;
+port->state = state;
+port->uart_driver = driver;
+spin_lock_init(&port->lock);
 
-    struct tty_driver *driver;
-    struct tty_port *port;
-    const struct tty_ldisc_ops *ldisc;
+tty_init(&state->tty, driver->tty_driver, &state->port,
+         port->line, state);
 
-    struct ktermios termios;
-    struct winsize winsize;
+driver->tty_driver->ttys[port->line] = &state->tty;
+driver->tty_driver->ports[port->line] = &state->port;
 
-    pid_t pgrp;
-    pid_t session;
-
-    void *driver_data;
-};
-
-struct tty_port {
-    spinlock_t lock;
-    struct tty_struct *tty;
-
-    struct wait_queue_head open_wait;
-    struct wait_queue_head close_wait;
-    struct wait_queue_head read_wait;
-    struct wait_queue_head write_wait;
-
-    void *driver_data;
-};
-
-struct tty_driver {
-    const char *name;       // "ttyS", "pts", "console"
-    dev_t major;
-    unsigned int minor_start;
-    unsigned int num;
-    const struct tty_operations *ops;
-    struct tty_struct **ttys;
-};
+tty_register_device(...);
 ```
 
-`tty_operations`：
+注意这里 `tty->driver_data` 应该是 `state`，不是 `port`。
+
+4. 改 tty ops  
+   当前 [serial_core.c:10](/home/wei/ZZZ-OS/drivers/tty/serial/serial_core.c:10) 把 `tty->driver_data` 当成 `uart_port *`。重构后应该：
 
 ```c
-struct tty_operations {
-    int (*open)(struct tty_struct *tty, struct file *file);
-    void (*close)(struct tty_struct *tty, struct file *file);
-    ssize_t (*write)(struct tty_struct *tty, const char *buf, size_t count);
-    int (*write_room)(struct tty_struct *tty);
-    int (*chars_in_buffer)(struct tty_struct *tty);
-    void (*flush_buffer)(struct tty_struct *tty);
-    int (*ioctl)(struct tty_struct *tty, unsigned int cmd, unsigned long arg);
-    void (*set_termios)(struct tty_struct *tty, const struct ktermios *old);
-    void (*throttle)(struct tty_struct *tty);
-    void (*unthrottle)(struct tty_struct *tty);
-};
+struct uart_state *state = tty->driver_data;
+struct uart_port *port = state->uart_port;
 ```
 
-这时 [qemu_riscv_uart.c](/home/wei/ZZZ-OS/drivers/qemu_riscv_uart.c:176) 里的 `file_operations` 就不该属于 UART 驱动了。字符设备统一指向 tty core：
+`set_termios()` 同理。
+
+5. 接收路径改成 flip buffer  
+   你已经移植了 `tty_buffer.c`，所以 `uart_receive_char()` 下一步不要直接 `tty_receive_char()`，而是先走：
 
 ```c
-static const struct file_operations tty_fops = {
-    .open = tty_open,
-    .release = tty_release,
-    .read = tty_read,
-    .write = tty_write,
-    .ioctl = tty_ioctl,
-};
+tty_insert_flip_char(&state->port, ch, TTY_NORMAL);
+tty_flip_buffer_push(&state->port);
 ```
 
-UART 只提供：
+这才更像 Linux 的 UART RX 到 TTY 层路径。现在 [serial_core.c:205](/home/wei/ZZZ-OS/drivers/tty/serial/serial_core.c:205) 直接调 `tty_receive_char()`，等于绕过了你移植的 flip buffer。
 
-```c
-static const struct uart_ops qemu_uart_ops = {
-    .startup = qemu_startup,
-    .shutdown = qemu_shutdown,
-    .start_tx = qemu_start_tx,
-    .stop_tx = qemu_stop_tx,
-    .stop_rx = qemu_stop_rx,
-    .set_termios = qemu_set_termios,
-    .tx_empty = qemu_tx_empty,
-};
-```
+还有两个小坑你可以顺手查一下：你的 [serial_core.c:184](/home/wei/ZZZ-OS/drivers/tty/serial/serial_core.c:184) 用了 `port->ops->put_char`，但 [uart_ops 定义](/home/wei/ZZZ-OS/include/os/serial_core.h:302) 里没有 `put_char`；另外 [serial_core.c:38](/home/wei/ZZZ-OS/drivers/tty/serial/serial_core.c:38) 用了 `tty_port.driver_data`，但 `struct tty_port` 里是 `client_data`。这两个说明当前 serial core 和头文件已经有点漂了，正好趁这次重构收齐。
 
-**第四层：n_tty 作为真正行规程**
-你现在 [tty_receive_char()](/home/wei/ZZZ-OS/drivers/tty/tty.c:137) 做了 canonical、echo、erase、wake reader。这些应该搬到 `n_tty.c`。
-
-建议：
-
-```c
-struct tty_ldisc_ops {
-    const char *name;
-    int num;
-
-    ssize_t (*read)(struct tty_struct *tty, char *buf, size_t nr);
-    ssize_t (*write)(struct tty_struct *tty, const char *buf, size_t nr);
-    void (*receive_buf)(struct tty_struct *tty, const char *cp, int count);
-    void (*set_termios)(struct tty_struct *tty, const struct ktermios *old);
-};
-```
-
-先只实现 `N_TTY`：
-
-```text
-ICANON
-ECHO
-ECHOE
-ECHOK
-ISIG
-IEXTEN
-ICRNL
-INLCR
-IGNCR
-OPOST
-ONLCR
-VMIN
-VTIME
-VEOF
-VERASE
-VKILL
-VINTR
-VQUIT
-VSUSP
-```
-
-dash 最关心的是：
-
-```text
-ICANON/ECHO 能开关
-Ctrl-C -> SIGINT 给前台进程组
-Ctrl-D -> read 返回 EOF
-tcgetpgrp/tcsetpgrp 正常
-```
-
-**第五层：PTY 和 devpts 必须做**
-如果目标是 Linux 程序兼容，`pty` 比真实串口更关键。大量程序默认通过 pseudo terminal 跑：ssh、terminal emulator、expect、script、很多测试框架。
-
-建议实现：
-
-```text
-/dev/ptmx
-/dev/pts/0
-/dev/pts/1
-...
-```
-
-对象关系：
-
-```text
-pty master <-> pty slave tty
-```
-
-master 写入的数据，进入 slave 的 `n_tty receive_buf`；slave 写出的数据，master 读到。
-
-接口：
-
-```c
-int ptmx_open(struct inode *inode, struct file *file);
-struct tty_struct *pty_alloc_slave(void);
-ssize_t pty_master_read(...);
-ssize_t pty_master_write(...);
-ssize_t pty_slave_write(...);
-```
-
-glibc/openpty/login_tty/forkpty 这一套都依赖这个生态。
-
-**推荐大重构目录**
-可以直接重排成这样：
-
-```text
-include/uapi/linux/termios.h
-include/uapi/linux/tty.h
-include/uapi/asm-generic/ioctls.h
-
-include/os/tty.h
-include/os/tty_driver.h
-include/os/tty_ldisc.h
-include/os/serial_core.h
-include/os/pty.h
-
-drivers/tty/tty_io.c
-drivers/tty/tty_ioctl.c
-drivers/tty/n_tty.c
-drivers/tty/tty_ldisc.c
-drivers/tty/pty.c
-drivers/tty/serial/serial_core.c
-drivers/tty/serial/qemu_8250.c
-drivers/tty/serial/imx6ull_uart.c
-```
-
-**我会采取的重构路线**
-最漂亮、也最不容易半路炸掉的是：
-
-1. 先建立 Linux 兼容 UAPI：termios/ioctl 常量、`struct termios`、`struct winsize`。
-2. 新增 `tty_struct / tty_driver / tty_port / tty_ldisc_ops`，保留旧 `tty_read/write` 逻辑搬进去。
-3. 把 UART 的 cdev fops 删除，统一走 `tty_fops`。
-4. 把 `/dev/tty` 做成特殊设备：open 时查 `current->signal->tty`，而不是 alias 到 `ttyS0`。
-5. 实现 `setsid/setpgid/getpgid/tcsetpgrp/tcgetpgrp`。
-6. 实现 `ISIG`：`VINTR` 发 `SIGINT` 到前台进程组。
-7. 实现 `/dev/ptmx + devpts`。
-8. 再把 serial core 做完整，让 qemu uart/imx6ull uart 共享同一套 `uart_driver`。
-
-一句话：如果只是让 dash 能跑，补几个 ioctl 就够；但如果你想“优雅并兼容 glibc/Linux 程序”，真正的颠覆性改法是 **ABI-first + session/job-control-first + tty/pty/serial 分层**。串口不是中心，`tty_struct` 和 POSIX controlling terminal 才是中心。
+我的建议是第一版只做“对象关系 + 接收走 flip buffer”，不要立刻搬 Linux 的 `circ_buf xmit/start_tx/stop_tx/uart_startup` 全套。等这个骨架稳定后，第二阶段再把 `startup/shutdown` 移到 `open/close`，第三阶段再做发送环形缓冲和 `start_tx()`。这样会像 Linux，但每一步都能跑。
