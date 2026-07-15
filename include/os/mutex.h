@@ -19,7 +19,7 @@ void mutex_unlock(struct mutex *m);
     {\
         .lock = SPINLOCK_INIT, \
         .locked = 0,\
-        .wait = WAIT_QUEUE_INIT(.wait)\
+        .wait = WAIT_QUEUE_INIT(lockname.wait)\
     }\
     
 #define DEFINE_MUTEX(mutexname) \

@@ -1,2 +1,5 @@
-OBJ_Y += tty.o
+OBJ_Y += tty_core.o
+OBJ_Y += tty_buffer.o
+OBJ_Y += tty_ldsic.o
+OBJ_Y += n_tty.o
 OBJ_Y += serial/

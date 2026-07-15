@@ -10,17 +10,25 @@
 #include <os/device.h>
 #include <os/bus.h>
 #include <os/list.h>
+#include <os/errno.h>
 
 void driver_init() {
     device_initcalls_run();
 }
 
 int driver_register(struct device_driver *drv) {
+	int ret;
+
     if (!drv || !drv->bus) {
-        return -1;
+        return -EINVAL;
     }
-    bus_add_driver(drv);
-    driver_attach(drv);
+	INIT_LIST_HEAD(&drv->node);
+	ret = bus_add_driver(drv);
+	if (ret)
+		return ret;
+
+	/* A driver may be registered before its devices exist. */
+	driver_attach(drv);
     return 0;
 }
 

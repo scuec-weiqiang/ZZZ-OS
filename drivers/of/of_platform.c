@@ -65,7 +65,12 @@ struct platform_device *platform_device_create(struct device_node *np, struct de
 
     }
     
-    platform_device_register(pdev);
+    if (platform_device_register(pdev)) {
+        kfree(pdev->resources);
+        kfree((void *)pdev->name);
+        kfree(pdev);
+        return NULL;
+    }
     return pdev;
 }
 

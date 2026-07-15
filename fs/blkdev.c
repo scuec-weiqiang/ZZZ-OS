@@ -63,7 +63,7 @@ static void update_region() {
 }
 
 struct blkdev *blkdev_get_by_path(const char *path) {
-    struct devnode *node;
+    struct device *dev;
     struct blkdev *bdev;
 
     if (!path)
@@ -72,14 +72,14 @@ struct blkdev *blkdev_get_by_path(const char *path) {
     if (strncmp(path, "/dev/", 5) == 0)
         path += 5;
 
-    node = devnode_lookup_by_name(path);
-    if (!node)
+    dev = device_find_by_name(path);
+    if (!dev)
         return ERR_PTR(-ENODEV);
 
-    if (node->type != DEV_BLOCK)
+    if (!S_ISBLK(dev->mode))
         return ERR_PTR(-ENOTBLK);
 
-    bdev = node->private;
+    bdev = dev_get_drvdata(dev);
     if (!bdev)
         return ERR_PTR(-ENODEV);
 
@@ -88,17 +88,17 @@ struct blkdev *blkdev_get_by_path(const char *path) {
 }
 
 struct blkdev *blkdev_get_by_devnr(dev_t devnr) {
-    struct devnode *node;
+    struct device *dev;
     struct blkdev *bdev;
 
-    node = devnode_lookup_by_devnr(devnr);
-    if (!node)
+    dev = device_find_by_devt(devnr);
+    if (!dev)
         return NULL;
 
-    if (node->type != DEV_BLOCK)
+    if (!S_ISBLK(dev->mode))
         return NULL;
 
-    bdev = node->private;
+    bdev = dev_get_drvdata(dev);
     if (!bdev)
         return NULL;
 
@@ -373,18 +373,21 @@ int blkdev_register_partition(struct blkdev *whole, int partno, sector_t start, 
     part->bd_nr_sectors = nr_sectors;
     part->bd_partno = partno;
     part->bd_contains = whole;
+    part->bd_fops = whole->bd_fops;
 
     snprintk(name, sizeof(name), "%s%d", whole->bd_disk->disk_name, partno);
 
     part->bd_devnr = MKDEV(MAJOR(whole->bd_devnr), MINOR(whole->bd_devnr) + partno);
     update_region();
 
-    int ret = devnode_register(name, DEV_BLOCK, part->bd_devnr, whole->bd_node->fops, part);
-    if (ret < 0) {
+    part->bd_device = device_create(whole->bd_device->class,
+                                    whole->bd_device, part->bd_devnr,
+                                    S_IFBLK | 0600, part, name);
+    if (IS_ERR(part->bd_device)) {
+        int ret = PTR_ERR(part->bd_device);
         kfree(part);
         return ret;
     }
-    part->bd_node = devnode_lookup_by_name(name);
 
     return 0;
 }
@@ -468,13 +471,28 @@ int blkdev_register(char *name, dev_t devnr, struct gendisk *disk, struct file_o
     bdev->bd_fs_info = NULL;
     bdev->bd_devnr = devnr; 
     bdev->bd_contains = bdev;
+    bdev->bd_fops = fops;
 
-    int ret = devnode_register(name, DEV_BLOCK, devnr, fops,bdev);
-    if (ret < 0) {
+    static struct class block_class = { .name = "block" };
+    static bool block_class_ready;
+    int ret;
+
+    if (!block_class_ready) {
+        ret = class_register(&block_class);
+        if (ret && ret != -EEXIST) {
+            kfree(bdev);
+            return ret;
+        }
+        block_class_ready = true;
+    }
+
+    bdev->bd_device = device_create(&block_class, NULL, devnr,
+                                    S_IFBLK | 0600, bdev, name);
+    if (IS_ERR(bdev->bd_device)) {
+        ret = PTR_ERR(bdev->bd_device);
         kfree(bdev);
         return ret;
     }
-    bdev->bd_node = devnode_lookup_by_name(name);
     disk->part0 = bdev;
     INIT_LIST_HEAD(&disk->disk_list);
     list_add_tail(&g_blk_disks, &disk->disk_list);

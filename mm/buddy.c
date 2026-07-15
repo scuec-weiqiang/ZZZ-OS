@@ -59,7 +59,7 @@ void try_merge_order(unsigned int order) {
     struct list_head *curr_list = &free_area[order].free_list;
 
     struct page *page, *n;
-    list_for_each_entry_safe(page, n, curr_list, struct page, buddy_node) {
+    list_for_each_entry_safe(page, n, curr_list, buddy_node) {
         struct page *buddy_page = get_buddy_page(page, order);
         if (buddy_page && buddy_page->flags == PAGE_FREE && buddy_page->order == order) {
             // 更新下一个节点，防止后续访问出错

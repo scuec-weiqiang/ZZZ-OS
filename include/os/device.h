@@ -13,11 +13,13 @@
 #include <os/types.h>
 #include <os/devicetable.h>
 #include <os/init.h>
+#include <fs/types.h>
 
 struct device_driver;
 struct bus_type;
 struct device;
 struct device_node;
+struct class;
 
 struct device_type {
 	const char name[32];
@@ -28,6 +30,13 @@ struct device_type {
 	// void (*release)(struct device *dev);
 
 	// const struct dev_pm_ops *pm;
+};
+
+struct class {
+    const char *name;
+    struct list_head devices;
+    struct list_head node;
+    bool registered;
 };
 
 struct bus_type {
@@ -60,7 +69,13 @@ struct device {
     struct device *parent;          // optional
     struct device_driver *driver;          // 关联的驱动
     void *driver_data;              // optional
-    struct list_head node;         // 链接到总线的设备列表
+    dev_t devt;                    // 0 表示不导出设备节点
+    mode_t mode;                   // S_IFCHR/S_IFBLK 和访问权限
+    struct class *class;
+    struct list_head bus_node;
+    struct list_head class_node;
+    struct list_head global_node;
+    bool registered;
 };
 
 static inline const char *dev_name(const struct device *dev) {
@@ -79,6 +94,14 @@ extern int device_register(struct device *dev);
 extern int device_unregister(struct device *dev);
 extern int device_add(struct device *dev);
 extern int device_attach(struct device *dev);
+extern int class_register(struct class *class);
+extern void class_unregister(struct class *class);
+extern struct device *device_create(struct class *class, struct device *parent,
+                                    dev_t devt, mode_t mode, void *data,
+                                    const char *name);
+extern void device_destroy(struct class *class, dev_t devt);
+extern struct device *device_find_by_devt(dev_t devt);
+extern struct device *device_find_by_name(const char *name);
 
 extern int driver_register(struct device_driver *drv);
 extern void driver_unregister(struct device_driver *drv);

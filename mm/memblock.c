@@ -66,7 +66,7 @@ phys_addr_t mem_end;
 
 static void memblock_sort_one(struct memblock_type *type, struct memblock_region *region) {
     struct memblock_region *pos = NULL, *tmp = NULL;
-    list_for_each_entry_safe(pos, tmp, &type->region_head.node, struct memblock_region, node) {
+    list_for_each_entry_safe(pos, tmp, &type->region_head.node, node) {
         if (region != pos && region->base < pos->base) {
             list_del(&region->node);
             list_add_before(&pos->node ,&region->node);
@@ -77,7 +77,7 @@ static void memblock_sort_one(struct memblock_type *type, struct memblock_region
 
 static void memblock_sort(struct memblock_type *type) {
     struct memblock_region *region = NULL, *tmp = NULL;
-    list_for_each_entry_safe(region, tmp, &type->region_head.node, struct memblock_region, node) {
+    list_for_each_entry_safe(region, tmp, &type->region_head.node, node) {
         memblock_sort_one(type, region);
     }
 }
@@ -92,7 +92,7 @@ static unsigned long memblock_addrs_continue(phys_addr_t base1, size_t size1, ph
 
 static int memblock_overlaps_region(struct memblock_type *type, phys_addr_t base, size_t size) {
     struct memblock_region* pos = NULL, *n = NULL;
-    list_for_each_entry_safe(pos, n, &type->region_head.node, struct memblock_region, node) {
+    list_for_each_entry_safe(pos, n, &type->region_head.node, node) {
         if (memblock_addrs_overlap(base, size, pos->base, pos->size)) {
             return pos->idx;
         }
@@ -106,7 +106,7 @@ static void memblock_merge_regions(struct memblock_type *type, struct memblock_r
 
     struct memblock_region *pos = NULL, *tmp = NULL;
 
-    list_for_each_entry_safe(pos, tmp, &type->region_head.node, struct memblock_region, node) {
+    list_for_each_entry_safe(pos, tmp, &type->region_head.node, node) {
         if (pos != region) {
             phys_addr_t rgnbase = pos->base;
             size_t rgnsize = pos->size;
@@ -154,7 +154,7 @@ int memblock_add(phys_addr_t base, size_t size) {
 
 static int memblock_remove_region(struct memblock_type *type, phys_addr_t base, size_t size) {
     struct memblock_region *pos = NULL, *tmp = NULL;
-    list_for_each_entry_safe(pos, tmp, &type->region_head.node, struct memblock_region, node) {
+    list_for_each_entry_safe(pos, tmp, &type->region_head.node, node) {
         if (memblock_addrs_overlap(base, size, pos->base, pos->size)) {
             phys_addr_t pos_end = pos->base + pos->size;
             phys_addr_t end = base + size;
@@ -208,7 +208,7 @@ int memblock_reserve(phys_addr_t base, size_t size) {
 void memblock_mark_nomap(phys_addr_t base, size_t size) {
     struct memblock_type *type = &memblock.memory;
     struct memblock_region *pos = NULL, *tmp = NULL;
-    list_for_each_entry_safe(pos, tmp, &type->region_head.node, struct memblock_region, node) {
+    list_for_each_entry_safe(pos, tmp, &type->region_head.node, node) {
         if (memblock_addrs_overlap(base, size, pos->base, pos->size)) {
             phys_addr_t pos_end = pos->base + pos->size;
             phys_addr_t end = base + size;
@@ -344,7 +344,7 @@ void print_nomap_regions(void) {
     struct memblock_type *type = &memblock.memory;
     struct memblock_region *pos = NULL, *tmp = NULL;
     printk("Nomap Regions:\n");
-    list_for_each_entry_safe(pos, tmp, &type->region_head.node, struct memblock_region, node) {
+    list_for_each_entry_safe(pos, tmp, &type->region_head.node, node) {
         if (pos->flags & MEMBLOCK_NOMAP) {
             printk("  Region %d: Start: %xu, Size: %xu\n", pos->idx,
                    pos->base,
@@ -353,7 +353,7 @@ void print_nomap_regions(void) {
     }
 
     type = &memblock.reserved;
-    list_for_each_entry_safe(pos, tmp, &type->region_head.node, struct memblock_region, node) {
+    list_for_each_entry_safe(pos, tmp, &type->region_head.node, node) {
         if (pos->flags & MEMBLOCK_NOMAP) {
             printk("  Region %d: Start: %xu, Size: %xu", pos->idx,
                    pos->base,

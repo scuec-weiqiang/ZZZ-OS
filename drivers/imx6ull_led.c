@@ -81,7 +81,7 @@ static int led_probe(struct platform_device *pdev) {
         dprintk("Get gpio success!\n");
     }
 
-    ret = alloc_chrdev_region(&led->dev_num,  1);
+    ret = alloc_chrdev_region(&led->dev_num, 0, 1, "myledcdev");
     if (ret) {
         dprintk("Alloc dev number failed!\n");
         goto alloc_devnr_failed;

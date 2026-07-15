@@ -279,7 +279,7 @@ int vma_protect(struct mm_struct *mm, virt_addr_t start, size_t len,
     }
 
     head = &mm->vma_list.node;
-    list_for_each_entry(vma, head, struct vma, node) {
+    list_for_each_entry(vma, head, node) {
         if (vma->end <= start) {
             continue;
         }

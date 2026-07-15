@@ -790,7 +790,7 @@ int kthreadd(void *arg) {
         }
 
         if (!list_empty(&kthread_create_list)) {
-            list_for_each_entry_safe(info,tmp,&kthread_create_list, struct kthread_create_info, list) {
+            list_for_each_entry_safe(info, tmp, &kthread_create_list, list) {
                 pid = kernel_thread(info->threadfn, info->data);
                 if (pid < 0) {
                     panic("kthreadd: failed to create kernel thread for fn=%xu, data=%su, error=%d\n", info->threadfn, info->data, (int)pid);

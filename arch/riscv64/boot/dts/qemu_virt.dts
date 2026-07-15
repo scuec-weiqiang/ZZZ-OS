@@ -21,7 +21,7 @@
     chosen {
         stdout-path = "/soc/uart@10000000";
         zzz,root-device = "/dev/virt_disk2";
-        zzz,tty-device = "/dev/uart0";
+        zzz,tty-device = "/dev/ttyS0";
     };
 
     cpus {
@@ -33,11 +33,11 @@
             device_type = "cpu";
             clock-frequency = <10000000>;
         };
-        cpu1: cpu@1 {
-            compatible = "riscv";
-            device_type = "cpu";
-            clock-frequency = <10000000>;
-        };
+        // cpu1: cpu@1 {
+        //     compatible = "riscv";
+        //     device_type = "cpu";
+        //     clock-frequency = <10000000>;
+        // };
     };
 
     arch_timer {
@@ -79,6 +79,7 @@
         uart0: uart@10000000 {
             compatible = "wq,uart";
             reg = <0x10000000 0x8>;
+            clock-frequency = <3686400>;
             interrupts-extended = <&plic 10>;
         };
 

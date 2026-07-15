@@ -25,8 +25,9 @@ struct tty_port {
 	const struct tty_port_client_operations *client_ops;
 	
 	spinlock_t lock;
-    struct mutex mutex;
+	struct mutex mutex;
 	struct mutex buf_mutex;
+	unsigned int open_count;
 	u8 *xmit_buf;
     struct wait_queue_head open_wait;
     struct wait_queue_head close_wait;

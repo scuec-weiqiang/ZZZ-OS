@@ -535,7 +535,7 @@ struct file *filp_open(const char *path, u32 flags) {
             goto err_free_file;
         }
         cdev->cd_openers++;
-        file->f_op = (struct file_operations *)cdev->node->fops;
+        file->f_op = (struct file_operations *)cdev->fops;
 		// dprintk("filp_open: open char device %s, devnr=%u, fops=%xu\n",
 		// 		cdev->name, cdev->devnr, file->f_op);
         file->private_data = cdev->private ? cdev->private : cdev;
@@ -546,9 +546,7 @@ struct file *filp_open(const char *path, u32 flags) {
             goto err_free_file;
         }
         bdev->bd_openers++;
-        if (bdev->bd_node != NULL) {
-            file->f_op = (struct file_operations *)bdev->bd_node->fops;
-        }
+        file->f_op = bdev->bd_fops;
         file->private_data = bdev;
     }
 

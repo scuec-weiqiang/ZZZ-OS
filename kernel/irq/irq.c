@@ -112,6 +112,26 @@ int irq_request(int virq, irq_handler_t handler, const char *name, void *dev_id)
     return 0;
 }
 
+void irq_free(int virq, void *dev_id)
+{
+    struct irq_data *data;
+
+    if (virq < 0 || virq >= IRQ_COUNT)
+        return;
+
+    data = &__irq_data[virq];
+    if (data->handler == NULL || data->dev_id != dev_id)
+        return;
+
+    irq_disable(virq);
+    data->handler = NULL;
+    data->dev_id = NULL;
+    data->name = NULL;
+    data->virq = -1;
+    data->chip = NULL;
+    data->domain = NULL;
+}
+
 int irq_percpu_request(int virq, int cpu, irq_handler_t handler, const char *name, void *dev_id) {
     if (virq < 0 || virq >= IRQ_COUNT) {
         dprintk("irq_percpu_request: invalid virq %d\n", virq);

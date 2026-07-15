@@ -69,16 +69,16 @@ void reparent_children(struct task_struct *parent) {
     unsigned long parent_flags;
 
     parent_flags = spin_lock_irqsave(&parent->lock);
-    list_for_each_entry_safe(child, n, &parent->children, struct task_struct, sibling) {
+    list_for_each_entry_safe(child, n, &parent->children, sibling) {
         unsigned long reaper_flags;
 
         list_del(&child->sibling);
         // dprintk("reparent child pid=%d to init\n", child->pid);
         reaper = choose_reaper(child);
-        reaper_flags = spin_lock_irqsave(&reaper->lock);
+        // reaper_flags = spin_lock_irqsave(&reaper->lock);
         child->parent = reaper;
         list_add_tail(&reaper->children, &child->sibling);
-        spin_unlock_irqrestore(&reaper->lock, reaper_flags);
+        // spin_unlock_irqrestore(&reaper->lock, reaper_flags);
 
         if (child->status == TASK_ZOMBIE)
             wake_up_one(&reaper->wait_child);

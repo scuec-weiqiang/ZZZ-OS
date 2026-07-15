@@ -5,6 +5,9 @@
 #include <os/llist.h>
 #include <os/mutex.h>
 
+struct tty_struct;
+struct tty_ldisc;
+
 // 普通字符区: data[0 ... size-1]
 // flag 区:    data[size ... 2*size-1]
 
@@ -39,6 +42,8 @@ struct tty_bufhead {
 
     struct tty_buffer sentinel;
 };
+
+void tty_buffer_flush(struct tty_struct *tty, struct tty_ldisc *ld);
 
 
 static inline u8 *char_buf_ptr(struct tty_buffer *b, unsigned int ofs)

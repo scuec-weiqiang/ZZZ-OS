@@ -65,7 +65,7 @@ int send_signal_to_pgrp(pid_t pgid, int sig) {
         unsigned long flags;
 
         flags = spin_lock_irqsave(&rq->lock);
-        list_for_each_entry_safe(task, tmp, &rq->tasks, struct task_struct, task_node) {
+	list_for_each_entry_safe(task, tmp, &rq->tasks, task_node) {
             if (task->signal != NULL && task->signal->pgrp == pgid) {
                 task->signal_pending |= 1UL << sig;
                 sent++;

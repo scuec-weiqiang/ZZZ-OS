@@ -4,7 +4,7 @@
 #include <os/types.h>
 #include <os/list.h>
 #include <os/spinlock.h>
-#include <os/devnode.h>
+#include <os/device.h>
 #include <os/compiler.h>
 
 struct gpt_header {
@@ -100,7 +100,8 @@ struct blkdev {
     int bd_openers;
     void *bd_fs_info;
     dev_t bd_devnr;
-    struct devnode *bd_node;
+    struct device *bd_device;
+    struct file_operations *bd_fops;
 };
 int alloc_blkdev_region(dev_t *devt, unsigned int count);
 int blkdev_register(char *name, dev_t devnr, struct gendisk *disk, struct file_operations *fops);

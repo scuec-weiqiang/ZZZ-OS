@@ -5,6 +5,7 @@
 #include <os/printk.h>
 #include <os/string.h>
 #include <os/list.h>
+#include <os/device.h>
 
 static LIST_HEAD(g_cdevs);
 
@@ -108,8 +109,8 @@ int alloc_chrdev_region(dev_t *dev,
         if (!chrdev_major_in_use(major)) {
             region->from = MKDEV(major, first_minor);
 
-            list_add_tail(&region->node,
-                          &chrdev_registry.regions);
+            list_add_tail(&chrdev_registry.regions,
+                          &region->node);
 
             *dev = region->from;
 
@@ -170,31 +171,62 @@ int register_chrdev_region(dev_t from,
         }
     }
 
-    list_add_tail(&region->node, &chrdev_registry.regions);
+    list_add_tail(&chrdev_registry.regions, &region->node);
 
     spin_unlock_irqrestore(&chrdev_registry.lock, flags);
 
     return 0;
 }
 
+void unregister_chrdev_region(dev_t from, unsigned int count)
+{
+    struct chrdev_region *region;
+    struct chrdev_region *tmp;
+    unsigned long flags;
+
+    if (!chrdev_range_valid(from, count))
+        return;
+
+    flags = spin_lock_irqsave(&chrdev_registry.lock);
+    list_for_each_entry_safe(region, tmp, &chrdev_registry.regions, node) {
+        if (region->from == from && region->count == count) {
+            list_del(&region->node);
+            spin_unlock_irqrestore(&chrdev_registry.lock, flags);
+            kfree(region);
+            return;
+        }
+    }
+    spin_unlock_irqrestore(&chrdev_registry.lock, flags);
+}
+
 struct cdev *cdev_alloc() {
     struct cdev *dev = kzalloc(sizeof(struct cdev));
+    if (!dev)
+        return NULL;
     INIT_LIST_HEAD(&dev->list);
     return dev;
 }
 
+void cdev_init(struct cdev *cdev, const struct file_operations *fops)
+{
+    if (!cdev)
+        return;
+    memset(cdev, 0, sizeof(*cdev));
+    INIT_LIST_HEAD(&cdev->list);
+    cdev->fops = fops;
+}
+
 int cdev_add(struct cdev *cdev, dev_t devnr, int count) {
-    struct cdev *iter = NULL;
+    struct cdev *iter;
 
-    list_for_each_entry(iter, &g_cdevs, list) {
-        if (strcmp(iter->name, cdev->name) == 0) {
-            
-            return -EEXIST;
-        }
-    }
-
-    if (!cdev || !cdev->name)
+    if (!cdev || !cdev->fops || count <= 0)
         return -EINVAL;
+    list_for_each_entry(iter, &g_cdevs, list) {
+        dev_t end = devnr + count;
+        dev_t iter_end = iter->devnr + iter->count;
+        if (devnr < iter_end && iter->devnr < end)
+            return -EEXIST;
+    }
     cdev->devnr = devnr;
     cdev->count = count;
 
@@ -202,51 +234,57 @@ int cdev_add(struct cdev *cdev, dev_t devnr, int count) {
     return 0;
 }
 
-int cdev_register(const char *name, dev_t devnr, int count, const struct file_operations *fops, void *private) {
+void cdev_del(struct cdev *cdev)
+{
+    if (!cdev)
+        return;
+    list_del(&cdev->list);
+}
+
+int cdev_register(const char *name, dev_t devnr,
+                  const struct file_operations *fops, void *private) {
     struct cdev *cdev;
-
-    struct cdev *iter = NULL;
-
-    list_for_each_entry(iter, &g_cdevs, list) {
-        if (strcmp(iter->name, name) == 0) {
-            
-            return -EEXIST;
-        }
-    }
+    struct device *dev;
+    static struct class misc_class = { .name = "misc" };
+    static bool misc_class_ready;
+    int ret;
 
     cdev = cdev_alloc();
     if (!cdev)
         return -ENOMEM;
 
-    cdev->name = strdup(name);
-    cdev->devnr = devnr;
-    cdev->count = count;
+    cdev->fops = fops;
     cdev->private = private;
 
-    int ret;
-
-    if (!cdev || !cdev->name)
-        return -EINVAL;
-
-    ret = devnode_register(cdev->name, DEV_CHAR, devnr, fops, cdev);
-    if (ret < 0) {
-        
+    ret = cdev_add(cdev, devnr, 1);
+    if (ret) {
         kfree(cdev);
-         return ret;
+        return ret;
     }
-    cdev->node = devnode_lookup_by_name(cdev->name);
-    if (!cdev->node) {
-        
+
+    if (!misc_class_ready) {
+        ret = class_register(&misc_class);
+        if (ret && ret != -EEXIST) {
+            cdev_del(cdev);
+            kfree(cdev);
+            return ret;
+        }
+        misc_class_ready = true;
+    }
+
+    dev = device_create(&misc_class, NULL, devnr, S_IFCHR | 0600,
+                        private, name);
+    if (IS_ERR(dev)) {
+        ret = PTR_ERR(dev);
+        cdev_del(cdev);
         kfree(cdev);
-        return -EINVAL;
+        return ret;
     }
-    
-    list_add_tail( &g_cdevs,&cdev->list);
     return 0;
 }
 
 struct cdev* cdev_get_by_path(const char *path) {
-    struct devnode *node;
+    struct device *dev;
     struct cdev *cdev;
 
     if (!path)
@@ -255,14 +293,11 @@ struct cdev* cdev_get_by_path(const char *path) {
     if (strncmp(path, "/dev/", 5) == 0)
         path += 5;
 
-    node = devnode_lookup_by_name(path);
-    if (!node)
+    dev = device_find_by_name(path);
+    if (!dev || !S_ISCHR(dev->mode))
         return ERR_PTR(-ENODEV);
 
-    if (node->type != DEV_CHAR)
-        return ERR_PTR(-ENODEV);
-
-    cdev = node->private;
+    cdev = cdev_get_by_devnr(dev->devt);
     if (!cdev)
         return ERR_PTR(-ENODEV);
 

@@ -491,19 +491,32 @@ struct dentry *vfs_mknod(const char *path, u16 mode, dev_t dev) {
     struct dentry *child_dentry = NULL;
     int ret = 0;
 
-    CHECK(path != NULL, "", return NULL;);
+    if (!path)
+        return ERR_PTR(-EINVAL);
 
     ret = path_parentat(path, &resolved_parent, &child_name);
-    CHECK(ret == 0, "vfs: parent dir lookup failed", return NULL;);
+    if (ret < 0)
+        return ERR_PTR(ret);
 
     child_dentry = prepare_child_dentry(resolved_parent.dentry, &child_name);
-    CHECK(child_dentry != NULL, "vfs: d_alloc failed for child dentry", return NULL;);
+    if (!child_dentry) {
+        path_put(&resolved_parent);
+        return ERR_PTR(-ENOMEM);
+    }
+
+    if (!resolved_parent.dentry->d_inode ||
+        !resolved_parent.dentry->d_inode->i_op ||
+        !resolved_parent.dentry->d_inode->i_op->mknod) {
+        path_put(&resolved_parent);
+        dput(child_dentry);
+        return ERR_PTR(-ENOSYS);
+    }
 
     ret = resolved_parent.dentry->d_inode->i_op->mknod(resolved_parent.dentry->d_inode, child_dentry, mode, dev);
     path_put(&resolved_parent);
     if (ret < 0) {
         dput(child_dentry);
-        return NULL;
+        return ERR_PTR(ret);
     }
 
     return child_dentry;
@@ -1019,5 +1032,4 @@ __SYSCALL__ long sys_symlinkat(struct pt_regs *ctx) {
     dput(dentry);
     return 0;
 }
-
 

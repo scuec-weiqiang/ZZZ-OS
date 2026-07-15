@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: GPL-2.0
+#include <os/atomic.h>
+#include <os/check.h>
+#include <os/err.h>
+#include <os/kmalloc.h>
+#include <os/minmax.h>
+#include <os/pfn.h>
+#include <os/sched.h>
+#include <os/string.h>
 #include <os/tty.h>
 #include <os/tty_buffer.h>
 #include <os/tty_flip.h>
 #include <os/tty_ldisc.h>
 #include <os/tty_port.h>
-#include <os/string.h>
-#include <os/pfn.h>
-#include <os/kmalloc.h>
-#include <os/minmax.h>
-#include <os/atomic.h>
-#include <os/check.h>
-#include <os/err.h>
-#include <os/sched.h>
 
-#define MIN_TTYB_SIZE	256
-#define TTYB_ALIGN_MASK	0xff
+#define MIN_TTYB_SIZE 256
+#define TTYB_ALIGN_MASK 0xff
 
 /*
  * Byte threshold to limit memory consumption for flip buffers.
  * The actual memory limit is > 2x this amount.
  */
-#define TTYB_DEFAULT_MEM_LIMIT	(640 * 1024UL)
+#define TTYB_DEFAULT_MEM_LIMIT (640 * 1024UL)
 
 /*
  * We default to dicing tty buffer allocations to this many characters
@@ -30,7 +30,7 @@
  * logic this must match.
  */
 
-#define TTY_BUFFER_PAGE	(((PAGE_SIZE - sizeof(struct tty_buffer)) / 2) & ~TTYB_ALIGN_MASK)
+#define TTY_BUFFER_PAGE (((PAGE_SIZE - sizeof(struct tty_buffer)) / 2) & ~TTYB_ALIGN_MASK)
 
 /**
  * tty_buffer_lock_exclusive	-	gain exclusive access to buffer
@@ -42,12 +42,11 @@
  *
  * See also tty_buffer_unlock_exclusive().
  */
-void tty_buffer_lock_exclusive(struct tty_port *port)
-{
-	struct tty_bufhead *buf = &port->buf;
+void tty_buffer_lock_exclusive(struct tty_port *port) {
+    struct tty_bufhead *buf = &port->buf;
 
-	atomic_inc(&buf->priority);
-	mutex_lock(&buf->lock);
+    atomic_inc(&buf->priority);
+    mutex_lock(&buf->lock);
 }
 
 /**
@@ -58,16 +57,15 @@ void tty_buffer_lock_exclusive(struct tty_port *port)
  *
  * See also tty_buffer_lock_exclusive().
  */
-void tty_buffer_unlock_exclusive(struct tty_port *port)
-{
-	struct tty_bufhead *buf = &port->buf;
-	bool restart = buf->head->commit != buf->head->read;
+void tty_buffer_unlock_exclusive(struct tty_port *port) {
+    struct tty_bufhead *buf = &port->buf;
+    bool restart = buf->head->commit != buf->head->read;
 
-	atomic_dec(&buf->priority);
-	mutex_unlock(&buf->lock);
+    atomic_dec(&buf->priority);
+    mutex_unlock(&buf->lock);
 
-	if (restart)
-		queue_work(system_wq, &buf->work);
+    if (restart)
+        queue_work(system_wq, &buf->work);
 }
 
 /**
@@ -81,22 +79,20 @@ void tty_buffer_unlock_exclusive(struct tty_port *port)
  * # of bytes (use tty_prepare_flip_string() to pre-allocate if memory
  * guarantee is required).
  */
-unsigned int tty_buffer_space_avail(struct tty_port *port)
-{
-	int space = port->buf.mem_limit - atomic_read(&port->buf.mem_used);
+unsigned int tty_buffer_space_avail(struct tty_port *port) {
+    int space = port->buf.mem_limit - atomic_read(&port->buf.mem_used);
 
-	return max(space, 0);
+    return max(space, 0);
 }
 
-static void tty_buffer_reset(struct tty_buffer *p, size_t size)
-{
-	p->used = 0;
-	p->size = size;
-	p->next = NULL;
-	p->commit = 0;
-	p->lookahead = 0;
-	p->read = 0;
-	p->flags = true;
+static void tty_buffer_reset(struct tty_buffer *p, size_t size) {
+    p->used = 0;
+    p->size = size;
+    p->next = NULL;
+    p->commit = 0;
+    p->lookahead = 0;
+    p->read = 0;
+    p->flags = true;
 }
 
 /**
@@ -106,31 +102,28 @@ static void tty_buffer_reset(struct tty_buffer *p, size_t size)
  * Remove all the buffers pending on a tty whether queued with data or in the
  * free ring. Must be called when the tty is no longer in use.
  */
-void tty_buffer_free_all(struct tty_port *port)
-{
-	struct tty_bufhead *buf = &port->buf;
-	struct tty_buffer *p, *next;
-	struct llist_node *llist;
-	unsigned int freed = 0;
-	int still_used;
+void tty_buffer_free_all(struct tty_port *port) {
+    struct tty_bufhead *buf = &port->buf;
+    struct tty_buffer *p, *next;
+    struct llist_node *llist;
+    unsigned int freed = 0;
+    int still_used;
 
-	while ((p = buf->head) != NULL) {
-		buf->head = p->next;
-		freed += p->size;
-		if (p->size > 0)
-			kfree(p);
-	}
-	llist = llist_del_all(&buf->free);
-	llist_for_each_entry_safe(p, next, llist, free)
-		kfree(p);
+    while ((p = buf->head) != NULL) {
+        buf->head = p->next;
+        freed += p->size;
+        if (p->size > 0)
+            kfree(p);
+    }
+    llist = llist_del_all(&buf->free);
+    llist_for_each_entry_safe(p, next, llist, free) kfree(p);
 
-	tty_buffer_reset(&buf->sentinel, 0);
-	buf->head = &buf->sentinel;
-	buf->tail = &buf->sentinel;
+    tty_buffer_reset(&buf->sentinel, 0);
+    buf->head = &buf->sentinel;
+    buf->tail = &buf->sentinel;
 
-	still_used = atomic_xchg(&buf->mem_used, 0);
-	WARN(still_used != freed, "we still have not freed %d bytes!",
-			still_used - freed);
+    still_used = atomic_xchg(&buf->mem_used, 0);
+    WARN(still_used != freed, "we still have not freed %d bytes!", still_used - freed);
 }
 
 /**
@@ -145,35 +138,34 @@ void tty_buffer_free_all(struct tty_port *port)
  * Returns: %NULL if out of memory or the allocation would exceed the per
  * device queue.
  */
-static struct tty_buffer *tty_buffer_alloc(struct tty_port *port, size_t size)
-{
-	struct llist_node *free;
-	struct tty_buffer *p;
+static struct tty_buffer *tty_buffer_alloc(struct tty_port *port, size_t size) {
+    struct llist_node *free;
+    struct tty_buffer *p;
 
-	/* Round the buffer size out */
-	size = ALIGN_UP(size, TTYB_ALIGN_MASK);
+    /* Round the buffer size out */
+    size = ALIGN_UP(size, TTYB_ALIGN_MASK);
 
-	if (size <= MIN_TTYB_SIZE) {
-		free = llist_del_first(&port->buf.free);
-		if (free) {
-			p = llist_entry(free, struct tty_buffer, free);
-			goto found;
-		}
-	}
+    if (size <= MIN_TTYB_SIZE) {
+        free = llist_del_first(&port->buf.free);
+        if (free) {
+            p = llist_entry(free, struct tty_buffer, free);
+            goto found;
+        }
+    }
 
-	/* Should possibly check if this fails for the largest buffer we
-	 * have queued and recycle that ?
-	 */
-	if (atomic_read(&port->buf.mem_used) > port->buf.mem_limit)
-		return NULL;
-	p = kmalloc(sizeof(*p) + 2 * size);
-	if (p == NULL)
-		return NULL;
+    /* Should possibly check if this fails for the largest buffer we
+     * have queued and recycle that ?
+     */
+    if (atomic_read(&port->buf.mem_used) > port->buf.mem_limit)
+        return NULL;
+    p = kmalloc(sizeof(*p) + 2 * size);
+    if (p == NULL)
+        return NULL;
 
 found:
-	tty_buffer_reset(p, size);
-	atomic_add(size, &port->buf.mem_used);
-	return p;
+    tty_buffer_reset(p, size);
+    atomic_add(size, &port->buf.mem_used);
+    return p;
 }
 
 /**
@@ -184,19 +176,18 @@ found:
  * Free a tty buffer, or add it to the free list according to our internal
  * strategy.
  */
-static void tty_buffer_free(struct tty_port *port, struct tty_buffer *b)
-{
-	struct tty_bufhead *buf = &port->buf;
+static void tty_buffer_free(struct tty_port *port, struct tty_buffer *b) {
+    struct tty_bufhead *buf = &port->buf;
 
-	/* Dumb strategy for now - should keep some stats */
-	if(atomic_sub_return(b->size, &buf->mem_used) < 0) {
+    /* Dumb strategy for now - should keep some stats */
+    if (atomic_sub_return(b->size, &buf->mem_used) < 0) {
         dprintk("mem_used < 0");
     }
 
-	if (b->size > MIN_TTYB_SIZE)
-		kfree(b);
-	else if (b->size > 0)
-		llist_add(&b->free, &buf->free);
+    if (b->size > MIN_TTYB_SIZE)
+        kfree(b);
+    else if (b->size > 0)
+        llist_add(&b->free, &buf->free);
 }
 
 /**
@@ -209,30 +200,29 @@ static void tty_buffer_free(struct tty_port *port, struct tty_buffer *b)
  *
  * Locking: takes buffer lock to ensure single-threaded flip buffer 'consumer'.
  */
-void tty_buffer_flush(struct tty_struct *tty, struct tty_ldisc *ld)
-{
-	struct tty_port *port = tty->port;
-	struct tty_bufhead *buf = &port->buf;
-	struct tty_buffer *next;
+void tty_buffer_flush(struct tty_struct *tty, struct tty_ldisc *ld) {
+    struct tty_port *port = tty->port;
+    struct tty_bufhead *buf = &port->buf;
+    struct tty_buffer *next;
 
-	atomic_inc(&buf->priority);
+    atomic_inc(&buf->priority);
 
-	mutex_lock(&buf->lock);
-	/* paired w/ release in __tty_buffer_request_room; ensures there are
-	 * no pending memory accesses to the freed buffer
-	 */
-	while ((next = smp_load_acquire(&buf->head->next)) != NULL) {
-		tty_buffer_free(port, buf->head);
-		buf->head = next;
-	}
-	buf->head->read = buf->head->commit;
-	buf->head->lookahead = buf->head->read;
+    mutex_lock(&buf->lock);
+    /* paired w/ release in __tty_buffer_request_room; ensures there are
+     * no pending memory accesses to the freed buffer
+     */
+    while ((next = smp_load_acquire(&buf->head->next)) != NULL) {
+        tty_buffer_free(port, buf->head);
+        buf->head = next;
+    }
+    buf->head->read = buf->head->commit;
+    buf->head->lookahead = buf->head->read;
 
-	if (ld && ld->ops->flush_buffer)
-		ld->ops->flush_buffer(tty);
+    if (ld && ld->ops->flush_buffer)
+        ld->ops->flush_buffer(tty);
 
-	atomic_dec(&buf->priority);
-	mutex_unlock(&buf->lock);
+    atomic_dec(&buf->priority);
+    mutex_unlock(&buf->lock);
 }
 
 /**
@@ -249,81 +239,76 @@ void tty_buffer_flush(struct tty_struct *tty, struct tty_ldisc *ld)
  *
  * Returns: the size we managed to find.
  */
-static int __tty_buffer_request_room(struct tty_port *port, size_t size,
-				     bool flags)
-{
-	struct tty_bufhead *buf = &port->buf;
-	struct tty_buffer *n, *b = buf->tail;
-	size_t left = (b->flags ? 1 : 2) * b->size - b->used;
-	bool change = !b->flags && flags;
+static int __tty_buffer_request_room(struct tty_port *port, size_t size, bool flags) {
+    struct tty_bufhead *buf = &port->buf;
+    struct tty_buffer *n, *b = buf->tail;
+    size_t left = (b->flags ? 1 : 2) * b->size - b->used;
+    bool change = !b->flags && flags;
 
-	if (!change && left >= size)
-		return size;
+    if (!change && left >= size)
+        return size;
 
-	/* This is the slow path - looking for new buffers to use */
-	n = tty_buffer_alloc(port, size);
-	if (n == NULL)
-		return change ? 0 : left;
+    /* This is the slow path - looking for new buffers to use */
+    n = tty_buffer_alloc(port, size);
+    if (n == NULL)
+        return change ? 0 : left;
 
-	n->flags = flags;
-	buf->tail = n;
-	/*
-	 * Paired w/ acquire in flush_to_ldisc() and lookahead_bufs()
-	 * ensures they see all buffer data.
-	 */
-	smp_store_release(&b->commit, b->used);
-	/*
-	 * Paired w/ acquire in flush_to_ldisc() and lookahead_bufs()
-	 * ensures the latest commit value can be read before the head
-	 * is advanced to the next buffer.
-	 */
-	smp_store_release(&b->next, n);
+    n->flags = flags;
+    buf->tail = n;
+    /*
+     * Paired w/ acquire in flush_to_ldisc() and lookahead_bufs()
+     * ensures they see all buffer data.
+     */
+    smp_store_release(&b->commit, b->used);
+    /*
+     * Paired w/ acquire in flush_to_ldisc() and lookahead_bufs()
+     * ensures the latest commit value can be read before the head
+     * is advanced to the next buffer.
+     */
+    smp_store_release(&b->next, n);
 
-	return size;
+    return size;
 }
 
-int tty_buffer_request_room(struct tty_port *port, size_t size)
-{
-	return __tty_buffer_request_room(port, size, true);
+int tty_buffer_request_room(struct tty_port *port, size_t size) {
+    return __tty_buffer_request_room(port, size, true);
 }
 
-size_t __tty_insert_flip_string_flags(struct tty_port *port, const u8 *chars,
-				      const u8 *flags, bool mutable_flags,
-				      size_t size)
-{
-	bool need_flags = mutable_flags || flags[0] != TTY_NORMAL;
-	size_t copied = 0;
+size_t __tty_insert_flip_string_flags(struct tty_port *port, const u8 *chars, const u8 *flags,
+                                      bool mutable_flags, size_t size) {
+    bool need_flags = mutable_flags || flags[0] != TTY_NORMAL;
+    size_t copied = 0;
 
-	do {
-		size_t goal = min_t(size_t, size - copied, TTY_BUFFER_PAGE);
-		size_t space = __tty_buffer_request_room(port, goal, need_flags);
-		struct tty_buffer *tb = port->buf.tail;
+    do {
+        size_t goal = min_t(size_t, size - copied, TTY_BUFFER_PAGE);
+        size_t space = __tty_buffer_request_room(port, goal, need_flags);
+        struct tty_buffer *tb = port->buf.tail;
 
-		if (unlikely(space == 0))
-			break;
+        if (unlikely(space == 0))
+            break;
 
-		memcpy(char_buf_ptr(tb, tb->used), chars, space);
+        memcpy(char_buf_ptr(tb, tb->used), chars, space);
 
-		if (mutable_flags) {
-			memcpy(flag_buf_ptr(tb, tb->used), flags, space);
-			flags += space;
-		} else if (tb->flags) {
-			memset(flag_buf_ptr(tb, tb->used), flags[0], space);
-		} else {
-			/* tb->flags should be available once requested */
-			// WARN_ON_ONCE(need_flags);
-		}
+        if (mutable_flags) {
+            memcpy(flag_buf_ptr(tb, tb->used), flags, space);
+            flags += space;
+        } else if (tb->flags) {
+            memset(flag_buf_ptr(tb, tb->used), flags[0], space);
+        } else {
+            /* tb->flags should be available once requested */
+            // WARN_ON_ONCE(need_flags);
+        }
 
-		tb->used += space;
-		copied += space;
-		chars += space;
+        tb->used += space;
+        copied += space;
+        chars += space;
 
-		/* There is a small chance that we need to split the data over
-		 * several buffers. If this is the case we must loop.
-		 */
-	} while (unlikely(size > copied));
+        /* There is a small chance that we need to split the data over
+         * several buffers. If this is the case we must loop.
+         */
+    } while (unlikely(size > copied));
 
-	return copied;
+    return copied;
 }
 
 /**
@@ -340,20 +325,19 @@ size_t __tty_insert_flip_string_flags(struct tty_port *port, const u8 *chars,
  * Returns: the length available and buffer pointer (@chars) to the space which
  * is now allocated and accounted for as ready for normal characters.
  */
-size_t tty_prepare_flip_string(struct tty_port *port, u8 **chars, size_t size)
-{
-	size_t space = __tty_buffer_request_room(port, size, false);
+size_t tty_prepare_flip_string(struct tty_port *port, u8 **chars, size_t size) {
+    size_t space = __tty_buffer_request_room(port, size, false);
 
-	if (likely(space)) {
-		struct tty_buffer *tb = port->buf.tail;
+    if (likely(space)) {
+        struct tty_buffer *tb = port->buf.tail;
 
-		*chars = char_buf_ptr(tb, tb->used);
-		if (tb->flags)
-			memset(flag_buf_ptr(tb, tb->used), TTY_NORMAL, space);
-		tb->used += space;
-	}
+        *chars = char_buf_ptr(tb, tb->used);
+        if (tb->flags)
+            memset(flag_buf_ptr(tb, tb->used), TTY_NORMAL, space);
+        tb->used += space;
+    }
 
-	return space;
+    return space;
 }
 
 /**
@@ -368,71 +352,66 @@ size_t tty_prepare_flip_string(struct tty_port *port, u8 **chars, size_t size)
  *
  * Returns: the number of bytes processed.
  */
-size_t tty_ldisc_receive_buf(struct tty_ldisc *ld, const u8 *p, const u8 *f,
-			     size_t count)
-{
-	if (ld->ops->receive_buf2)
-		count = ld->ops->receive_buf2(ld->tty, p, f, count);
-	else {
-		count = min_t(size_t, count, ld->tty->receive_room);
-		if (count && ld->ops->receive_buf)
-			ld->ops->receive_buf(ld->tty, p, f, count);
-	}
-	return count;
+size_t tty_ldisc_receive_buf(struct tty_ldisc *ld, const u8 *p, const u8 *f, size_t count) {
+    if (ld->ops->receive_buf2)
+        count = ld->ops->receive_buf2(ld->tty, p, f, count);
+    else {
+        count = min_t(size_t, count, ld->tty->receive_room);
+        if (count && ld->ops->receive_buf)
+            ld->ops->receive_buf(ld->tty, p, f, count);
+    }
+    return count;
 }
 
-static void lookahead_bufs(struct tty_port *port, struct tty_buffer *head)
-{
-	head->lookahead = max(head->lookahead, head->read);
+static void lookahead_bufs(struct tty_port *port, struct tty_buffer *head) {
+    head->lookahead = max(head->lookahead, head->read);
 
-	while (head) {
-		struct tty_buffer *next;
-		unsigned int count;
+    while (head) {
+        struct tty_buffer *next;
+        unsigned int count;
 
-		/*
-		 * Paired w/ release in __tty_buffer_request_room();
-		 * ensures commit value read is not stale if the head
-		 * is advancing to the next buffer.
-		 */
-		next = smp_load_acquire(&head->next);
-		/*
-		 * Paired w/ release in __tty_buffer_request_room() or in
-		 * tty_buffer_flush(); ensures we see the committed buffer data.
-		 */
-		count = smp_load_acquire(&head->commit) - head->lookahead;
-		if (!count) {
-			head = next;
-			continue;
-		}
+        /*
+         * Paired w/ release in __tty_buffer_request_room();
+         * ensures commit value read is not stale if the head
+         * is advancing to the next buffer.
+         */
+        next = smp_load_acquire(&head->next);
+        /*
+         * Paired w/ release in __tty_buffer_request_room() or in
+         * tty_buffer_flush(); ensures we see the committed buffer data.
+         */
+        count = smp_load_acquire(&head->commit) - head->lookahead;
+        if (!count) {
+            head = next;
+            continue;
+        }
 
-		if (port->client_ops->lookahead_buf) {
-			u8 *p, *f = NULL;
+        if (port->client_ops->lookahead_buf) {
+            u8 *p, *f = NULL;
 
-			p = char_buf_ptr(head, head->lookahead);
-			if (head->flags)
-				f = flag_buf_ptr(head, head->lookahead);
+            p = char_buf_ptr(head, head->lookahead);
+            if (head->flags)
+                f = flag_buf_ptr(head, head->lookahead);
 
-			port->client_ops->lookahead_buf(port, p, f, count);
-		}
+            port->client_ops->lookahead_buf(port, p, f, count);
+        }
 
-		head->lookahead += count;
-	}
+        head->lookahead += count;
+    }
 }
 
-static size_t
-receive_buf(struct tty_port *port, struct tty_buffer *head, size_t count)
-{
-	u8 *p = char_buf_ptr(head, head->read);
-	const u8 *f = NULL;
-	size_t n;
+static size_t receive_buf(struct tty_port *port, struct tty_buffer *head, size_t count) {
+    u8 *p = char_buf_ptr(head, head->read);
+    const u8 *f = NULL;
+    size_t n;
 
-	if (head->flags)
-		f = flag_buf_ptr(head, head->read);
+    if (head->flags)
+        f = flag_buf_ptr(head, head->read);
 
-	n = port->client_ops->receive_buf(port, p, f, count);
-	if (n > 0)
-		memset(p, 0, n);
-	return n;
+    n = port->client_ops->receive_buf(port, p, f, count);
+    if (n > 0)
+        memset(p, 0, n);
+    return n;
 }
 
 /**
@@ -446,62 +425,59 @@ receive_buf(struct tty_port *port, struct tty_buffer *head, size_t count)
  *
  * Locking: takes buffer lock to ensure single-threaded flip buffer 'consumer'.
  */
-static void flush_to_ldisc(struct work_struct *work)
-{
-	struct tty_port *port = container_of(work, struct tty_port, buf.work);
-	struct tty_bufhead *buf = &port->buf;
+static void flush_to_ldisc(struct work_struct *work) {
+    struct tty_port *port = container_of(work, struct tty_port, buf.work);
+    struct tty_bufhead *buf = &port->buf;
 
-	mutex_lock(&buf->lock);
+    mutex_lock(&buf->lock);
 
-	while (1) {
-		struct tty_buffer *head = buf->head;
-		struct tty_buffer *next;
-		size_t count, rcvd;
+    while (1) {
+        struct tty_buffer *head = buf->head;
+        struct tty_buffer *next;
+        size_t count, rcvd;
 
-		/* Ldisc or user is trying to gain exclusive access */
-		if (atomic_read(&buf->priority))
-			break;
+        /* Ldisc or user is trying to gain exclusive access */
+        if (atomic_read(&buf->priority))
+            break;
 
-		/* paired w/ release in __tty_buffer_request_room();
-		 * ensures commit value read is not stale if the head
-		 * is advancing to the next buffer
-		 */
-		next = smp_load_acquire(&head->next);
-		/* paired w/ release in __tty_buffer_request_room() or in
-		 * tty_buffer_flush(); ensures we see the committed buffer data
-		 */
-		count = smp_load_acquire(&head->commit) - head->read;
-		if (!count) {
-			if (next == NULL)
-				break;
-			buf->head = next;
-			tty_buffer_free(port, head);
-			continue;
-		}
+        /* paired w/ release in __tty_buffer_request_room();
+         * ensures commit value read is not stale if the head
+         * is advancing to the next buffer
+         */
+        next = smp_load_acquire(&head->next);
+        /* paired w/ release in __tty_buffer_request_room() or in
+         * tty_buffer_flush(); ensures we see the committed buffer data
+         */
+        count = smp_load_acquire(&head->commit) - head->read;
+        if (!count) {
+            if (next == NULL)
+                break;
+            buf->head = next;
+            tty_buffer_free(port, head);
+            continue;
+        }
 
-		rcvd = receive_buf(port, head, count);
-		head->read += rcvd;
-		// if (rcvd < count)
-		// 	lookahead_bufs(port, head);
-		if (!rcvd)
-			break;
+        rcvd = receive_buf(port, head, count);
+        head->read += rcvd;
+        // if (rcvd < count)
+        // 	lookahead_bufs(port, head);
+        if (!rcvd)
+            break;
 
         // #define cond_resched() do { } while (0)
 
-		cond_resched();
-	}
+        cond_resched();
+    }
 
-	mutex_unlock(&buf->lock);
-
+    mutex_unlock(&buf->lock);
 }
 
-static inline void tty_flip_buffer_commit(struct tty_buffer *tail)
-{
-	/*
-	 * Paired w/ acquire in flush_to_ldisc(); ensures flush_to_ldisc() sees
-	 * buffer data.
-	 */
-	smp_store_release(&tail->commit, tail->used);
+static inline void tty_flip_buffer_commit(struct tty_buffer *tail) {
+    /*
+     * Paired w/ acquire in flush_to_ldisc(); ensures flush_to_ldisc() sees
+     * buffer data.
+     */
+    smp_store_release(&tail->commit, tail->used);
 }
 
 /**
@@ -514,12 +490,11 @@ static inline void tty_flip_buffer_commit(struct tty_buffer *tail)
  * In the event of the queue being busy for flipping the work will be held off
  * and retried later.
  */
-void tty_flip_buffer_push(struct tty_port *port)
-{
-	struct tty_bufhead *buf = &port->buf;
+void tty_flip_buffer_push(struct tty_port *port) {
+    struct tty_bufhead *buf = &port->buf;
 
-	tty_flip_buffer_commit(buf->tail);
-	queue_work(system_wq, &buf->work);
+    tty_flip_buffer_commit(buf->tail);
+    queue_work(system_wq, &buf->work);
 }
 
 /**
@@ -536,21 +511,19 @@ void tty_flip_buffer_push(struct tty_port *port)
  *
  * Returns: the number added.
  */
-int tty_insert_flip_string_and_push_buffer(struct tty_port *port,
-					   const u8 *chars, size_t size)
-{
-	struct tty_bufhead *buf = &port->buf;
-	unsigned long flags;
+int tty_insert_flip_string_and_push_buffer(struct tty_port *port, const u8 *chars, size_t size) {
+    struct tty_bufhead *buf = &port->buf;
+    unsigned long flags;
 
-	flags = spin_lock_irqsave(&port->lock);
-	size = tty_insert_flip_string(port, chars, size);
-	if (size)
-		tty_flip_buffer_commit(buf->tail);
-	spin_unlock_irqrestore(&port->lock, flags);
+    flags = spin_lock_irqsave(&port->lock);
+    size = tty_insert_flip_string(port, chars, size);
+    if (size)
+        tty_flip_buffer_commit(buf->tail);
+    spin_unlock_irqrestore(&port->lock, flags);
 
-	queue_work(system_wq, &buf->work);
+    queue_work(system_wq, &buf->work);
 
-	return size;
+    return size;
 }
 
 /**
@@ -560,19 +533,18 @@ int tty_insert_flip_string_and_push_buffer(struct tty_port *port,
  * Set up the initial state of the buffer management for a tty device. Must be
  * called before the other tty buffer functions are used.
  */
-void tty_buffer_init(struct tty_port *port)
-{
-	struct tty_bufhead *buf = &port->buf;
+void tty_buffer_init(struct tty_port *port) {
+    struct tty_bufhead *buf = &port->buf;
 
-	mutex_init(&buf->lock);
-	tty_buffer_reset(&buf->sentinel, 0);
-	buf->head = &buf->sentinel;
-	buf->tail = &buf->sentinel;
-	init_llist_head(&buf->free);
-	atomic_set(&buf->mem_used, 0);
-	atomic_set(&buf->priority, 0);
-	init_work(&buf->work, flush_to_ldisc);
-	buf->mem_limit = TTYB_DEFAULT_MEM_LIMIT;
+    mutex_init(&buf->lock);
+    tty_buffer_reset(&buf->sentinel, 0);
+    buf->head = &buf->sentinel;
+    buf->tail = &buf->sentinel;
+    init_llist_head(&buf->free);
+    atomic_set(&buf->mem_used, 0);
+    atomic_set(&buf->priority, 0);
+    init_work(&buf->work, flush_to_ldisc);
+    buf->mem_limit = TTYB_DEFAULT_MEM_LIMIT;
 }
 
 /**
@@ -584,24 +556,21 @@ void tty_buffer_init(struct tty_port *port)
  *
  * Must be called before the other tty buffer functions are used.
  */
-int tty_buffer_set_limit(struct tty_port *port, int limit)
-{
-	if (limit < MIN_TTYB_SIZE)
-		return -EINVAL;
-	port->buf.mem_limit = limit;
-	return 0;
+int tty_buffer_set_limit(struct tty_port *port, int limit) {
+    if (limit < MIN_TTYB_SIZE)
+        return -EINVAL;
+    port->buf.mem_limit = limit;
+    return 0;
 }
 
 /* slave ptys can claim nested buffer lock when handling BRK and INTR */
-void tty_buffer_set_lock_subclass(struct tty_port *port)
-{
-	// lockdep_set_subclass(&port->buf.lock, TTY_LOCK_SLAVE);
+void tty_buffer_set_lock_subclass(struct tty_port *port) {
+    // lockdep_set_subclass(&port->buf.lock, TTY_LOCK_SLAVE);
     (void)port;
 }
 
-bool tty_buffer_restart_work(struct tty_port *port)
-{
-	return queue_work(system_wq, &port->buf.work);
+bool tty_buffer_restart_work(struct tty_port *port) {
+    return queue_work(system_wq, &port->buf.work);
 }
 
 // bool tty_buffer_cancel_work(struct tty_port *port)

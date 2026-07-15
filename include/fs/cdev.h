@@ -3,18 +3,15 @@
 
 #include <os/types.h>
 #include <fs/types.h>
-#include <os/devnode.h>
 #include <os/spinlock.h>
 
 #define CHRDEV_MAJOR 1
 
 struct cdev {
-    const char *name;                     // "console", "tty0", "null"
     dev_t devnr;                           // major/minor
     int cd_openers;
     void *private;
     const struct file_operations *fops;
-    struct devnode *node;
     int count;
     struct list_head list;
 };
@@ -49,11 +46,12 @@ int alloc_chrdev_region(dev_t *dev,
 void unregister_chrdev_region(dev_t from,
                               unsigned int count);
 struct cdev *cdev_alloc();
+void cdev_init(struct cdev *cdev, const struct file_operations *fops);
 
 int cdev_add(struct cdev *cdev, dev_t devnr, int count);
-int cdev_register(const char *name, dev_t devnr, int count,
-                    const struct file_operations *fops, 
-                    void *private);
+void cdev_del(struct cdev *cdev);
+int cdev_register(const char *name, dev_t devnr,
+                  const struct file_operations *fops, void *private);
 struct cdev* cdev_get_by_path(const char *path);
 void cdev_put(struct cdev *cdev);
 struct cdev *cdev_get_by_devnr(dev_t devnr);

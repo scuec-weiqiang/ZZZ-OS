@@ -23,7 +23,7 @@ int bus_add_device(struct device *dev) {
     if (!dev || !dev->bus) {
         return -1;
     }
-    list_add(&dev->bus->devices, &dev->node);
+    list_add_tail(&dev->bus->devices, &dev->bus_node);
     return 0;
 }
 
@@ -31,7 +31,7 @@ int bus_remove_device(struct device *dev) {
     if (!dev || !dev->bus) {
         return -1;
     }
-    list_del(&dev->node);
+    list_del(&dev->bus_node);
     return 0;
 }
 

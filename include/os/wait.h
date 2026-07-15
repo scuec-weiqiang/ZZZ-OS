@@ -83,14 +83,4 @@ static inline void wait_queue_remove(struct wait_queue_head *wq_head, struct wai
     list_del(&wait->list);
 }
 
-
-
-// #define set_wait_reason(task, reason) do { \
-//     if (task) { \
-//         task->wait_reason = wait_reason[reason]; \
-//     } \
-// } while(0)
-
-
-
 #endif

@@ -1,25 +1,85 @@
-#include <os/mutex.h>
-#include <os/syscall.h>
-#include <os/tty_buffer.h>
-#include <os/wait.h>
-#include <uapi/asm-generic/ioctls.h>
 #include <asm/ptrace.h>
 #include <fs/cdev.h>
 #include <fs/file.h>
 #include <fs/types.h>
 #include <os/devnode.h>
+#include <os/err.h>
 #include <os/errno.h>
 #include <os/kmalloc.h>
+#include <os/mutex.h>
 #include <os/sched.h>
 #include <os/signal.h>
 #include <os/string.h>
+#include <os/syscall.h>
 #include <os/tty.h>
 #include <os/uaccess.h>
+#include <os/wait.h>
+#include <os/printk.h>
+#include <uapi/asm-generic/ioctls.h>
 
+LIST_HEAD(tty_drivers); /* linked list of tty drivers */
+DEFINE_MUTEX(tty_mutex);
+static struct class tty_class = { .name = "tty" };
+static bool tty_class_ready;
 
-ssize_t tty_read(struct tty_struct *tty, char *buf, size_t size);
-ssize_t tty_write(struct tty_struct *tty, const char *buf, size_t size);
-long tty_ioctl(struct tty_struct *tty, unsigned long request, unsigned long arg);
+struct ktermios tty_std_termios = {
+    /* for the benefit of tty drivers  */
+    .c_iflag = ICRNL | IXON,
+    .c_oflag = OPOST | ONLCR,
+    .c_cflag = B38400 | CS8 | CREAD | HUPCL,
+    .c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE | IEXTEN,
+    .c_cc = INIT_C_CC,
+    .c_ispeed = 38400,
+    .c_ospeed = 38400,
+    .c_line = N_TTY,
+};
+
+static size_t tty_port_default_receive_buf(struct tty_port *port, const u8 *cp,
+                                           const u8 *fp, size_t count) {
+    struct tty_struct *tty;
+
+    if (!port)
+        return 0;
+
+    tty = port->tty;
+    if (!tty || !tty->ldisc)
+        return 0;
+
+    return tty_ldisc_receive_buf(tty->ldisc, cp, fp, count);
+}
+
+static const struct tty_port_client_operations tty_port_default_client_ops = {
+    .receive_buf = tty_port_default_receive_buf,
+};
+
+static struct tty_struct *tty_alloc_struct(struct tty_driver *driver, unsigned int index) {
+    struct tty_struct *tty;
+    tty = kmalloc(sizeof(*tty));
+    if (!tty) {
+        return NULL;
+    }
+
+    tty_init(tty, driver, NULL, index, NULL);
+    return tty;
+}
+
+static void tty_free_struct(struct tty_struct *tty) {
+    kfree(tty);
+}
+
+static int tty_install(struct tty_driver *driver, struct tty_struct *tty) {
+    if (!driver || !tty)
+        return -EINVAL;
+
+    if (driver->ops && driver->ops->install)
+        return driver->ops->install(driver, tty);
+
+    return 0;
+}
+
+static void tty_remove(struct tty_driver *driver, struct tty_struct *tty) {
+
+}
 
 static void tty_apply_termios(struct tty_struct *tty) {
     tty->echo = (tty->termios.c_lflag & ECHO) != 0;
@@ -86,160 +146,6 @@ static void tty_termios2_from_user(struct ktermios *dst, const struct termios2 *
     dst->c_ospeed = src->c_ospeed;
 }
 
-
-
-
-
-static int tty_current_fops_open(struct inode *inode, struct file *file) {
-    struct tty_struct *tty;
-
-    (void)inode;
-    if (file == NULL || current == NULL || current->signal == NULL ||
-        current->signal->tty == NULL) {
-        return -ENXIO;
-    }
-
-    tty = current->signal->tty;
-    file->private_data = tty;
-    return tty_fops_open(inode, file);
-}
-
-static const struct file_operations tty_current_fops = {
-    .open = tty_current_fops_open,
-    .release = tty_fops_release,
-    .read = tty_fops_read,
-    .write = tty_fops_write,
-    .ioctl = tty_fops_ioctl,
-};
-
-static int tty_register_current_device(void) {
-    static int registered;
-    dev_t dev;
-    int ret;
-
-    if (registered) {
-        return 0;
-    }
-
-    ret = alloc_chrdev_region(&dev, 1);
-    if (ret) {
-        return ret;
-    }
-
-    ret = cdev_register("tty", dev, &tty_current_fops, NULL);
-    if (ret) {
-        return ret;
-    }
-
-    registered = 1;
-    return 0;
-}
-
-
-
-
-static int tty_inbuf_full(struct tty_struct *tty) {
-    return tty->inbuf_count == TTY_BUF_SIZE;
-}
-
-static int tty_inbuf_empty(struct tty_struct *tty) {
-    return tty->inbuf_count == 0;
-}
-
-static void tty_inbuf_push(struct tty_struct *tty, char ch) {
-    if (tty_inbuf_full(tty)) {
-        return;
-    }
-
-    tty->inbuf[tty->head] = ch;
-    tty->head = (tty->head + 1) % TTY_BUF_SIZE;
-    tty->inbuf_count++;
-}
-
-static int tty_inbuf_pop(struct tty_struct *tty, char *ch) {
-    if (tty_inbuf_empty(tty)) {
-        return 0;
-    }
-
-    *ch = tty->inbuf[tty->tail];
-    tty->tail = (tty->tail + 1) % TTY_BUF_SIZE;
-    tty->inbuf_count--;
-    return 1;
-}
-
-static void tty_putc(struct tty_struct *tty, char ch) {
-    if (tty->driver != NULL && tty->driver->ops != NULL && tty->driver->ops->write != NULL) {
-        tty->driver->ops->write(tty, &ch, 1);
-    }
-}
-
-static void tty_echo_char(struct tty_struct *tty, char ch) {
-    if (!tty->echo) {
-        return;
-    }
-
-    if (ch == '\n') {
-        tty_putc(tty, '\r');
-        tty_putc(tty, '\n');
-    } else {
-        tty_putc(tty, ch);
-    }
-}
-
-static void tty_flush_line(struct tty_struct *tty) {
-    unsigned int i;
-
-    for (i = 0; i < tty->line_len; i++) {
-        tty_inbuf_push(tty, tty->linebuf[i]);
-    }
-    tty->line_len = 0;
-}
-
-static void tty_flush_input(struct tty_struct *tty) {
-    tty->head = 0;
-    tty->tail = 0;
-    tty->inbuf_count = 0;
-    tty->line_len = 0;
-}
-
-static int tty_sleep_if_empty(struct tty_struct *tty) {
-    struct task_struct *task = current;
-    struct tty_port *port;
-    struct rq *rq;
-    unsigned long rq_flags;
-    unsigned long tty_flags;
-    unsigned long wq_flags;
-
-    if (task == NULL || task->status != TASK_RUNNING || tty == NULL || tty->port == NULL) {
-        return 0;
-    }
-
-    port = tty->port;
-    wq_flags = spin_lock_irqsave(&port->read_wait.lock);
-
-    tty_flags = spin_lock_irqsave(&tty->lock);
-    if (!tty_inbuf_empty(tty)) {
-        spin_unlock_irqrestore(&tty->lock, tty_flags);
-        spin_unlock_irqrestore(&port->read_wait.lock, wq_flags);
-        return 0;
-    }
-    spin_unlock_irqrestore(&tty->lock, tty_flags);
-
-    task->status = TASK_SLEEPING;
-    rq = this_rq();
-    rq_flags = spin_lock_irqsave(&rq->lock);
-    task->sched_class->dequeue_task(rq, task);
-    spin_unlock_irqrestore(&rq->lock, rq_flags);
-
-    task->wait.private = task;
-    wait_queue_add(&port->read_wait, &task->wait);
-
-    spin_unlock_irqrestore(&port->read_wait.lock, wq_flags);
-
-    sched();
-    return 1;
-}
-
 void tty_port_init(struct tty_port *port) {
     memset(port, 0, sizeof(*port));
     tty_buffer_init(port);
@@ -253,172 +159,49 @@ void tty_port_init(struct tty_port *port) {
     port->client_ops = &tty_port_default_client_ops;
 }
 
-void tty_init(struct tty_struct *tty, struct tty_driver *driver, struct tty_port *port, int index,
-              void *driver_data) {
+void tty_port_destroy(struct tty_port *port) {
+    if (port == NULL) {
+        return;
+    }
+    tty_buffer_free_all(port);
+}
+
+void tty_init(struct tty_struct *tty, struct tty_driver *driver,
+                struct tty_port *port, int index,void *driver_data) {
     if (tty == NULL) {
         return;
     }
 
     memset(tty, 0, sizeof(*tty));
     spin_lock_init(&tty->lock);
+    mutex_init(&tty->read_lock);
+    mutex_init(&tty->write_lock);
     tty->index = index;
     tty->driver = driver;
     tty->port = port;
     tty->driver_data = driver_data;
     if (port != NULL) {
         port->tty = tty;
-        port->driver_data = driver_data;
     }
-    tty->termios.c_iflag = ICRNL | IXON;
-    tty->termios.c_oflag = OPOST;
-    tty->termios.c_cflag = CS8 | CREAD | HUPCL;
-    tty->termios.c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK | ECHOCTL | ECHOKE | IEXTEN;
-    tty->termios.c_cc[VINTR] = 3;
-    tty->termios.c_cc[VQUIT] = 28;
-    tty->termios.c_cc[VERASE] = 127;
-    tty->termios.c_cc[VKILL] = 21;
-    tty->termios.c_cc[VEOF] = 4;
-    tty->termios.c_cc[VTIME] = 0;
-    tty->termios.c_cc[VMIN] = 1;
-    tty->winsize.ws_row = 24;
-    tty->winsize.ws_col = 80;
-    tty->pgrp = 0;
+    tty->termios = driver->termios[index];
     tty_apply_termios(tty);
+    return;
 }
 
 void tty_receive_char(struct tty_struct *tty, char ch) {
-    unsigned long flags;
-    int wake = 0;
-    int echo_backspace = 0;
-    char echo_ch = 0;
-    int sig = 0;
-    pid_t pgrp = 0;
+    unsigned char c = (unsigned char)ch;
 
-    if (tty == NULL) {
+    if (tty == NULL || tty->ldisc == NULL || tty->ldisc->ops == NULL) {
         return;
     }
 
-    if ((tty->termios.c_iflag & ICRNL) && ch == '\r') {
-        ch = '\n';
-    }
-
-    flags = spin_lock_irqsave(&tty->lock);
-
-    if ((tty->termios.c_lflag & ISIG) && ch == tty->termios.c_cc[VINTR]) {
-        sig = SIGINT;
-        pgrp = tty->pgrp;
-        if (!(tty->termios.c_lflag & NOFLSH)) {
-            tty_flush_input(tty);
-        }
-        spin_unlock_irqrestore(&tty->lock, flags);
-
-        if (tty->echo && (tty->termios.c_lflag & ECHOCTL)) {
-            tty_putc(tty, '^');
-            tty_putc(tty, 'C');
-            tty_putc(tty, '\r');
-            tty_putc(tty, '\n');
-        }
-        if (pgrp > 0) {
-            send_signal_to_pgrp(pgrp, sig);
-        }
+    if (tty->ldisc->ops->receive_buf2) {
+        tty->ldisc->ops->receive_buf2(tty, &c, NULL, 1);
         return;
     }
 
-    if (tty->canonical && (ch == '\b' || ch == tty->termios.c_cc[VERASE])) {
-        if (tty->line_len > 0) {
-            tty->line_len--;
-            echo_backspace = 1;
-        }
-        spin_unlock_irqrestore(&tty->lock, flags);
-
-        if (echo_backspace && tty->echo) {
-            tty_putc(tty, '\b');
-            tty_putc(tty, ' ');
-            tty_putc(tty, '\b');
-        }
-        return;
-    }
-
-    if (tty->canonical) {
-        if (tty->line_len < TTY_LINE_SIZE) {
-            tty->linebuf[tty->line_len++] = ch;
-            echo_ch = ch;
-        }
-
-        if (ch == '\n' || tty->line_len == TTY_LINE_SIZE) {
-            tty_flush_line(tty);
-            wake = 1;
-        }
-    } else {
-        tty_inbuf_push(tty, ch);
-        echo_ch = ch;
-        wake = 1;
-    }
-
-    spin_unlock_irqrestore(&tty->lock, flags);
-
-    if (echo_ch) {
-        tty_echo_char(tty, echo_ch);
-    }
-
-    if (wake) {
-        if (tty->port != NULL) {
-            wake_up_one(&tty->port->read_wait);
-        }
-    }
-}
-
-ssize_t tty_read(struct tty_struct *tty, char *buf, size_t size) {
-    size_t read = 0;
-
-    if (tty == NULL || buf == NULL) {
-        return -EINVAL;
-    }
-
-    if (size == 0) {
-        return 0;
-    }
-
-    while (read < size) {
-        unsigned long flags;
-        char ch;
-
-        flags = spin_lock_irqsave(&tty->lock);
-        if (!tty_inbuf_pop(tty, &ch)) {
-            spin_unlock_irqrestore(&tty->lock, flags);
-            if (read > 0) {
-                break;
-            }
-            tty_sleep_if_empty(tty);
-            continue;
-        }
-        spin_unlock_irqrestore(&tty->lock, flags);
-
-        buf[read++] = ch;
-        if (tty->canonical && ch == '\n') {
-            break;
-        }
-    }
-
-    return (ssize_t)read;
-}
-
-ssize_t tty_write(struct tty_struct *tty, const char *buf, size_t size) {
-    size_t written = 0;
-
-    if (tty == NULL || buf == NULL) {
-        return -EINVAL;
-    }
-
-    while (written < size) {
-        if (buf[written] == '\n') {
-            tty_putc(tty, '\r');
-        }
-        tty_putc(tty, buf[written]);
-        written++;
-    }
-
-    return (ssize_t)written;
+    if (tty->ldisc->ops->receive_buf)
+        tty->ldisc->ops->receive_buf(tty, &c, NULL, 1);
 }
 
 long tty_ioctl(struct tty_struct *tty, unsigned long request, unsigned long arg) {
@@ -464,6 +247,23 @@ long tty_ioctl(struct tty_struct *tty, unsigned long request, unsigned long arg)
         return 0;
 
     case TCSETS:
+        if (argp == NULL) {
+            return -EFAULT;
+        }
+
+        if (copy_from_user((char *)&termios, argp, sizeof(termios)) < 0) {
+            return -EFAULT;
+        }
+
+        flags = spin_lock_irqsave(&tty->lock);
+        old_termios = tty->termios;
+        tty_termios_from_user(&tty->termios, &termios);
+        tty_apply_termios(tty);
+        if (tty->driver->ops != NULL && tty->driver->ops->set_termios != NULL) {
+            tty->driver->ops->set_termios(tty, &old_termios);
+        }
+        spin_unlock_irqrestore(&tty->lock, flags);
+        return 0;
     case TCSETSW:
 
     case TCSETSF:
@@ -575,4 +375,314 @@ long tty_ioctl(struct tty_struct *tty, unsigned long request, unsigned long arg)
     default:
         return -ENOTTY;
     }
+}
+
+static int tty_fops_open(struct inode *inode, struct file *file) {
+    struct tty_driver *driver = file->private_data;
+    struct tty_struct *tty;
+    unsigned int index;
+    bool new_tty = false;
+    int ret;
+
+    if (!driver)
+        return -ENODEV;
+
+    index = MINOR(inode->i_rdev) - driver->minor_start;
+    if (index >= driver->num)
+        return -ENODEV;
+
+    tty = driver->ttys[index];
+
+    if (!tty) {
+        tty = tty_alloc_struct(driver, index);
+        if (!tty)
+            return -ENOMEM;
+
+        new_tty = true;
+
+        /*
+         * serial_install:
+         * tty->port = &state[index].port;
+         * tty->driver_data = &state[index];
+         * port->tty = tty;
+         */
+        ret = driver->ops->install(driver, tty);
+        if (ret)
+            goto err_free_tty;
+
+        /*
+         * 此时 tty->port 已经有效，再安装 N_TTY。
+         */
+        tty_ldisc_init(tty);
+    }
+
+    /*
+     * 从这里开始，file->private_data 不再是 tty_driver。
+     */
+    file->private_data = tty;
+
+    /*
+     * serial_open() 根据 port->open_count 判断是否第一次启动硬件。
+     */
+    ret = driver->ops->open(tty, file);
+    if (ret)
+        goto err_open;
+
+    tty->count++;
+    return 0;
+
+err_open:
+    file->private_data = driver;
+
+    if (!new_tty)
+        return ret;
+
+    tty_ldisc_deinit(tty);
+
+err_free_tty:
+    driver->ttys[index] = NULL;
+    tty_free_struct(tty);
+    return ret;
+}
+
+static int tty_fops_release(struct inode *inode, struct file *file) {
+    struct tty_struct *tty = file ? file->private_data : NULL;
+
+    (void)inode;
+    if (tty == NULL) {
+        return 0;
+    }
+
+    if (tty->driver != NULL && tty->driver->ops != NULL && tty->driver->ops->close != NULL) {
+        tty->driver->ops->close(tty, file);
+    }
+
+    if (tty->count > 0) {
+        tty->count--;
+    }
+
+    // 最后一次使用
+    if (tty->count == 0) {
+        if (tty->driver->termios && tty->index < tty->driver->num) {
+            tty->driver->termios[tty->index] = tty->termios;
+        }
+
+        if (tty->driver != NULL && tty->driver->ops != NULL &&
+            tty->driver->ops->remove != NULL) {
+            tty->driver->ops->remove(tty->driver, tty);
+        }
+
+        tty_ldisc_deinit(tty);
+
+        tty->driver->ttys[tty->index] = NULL;
+
+        tty_free_struct(tty);
+    }
+    file->private_data = NULL;
+    return 0;
+}
+
+static ssize_t tty_fops_read(struct file *file, char *buf, size_t count, loff_t *ppos) {
+    struct tty_struct *tty = file->private_data;
+    ssize_t ret;
+
+    (void)ppos;
+
+    if (!tty || !tty->ldisc || !tty->ldisc->ops || !tty->ldisc->ops->read)
+        return -EIO;
+
+    mutex_lock(&tty->read_lock);
+
+    ret = tty->ldisc->ops->read(tty, file, buf, count);
+
+    mutex_unlock(&tty->read_lock);
+    return ret;
+}
+
+static ssize_t tty_fops_write(struct file *file, const char *buf, size_t count, loff_t *ppos) {
+    struct tty_struct *tty = file->private_data;
+    ssize_t ret;
+
+    (void)ppos;
+
+    if (!tty || !tty->ldisc || !tty->ldisc->ops || !tty->ldisc->ops->write)
+        return -EIO;
+
+    mutex_lock(&tty->write_lock);
+
+    ret = tty->ldisc->ops->write(tty, file, buf, count);
+
+    mutex_unlock(&tty->write_lock);
+    return ret;
+}
+
+static long tty_fops_ioctl(struct file *file, unsigned long request, unsigned long arg) {
+    struct tty_struct *tty = file ? file->private_data : NULL;
+
+    if (tty == NULL) {
+        return -ENOTTY;
+    }
+
+    return tty_ioctl(tty, request, arg);
+}
+
+static const struct file_operations tty_fops = {
+    .open = tty_fops_open,
+    .release = tty_fops_release,
+    .read = tty_fops_read,
+    .write = tty_fops_write,
+    .ioctl = tty_fops_ioctl,
+};
+
+// 这只是给已分配的设备号建立cdev对应映射,但并没有对cdev完全初始化,比如建立/dev/下的文件要到后面
+int tty_cdev_add(struct tty_driver *driver, dev_t dev, unsigned int index, unsigned int count) {
+    driver->cdevs[index] = cdev_alloc();
+    if (!driver->cdevs[index])
+        return -ENOMEM;
+    driver->cdevs[index]->fops = &tty_fops;
+    driver->cdevs[index]->private = driver;
+    int err = cdev_add(driver->cdevs[index], dev, count);
+    return err;
+}
+
+int tty_register_device(struct tty_driver *driver, int index, struct device *parent) {
+    dev_t dev;
+    char name[32];
+
+    if (!driver)
+        return -EINVAL;
+
+    if (index >= driver->num)
+        return -EINVAL;
+
+    dev = MKDEV(driver->major, driver->minor_start + index);
+
+    snprintk(name, sizeof(name), "%s%u", driver->name, index);
+
+    driver->devices[index] = device_create(&tty_class, parent, dev,
+                                           S_IFCHR | 0600, driver, name);
+    if (IS_ERR(driver->devices[index])) {
+        int ret = PTR_ERR(driver->devices[index]);
+        driver->devices[index] = NULL;
+        return ret;
+    }
+    return 0;
+}
+
+int tty_unregister_device(struct tty_driver *driver, int index)
+{
+    dev_t dev;
+
+    if (!driver || index < 0 || index >= driver->num)
+        return -EINVAL;
+    if (!driver->devices[index])
+        return -ENODEV;
+
+    dev = MKDEV(driver->major, driver->minor_start + index);
+    device_destroy(&tty_class, dev);
+    driver->devices[index] = NULL;
+    return 0;
+}
+
+int tty_register_driver(struct tty_driver *driver) {
+    int error;
+    dev_t dev;
+
+    unsigned int i;
+
+    if (!tty_class_ready) {
+        error = class_register(&tty_class);
+        if (error && error != -EEXIST)
+            return error;
+        tty_class_ready = true;
+    }
+
+    for (i = 0; i < driver->num; i++)
+        driver->termios[i] = driver->init_termios;
+
+    if (!driver->major) {
+        error = alloc_chrdev_region(&dev, driver->minor_start, driver->num, driver->name);
+        if (!error) {
+            driver->major = MAJOR(dev);
+            driver->minor_start = MINOR(dev);
+        }
+    } else {
+        dev = MKDEV(driver->major, driver->minor_start);
+        error = register_chrdev_region(dev, driver->num, driver->name);
+    }
+    if (error < 0)
+        goto err;
+
+    error = tty_cdev_add(driver, dev, 0, driver->num);
+    if (error)
+        goto err_unreg_char;
+
+    mutex_lock(&tty_mutex);
+    list_add(&tty_drivers,&driver->tty_drivers);
+    mutex_unlock(&tty_mutex);
+
+    return 0;
+
+err_unreg_char:
+    unregister_chrdev_region(dev, driver->num);
+err:
+    return error;
+}
+
+// 暂时不实现
+void tty_unregister_driver(struct tty_driver *driver) {
+    (void)driver;
+}
+
+void tty_put_driver(struct tty_driver *driver) {
+    if (!driver)
+        return;
+
+    kfree(driver->ports);
+    kfree(driver->ttys);
+    kfree(driver->termios);
+    kfree(driver->cdevs);
+    kfree(driver->devices);
+    kfree(driver);
+}
+
+struct tty_driver *tty_alloc_driver(unsigned int lines) {
+    struct tty_driver *driver;
+    unsigned int cdevs = 1;
+    int err;
+
+    driver = kzalloc(sizeof(*driver));
+    if (!driver)
+        return ERR_PTR(-ENOMEM);
+
+    driver->num = lines;
+
+    driver->ttys = kzalloc(lines * sizeof(*driver->ttys));
+    driver->termios = kzalloc(lines * sizeof(*driver->termios));
+    if (!driver->ttys || !driver->termios) {
+        err = -ENOMEM;
+        goto err_free_all;
+    }
+
+    driver->ports = kzalloc(lines * sizeof(*driver->ports));
+    if (!driver->ports) {
+        err = -ENOMEM;
+        goto err_free_all;
+    }
+    driver->cdevs = kzalloc(cdevs * sizeof(*driver->cdevs));
+    if (!driver->cdevs) {
+        err = -ENOMEM;
+        goto err_free_all;
+    }
+
+    driver->devices = kzalloc(lines * sizeof(*driver->devices));
+    if (!driver->devices) {
+        err = -ENOMEM;
+        goto err_free_all;
+    }
+
+    return driver;
+err_free_all:
+    tty_put_driver(driver);
+    return ERR_PTR(err);
 }

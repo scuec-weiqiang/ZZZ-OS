@@ -56,6 +56,8 @@ static const char *kernel_root_device(void) {
 }
 
 int kernel_init(void *arg) {
+    int ret;
+
     arch_initcalls_run();
     core_initcalls_run();
     of_platform_populate(NULL,of_default_bus_match_table,NULL);
@@ -66,6 +68,11 @@ int kernel_init(void *arg) {
     mount_root(kernel_root_device(), "ext2");
     
     late_initcalls_run();
+
+    ret = setup_stdio("/dev/ttyS0");
+    if (ret < 0)
+        panic("kernel_init: failed to open /dev/ttyS0 for stdio: %d\n", ret);
+    printk("kernel_init: stdio connected to /dev/ttyS0\n");
     
     char *argv[] = { "/bin/init", NULL };
     char *envp[] = {
@@ -76,8 +83,12 @@ int kernel_init(void *arg) {
     NULL
 };
     
-    do_execve("/bin/init", argv, envp);
-    return 0;
+    ret = do_execve("/bin/init", argv, envp);
+    if (ret < 0)
+        panic("kernel_init: failed to execute /bin/init: %d\n", ret);
+
+    printk("kernel_init: /bin/init loaded, entering user mode\n");
+    return ret;
 }
 
 unsigned long cpu_online_map = 0;

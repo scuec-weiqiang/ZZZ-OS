@@ -7,6 +7,9 @@
 #include <os/ringbuffer.h>
 
 struct uart_port;
+struct device;
+
+#define UART_XMIT_SIZE 4096
 
 /** 从linux内核搬来的
  * 结构体 uart_ops —— serial_core 串口核心层与底层驱动之间的操作接口
@@ -308,11 +311,14 @@ struct uart_port {
 
     unsigned int line;       // 0 -> ttyS0
     unsigned int irq;
+    unsigned int uartclk;
     unsigned long mapbase;
     void *membase;
     unsigned char		regshift;		/* reg offset shift */
 
-	struct uart_ops *ops;
+    struct uart_state *state;
+	struct device *dev;
+	const struct uart_ops *ops;
     void *private_data;
 };
 
@@ -320,6 +326,7 @@ struct uart_state {
     struct tty_port port;
 	struct uart_port *uart_port;
 	struct ringbuffer tx_buf;
+	u8 tx_buf_data[UART_XMIT_SIZE];
 };
 
 struct uart_driver {
@@ -339,6 +346,7 @@ void uart_remove_one_port(struct uart_driver *driver, struct uart_port *port);
 void uart_port_init(struct uart_port *port);
 
 void uart_insert_char(struct uart_port *port, unsigned char ch);
+void uart_flip_buffer_push(struct uart_port *port);
 void uart_write_wakeup(struct uart_port *port);
 
 

@@ -151,7 +151,7 @@ int lru_cache_walk(struct lru_cache *cache, lru_walk_func_t func)
     CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return -1;);
     CHECK(func != NULL, "ptr <lru_walk_func_t func> is NULL", return -1;);
 
-    list_for_each_entry_safe(pos, n, &cache->lhead, struct lru_node, lnode)
+    list_for_each_entry_safe(pos, n, &cache->lhead, lnode)
     {
         func(pos);
     }

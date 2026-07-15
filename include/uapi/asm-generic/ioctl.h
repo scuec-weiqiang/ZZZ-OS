@@ -72,7 +72,7 @@
 	 ((nr)   << _IOC_NRSHIFT) | \
 	 ((size) << _IOC_SIZESHIFT))
 
-#ifndef __KERNEL__
+#ifndef _IOC_TYPECHECK
 #define _IOC_TYPECHECK(t) (sizeof(t))
 #endif
 

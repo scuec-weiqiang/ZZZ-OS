@@ -1,145 +1,142 @@
 #include <os/devnode.h>
+#include <os/device.h>
 #include <fs/dcache.h>
 #include <fs/fs.h>
-#include <os/list.h>
-#include <os/kmalloc.h>
-#include <os/string.h>
+#include <os/errno.h>
 #include <os/err.h>
+#include <os/kmalloc.h>
+#include <os/list.h>
 #include <os/printk.h>
+#include <os/string.h>
 
-static LIST_HEAD(g_devnodes);
-static const char *g_devtmpfs_path;
-static bool g_devtmpfs_ready;
+struct devtmpfs_entry {
+    struct device *dev;
+    bool published;
+    struct list_head node;
+};
 
-static int devtmpfs_publish(struct devnode *node) {
-    struct dentry *dentry = NULL;
-    char *path = NULL;
+static LIST_HEAD(devtmpfs_entries);
+static const char *devtmpfs_path;
+static bool devtmpfs_ready;
+
+static int devtmpfs_publish(struct devtmpfs_entry *entry)
+{
+    struct device *dev = entry->dev;
+    struct dentry *dentry;
+    char *path;
+    size_t base_len;
     int ret = 0;
-    size_t base_len = 0;
-    size_t name_len = 0;
-    u16 mode = 0;
 
-    if (!g_devtmpfs_ready || g_devtmpfs_path == NULL || node == NULL || node->name == NULL) {
+    if (!devtmpfs_ready || entry->published)
         return 0;
-    }
 
-    base_len = strlen(g_devtmpfs_path);
-    name_len = strlen(node->name);
-    path = kmalloc(base_len + 1 + name_len + 1);
-    if (path == NULL) {
+    base_len = strlen(devtmpfs_path);
+    path = kmalloc(base_len + 1 + strlen(dev->name) + 1);
+    if (!path)
         return -ENOMEM;
-    }
 
-    strcpy(path, g_devtmpfs_path);
-    if (base_len > 0 && path[base_len - 1] != '/') {
-        path[base_len] = '/';
-        path[base_len + 1] = '\0';
+    strcpy(path, devtmpfs_path);
+    if (base_len && path[base_len - 1] != '/') {
+        path[base_len++] = '/';
+        path[base_len] = '\0';
     }
-    strcpy(path + strlen(path), node->name);
+    strcpy(path + base_len, dev->name);
 
-    if (node->type == DEV_CHAR) {
-        mode = S_IFCHR | 0600;
-    } else if (node->type == DEV_BLOCK) {
-        mode = S_IFBLK | 0600;
-    } else {
-        ret = -EINVAL;
-        goto out;
-    }
-
-    dentry = vfs_mknod(path, mode, node->devt);
-    if (dentry != NULL) {
+    dentry = vfs_mknod(path, dev->mode, dev->devt);
+    if (IS_ERR(dentry))
+        ret = PTR_ERR(dentry);
+    else if (!dentry)
+        ret = -EIO;
+    else if (dentry)
         dput(dentry);
-    }
 
-out:
+    if (!ret) {
+        entry->published = true;
+        printk("devtmpfs: created %s (%u:%u)\n", path,
+               MAJOR(dev->devt), MINOR(dev->devt));
+    } else {
+        printk("devtmpfs: failed to create %s: %d\n", path, ret);
+    }
     kfree(path);
     return ret;
 }
 
-int devnode_register(const char *name, int type, dev_t devt,const struct file_operations *fops, void *private) {
-    struct devnode *node;
-    struct list_head *pos;
+int devtmpfs_create_node(struct device *dev)
+{
+    struct devtmpfs_entry *entry, *iter;
 
-    // list_for_each(pos, &g_devnodes) {
-    //     struct devnode *iter = list_entry(pos, struct devnode, list);
+    if (!dev || !dev->name || !dev->devt ||
+        (!S_ISCHR(dev->mode) && !S_ISBLK(dev->mode)))
+        return -EINVAL;
 
-    //     if (iter->devt == devt || strcmp(iter->name, name) == 0) {
-    //         return -EEXIST;
-    //     }
-    // }
-
-    node = kzalloc(sizeof(*node));
-    if (!node)
-        return -ENOMEM;
-
-    node->name = strdup(name);
-    node->type = type;
-    node->devt = devt;
-    node->fops = fops;
-    node->private = private;
-
-    INIT_LIST_HEAD(&node->list);
-
-    list_add_tail(&g_devnodes, &node->list);
-
-    if (g_devtmpfs_ready) {
-        int ret = devtmpfs_publish(node);
-        if (ret < 0) {
-            printk("devtmpfs: publish %s failed: %d\n", node->name, ret);
-        }
+    list_for_each_entry(iter, &devtmpfs_entries, node) {
+        if (iter->dev->devt == dev->devt ||
+            strcmp(iter->dev->name, dev->name) == 0)
+            return -EEXIST;
     }
 
+    entry = kzalloc(sizeof(*entry));
+    if (!entry)
+        return -ENOMEM;
+    entry->dev = dev;
+    INIT_LIST_HEAD(&entry->node);
+    list_add_tail(&devtmpfs_entries, &entry->node);
+
+    if (devtmpfs_publish(entry)) {
+        list_del(&entry->node);
+        kfree(entry);
+        return -EIO;
+    }
     return 0;
 }
 
-struct devnode *devnode_lookup_by_name(const char *name) {
-    struct list_head *pos;
+void devtmpfs_remove_node(struct device *dev)
+{
+    struct devtmpfs_entry *entry, *next;
 
-    list_for_each(pos, &g_devnodes) {
-        struct devnode *node = list_entry(pos, struct devnode, list);
-        if (strcmp(node->name, name) == 0)
-            return node;
+    list_for_each_entry_safe(entry, next, &devtmpfs_entries, node) {
+        char *path;
+        size_t base_len;
+
+        if (entry->dev != dev)
+            continue;
+        if (entry->published) {
+            base_len = strlen(devtmpfs_path);
+            path = kmalloc(base_len + 1 + strlen(dev->name) + 1);
+            if (path) {
+                strcpy(path, devtmpfs_path);
+                if (base_len && path[base_len - 1] != '/') {
+                    path[base_len++] = '/';
+                    path[base_len] = '\0';
+                }
+                strcpy(path + base_len, dev->name);
+                vfs_unlink(path);
+                kfree(path);
+            }
+        }
+        list_del(&entry->node);
+        kfree(entry);
+        return;
     }
-
-    return NULL;
 }
 
-struct devnode *devnode_lookup_by_devnr(dev_t devnr) {
-    struct list_head *pos;
+int devtmpfs_mount(const char *path)
+{
+    struct devtmpfs_entry *entry;
 
-    list_for_each(pos, &g_devnodes) {
-        struct devnode *node = list_entry(pos, struct devnode, list);
-        if (node->devt == devnr)
-            return node;
-    }
-
-    return NULL;
-}
-
-int devtmpfs_mount(const char *path) {
-    struct list_head *pos;
-
-    if (path == NULL) {
+    if (!path)
         return -EINVAL;
-    }
-
-    if (g_devtmpfs_path == NULL) {
-        g_devtmpfs_path = strdup(path);
-        if (g_devtmpfs_path == NULL) {
+    if (!devtmpfs_path) {
+        devtmpfs_path = strdup(path);
+        if (!devtmpfs_path)
             return -ENOMEM;
-        }
     }
+    devtmpfs_ready = true;
 
-    g_devtmpfs_ready = true;
-
-    list_for_each(pos, &g_devnodes) {
-        struct devnode *node = list_entry(pos, struct devnode, list);
-        int ret = devtmpfs_publish(node);
-        
-        if (ret < 0) {
-            printk("devtmpfs: publish existing node %s failed: %d\n", node->name, ret);
-        }
+    list_for_each_entry(entry, &devtmpfs_entries, node) {
+        int ret = devtmpfs_publish(entry);
+        if (ret)
+            return ret;
     }
-
     return 0;
 }

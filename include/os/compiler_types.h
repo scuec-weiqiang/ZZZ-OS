@@ -13,7 +13,6 @@
 
 #ifndef __ASSEMBLY__
 
-#define __KERNEL__
 /*
  * Skipped when running bindgen due to a libclang issue;
  * see https://github.com/rust-lang/rust-bindgen/issues/2244.
@@ -168,15 +167,11 @@ static inline void __chk_io_ptr(const volatile void __iomem *ptr) { }
 # define __retain
 #endif
 
-/* Compiler specific macros. */
-#ifdef __clang__
-// #include <linux/compiler-clang.h>
-#elif defined(__GNUC__)
-/* The above compilers also define __GNUC__, so order is important here. */
-#include <linux/compiler-gcc.h>
-#else
-#error "Unknown compiler"
+/* This kernel intentionally supports GCC only. */
+#ifndef __GNUC__
+#error "ZZZ-OS requires GCC"
 #endif
+#include <os/compiler-gcc.h>
 
 /*
  * Some architectures need to provide custom definitions of macros provided

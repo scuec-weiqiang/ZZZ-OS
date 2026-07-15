@@ -18,7 +18,7 @@ struct device platform_bus = {
 static int platform_match(struct device *dev, const struct device_driver *drv) {
     // 根据设备树节点的 compatible 属性和驱动的 of_match_table 进行匹配
     if (!dev || !drv || !drv->of_match_table) {
-        return -1;
+        return 0;
     }
 	return of_match_node(drv->of_match_table, dev->of_node) != NULL;
 }
@@ -37,8 +37,7 @@ int platform_device_register(struct platform_device *pdev) {
     if (pdev->id < 0) {
         pdev->id = alloc_id(pdev);
     }
-    device_register(&pdev->dev);
-    return 0;
+    return device_register(&pdev->dev);
 }
 
 int platform_device_unregister(struct platform_device *pdev) {
@@ -54,6 +53,9 @@ static int platform_drv_probe(struct device *_dev) {
 	struct platform_device *dev = to_platform_device(_dev);
 
 	int ret;
+
+	if (!drv->probe)
+		return -ENODEV;
 
 	ret = pinctrl_select_state(_dev, "default");
 	if (ret < 0 && ret != -ENOENT) {
@@ -84,12 +86,12 @@ int platform_driver_unregister(struct platform_driver *pdrv) {
 }
 
 int platform_driver_register(struct platform_driver *pdrv) {
-    if (!pdrv) {
+    if (!pdrv || !pdrv->name) {
         return -1;
     }
+    pdrv->driver.name = pdrv->name;
     pdrv->driver.bus = &platform_bus_type;
-    driver_register(&pdrv->driver);
-    return 0;
+    return driver_register(&pdrv->driver);
 }
 
 

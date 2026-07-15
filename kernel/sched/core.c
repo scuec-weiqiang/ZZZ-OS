@@ -472,7 +472,7 @@ void sleep_on(struct wait_queue_head *wq_head) {
 void wake_up_one(struct wait_queue_head *wq_head) {
     struct wait_queue *wq, *tmp;
     int flags = spin_lock_irqsave(&wq_head->lock);
-    list_for_each_entry_safe(wq, tmp, &wq_head->head, struct wait_queue, list) {
+    list_for_each_entry_safe(wq, tmp, &wq_head->head, list) {
         struct task_struct *task = wq->private;
         if (task->status == TASK_SLEEPING) {
             // dprintk("wake up task:%d\n",task->pid);
@@ -488,7 +488,7 @@ void wake_up_one(struct wait_queue_head *wq_head) {
 void wake_up_all(struct wait_queue_head *wq_head) {
     struct wait_queue *wq, *tmp;
     int flags = spin_lock_irqsave(&wq_head->lock);
-    list_for_each_entry_safe(wq, tmp, &wq_head->head, struct wait_queue, list) {
+    list_for_each_entry_safe(wq, tmp, &wq_head->head, list) {
         struct task_struct *task = wq->private;
         if (task->status == TASK_SLEEPING) {
             wait_queue_remove(wq_head, wq);

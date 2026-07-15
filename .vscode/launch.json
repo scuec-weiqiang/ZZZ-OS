@@ -31,9 +31,6 @@
                 {
                     "text": "set output-radix 16"
                 },
-                {
-                    "text": "add-symbol-file ${workspaceFolder}/user_proc/simple-c-shell/simple-c-shell 0x10000"
-                }
             ],
         }
     ]

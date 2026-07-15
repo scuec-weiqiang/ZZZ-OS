@@ -101,7 +101,7 @@ static int i2c_device_remove(struct device *dev) {
 static int i2c_device_match(struct device *dev, const struct device_driver *drv) {
     // 根据设备树节点的 compatible 属性和驱动的 of_match_table 进行匹配
     if (!dev || !drv || !drv->of_match_table) {
-        return -1;
+        return 0;
     }
 	return of_match_node(drv->of_match_table, dev->of_node) != NULL;
 }
@@ -141,7 +141,7 @@ static struct i2c_client *of_i2c_create_client(struct device_node *node, struct 
     if (!client) {
         return NULL;
     }
-    INIT_LIST_HEAD(&client->dev.node);
+    INIT_LIST_HEAD(&client->dev.bus_node);
     client->dev.of_node = node;
     client->dev.parent = &adapter->dev;
     client->dev.bus = &i2c_bus_type;
@@ -169,7 +169,7 @@ int i2c_add_adapter(struct i2c_adapter *adap) {
     adap->dev.type = &i2c_adapter_type;
     adap->dev.bus = bus_get_by_name("i2c");
     adap->dev.name = adap->name;
-    INIT_LIST_HEAD(&adap->dev.node);
+    INIT_LIST_HEAD(&adap->dev.bus_node);
     adap->nr = alloc_i2c_adapter_nr();
 
     device_register(&adap->dev);
@@ -191,7 +191,7 @@ int i2c_del_adapter(struct i2c_adapter *adap) {
 
 struct i2c_adapter* i2c_get_adapter(int nr) {
     struct device *dev;
-    list_for_each_entry(dev, &i2c_bus_type.devices,node) {
+    list_for_each_entry(dev, &i2c_bus_type.devices, bus_node) {
         struct i2c_adapter *adap = to_i2c_adapter(dev);
         if (adap->nr == nr) {
             return adap;
@@ -223,4 +223,3 @@ int i2c_driver_unregister(struct i2c_driver *driver) {
     driver_unregister(&driver->driver);
     return 0;
 }
-

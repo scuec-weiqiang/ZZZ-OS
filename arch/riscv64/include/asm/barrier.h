@@ -1,7 +1,8 @@
 #ifndef __ASM_RISCV64_BARRIER_H
 #define __ASM_RISCV64_BARRIER_H
 
-#define barrier() __asm__ volatile("" ::: "memory")
+#include <os/compiler.h>
+
 #define mb() barrier()
 #define rmb() mb()
 #define wmb() mb()

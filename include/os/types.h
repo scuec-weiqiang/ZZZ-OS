@@ -13,6 +13,7 @@
 #define _TYPES_H
 
 #include <os/config.h>
+#include <os/compiler_types.h>
 
 // #define SYS_TRACE_ENABLE
 
@@ -93,8 +94,6 @@ typedef enum {
 
 #define __in
 #define __out
-#define __user
-#define __iomem
 #define __SYSCALL__
 
 typedef u32 dev_t;
@@ -135,6 +134,6 @@ struct list_head
     struct list_head *prev;
     struct list_head *next;
 };
-
+#define typeof __typeof__
 
 #endif

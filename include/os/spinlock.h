@@ -22,6 +22,8 @@ typedef struct spinlock {
     .waiter_pc = NULL, \
 }
 
+#define SPINLOCK_DEFINE(name) spinlock_t name = SPINLOCK_INIT
+
 static inline void spin_lock_debug_wait(spinlock_t *lock, void *pc)
 {
     lock->waiter_cpu = get_cpuid();

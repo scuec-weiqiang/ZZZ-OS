@@ -1,17 +1,16 @@
 #include <os/errno.h>
 #include <os/kmalloc.h>
 #include <os/serial_core.h>
+#include <os/tty.h>
 
-static struct uart_state *serial_get_state(struct tty_struct *tty)
-{
+static struct uart_state *serial_get_state(struct tty_struct *tty) {
     if (!tty)
         return NULL;
 
     return tty->driver_data;
 }
 
-static struct uart_port *serial_get_port(struct tty_struct *tty)
-{
+static struct uart_port *serial_get_port(struct tty_struct *tty) {
     struct uart_state *state = serial_get_state(tty);
 
     if (!state)
@@ -21,8 +20,7 @@ static struct uart_port *serial_get_port(struct tty_struct *tty)
 }
 
 // 把新创建的 tty_struct 和对应的 uart_state/tty_port 关联起来。
-int serial_install(struct tty_driver *driver, struct tty_struct *tty)
-{
+static int serial_install(struct tty_driver *driver, struct tty_struct *tty) {
     struct uart_driver *uart_driver;
     struct uart_state *state;
     struct tty_port *tty_port;
@@ -56,6 +54,7 @@ int serial_install(struct tty_driver *driver, struct tty_struct *tty)
     tty->driver = driver;
     tty->port = tty_port;
     tty->driver_data = state;
+    tty->ops = driver->ops;
 
     /*
      * 建立 tty_port 到当前 tty_struct 的反向关联。
@@ -77,9 +76,7 @@ int serial_install(struct tty_driver *driver, struct tty_struct *tty)
     return 0;
 }
 
-
-void serial_remove(struct tty_driver *driver, struct tty_struct *tty)
-{
+static void serial_remove(struct tty_driver *driver, struct tty_struct *tty) {
     struct uart_state *state;
     struct tty_port *port;
     unsigned int index;
@@ -112,8 +109,7 @@ void serial_remove(struct tty_driver *driver, struct tty_struct *tty)
     (void)state;
 }
 
-int serial_open(struct tty_struct *tty, struct file *filp)
-{
+static int serial_open(struct tty_struct *tty, struct file *filp) {
     struct uart_state *state;
     struct uart_port *port;
     unsigned long flags;
@@ -173,8 +169,7 @@ int serial_open(struct tty_struct *tty, struct file *filp)
     return 0;
 }
 
-void serial_close(struct tty_struct *tty, struct file *filp)
-{
+static void serial_close(struct tty_struct *tty, struct file *filp) {
     struct uart_state *state;
     struct uart_port *port;
     unsigned long flags;
@@ -218,8 +213,7 @@ void serial_close(struct tty_struct *tty, struct file *filp)
         port->ops->shutdown(port);
 }
 
-ssize_t serial_write(struct tty_struct *tty, const u8 *buf, size_t count)
-{
+static ssize_t serial_write(struct tty_struct *tty, const u8 *buf, size_t count) {
     struct uart_state *state;
     struct uart_port *port;
     unsigned long flags;
@@ -254,8 +248,7 @@ ssize_t serial_write(struct tty_struct *tty, const u8 *buf, size_t count)
     return (ssize_t)written;
 }
 
-unsigned int serial_write_room(struct tty_struct *tty)
-{
+static int serial_write_room(struct tty_struct *tty) {
     struct uart_state *state;
     struct uart_port *port;
     unsigned long flags;
@@ -276,15 +269,13 @@ unsigned int serial_write_room(struct tty_struct *tty)
 
     spin_unlock_irqrestore(&port->lock, flags);
 
-    if (room > UINT_MAX)
-        return UINT_MAX;
+    // if (room > UINT_MAX)
+    //     return UINT_MAX;
 
     return (unsigned int)room;
 }
 
-void serial_set_termios(struct tty_struct *tty,
-                        const struct ktermios *old)
-{
+static void serial_set_termios(struct tty_struct *tty, const struct ktermios *old) {
     struct uart_port *port;
 
     if (!tty)
@@ -295,22 +286,67 @@ void serial_set_termios(struct tty_struct *tty,
         return;
 
     if (port->ops->set_termios)
-        port->ops->set_termios(port,
-                               &tty->termios,
-                               old);
+        port->ops->set_termios(port, &tty->termios, old);
+}
+
+static int serial_chars_in_buffer(struct tty_struct *tty) {
+    struct uart_state *state;
+    struct uart_port *port;
+    unsigned long flags;
+    size_t count;
+
+    state = serial_get_state(tty);
+    port = serial_get_port(tty);
+
+    if (!state || !port)
+        return 0;
+
+    flags = spin_lock_irqsave(&port->lock);
+
+    count = ringbuffer_count(&state->tx_buf);
+
+    spin_unlock_irqrestore(&port->lock, flags);
+
+    // if (count > UINT_MAX)
+    //     return UINT_MAX;
+
+    return (unsigned int)count;
+}
+
+static void serial_flush_buffer(struct tty_struct *tty) {
+    struct uart_state *state;
+    struct uart_port *port;
+    unsigned long flags;
+
+    state = serial_get_state(tty);
+    port = serial_get_port(tty);
+
+    if (!state || !port)
+        return;
+
+    flags = spin_lock_irqsave(&port->lock);
+
+    ringbuffer_reset(&state->tx_buf);
+
+    spin_unlock_irqrestore(&port->lock, flags);
+
+    if (port->ops && port->ops->stop_tx)
+        port->ops->stop_tx(port);
 }
 
 static const struct tty_operations uart_tty_ops = {
-    .install    = serial_install,
-    .remove     = serial_remove,
+    .install = serial_install,
+    .remove = serial_remove,
 
-    .open       = serial_open,
-    .close      = serial_close,
+    .open = serial_open,
+    .close = serial_close,
 
-    .write      = serial_write,
+    .write = serial_write,
     .write_room = serial_write_room,
 
     .set_termios = serial_set_termios,
+    .chars_in_buffer = serial_chars_in_buffer,
+    .flush_buffer = serial_flush_buffer,
 };
 
 void uart_port_init(struct uart_port *port) {
@@ -319,63 +355,106 @@ void uart_port_init(struct uart_port *port) {
     }
 
     spin_lock_init(&port->lock);
-    // tty_port_init(&port->tty_port);
-    // port->tty_port.driver_data = port;
+    port->irq = 0;
+    port->uartclk = 0;
+    port->mapbase = 0;
+    port->membase = NULL;
+    port->regshift = 0;
+    port->ops = NULL;
+    port->private_data = NULL;
 }
 
+// 初始化uart_driver里的uart_state数组和tty_driver结构体，注册tty_driver
 int uart_register_driver(struct uart_driver *drv) {
-	struct tty_driver *normal;
-	int i, retval;
+    struct tty_driver *normal;
+    int i, retval = -ENOMEM;
 
-	/*
-	 * Maybe we should be using a slab cache for this, especially if
-	 * we have a large number of ports to handle.
-	 */
-	drv->state = kzalloc(sizeof(struct uart_state) * drv->nr);
-	if (!drv->state)
-		goto out;
+    if (!drv || !drv->driver_name || !drv->dev_name || drv->nr == 0)
+        return -EINVAL;
+    if (drv->state || drv->tty_driver)
+        return -EBUSY;
 
-	normal = alloc_tty_driver(drv->nr);
-	if (!normal)
-		goto out_kfree;
+    /*
+     * Maybe we should be using a slab cache for this, especially if
+     * we have a large number of ports to handle.
+     */
+    drv->state = kzalloc(sizeof(struct uart_state) * drv->nr);
+    if (!drv->state)
+        return -ENOMEM;
 
-	drv->tty_driver = normal;
+    normal = alloc_tty_driver(drv->nr);
+    if (!normal)
+        goto out_kfree;
 
-	normal->driver_name	= drv->driver_name;
-	normal->name		= drv->dev_name;
-	normal->major		= drv->major;
-	normal->minor_start	= drv->minor;
+    drv->tty_driver = normal;
 
-	normal->init_termios	= tty_std_termios;
-	normal->init_termios.c_cflag = B9600 | CS8 | CREAD | HUPCL | CLOCAL;
-	normal->init_termios.c_ispeed = normal->init_termios.c_ospeed = 9600;
+    normal->driver_name = drv->driver_name;
+    normal->name = drv->dev_name;
+    normal->major = drv->major;
+    normal->minor_start = drv->minor;
 
-	normal->driver_state    = drv;
-	tty_set_operations(normal, &uart_tty_ops);
+    normal->init_termios = tty_std_termios;
+    normal->init_termios.c_cflag = B9600 | CS8 | CREAD | HUPCL | CLOCAL;
+    normal->init_termios.c_ispeed = normal->init_termios.c_ospeed = 9600;
 
-	/*
-	 * Initialise the UART state(s).
-	 */
-	for (i = 0; i < drv->nr; i++) {
-		struct uart_state *state = drv->state + i;
-		struct tty_port *port = &state->port;
-		tty_port_init(port);
-	}
+    normal->driver_state = drv;
+    tty_set_operations(normal, &uart_tty_ops);
 
-	retval = tty_register_driver(normal);
-	if (retval >= 0)
-		return retval;
+    /*
+     * Initialise the UART state(s).
+     */
+    for (i = 0; i < drv->nr; i++) {
+        struct uart_state *state = drv->state + i;
+        struct tty_port *port = &state->port;
+        tty_port_init(port); //port里对应的tty_struct还并没有分配
+        ringbuffer_init(&state->tx_buf, state->tx_buf_data,
+                        sizeof(state->tx_buf_data));
+    }
 
-	// for (i = 0; i < drv->nr; i++)
-	// 	tty_port_destroy(&drv->state[i].port);
-	// put_tty_driver(normal);
+    retval = tty_register_driver(normal);
+    if (retval >= 0)
+        return retval;
+
+    for (i = 0; i < drv->nr; i++)
+        tty_port_destroy(&drv->state[i].port);
+    tty_put_driver(normal);
+    drv->tty_driver = NULL;
 out_kfree:
-	kfree(drv->state);
-out:
-	return -ENOMEM;
+    kfree(drv->state);
+    drv->state = NULL;
+    return retval < 0 ? retval : -ENOMEM;
+}
+
+void uart_insert_char(struct uart_port *port, unsigned char ch)
+{
+    struct tty_port *tty_port;
+
+    if (!port || !port->state)
+        return;
+
+    tty_port = &port->state->port;
+    tty_insert_flip_char(tty_port, ch, TTY_NORMAL);
+}
+
+void uart_flip_buffer_push(struct uart_port *port)
+{
+    if (!port || !port->state)
+        return;
+    tty_flip_buffer_push(&port->state->port);
+}
+
+void uart_write_wakeup(struct uart_port *port)
+{
+    if (!port || !port->state)
+        return;
+    if (port->state->port.client_ops &&
+        port->state->port.client_ops->write_wakeup)
+        port->state->port.client_ops->write_wakeup(&port->state->port);
 }
 
 void uart_unregister_driver(struct uart_driver *driver) {
+    unsigned int i;
+
     if (driver == NULL) {
         return;
     }
@@ -385,18 +464,14 @@ void uart_unregister_driver(struct uart_driver *driver) {
     }
 
     if (driver->state != NULL) {
+        for (i = 0; i < driver->nr; i++)
+            tty_port_destroy(&driver->state[i].port);
         kfree(driver->state);
         driver->state = NULL;
     }
 
     if (driver->tty_driver != NULL) {
-        if (driver->tty_driver->ttys != NULL) {
-            kfree(driver->tty_driver->ttys);
-        }
-        if (driver->tty_driver->ports != NULL) {
-            kfree(driver->tty_driver->ports);
-        }
-        kfree(driver->tty_driver);
+        tty_put_driver(driver->tty_driver);
         driver->tty_driver = NULL;
     }
 }
@@ -413,36 +488,25 @@ int uart_add_one_port(struct uart_driver *driver, struct uart_port *uart_port) {
         return -EINVAL;
     }
 
-    if (driver->state[uart_port->line].port != NULL) {
-        return -EBUSY;
+    if (driver->state[uart_port->line].uart_port != NULL) {
+        return -EEXIST;
     }
 
     state = &driver->state[uart_port->line];
 
-    uart_port->private_data = driver;
-    state->uart_port= uart_port;
+    // 关联 uart_port 和 uart_state
+    uart_port->state = state;
+    state->uart_port = uart_port;
 
-    tty_init(&state->port.tty, driver->tty_driver, 
-        &state->port, (int)uart_port->line, uart_port);
-    driver->tty_driver->ttys[uart_port->line] = state->port.tty;
+    // 注册 tty_port 到 tty_driver
     driver->tty_driver->ports[uart_port->line] = &state->port;
 
-    ret = tty_register_device(driver->tty_driver, (int)uart_port->line);
+    ret = tty_register_device(driver->tty_driver, (int)uart_port->line,
+                              uart_port->dev);
     if (ret) {
-        driver->tty_driver->ttys[uart_port->line] = NULL;
         driver->tty_driver->ports[uart_port->line] = NULL;
-        state->port = NULL;
-        return ret;
-    }
-
-    if (uart_port->ops->startup != NULL) {
-        ret = uart_port->ops->startup(uart_port);
-
-        if (ret) {
-            driver->tty_driver->ttys[uart_port->line] = NULL;
-            driver->tty_driver->ports[uart_port->line] = NULL;
-            state->port = NULL;
-        }
+        state->uart_port = NULL;
+        uart_port->state = NULL;
         return ret;
     }
 
@@ -450,31 +514,24 @@ int uart_add_one_port(struct uart_driver *driver, struct uart_port *uart_port) {
 }
 
 void uart_remove_one_port(struct uart_driver *driver, struct uart_port *port) {
-    if (driver == NULL || port == NULL || driver->state == NULL) {
+    struct uart_state *state;
+
+    if (!driver || !port || !driver->state || port->line >= driver->nr)
         return;
-    }
 
-    if (port->ops != NULL && port->ops->shutdown != NULL) {
+    state = &driver->state[port->line];
+    if (state->uart_port != port)
+        return;
+
+    if (state->port.open_count && port->ops && port->ops->shutdown)
         port->ops->shutdown(port);
+    state->port.open_count = 0;
+
+    if (driver->tty_driver) {
+        tty_unregister_device(driver->tty_driver, (int)port->line);
+        driver->tty_driver->ports[port->line] = NULL;
     }
 
-    if (port->line < driver->nr && driver->state[port->line].port == port) {
-        driver->state[port->line].port = NULL;
-        if (driver->tty_driver != NULL) {
-            driver->tty_driver->ttys[port->line] = NULL;
-            driver->tty_driver->ports[port->line] = NULL;
-        }
-    }
-
-    port->tty_port.tty = NULL;
-    port->uart_driver = NULL;
-}
-
-
-struct tty_struct *uart_port_tty(struct uart_port *port) {
-    if (port == NULL) {
-        return NULL;
-    }
-
-    return port->tty_port.tty;
+    state->uart_port = NULL;
+    port->state = NULL;
 }

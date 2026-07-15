@@ -310,7 +310,7 @@ static int uart_probe(struct platform_device *pdev) {
     console_register(putc);
 
     dev_t devnr;
-    alloc_chrdev_region(&devnr, 1);
+    alloc_chrdev_region(&devnr, 0, 1, "uart0");
     
     cdev_register("uart0", devnr, &uart_file_ops, NULL);
 

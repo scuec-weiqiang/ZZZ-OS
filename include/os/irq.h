@@ -48,6 +48,7 @@ struct irq_deferred_work {
 extern void irq_init(void);
 extern struct irq_data *irq_data_get(int virq);
 extern int irq_request(int virq, irq_handler_t handler, const char *name, void *dev_id);
+extern void irq_free(int virq, void *dev_id);
 extern int irq_percpu_request(int virq, int cpu, irq_handler_t handler, const char *name, void *dev_id);
 extern void irq_enable(int virq);
 extern void irq_disable(int virq);

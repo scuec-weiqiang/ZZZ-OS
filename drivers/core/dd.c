@@ -10,6 +10,7 @@
 
 #include <os/device.h>
 #include <os/bus.h>
+#include <os/printk.h>
 
 int device_attach(struct device *dev) {
     if (!dev || !dev->bus) {
@@ -21,9 +22,18 @@ int device_attach(struct device *dev) {
         if (dev->bus->match(dev, drv)) {
             dev->driver = drv;
             if (drv->bus->probe) {
-                return drv->bus->probe(dev);
+                int ret = drv->bus->probe(dev);
+                if (ret) {
+                    printk("device: probe %s with %s failed: %d\n",
+                           dev_name(dev), drv->name, ret);
+                    dev->driver = NULL;
+                }
+                return ret;
             } else if (drv->probe) {
-                return drv->probe(dev);
+                int ret = drv->probe(dev);
+                if (ret)
+                    dev->driver = NULL;
+                return ret;
             }
         }
     }
@@ -39,12 +49,14 @@ int driver_attach(struct device_driver *drv) {
         return -1;
     }
 
-    list_for_each_entry(dev, &bus->devices, node) {
+    list_for_each_entry(dev, &bus->devices, bus_node) {
         if (bus->match(dev, drv)) {
             dev->driver = drv;
             if (drv->bus->probe) {
                 int ret = drv->bus->probe(dev);
                 if (ret) {
+                    printk("driver: probe %s with %s failed: %d\n",
+                           dev_name(dev), drv->name, ret);
                     dev->driver = NULL;
                     continue;
                 }
