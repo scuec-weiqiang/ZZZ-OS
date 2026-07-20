@@ -26,5 +26,7 @@ static inline unsigned long long __bswapdi2(__be64 x) {
 
 #define be32_to_cpu(x) __bswapsi2(x)
 #define be64_to_cpu(x) __bswapdi2(x)
+#define cpu_to_be32(x) __bswapsi2(x)
+#define cpu_to_be64(x) __bswapdi2(x)
 
 #endif

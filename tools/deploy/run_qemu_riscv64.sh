@@ -9,11 +9,12 @@ require_cmd qemu-system-riscv64
 BOARD=qemu_virt
 IMAGE="${REPO_ROOT}/build/images/${BOARD}.img"
 EXTRA_ARGS=()
+GRAPHICS=0
 
 usage() {
     cat <<'EOF'
 Usage:
-  run_qemu_riscv64.sh [--image <path>] [-- <extra qemu args>]
+  run_qemu_riscv64.sh [--image <path>] [--graphics] [-- <extra qemu args>]
 EOF
 }
 
@@ -22,6 +23,10 @@ while [ $# -gt 0 ]; do
         --image)
             IMAGE=$2
             shift 2
+            ;;
+        --graphics)
+            GRAPHICS=1
+            shift
             ;;
         --help|-h)
             usage
@@ -55,8 +60,12 @@ if [ ! -f "${REPO_ROOT}/tools/bootloaders/qemu-riscv64/u-boot.bin" ]; then
 fi
 
 echo "QEMU is starting with U-Boot."
-echo "Use QEMU's nographic console hotkeys if your terminal passes them through."
-echo "Typical exit sequence: Ctrl-A X"
+if [ "${GRAPHICS}" -eq 0 ]; then
+    echo "Use QEMU's nographic console hotkeys if your terminal passes them through."
+    echo "Typical exit sequence: Ctrl-A X"
+else
+    echo "Graphics mode is enabled with QEMU ramfb."
+fi
 echo "If your U-Boot build does not auto-run /boot.scr, run these commands at the prompt:"
 echo "  setenv kernel_addr_r 0x80200000"
 echo "  setenv fdt_addr_r 0x84000000"
@@ -64,8 +73,7 @@ echo "  ext2load virtio 0:1 \${kernel_addr_r} /uImage"
 echo "  ext2load virtio 0:1 \${fdt_addr_r} /qemu_virt.dtb"
 echo "  bootm \${kernel_addr_r} - \${fdt_addr_r}"
 
-exec qemu-system-riscv64 \
-    -nographic \
+QEMU_ARGS=(
     -smp 1 \
     -m 256M \
     -machine virt \
@@ -75,5 +83,13 @@ exec qemu-system-riscv64 \
     -drive "file=${IMAGE},if=none,format=raw,id=disk0" \
     -device virtio-blk-device,drive=disk0,bus=virtio-mmio-bus.0 \
     -global virtio-mmio.force-legacy=false \
-    -S -s \
-    "${EXTRA_ARGS[@]}"
+    -S -s
+)
+
+if [ "${GRAPHICS}" -eq 0 ]; then
+    QEMU_ARGS=(-nographic "${QEMU_ARGS[@]}")
+else
+    QEMU_ARGS=(-display gtk -serial stdio -device ramfb "${QEMU_ARGS[@]}")
+fi
+
+exec qemu-system-riscv64 "${QEMU_ARGS[@]}" "${EXTRA_ARGS[@]}"

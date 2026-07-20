@@ -1,0 +1,1 @@
+OBJ_Y += qemu_fw_cfg.o

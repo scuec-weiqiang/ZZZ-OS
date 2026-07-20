@@ -89,5 +89,9 @@
             interrupts-extended = <&plic 11>;
         };
 
+        fw-cfg@10100000 {
+            compatible = "qemu,fw-cfg-mmio";
+            reg = <0x10100000 0x18>;
+        };
     };
 };
