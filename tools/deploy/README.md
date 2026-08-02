@@ -71,6 +71,21 @@ tools/deploy/create_disk_image.sh --image build/images/qemu_virt.img
 tools/deploy/install_disk_image.sh --image build/images/qemu_virt.img --arch riscv64 --board qemu_virt
 ```
 
+The repository includes the unmodified DOOM 1.9 shareware WAD for no-charge
+testing under its separate, non-open-source shareware terms. You can select
+another legally obtained WAD explicitly:
+
+```bash
+tools/deploy/install_disk_image.sh \
+    --image build/images/qemu_virt.img \
+    --arch riscv64 \
+    --board qemu_virt \
+    --doom-wad /path/to/legally-obtained/doom.wad
+```
+
+Alternatively, set `ZZZ_DOOM_WAD`. Without an override, the bundled
+`user_proc/doom/doomq.wad` is installed.
+
 Then launch QEMU:
 
 ```bash

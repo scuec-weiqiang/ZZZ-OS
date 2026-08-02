@@ -14,11 +14,12 @@ BOARD=
 DEPLOY_DIR=
 SKIP_USERSPACE=0
 CROSS_COMPILE_ARG=${CROSS_COMPILE:-}
+DOOM_WAD=${ZZZ_DOOM_WAD:-}
 
 usage() {
     cat <<'EOF'
 Usage:
-  install_disk_image.sh --image <path> --arch <arch> --board <board> [--cross-compile <prefix>] [--deploy-dir <dir>] [--skip-userspace]
+  install_disk_image.sh --image <path> --arch <arch> --board <board> [--cross-compile <prefix>] [--deploy-dir <dir>] [--doom-wad <path>] [--skip-userspace]
 EOF
 }
 
@@ -42,6 +43,10 @@ while [ $# -gt 0 ]; do
             ;;
         --deploy-dir)
             DEPLOY_DIR=$2
+            shift 2
+            ;;
+        --doom-wad)
+            DOOM_WAD=$2
             shift 2
             ;;
         --skip-userspace)
@@ -72,6 +77,15 @@ fi
 
 if [ -z "${DEPLOY_DIR}" ]; then
     DEPLOY_DIR=$(deploy_dir_for "${ARCH}" "${BOARD}")
+fi
+
+if [ -z "${DOOM_WAD}" ] && [ -f "${REPO_ROOT}/user_proc/doom/doomq.wad" ]; then
+    DOOM_WAD="${REPO_ROOT}/user_proc/doom/doomq.wad"
+fi
+
+if [ -n "${DOOM_WAD}" ] && [ ! -f "${DOOM_WAD}" ]; then
+    echo "Doom WAD not found: ${DOOM_WAD}" >&2
+    exit 1
 fi
 
 uimage="${DEPLOY_DIR}/uImage"
@@ -115,13 +129,19 @@ trap cleanup EXIT
 mount_partition "${loopdev}" 1 "${boot_mnt}"
 mount_partition "${loopdev}" 2 "${root_mnt}"
 
-sudo mkdir -p "${boot_mnt}" "${root_mnt}/bin" "${root_mnt}/etc" "${root_mnt}/dev" "${root_mnt}/tmp"
+sudo mkdir -p "${boot_mnt}" "${root_mnt}/bin" "${root_mnt}/etc" "${root_mnt}/dev" "${root_mnt}/tmp" "${root_mnt}/usr/share/licenses/zzz-os"
 sudo chmod 1777 "${root_mnt}/tmp"
 sudo cp "${uimage}" "${boot_mnt}/uImage"
 sudo cp "${dtb}" "${boot_mnt}/"
-sudo cp ./user_proc/dash "${root_mnt}/bin/"
-sudo cp ./user_proc/doom/doomq.wad "${root_mnt}/bin/"
-sudo cp ./user_proc/doom/doomgeneric-zzz "${root_mnt}/bin/"
+sudo cp "${REPO_ROOT}/user_proc/dash" "${root_mnt}/bin/"
+sudo cp "${REPO_ROOT}/user_proc/doom/doomgeneric-zzz" "${root_mnt}/bin/"
+if [ -n "${DOOM_WAD}" ]; then
+    sudo cp "${DOOM_WAD}" "${root_mnt}/bin/doomq.wad"
+else
+    echo "Doom WAD not installed; pass --doom-wad <path> or set ZZZ_DOOM_WAD"
+fi
+sudo cp "${REPO_ROOT}/LICENSE" "${REPO_ROOT}/THIRD_PARTY_NOTICES.md" "${root_mnt}/usr/share/licenses/zzz-os/"
+sudo cp -a "${REPO_ROOT}/LICENSES/." "${root_mnt}/usr/share/licenses/zzz-os/"
 
 sudo cp "${boot_cmd}" "${boot_mnt}/"
 sudo cp "${boot_scr}" "${boot_mnt}/"

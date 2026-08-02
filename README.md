@@ -186,6 +186,14 @@ CONTRIBUTING.md
 
 ## License
 
-仓库当前尚未完成统一许可证整理。
+除另有明确标注外，ZZZ-OS 原创代码采用
+[GNU General Public License version 2 only](LICENSE)（GPL-2.0-only）。
 
-如需长期维护、分发或基于本项目开发衍生版本，建议先与维护者确认授权策略。
+仓库中的第三方组件继续适用其各自的许可证，原有版权和许可证声明不因
+项目级许可证而改变。组件来源、版本及许可证范围见
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+仓库附带的 `doomq.wad` 是未经修改的 DOOM 1.9 官方共享版数据，仅按
+其独立的非开源 Shareware 条款免费再分发，不属于 GPL-2.0-only 范围。
+收费分发或修改前必须另行取得权利人的许可，详见
+[`LICENSES/DOOM-Shareware.txt`](LICENSES/DOOM-Shareware.txt)。
