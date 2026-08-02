@@ -115,6 +115,8 @@ static inline long __copy_to_user(void __user *to,
 {
     if (__range_ok((unsigned long)to, len))
         return -EFAULT;
+    if (len == 0)
+        return 0;
 
     __asm__ __volatile__(
         "mov r2, #0\n"
@@ -135,6 +137,8 @@ static inline long __copy_from_user(void *to,
 {
     if (__range_ok((unsigned long)from, len))
         return -EFAULT;
+    if (len == 0)
+        return 0;
 
     __asm__ __volatile__(
         "mov r2, #0\n"

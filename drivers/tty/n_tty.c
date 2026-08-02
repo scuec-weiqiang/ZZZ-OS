@@ -3,7 +3,7 @@
  * @Description  :
  * @Author       : WeiQiang scuec_weiqiang@qq.com
  * @Date         : 2026-07-14 00:42:09
- * @LastEditTime : 2026-07-15 16:38:59
+ * @LastEditTime : 2026-07-24 17:37:42
  * @LastEditors  : WeiQiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2026.
  */
@@ -18,6 +18,7 @@
 #include <os/tty_ldisc.h>
 #include <uapi/linux/termios.h>
 #include <uapi/linux/tty.h>
+#include <uapi/fcntl_defs.h>
 
 static void n_tty_kick_reader(struct tty_struct *tty) {
     if (tty && tty->port)
@@ -190,6 +191,7 @@ static ssize_t n_tty_read(struct tty_struct *tty, struct file *file, char *buf, 
     size_t copied = 0;
     bool canonical;
 
+
     (void)file;
 
     if (!tty || !buf)
@@ -216,6 +218,8 @@ static ssize_t n_tty_read(struct tty_struct *tty, struct file *file, char *buf, 
             spin_unlock_irqrestore(&ldata->read_lock, flags);
             if (copied)
                 break;
+            if (file && (file->f_flags & O_NONBLOCK))
+                return -EAGAIN;
             if (tty->port)
                 sleep_on(&tty->port->read_wait);
             continue;
@@ -225,6 +229,8 @@ static ssize_t n_tty_read(struct tty_struct *tty, struct file *file, char *buf, 
             spin_unlock_irqrestore(&ldata->read_lock, flags);
             if (copied)
                 break;
+            if (file && (file->f_flags & O_NONBLOCK))
+                return -EAGAIN;
             if (tty->port)
                 sleep_on(&tty->port->read_wait);
             continue;

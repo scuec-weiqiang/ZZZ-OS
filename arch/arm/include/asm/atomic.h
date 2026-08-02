@@ -2,8 +2,8 @@
 #define __ASM_ATOMIC_H
 
 #include <os/types.h>
-
 #include <stdint.h>
+#include <asm-generic/atomic.h>
 
 #define ATOMIC_INIT(i)	{ (i) }
 
@@ -39,6 +39,31 @@ static inline void atomic_inc(atomic_t *v)
 static inline void atomic_dec(atomic_t *v)
 {
     atomic_sub(1, v);
+}
+
+static inline int atomic_add_return(int i, atomic_t *v)
+{
+    return __atomic_add_fetch(&v->counter, i, __ATOMIC_ACQ_REL);
+}
+
+static inline int atomic_sub_return(int i, atomic_t *v)
+{
+    return __atomic_sub_fetch(&v->counter, i, __ATOMIC_ACQ_REL);
+}
+
+static inline int atomic_inc_return(atomic_t *v)
+{
+    return atomic_add_return(1, v);
+}
+
+static inline int atomic_dec_return(atomic_t *v)
+{
+    return atomic_sub_return(1, v);
+}
+
+static inline int atomic_xchg(atomic_t *v, int new_val)
+{
+    return __atomic_exchange_n(&v->counter, new_val, __ATOMIC_ACQ_REL);
 }
 
 static inline int atomic_cmpxchg(atomic_t *v, int old_val, int new_val)

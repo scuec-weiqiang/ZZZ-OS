@@ -1,4 +1,3 @@
 OBJ_Y += fb_core.o
-OBJ_Y += simplefb.o
-
+OBJ_$(CONFIG_QEMU_FW_CFG) += simplefb.o
 

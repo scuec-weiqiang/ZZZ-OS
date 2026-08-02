@@ -14,6 +14,8 @@
 #include <os/errno.h>
 #include <os/printk.h>
 
+extern off_t generic_file_lseek(struct file *file, off_t offset, int whence);
+
 static int fb_open(struct inode *inode, struct file *file)
 {
     struct fb_info *info = file->private_data;
@@ -53,6 +55,7 @@ static ssize_t fb_write(struct file *file, const char *buf,
 static const struct file_operations fb_fops = {
     .open = fb_open,
     .write = fb_write,
+    .lseek = generic_file_lseek,
 };
 
 

@@ -1,1 +1,1 @@
-OBJ_Y += qemu_fw_cfg.o
+OBJ_$(CONFIG_QEMU_FW_CFG) += qemu_fw_cfg.o

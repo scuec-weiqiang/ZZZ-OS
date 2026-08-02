@@ -14,8 +14,6 @@ struct secondary_data secondary_data[MAX_CPUS];
 
 void arch_secondary_init(void)
 {
-    int cpu = get_cpuid();
-
     /* 写入内核页表基址 (共享 init_mm.pgdir) */
     pgtable_t *pgdir = init_mm.pgdir;
     if (pgdir) {
@@ -60,13 +58,15 @@ void arch_cpu_up(int cpu)
     printk("SMP: CPU%d bring-up not yet supported on ARM (needs SRC driver)\n", cpu);
 }
 
-void arch_smp_init(void)
+void arch_smp_init(int boot_cpu)
 {
     int total_cpus = smp_get_cpu_count();
 
     printk("SMP: %d CPUs detected\n", total_cpus);
 
-    for (int cpu = 1; cpu < total_cpus && cpu < MAX_CPUS; cpu++) {
+    for (int cpu = 0; cpu < total_cpus && cpu < MAX_CPUS; cpu++) {
+        if (cpu == boot_cpu)
+            continue;
         arch_cpu_up(cpu);
     }
 }

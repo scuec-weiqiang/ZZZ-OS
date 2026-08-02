@@ -68,11 +68,6 @@ int kernel_init(void *arg) {
     mount_root(kernel_root_device(), "ext2");
     
     late_initcalls_run();
-
-    ret = setup_stdio("/dev/ttyS0");
-    if (ret < 0)
-        panic("kernel_init: failed to open /dev/ttyS0 for stdio: %d\n", ret);
-    printk("kernel_init: stdio connected to /dev/ttyS0\n");
     
     char *argv[] = { "/bin/init", NULL };
     char *envp[] = {
@@ -80,8 +75,7 @@ int kernel_init(void *arg) {
     "HOME=/",
     "TERM=vt100",
     "PS1=$ ",
-    NULL
-};
+    NULL};
     
     ret = do_execve("/bin/init", argv, envp);
     if (ret < 0)
