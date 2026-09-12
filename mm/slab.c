@@ -11,6 +11,7 @@
 #include <os/utils.h>
 
 #define get_slab(list_node) list_entry(list_node, struct slab, list)
+#define obj_to_slab(obj) ((struct slab*)((addr_t)(obj) & PAGE_MASK))
 
 #define SIZE_TYPE_0 8
 #define SIZE_TYPE_1 16
@@ -38,7 +39,14 @@ static struct {
     size_t size;
     struct kmem_cache *cache;
 } kmalloc_caches[] = {
-    {SIZE_TYPE_0, NULL}, {SIZE_TYPE_1, NULL}, {SIZE_TYPE_2, NULL}, {SIZE_TYPE_3, NULL}, {SIZE_TYPE_4, NULL}, {SIZE_TYPE_5, NULL}, {SIZE_TYPE_6, NULL}, {SIZE_TYPE_7, NULL}, {SIZE_TYPE_8, NULL}, {SIZE_TYPE_9, NULL}, {SIZE_TYPE_10, NULL}, {SIZE_TYPE_11, NULL}, {SIZE_TYPE_12, NULL}, {SIZE_TYPE_13, NULL}, {SIZE_TYPE_14, NULL}};
+    {SIZE_TYPE_0, NULL}, {SIZE_TYPE_1, NULL}, 
+    {SIZE_TYPE_2, NULL}, {SIZE_TYPE_3, NULL}, 
+    {SIZE_TYPE_4, NULL}, {SIZE_TYPE_5, NULL}, 
+    {SIZE_TYPE_6, NULL}, {SIZE_TYPE_7, NULL}, 
+    {SIZE_TYPE_8, NULL}, {SIZE_TYPE_9, NULL}, 
+    {SIZE_TYPE_10, NULL}, {SIZE_TYPE_11, NULL}, 
+    {SIZE_TYPE_12, NULL}, {SIZE_TYPE_13, NULL},
+    {SIZE_TYPE_14, NULL}};
 
 #define SLAB_SIZE_TYPES_NUM (sizeof(size_types) / sizeof(size_types[0]))
 #define SLAB_MAX_SIZE 2048
@@ -48,24 +56,33 @@ static inline int slab_debug_size(size_t size) {
     return size == 128 || size == 136 || size == 232;
 }
 
+// slab后什么位置开始obj
 static inline size_t slab_objects_offset(const struct kmem_cache *cache) {
     return ALIGN_UP(sizeof(struct slab), cache->align);
 }
 
+/*
+之前计算obj开始位置时用 ALIGN_UP(slab + sizeof(struct slab), cache->object_size);
+没考虑到有部分object不是按2的次幂对齐的，导致后面部分object超出本页范围
+这里统一用这个函数算
+*/
 static inline uintptr_t slab_objects_start(const struct kmem_cache *cache,
-                                           const struct slab *slab) {
+                                           const struct slab *slab) 
+{
     return (uintptr_t)slab + slab_objects_offset(cache);
 }
 
 static inline uintptr_t slab_objects_end(const struct kmem_cache *cache,
-                                         const struct slab *slab) {
+                                         const struct slab *slab) 
+{
     return slab_objects_start(cache, slab) +
            (uintptr_t)cache->objects_per_slab * cache->object_size;
 }
 
 static int slab_obj_is_valid(const struct kmem_cache *cache,
                              const struct slab *slab,
-                             const struct free_obj *obj) {
+                             const struct free_obj *obj) 
+{
     uintptr_t start;
     uintptr_t end;
     uintptr_t addr;
@@ -90,10 +107,12 @@ static void slab_panic_bad_obj(const char *tag,
                                const struct slab *slab,
                                const struct free_obj *obj);
 
-// fix: bug太多了。。。之前没有对double free的情况进行检查，结果跑用户态进程导致内核崩溃
+// fix: bug太多了。。。之前没有对double free的情况进行检查
+// free obj前在链表里遍历，检查obj是否已经在freelist里，防止成环
 static int slab_obj_is_free(const struct kmem_cache *cache,
                             const struct slab *slab,
-                            const struct free_obj *obj) {
+                            const struct free_obj *obj) 
+{
     const struct free_obj *cur;
     unsigned int seen = 0;
 
@@ -107,6 +126,7 @@ static int slab_obj_is_free(const struct kmem_cache *cache,
             return 1;
         }
 
+        // 防止已经成环了，导致无法跳出
         if (++seen > cache->objects_per_slab) {
             panic("kmem_cache_free: free list loop cache=%xu slab=%xu obj_size=%xu\n",
                   cache, slab, cache->object_size);
@@ -119,25 +139,29 @@ static int slab_obj_is_free(const struct kmem_cache *cache,
 static void slab_panic_bad_obj(const char *tag,
                                const struct kmem_cache *cache,
                                const struct slab *slab,
-                               const struct free_obj *obj) {
+                               const struct free_obj *obj) 
+{
     panic("%s: cache=%xu obj_size=%xu slab=%xu obj=%xu start=%xu end=%xu inuse=%xu objs=%xu\n",
           tag, cache, cache->object_size, slab, obj,
           slab_objects_start(cache, slab), slab_objects_end(cache, slab),
           slab->inuse, cache->objects_per_slab);
 }
 
-static inline size_t round_up_align(size_t sz, size_t align) {
+static inline size_t round_up_align(size_t sz, size_t align) 
+{
     return (sz + (align - 1)) & ~(align - 1);
 }
 
-static inline size_t cache_object_size(size_t size, size_t align) {
+static inline size_t cache_object_size(size_t size, size_t align) 
+{
     if (size < sizeof(struct free_obj)) {
         size = sizeof(struct free_obj);
     }
     return round_up_align(size, align);
 }
 
-static int size_to_index(size_t size) {
+static int size_to_index(size_t size) 
+{
     if (size == 0)
         return 0;
     size = round_up_align(size, SLAB_MIN_ALIGN);
@@ -149,7 +173,8 @@ static int size_to_index(size_t size) {
     return -1;
 }
 
-struct kmem_cache *kmem_cache_create(const char *name, size_t size, size_t align) {
+struct kmem_cache *kmem_cache_create(const char *name, size_t size, size_t align) 
+{
     if (!name)
         return NULL;
 
@@ -162,6 +187,7 @@ struct kmem_cache *kmem_cache_create(const char *name, size_t size, size_t align
     cache->align = round_up_align(align ? align : SLAB_MIN_ALIGN, SLAB_MIN_ALIGN);
     cache->object_size = cache_object_size(size, cache->align);
 
+    /*obj起始位置*/
     size_t obj_offset = slab_objects_offset(cache);
     if (obj_offset >= PAGE_SIZE) {
         free_pages_kva(cache);
@@ -179,56 +205,120 @@ struct kmem_cache *kmem_cache_create(const char *name, size_t size, size_t align
     INIT_LIST_HEAD(&cache->partial_slabs);
     spin_lock_init(&cache->lock);
 
+    for (int i = 0; i < MAX_CPUS; i++) {
+        spin_lock_init(&cache->cpu[i].lock);
+        cache->cpu[i].count = 0;
+        cache->cpu[i].drains = 0;
+        cache->cpu[i].refills = 0;
+        cache->cpu[i].hits = 0;
+        cache->cpu[i].misses = 0;
+    }
+
     cache->total_slabs = 0;
 
     return cache;
 }
 
-static struct slab *init_slab(struct kmem_cache *cache) {
-    void *mem = alloc_pages_kva(1);
-    if (!mem) {
-        return NULL;
-    }
+// static struct slab *init_slab(struct kmem_cache *cache) 
+// {
+//     void *mem = alloc_pages_kva(1);
+//     if (!mem) {
+//         return NULL;
+//     }
 
-    struct slab *slab = (struct slab *)mem;
+//     struct slab *slab = (struct slab *)mem;
+//     slab->parent = cache;
+//     slab->inuse = 0;
+//     INIT_LIST_HEAD(&slab->list);
+//     list_add(&cache->free_slabs, &slab->list);
+
+//     struct free_obj *obj = (struct free_obj *)((size_t)slab + slab_objects_offset(cache));
+//     slab->free_object.next = obj;
+
+//     for (unsigned int i = 0; i < cache->objects_per_slab - 1; i++) {
+//         struct free_obj *next = (struct free_obj *)((size_t)obj + cache->object_size);
+//         obj->next = next;
+//         obj = next;
+//     }
+
+//     /*忘了加这个导致分配多了后直接崩了*/
+//     obj->next = NULL;
+
+//     struct page *pg = address_page(mem);
+//     pg->slab = slab;
+//     slab->magic = SLAB_MAGIC;
+
+//     return slab;
+// }
+
+/* 现在锁有点复杂了，涉及到 cpu_cache->lock
+                            → cache->lock
+                                → PCP lock / buddy lock 
+把 init_slab拆成两函数，alloc_slab_detached只负责分配，把加入freelist链表部分单独拆出来上锁
+现在进入alloc_slab_detached前只可能持有cpu_cache->lock，函数内部可能会持有pcp/buddy的锁
+*/
+static struct slab *alloc_slab_detached(struct kmem_cache *cache)
+{
+    void *mem = alloc_pages_kva(1);
+    if (mem == NULL)
+        return NULL;
+
+    struct slab *slab = mem;
+
     slab->parent = cache;
     slab->inuse = 0;
+    slab->magic = SLAB_MAGIC;
     INIT_LIST_HEAD(&slab->list);
-    list_add(&cache->free_slabs, &slab->list);
 
-    struct free_obj *obj = (struct free_obj *)((size_t)slab + slab_objects_offset(cache));
+    /* 初始化 object freelist */
+    struct free_obj *obj =
+        (struct free_obj *)((uintptr_t)slab +
+                            slab_objects_offset(cache));
+
     slab->free_object.next = obj;
 
-    for (unsigned int i = 0; i < cache->objects_per_slab - 1; i++) {
-        struct free_obj *next = (struct free_obj *)((size_t)obj + cache->object_size);
+    for (unsigned int i = 0;
+         i < cache->objects_per_slab - 1;
+         i++) {
+        struct free_obj *next =
+            (struct free_obj *)((uintptr_t)obj +
+                                cache->object_size);
+
         obj->next = next;
         obj = next;
     }
+
     obj->next = NULL;
 
-    struct page *pg = address_page(mem);
-    pg->slab = slab;
-    slab->magic = SLAB_MAGIC;
+    struct page *page = address_page(mem);
+    page->slab = slab;
 
     return slab;
 }
 
-void *kmem_cache_alloc(struct kmem_cache *cache) {
+static void add_slab_locked(struct kmem_cache *cache, struct slab *slab)
+{
+    list_add(&cache->free_slabs, &slab->list);
+    cache->total_slabs++;
+}
+
+/*进入函数前持有的锁为：
+   cpu_cache->lock
+        → cache->lock
+*/
+static void* __kmem_cache_alloc_locked(struct kmem_cache *cache) 
+{
     struct slab *slab = NULL;
     struct list_head *node = NULL;
-
+    /*优先从没满的slab里分配*/
     if (!list_empty(&cache->partial_slabs)) {
         goto alloc_obj;
-    }
-
-    if (!list_empty(&cache->free_slabs)) {
+    } else if (!list_empty(&cache->free_slabs)) {
+        /*slab都是满的那就看看有没有缓存的free slab*/
         goto add_partial;
     } else {
-        slab = init_slab(cache);
-        if (!slab) {
-            return NULL;
-        }
-        cache->total_slabs++;
+        /* 需要分配slab，这一步放到外面做方便加锁*/
+        return NULL;
     }
 
 add_partial:
@@ -244,6 +334,7 @@ alloc_obj:
     if (!obj) {
         panic("kmem_cache_alloc: slab free list is empty");
     }
+    /*保险起见还是校验一下*/
     if (!slab_obj_is_valid(cache, slab, obj)) {
         slab_panic_bad_obj("kmem_cache_alloc: invalid free head", cache, slab, obj);
     }
@@ -263,12 +354,13 @@ alloc_obj:
     return (void *)ret;
 }
 
-void kmem_cache_free(void *obj) {
+// 释放obj，如果产生了需要回收的 slab，那就返回这个free slab
+static struct slab* __kmem_cache_free_locked(struct kmem_cache *cache, void *obj) 
+{
     if (!obj)
-        return;
+        return NULL;
 
-    phys_addr_t slab_base = (phys_addr_t)obj & PAGE_MASK;
-    struct slab *slab = (struct slab *)slab_base;
+    struct slab *slab = obj_to_slab(obj);
     if (slab->magic != SLAB_MAGIC) {
         panic("kmem_cache_free: invalid slab magic");
     }
@@ -283,22 +375,138 @@ void kmem_cache_free(void *obj) {
     slab->free_object.next = free_obj;
     slab->inuse--;
 
-    struct kmem_cache *cache = slab->parent;
     if (slab->inuse == 0) {
         list_del(&slab->list);
         slab->magic = 0;
         cache->total_slabs--;
-        free_pages_kva(slab);
-        return;
+        return slab;
     }
 
     if (slab->inuse == cache->objects_per_slab - 1) {
         list_del(&slab->list);
         list_add(&cache->partial_slabs, &slab->list);
     }
+
+    return NULL;
 }
 
-void *__kmalloc(size_t size) {
+/*进入函数前持有的锁为：
+   cpu_cache->lock
+*/
+static void refill_magazine(struct kmem_cache *cache,
+                            struct kmem_cache_cpu *cpu_cache)
+{
+    unsigned int target = MAG_SIZE / 2;
+
+    while (cpu_cache->count < target) {
+        void *obj;
+        unsigned long flags;
+
+        flags = spin_lock_irqsave(&cache->lock);
+        while (cpu_cache->count < target) {
+            obj = __kmem_cache_alloc_locked(cache);
+            // 如果obj为null，说明需要重新分配一个slab
+            if (obj == NULL)
+                break;
+            cpu_cache->refills++;
+            cpu_cache->objects[cpu_cache->count++] = obj;
+        }
+
+        spin_unlock_irqrestore(&cache->lock, flags);
+
+        if (cpu_cache->count >= target)
+            break;
+
+        // 没有可用 slab,此处已经释放 cache->lock，可以安全申请页面。
+        struct slab *new_slab = alloc_slab_detached(cache);
+        if (new_slab == NULL)
+            break;
+
+        flags = spin_lock_irqsave(&cache->lock);
+        add_slab_locked(cache, new_slab);
+        spin_unlock_irqrestore(&cache->lock, flags);
+    }
+}
+
+void drain_magazine(struct kmem_cache *cache, struct kmem_cache_cpu *cpu_cache) 
+{
+    struct slab *to_free[MAG_SIZE / 2]; // 用来收集可能需要回收的slab
+    unsigned int nr_slabs = 0;
+    unsigned int nr_objects = MAG_SIZE / 2; // 一次释放一半
+    unsigned long flags;
+
+    flags = spin_lock_irqsave(&cache->lock);
+
+    while (nr_objects-- && cpu_cache->count != 0) {
+        void *obj = cpu_cache->objects[--cpu_cache->count];
+        cpu_cache->objects[cpu_cache->count] = NULL;
+        cpu_cache->drains++;
+        struct slab *empty = __kmem_cache_free_locked(cache, obj);
+        if (empty) {
+            to_free[nr_slabs++] = empty;
+        }
+    }
+    spin_unlock_irqrestore(&cache->lock, flags);
+  
+    // 此时不再持有 cache->lock
+    for (unsigned int i = 0; i < nr_slabs; i++)
+        free_pages_kva(to_free[i]);
+}
+
+
+void *kmem_cache_alloc(struct kmem_cache *cache) 
+{
+    struct kmem_cache_cpu *cpu_cache = &cache->cpu[get_cpuid()];
+    int flags = spin_lock_irqsave(&cpu_cache->lock);
+
+    if (cpu_cache->count != 0) {
+        void *obj = cpu_cache->objects[--cpu_cache->count];
+        cpu_cache->hits++;
+        spin_unlock_irqrestore(&cpu_cache->lock, flags);
+        return obj;
+    }
+
+    cpu_cache->misses++;
+    // 空了才执行批量 refill
+    refill_magazine(cache, cpu_cache);
+
+    void *obj = cpu_cache->count ?
+      cpu_cache->objects[--cpu_cache->count] : NULL;
+    spin_unlock_irqrestore(&cpu_cache->lock, flags);
+    return obj;
+}
+
+void kmem_cache_free(void* obj) 
+{
+    if (!obj)
+        return;
+    
+    phys_addr_t slab_base = (phys_addr_t)obj & PAGE_MASK;
+    struct slab *slab = (struct slab *)slab_base;
+    if (slab->magic != SLAB_MAGIC) {
+        panic("kmem_cache_free: invalid slab magic");
+    }
+    struct kmem_cache *cache = slab->parent;
+    struct kmem_cache_cpu *cpu_cache  = &cache->cpu[get_cpuid()];
+
+    int flags = spin_lock_irqsave(&cpu_cache->lock);
+
+    for (int i = 0; i < cpu_cache->count; i++) {
+        if (cpu_cache->objects[i] == obj)
+            panic("magazine double free");
+    }
+    if (cpu_cache->count >= MAG_SIZE) {
+        drain_magazine(cache, cpu_cache);
+    }
+    cpu_cache->objects[cpu_cache->count++] = obj;
+
+    spin_unlock_irqrestore(&cpu_cache->lock, flags);
+    return;
+}
+
+
+void *__kmalloc(size_t size) 
+{
     void *ptr;
 
     if (size == 0)
@@ -307,10 +515,6 @@ void *__kmalloc(size_t size) {
     if (size > SLAB_MAX_SIZE) {
         size_t npages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
         ptr = alloc_pages_kva(npages);
-        if (slab_debug_size(size)) {
-            printk("kmalloc large: req=%xu pages=%xu ptr=%xu\n",
-                   size, npages, ptr);
-        }
         return ptr;
     }
 
@@ -330,7 +534,8 @@ void *__kmalloc(size_t size) {
     return ptr;
 }
 
-void __kfree(void *ptr) {
+void __kfree(void *ptr) 
+{
     if (!ptr)
         return;
 
@@ -347,9 +552,11 @@ void __kfree(void *ptr) {
     kmem_cache_free(ptr);
 }
 
-void slab_init() {
+void slab_init() 
+{
     for (int i = 0; i < SLAB_SIZE_TYPES_NUM; i++) {
-        kmalloc_caches[i].cache = kmem_cache_create("kmalloc_cache", kmalloc_caches[i].size, SLAB_MIN_ALIGN);
+        kmalloc_caches[i].cache = 
+            kmem_cache_create("kmalloc_cache", kmalloc_caches[i].size, SLAB_MIN_ALIGN);
         if (!kmalloc_caches[i].cache) {
             panic("__kmalloc cache create failed");
         }
@@ -380,209 +587,3 @@ void slab_init() {
         panic("pipe cache create failed");
     }
 }
-
-// #include <os/mm.h>
-// #include <os/rand.h>
-
-// static void kmalloc_basic_test(void) {
-//     printk("[kmalloc_basic_test] start\n");
-
-//     for (int i = 0; i < 1000; i++) {
-//         size_t sz = (i % 128) + 1;
-//         void *p = __kmalloc(sz);
-
-//         if (!p)
-//             panic("__kmalloc failed at %d", i);
-
-//         memset(p, 0xAB, sz);
-//         __kfree(p);
-//     }
-
-//     printk("[kmalloc_basic_test] PASS\n");
-// }
-
-// static void kmalloc_stress_test(void) {
-//     #define MAX_PTRS 4096
-
-//     static void *ptrs[MAX_PTRS];
-//     static size_t sizes[MAX_PTRS];
-
-//     printk("[kmalloc_stress_test] start\n");
-
-//     for (int i = 0; i < MAX_PTRS; i++) {
-//         ptrs[i] = NULL;
-//         sizes[i] = 0;
-//     }
-
-//     /* 随机分配 */
-//     for (int i = 0; i < MAX_PTRS; i++) {
-//         size_t sz = (rand() % 8000) + 1;  // 1~8KB
-
-//         ptrs[i] = __kmalloc(sz);
-//         sizes[i] = sz;
-
-//         if (!ptrs[i]) {
-//             panic("__kmalloc failed at %d size=%d", i, sz);
-//         }
-
-//         memset(ptrs[i], 0x5A, sz);
-//     }
-
-//     /* 随机顺序释放 */
-//     for (int i = 0; i < MAX_PTRS; i++) {
-//         int idx = rand() % MAX_PTRS;
-
-//         if (ptrs[idx]) {
-//             __kfree(ptrs[idx]);
-//             ptrs[idx] = NULL;
-//         }
-//     }
-
-//     /* 确保全部释放 */
-//     for (int i = 0; i < MAX_PTRS; i++) {
-//         if (ptrs[i]) {
-//             __kfree(ptrs[i]);
-//         }
-//     }
-
-//     printk("[kmalloc_stress_test] PASS\n");
-// }
-
-// static void buddy_contiguous_test(void) {
-//     printk("[buddy_contiguous_test] start\n");
-
-//     for (int order = 0; order <= 5; order++) {
-//         void *p = __kmalloc(PAGE_SIZE << order);
-//         buddy_dump();
-//         if (!p)
-//         {
-
-//             panic("alloc failed for order %d", order);
-//         }
-
-//         /* 测试页是否连续 */
-//         for (int i = 0; i < (1 << order); i++) {
-//             void *cur = (void *)((uintptr_t)p + i * PAGE_SIZE);
-//             void *next = (void *)((uintptr_t)p + (i+1) * PAGE_SIZE);
-
-//             if (i + 1 < (1 << order)) {
-//                 if (KERNEL_PA(next) != KERNEL_PA(cur) + PAGE_SIZE) {
-//                     panic("pages not contiguous for order %d", order);
-//                 }
-//             }
-//         }
-
-//         __kfree(p);
-//     }
-
-//     printk("[buddy_contiguous_test] PASS\n");
-// }
-
-// static void slab_test() {
-//     printk("\n==== SLAB TEST BEGIN ====\n");
-
-//     /* 1. 创建缓存 */
-//     struct kmem_cache *cache = kmem_cache_create("test_cache", 32, 8);
-//     if (!cache) {
-//         printk("[SLAB TEST] cache create failed\n");
-//         return;
-//     }
-
-//     printk("[SLAB TEST] cache created, obj_size=%d, per_slab=%d\n",
-//            (int)cache->object_size,
-//            (int)cache->objects_per_slab);
-
-//     /* 2. 简单分配测试 */
-//     void *a = kmem_cache_alloc(cache);
-//     void *b = kmem_cache_alloc(cache);
-//     void *c = kmem_cache_alloc(cache);
-
-//     printk("[SLAB TEST] alloc a=%xu b=%xu c=%xu\n", a, b, c);
-
-//     if (!a || !b || !c) {
-//         panic("basic alloc failed");
-//     }
-
-//     memset(a, 0xAA, 32);
-//     memset(b, 0xBB, 32);
-//     memset(c, 0xCC, 32);
-
-//     kmem_cache_free(a);
-//     kmem_cache_free(b);
-//     kmem_cache_free(c);
-
-//     printk("[SLAB TEST] basic kfree ok\n");
-
-//     /* 3. 打满 slab */
-//     int n = cache->objects_per_slab;
-//     printk("[SLAB TEST] filling one slab: %d objects\n", n);
-
-//     void **objs = alloc_pages_kva(1);
-//     for (int i = 0; i < n; i++) {
-//         objs[i] = kmem_cache_alloc(cache);
-//         if (!objs[i]) {
-//             panic("fill slab failed");
-//         }
-//         memset(objs[i], i, 32);
-//     }
-
-//     printk("[SLAB TEST] slab filled\n");
-
-//     /* 4. 再多分配几个，触发新 slab */
-//     void *extra1 = kmem_cache_alloc(cache);
-//     void *extra2 = kmem_cache_alloc(cache);
-
-//     printk("[SLAB TEST] extra slabs: %xu %xu\n", extra1, extra2);
-
-//     if (!extra1 || !extra2) {
-//         panic("second slab alloc failed");
-//     }
-
-//     /* 5. 全部释放 */
-//     for (int i = 0; i < n; i++) {
-//         kmem_cache_free(objs[i]);
-//     }
-
-//     kmem_cache_free(extra1);
-//     kmem_cache_free(extra2);
-
-//     printk("[SLAB TEST] full release done\n");
-
-//     free_pages_kva(objs);
-
-//     /* 6. 随机压力测试 */
-//     printk("[SLAB TEST] stress test begin\n");
-
-//     void *ptrs[256];
-//     memset(ptrs, 0, sizeof(ptrs));
-
-//     for (int i = 0; i < 10000; i++) {
-//         int idx = i % 256;
-
-//         if (ptrs[idx] == NULL) {
-//             ptrs[idx] = kmem_cache_alloc(cache);
-//             if (!ptrs[idx]) {
-//                 panic("stress alloc failed");
-//             }
-//             memset(ptrs[idx], 0x5A, 32);
-//         } else {
-//             kmem_cache_free(ptrs[idx]);
-//             ptrs[idx] = NULL;
-//         }
-//     }
-
-//     for (int i = 0; i < 256; i++) {
-//         if (ptrs[i]) {
-//             kmem_cache_free(ptrs[i]);
-//         }
-//     }
-//     free_pages_kva((void*)cache);
-//     printk("==== SLAB TEST PASSED ====\n");
-
-//     slab_init();
-//     // kmalloc_basic_test();
-//     // kmalloc_stress_test();
-//     // buddy_contiguous_test();
-
-//     printk("\n __kmalloc system test finish \n");
-// }

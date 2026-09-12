@@ -2,7 +2,7 @@
 #define __OS_CPU_H
 #include <asm/cpu.h>
 
-#define MAX_CPUS 8
+#define MAX_CPUS 16
 
 /* SMP 辅助核 release 数据结构
  * 必须与各架构 boot.S 中的偏移量保持一致：

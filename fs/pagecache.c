@@ -87,7 +87,9 @@ static int pagecache_free_page(struct lru_node *node)
     page->index = 0;
     page->private = NULL;
     page->refcount = 0;
-    page->flags = PAGE_RESERVED;
+
+    page_clear_flag(page, PAGE_LOCKED | PAGE_UPTODATE |
+                          PAGE_DIRTY | PAGE_WRITEBACK);
     lru_node_reset(&page->cache_lru_node);
     free_pages(page);
     return 0;
@@ -127,7 +129,6 @@ static struct page *pagecache_alloc_page(struct address_space *mapping, pgoff_t 
 
     CHECK(page != NULL, "pagecache: alloc page failed", return NULL;);
 
-    page->flags = PAGE_RESERVED;
     page->refcount = 0;
     spin_lock_init(&page->lock);
     page->mapping = mapping;

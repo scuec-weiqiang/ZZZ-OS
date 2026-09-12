@@ -11,10 +11,21 @@
 #define __KERNEL_SLAB_H__
 
 #include <os/types.h>
-// #include <os/bitmap.h>
 #include <os/spinlock.h>
 
 struct page;
+#define MAG_SIZE 16
+
+struct kmem_cache_cpu {
+    spinlock_t lock;
+    void *objects[MAG_SIZE];
+    unsigned int count;
+
+    unsigned long hits;
+    unsigned long misses;
+    unsigned long refills;
+    unsigned long drains;
+};
 
 struct kmem_cache {
     char name[32];
@@ -26,7 +37,8 @@ struct kmem_cache {
     struct list_head full_slabs;
     struct list_head partial_slabs;
     struct list_head free_slabs;
-
+    
+    struct kmem_cache_cpu cpu[MAX_CPUS];
     spinlock_t lock;
 };
 
@@ -37,7 +49,7 @@ struct free_obj {
 #define SLAB_MAGIC 0x5A5A5A5A
 
 struct slab {
-    u32 magic;
+    u32 magic; // 给 slab 分配的页加上这个标记，防止误释放
     struct list_head list;   // 挂在 cache 的 partial/full/kfree 链表上
     struct kmem_cache *parent;
     struct free_obj free_object; // 指向下一个空闲对象

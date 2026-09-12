@@ -58,7 +58,7 @@ static void mark_reserved_page_by_range(phys_addr_t base, phys_addr_t size) {
     if (end > last_pfn) end = last_pfn;
     for (pfn_t p = start; p < end; p++) {
         struct page *pg = pfn_to_page(p);
-        if (pg) pg->flags = PAGE_RESERVED;
+        if (pg) page_set_flag(pg, PAGE_RESERVED);
     }
 }
 

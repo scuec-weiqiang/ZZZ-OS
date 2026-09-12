@@ -367,7 +367,8 @@ void memblock_dump(void) {
     printk("\n\nMemory Regions:\n");
     struct memblock_region *region = NULL;
     list_for_each_entry(region, &memblock.memory.region_head.node, node) {
-        printk(GREEN("  Region %d: Start: %xu, Size: %xu Nomap:%xu\n"), region->idx, region->base, region->size, region->flags & MEMBLOCK_NOMAP);
+        printk(GREEN("  Region %d: Start: %xu, Size: %xu Nomap:%xu\n"), 
+        region->idx, region->base, region->size, region->flags & MEMBLOCK_NOMAP);
     }
 
     printk("Reserved Regions: %xu\n", memblock.reserved.total_size);

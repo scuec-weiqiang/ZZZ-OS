@@ -74,7 +74,7 @@ echo "  ext2load virtio 0:1 \${fdt_addr_r} /qemu_virt.dtb"
 echo "  bootm \${kernel_addr_r} - \${fdt_addr_r}"
 
 QEMU_ARGS=(
-    -smp 1 \
+    -smp 2 \
     -m 256M \
     -machine virt \
     -bios default \

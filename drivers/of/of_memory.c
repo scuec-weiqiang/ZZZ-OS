@@ -87,7 +87,6 @@ static int parse_reserved_memory_reg(struct device_node *node) {
             size = be32_to_cpu(reg[i+address_cells]);
         else return -1;
 
-
         memblock_reserve(start, size);
 
         if (of_get_property_by_name(node, "no-map"))

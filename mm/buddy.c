@@ -17,29 +17,52 @@
 #include <os/string.h>
 #include <os/lru.h>
 #include <os/utils.h>
+#include <os/spinlock.h>
+#include <os/of_cpu.h>
+
+struct per_cpu_pages 
+{
+    spinlock_t lock;
+    struct page *head; // 本 CPU 的单页链表；
+    unsigned int count; // 缓存了多少页；
+
+    unsigned int high; // 最高缓存多少页，超出的返回给全局buddy
+    unsigned int batch; // 满了之后攒多少个
+
+    unsigned long hits;
+    unsigned long misses;
+    unsigned long refills;
+    unsigned long drains;
+};
+
+static struct per_cpu_pages pcp[MAX_CPUS];
+
+SPINLOCK_DEFINE(global_buddy_lock);
 
 #define list_to_page(ptr)               list_entry((ptr), struct page, buddy_node)
 #define get_first_page(order)           list_to_page(free_area[(order)].free_list.next)
 #define get_buddy_page(page, order)     pfn_to_page(page_to_pfn((page)) ^ (1 << (order)))
 
 /*  
-    这两个宏只涉及free链表的添加、删除以及计数更新
-    不负责page的状态更新，且不对添加与删除的合法性进行检查，
-    谨慎使用 
+    空闲链表操作同时维护 PAGE_BUDDY，避免链表状态和 flags 分离。
+    调用者仍需保证 page/order 合法并持有 buddy 锁。
 */
 #define add_to_free_area(page, order) \
     __PROTECT ( \
         INIT_LIST_HEAD(&page->buddy_node); \
+        SetPageBuddy(page); \
         list_add_tail(&free_area[order].free_list, &page->buddy_node); \
         free_area[order].nr_free++; \
     )
 #define remove_from_free_area(page, order) \
     __PROTECT ( \
         list_del(&page->buddy_node); \
+        ClearPageBuddy(page); \
         free_area[order].nr_free--; \
     )
 
-static int n_to_order(u32 n) {
+static int n_to_order(u32 n) 
+{
     unsigned int order = 0;
     unsigned int size = 1;
     while (size < n) {
@@ -51,7 +74,8 @@ static int n_to_order(u32 n) {
 
 struct free_area free_area[MAX_ORDER];
 
-void try_merge_order(unsigned int order) {
+void try_merge_order(unsigned int order) 
+{
     if (order >= MAX_ORDER - 1) {
         return;
     }
@@ -61,7 +85,7 @@ void try_merge_order(unsigned int order) {
     struct page *page, *n;
     list_for_each_entry_safe(page, n, curr_list, buddy_node) {
         struct page *buddy_page = get_buddy_page(page, order);
-        if (buddy_page && buddy_page->flags == PAGE_FREE && buddy_page->order == order) {
+        if (buddy_page && PageBuddy(buddy_page) && buddy_page->order == order) {
             // 更新下一个节点，防止后续访问出错
             n = list_to_page(n->buddy_node.next);
 
@@ -70,15 +94,27 @@ void try_merge_order(unsigned int order) {
             remove_from_free_area(buddy_page, order);
 
             // 合并后加入到下一个 order 链表
-            struct page *merged_page = page;
+            struct page *merged_page = page < buddy_page ? page : buddy_page;
             merged_page->order = order + 1;
-            merged_page->flags = PAGE_FREE;
+            merged_page->flags = 0;
             add_to_free_area(merged_page, order+1);
         }
     }
 }
 
-struct page* alloc_pages(unsigned int order) {
+static void prepare_allocated_page(struct page *page) 
+{
+    page->refcount = 0;
+    page->mapping = NULL;
+    page->index = 0;
+    page->private = NULL;
+    lru_node_reset(&page->cache_lru_node);
+    page->slab = NULL;
+}
+
+/* 调用者已经持有 global_buddy_lock */
+static struct page *__buddy_alloc_locked(unsigned int order) 
+{
     if (order >= MAX_ORDER) {
         return NULL;
     }
@@ -112,11 +148,11 @@ struct page* alloc_pages(unsigned int order) {
         struct page *buddy_page = get_buddy_page(page, new_order);
         // 将拆分出的两个块加入到较小阶的空闲链表中
         buddy_page->order = new_order;
-        buddy_page->flags = PAGE_FREE;
+        buddy_page->flags = 0;
         buddy_page->slab = NULL;
         add_to_free_area(buddy_page, new_order);
         page->order = new_order;
-        page->flags = PAGE_FREE;
+        page->flags = 0;
         page->slab = NULL;
         add_to_free_area(page, new_order);
 
@@ -126,20 +162,18 @@ struct page* alloc_pages(unsigned int order) {
     do_alloc:
     page = get_first_page(current);
     remove_from_free_area(page, order);
-    page->flags = PAGE_RESERVED;  // 标记为已分配
-    page->refcount = 0;
-    page->mapping = NULL;
-    page->index = 0;
-    page->private = NULL;
-    lru_node_reset(&page->cache_lru_node);
-    page->slab = NULL;
     return page;
 }
 
-void free_pages(struct page *page) {
-    if (!page) return;
+/* 调用者必须已经持有 global_buddy_lock */
+static void __buddy_free_locked(struct page *page) 
+{
     unsigned int order = page->order;
     if (order >= MAX_ORDER) {
+        return;
+    }
+
+    if (PageReserved(page) || PageBuddy(page) || PagePcp(page)) {
         return;
     }
 
@@ -147,7 +181,7 @@ void free_pages(struct page *page) {
 
     while (order < MAX_ORDER - 1) {
         struct page *buddy_page = get_buddy_page(curr_page, order);
-        if (buddy_page && buddy_page->flags == PAGE_FREE && buddy_page->order == order) {
+        if (buddy_page && PageBuddy(buddy_page) && buddy_page->order == order) {
             // 从当前 order 链表中移除伙伴页
             remove_from_free_area(buddy_page, order);
 
@@ -162,17 +196,180 @@ void free_pages(struct page *page) {
     }
 
     curr_page->order = order;
-    curr_page->flags = PAGE_FREE;
+    curr_page->flags = 0;
     curr_page->refcount = 0;
     curr_page->mapping = NULL;
     curr_page->index = 0;
     curr_page->private = NULL;
+    curr_page->next = NULL;
     lru_node_reset(&curr_page->cache_lru_node);
     curr_page->slab = NULL;
     add_to_free_area(curr_page, order);
 }
 
-void* alloc_pages_kva(size_t npages) {
+/* 调用这个函数前必须已持有当前 PCP 的锁 */
+static unsigned int pcp_refill(struct per_cpu_pages *ppcp)
+{
+    unsigned int nr = 0;
+    int flags;
+
+    flags = spin_lock_irqsave(&global_buddy_lock);
+
+    while (nr < ppcp->batch) {
+        struct page *page = __buddy_alloc_locked(0);
+
+        if (page == NULL)
+            break;
+
+        SetPagePcp(page);
+        page->next = ppcp->head;
+        ppcp->head = page;
+        ppcp->count++;
+        nr++;
+    }
+
+    spin_unlock_irqrestore(&global_buddy_lock, flags);
+
+    if (nr != 0)
+        pcp->refills++;
+
+    return nr;
+}
+
+/* 把pcp里的page还给buddy，调用这个函数前必须已持有当前 PCP 的锁 */
+static unsigned int pcp_drain(struct per_cpu_pages *pcp,
+                              unsigned int nr_to_drain)
+{
+    unsigned int nr = 0;
+    int flags;
+
+    flags = spin_lock_irqsave(&global_buddy_lock);
+
+    while (nr < nr_to_drain && pcp->head != NULL) {
+        struct page *page = pcp->head;
+
+        pcp->head = page->next;
+        pcp->count--;
+
+        page->next = NULL;
+        ClearPagePcp(page);
+        page->order = 0;
+
+        __buddy_free_locked(page);
+        nr++;
+    }
+
+    spin_unlock_irqrestore(&global_buddy_lock, flags);
+
+    if (nr != 0)
+        pcp->drains++;
+
+    return nr;
+}
+
+static struct page *__pcp_pop(struct per_cpu_pages *pcp)
+{
+    struct page *page = pcp->head;
+
+    if (page == NULL)
+        return NULL;
+
+    pcp->head = page->next;
+    pcp->count--;
+
+    page->next = NULL;
+    ClearPagePcp(page);       /* 现在变成普通 allocated page */
+    return page;
+}
+
+static void __pcp_push(struct per_cpu_pages *pcp, struct page *page)
+{
+    page->order = 0;
+    SetPagePcp(page);
+
+    page->next = pcp->head;
+    pcp->head = page;
+    pcp->count++;
+}
+
+static struct page *buddy_alloc(unsigned int order)
+{
+    int flags;
+    struct page *page;
+
+    flags = spin_lock_irqsave(&global_buddy_lock);
+    page = __buddy_alloc_locked(order);
+    spin_unlock_irqrestore(&global_buddy_lock, flags);
+
+    return page;
+}
+
+static void buddy_free(struct page *page) 
+{
+    int flags;
+    flags = spin_lock_irqsave(&global_buddy_lock);
+    __buddy_free_locked(page);
+    spin_unlock_irqrestore(&global_buddy_lock, flags);
+}
+
+struct page *alloc_pages(unsigned int order)
+{
+    struct per_cpu_pages *ppcp;
+    struct page *page;
+    int flags;
+
+    // 只有分配一页的请求才走per cpu，否则走全局
+    if (order != 0)
+        return buddy_alloc(order);
+
+    ppcp = &pcp[get_cpuid()];
+
+    flags = spin_lock_irqsave(&ppcp->lock);
+
+    page = __pcp_pop(ppcp);
+    if (page == NULL) {
+        ppcp->misses++;
+        pcp_refill(ppcp);
+        page = __pcp_pop(ppcp);
+    } else {
+        ppcp->hits++;
+    }
+
+    spin_unlock_irqrestore(&ppcp->lock, flags);
+
+    if (page != NULL)
+        prepare_allocated_page(page);
+
+    return page;
+}
+
+void free_pages(struct page *page)
+{
+    struct per_cpu_pages *ppcp;
+    int flags;
+
+    if (page == NULL)
+        return;
+
+    if (page->order != 0) {
+        buddy_free(page);
+        return;
+    }
+
+    ppcp = &pcp[get_cpuid()];
+
+    flags = spin_lock_irqsave(&ppcp->lock);
+
+    __pcp_push(ppcp, page);
+
+    if (ppcp->count > ppcp->high)
+        pcp_drain(ppcp, ppcp->batch);
+
+    spin_unlock_irqrestore(&ppcp->lock, flags);
+}
+
+void* alloc_pages_kva(size_t npages) 
+{
     u32 n = next_power_of_two(npages);
     n = n_to_order(n);
     struct page* page = alloc_pages(n);
@@ -180,13 +377,14 @@ void* alloc_pages_kva(size_t npages) {
     return (void*)page_address(page);
 }
 
-void free_pages_kva(void *kaddr) {
+void free_pages_kva(void *kaddr) 
+{
     struct page* page = address_page(kaddr);
     free_pages(page);
 }
 
-
-void buddy_init(void) {
+void buddy_init(void) 
+{
     for (unsigned int order = 0; order < MAX_ORDER; order++) {
         INIT_LIST_HEAD(&free_area[order].free_list);
         free_area[order].nr_free = 0;
@@ -203,24 +401,32 @@ void buddy_init(void) {
             }
             struct page *page = phys_to_page(addr);
             page->order = 0;
-            page->flags = PAGE_FREE;
+            page->flags = 0;
             page->slab = NULL;
-            INIT_LIST_HEAD(&page->buddy_node);
-            list_add_tail(&free_area[0].free_list, &page->buddy_node);
-            free_area[0].nr_free++;
+            add_to_free_area(page, 0);
         }
     }
-
 
     for (unsigned int order = 0; order < MAX_ORDER - 1; order++) {
         try_merge_order(order);
     }
 
-    
+    for (int i = 0; i < MAX_CPUS; i++) {
+        spin_lock_init(&pcp[i].lock);
+        pcp[i].head = NULL;
+        pcp[i].count = 0;
+        pcp[i].high = 32;
+        pcp[i].batch = 8;
+        // pcp[i].hits = 0;
+        // pcp[i].misses = 0;
+        // pcp[i].refills = 0;
+        // pcp[i].drains = 0;
+    }
 
 }
 
-void buddy_dump(void) {
+void buddy_dump(void) 
+{
     printk("Buddy Allocator State:\n");
     for (unsigned int order = 0; order < MAX_ORDER; order++) {
         printk("Order %xu: Free blocks: %xu\n", order, free_area[order].nr_free);
@@ -228,7 +434,8 @@ void buddy_dump(void) {
     printk("End of Buddy Allocator State.\n");
 }
 
-void check_free_area(void) {
+void check_free_area(void) 
+{
     printk("=== free_area 状态 ===\n");
 
     for (int order = 0; order < MAX_ORDER; order++) {

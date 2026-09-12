@@ -215,7 +215,7 @@ install:
 
 .PHONY: run
 run:
-	tools/deploy/run_qemu_riscv64.sh
+	tools/deploy/run_qemu_riscv64.sh --graphics
 
 .PHONY:dump
 dump:

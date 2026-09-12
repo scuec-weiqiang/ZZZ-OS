@@ -186,7 +186,7 @@ static void __sched_fork(struct task_struct *p) {
 	INIT_LIST_HEAD(&p->se.sched_node);
 }
 
-/* 复制并初始化task的调度器 */
+/* 复制并初始化task的调度字段 */
 void sched_fork(struct task_struct *p) {
 	unsigned long flags;
 	int cpu;

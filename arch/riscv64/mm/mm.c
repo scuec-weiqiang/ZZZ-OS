@@ -28,17 +28,17 @@ void arch_initial_mm_init() {
     }
     // map(init_mm.pgdir, 0x02020000,0x02020000, PAGE_SIZE, PAGE_DEVICE);
 
-    // remap(init_mm.pgdir, trap_start, trap_size, PAGE_KERNEL_EXEC);
-    // remap(init_mm.pgdir, text_start, text_size, PAGE_KERNEL_EXEC);
+    remap(init_mm.pgdir, trap_start, trap_size, PAGE_KERNEL_EXEC);
+    remap(init_mm.pgdir, text_start, text_size, PAGE_KERNEL_EXEC);
 
-    // remap(init_mm.pgdir, data_start, data_size, PAGE_KERNEL);
-    // remap(init_mm.pgdir, rodata_start, rodata_size, PAGE_KERNEL_RO);
-    // remap(init_mm.pgdir, bss_start, bss_size, PAGE_KERNEL);
-    // remap(init_mm.pgdir, initcall_start, initcall_size, PAGE_KERNEL_EXEC);
-    // remap(init_mm.pgdir, exitcall_start, exitcall_size, PAGE_KERNEL_EXEC);
-    // remap(init_mm.pgdir, irqinitcall_start, irqinitcall_size, PAGE_KERNEL_EXEC);
-    // remap(init_mm.pgdir, irqexitcall_start, irqexitcall_size, PAGE_KERNEL_EXEC);
-    // remap(init_mm.pgdir, early_stack_start, early_stack_size, PAGE_KERNEL);
+    remap(init_mm.pgdir, data_start, data_size, PAGE_KERNEL);
+    remap(init_mm.pgdir, rodata_start, rodata_size, PAGE_KERNEL_RO);
+    remap(init_mm.pgdir, bss_start, bss_size, PAGE_KERNEL);
+    remap(init_mm.pgdir, initcall_start, initcall_size, PAGE_KERNEL_EXEC);
+    remap(init_mm.pgdir, exitcall_start, exitcall_size, PAGE_KERNEL_EXEC);
+    remap(init_mm.pgdir, irqinitcall_start, irqinitcall_size, PAGE_KERNEL_EXEC);
+    remap(init_mm.pgdir, irqexitcall_start, irqexitcall_size, PAGE_KERNEL_EXEC);
+    remap(init_mm.pgdir, early_stack_start, early_stack_size, PAGE_KERNEL);
     
     pgtbl_switch_to(init_mm.pgdir);
 }
