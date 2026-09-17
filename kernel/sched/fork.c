@@ -430,6 +430,7 @@ static struct mm_struct *dup_mm(struct mm_struct *oldmm, unsigned long flags) {
          
             ret = map(mm->pgdir, addr, KERNEL_PA(newkva), PAGE_SIZE, flags);
             if (ret < 0) {
+                page_free(newkva);
                 goto fail_unlock;
             }
         }

@@ -6,6 +6,7 @@
 #include <os/spinlock.h>
 #include <os/device.h>
 #include <os/compiler.h>
+#include <os/mutex.h>
 
 struct gpt_header {
     char signature[8];      // "EFI PART"
@@ -43,9 +44,9 @@ struct gpt_entry {
 
 
 #define BLK_MAJOR_DISK 8
-typedef unsigned int sector_t;
+typedef u64 sector_t;
 
-enum bio_op {
+enum req_op {
     REQ_OP_READ = 0,
     REQ_OP_WRITE = 1,
 };
@@ -57,11 +58,15 @@ struct bio_vec {
 };
 
 struct bio {
-    enum bio_op op;
+    enum req_op op;
     sector_t bi_sector;
-    int bi_vcnt;
+    u32 bi_size;          // 整个 BIO 传输总字节数
+    u16 bi_vcnt;          // 已经使用的 vec 数量
+    u16 bi_max_vecs;      // vec 数组容量
+
     struct bio_vec *bi_io_vec;
     struct blkdev *bi_bdev;
+
     int bi_status;
     void (*bi_end_io)(struct bio *bio);
     void *bi_private;
@@ -73,6 +78,7 @@ struct block_device_operations {
 
 struct request_queue {
     spinlock_t lock;
+    struct mutex rmw_lock;
     struct block_device_operations *fops;
     u32 logical_block_size;
     u32 max_hw_sectors;
@@ -93,7 +99,7 @@ struct blkdev {
     struct gendisk *bd_disk;
     
     sector_t bd_start_sect;     // 分区起始 sector
-    sector_t bd_nr_sectors;     // 分区大小
+    sector_t bd_nr_sectors;     // 分区总 sector 数
     int bd_partno;              // 0 = 整盘，1/2/3 = 分区
     struct blkdev *bd_contains; // 分区指向整盘，整盘指向自己
 
@@ -109,7 +115,7 @@ struct blkdev *blkdev_get_by_path(const char *name);
 struct blkdev *blkdev_get_by_devnr(dev_t devnr);
 void blkdev_put(struct blkdev *bdev);
 
-struct bio *bio_alloc(int nr_vecs);
+struct bio *bio_alloc(u32 nr_vecs);
 void bio_put(struct bio *bio);
 
 int submit_bio_wait(struct bio *bio);

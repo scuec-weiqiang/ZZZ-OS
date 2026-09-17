@@ -156,7 +156,7 @@ void arch_pgtbl_init(pgtable_t *tbl) {
 void arch_pgtbl_deinit(pgtable_t *tbl) {
     tbl->features = NULL;
     if (tbl->root) {
-        kfree(tbl->root);
+        page_free(tbl->root);
         tbl->root = NULL;
     }
     tbl->root_pa = 0;

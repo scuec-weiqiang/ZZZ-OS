@@ -14,6 +14,7 @@
 
 extern void kmalloc_init();
 extern void* page_alloc(size_t npages);
+extern void page_free(void *p);
 extern void* kmalloc(size_t size);
 extern void *kzalloc(size_t size);
 extern void kfree(void* p);

@@ -33,7 +33,7 @@ static pte_t *alloc_table_va(pgtable_t *tbl, int level) {
 }
 
 static void free_table_va(void *p) {
-    kfree(p);
+    page_free(p);
 }
 
 bool pgtbl_table_is_empty(pgtable_t *pgtbl, int level, pte_t *table) {

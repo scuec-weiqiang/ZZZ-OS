@@ -3,8 +3,8 @@
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @Date         : 2026-03-23 00:06:13
- * @LastEditTime : 2026-03-25 22:54:50
- * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime : 2026-09-16 15:20:11
+ * @LastEditors  : WeiQiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2026.
 */
 #ifndef __KERNEL_DEVICE_H
@@ -49,6 +49,7 @@ struct bus_type {
     struct list_head devices; // 该总线上的设备列表
 
     struct list_head node;
+    spinlock_t lock; // 保护总线数据结构的自旋锁
 };
 
 struct device_driver {
@@ -58,6 +59,13 @@ struct device_driver {
     int (*probe) (struct device *dev);
 	int (*remove) (struct device *dev);
     struct list_head node; // 链接到总线的驱动列表
+};
+
+enum device_probe_state {
+    DEVICE_UNBOUND,
+    DEVICE_PROBING,
+    DEVICE_BOUND,
+    DEVICE_DEFERRED,
 };
 
 struct device {
@@ -75,6 +83,8 @@ struct device {
     struct list_head bus_node;
     struct list_head class_node;
     struct list_head global_node;
+    struct list_head deferred_node;
+    enum device_probe_state probe_state;
     bool registered;
 };
 
@@ -90,6 +100,7 @@ static inline void dev_set_drvdata(struct device *dev, void *data) {
 	dev->driver_data = data;
 }
 
+extern void device_initialize(struct device *dev) ;
 extern int device_register(struct device *dev);
 extern int device_unregister(struct device *dev);
 extern int device_add(struct device *dev);
@@ -106,6 +117,9 @@ extern struct device *device_find_by_name(const char *name);
 extern int driver_register(struct device_driver *drv);
 extern void driver_unregister(struct device_driver *drv);
 extern int driver_attach(struct device_driver *drv);
+// extern void device_release_driver(struct device *dev);
+
+extern void deferred_probe_trigger(void);
 
 #define module_driver(__driver, __register, __unregister) \
     static int  __driver##_init(void) \

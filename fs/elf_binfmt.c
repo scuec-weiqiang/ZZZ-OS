@@ -109,6 +109,7 @@ static int elf_map_segment(struct linux_binprm *bprm,
         memset(kva, 0, PAGE_SIZE);
 
         if (map(mm->pgdir, addr, KERNEL_PA(kva), PAGE_SIZE, prot) < 0) {
+            page_free(kva);
             return -1;
         }
 

@@ -1,0 +1,3 @@
+OBJ_Y += virtio.o
+OBJ_Y += virtio_mmio.o
+OBJ_Y += virtio_queue.o

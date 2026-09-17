@@ -54,7 +54,7 @@ int do_page_fault(struct mm_struct *mm, virt_addr_t fault_addr, int fault_flags)
     memset(kva, 0, PAGE_SIZE);
 
     if (map(mm->pgdir, page_va, KERNEL_PA(kva), PAGE_SIZE, vma->flags) < 0) {
-        kfree(kva);
+        page_free(kva);
         goto out_unlock;
     }
 

@@ -1,4 +1,3 @@
-#include <mm/buddy.h>
 #include <os/errno.h>
 #include <os/fb.h>
 #include <os/init.h>
@@ -66,7 +65,7 @@ static int simplefb_init(void)
 
     ret = register_framebuffer(info, NULL);
     if (ret) {
-        free_pages_kva(info->screen_base);
+        page_free(info->screen_base);
         info->screen_base = NULL;
         return ret;
     }
@@ -89,7 +88,7 @@ static void simplefb_exit(void)
 
     unregister_framebuffer(info);
     if (info->screen_base) {
-        free_pages_kva(info->screen_base);
+        page_free(info->screen_base);
         info->screen_base = NULL;
     }
 }

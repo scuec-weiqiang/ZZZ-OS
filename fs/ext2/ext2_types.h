@@ -211,6 +211,7 @@ struct __attribute__((packed)) ext2_dir_entry_2 {
 struct ext2_sb_info {
     struct ext2_super_block *raw_sb;
     struct ext2_group_desc *gdt;
+    struct ext2_indirect_cache *indirect_cache;
 
     __le32 s_blocks_per_group;
     __le32 s_inodes_per_group;
@@ -270,6 +271,16 @@ extern struct inode* ext2_iget(struct super_block *sb, u32 ino);
 extern struct dentry* ext2_lookup(struct inode *dir, struct dentry *child, unsigned int flags);
 extern struct page *ext2_get_page(struct inode *inode, u32 index);
 extern void ext2_put_page(struct page *page);
+
+/* indirect block cache */
+extern int ext2_indirect_cache_init(struct ext2_sb_info *sbi, u32 block_size);
+extern void ext2_indirect_cache_destroy(struct ext2_sb_info *sbi);
+extern int ext2_indirect_cache_read(struct super_block *sb, u32 block_no,
+                                    u32 index, u32 *value);
+extern int ext2_indirect_cache_write(struct super_block *sb, u32 block_no,
+                                     const void *data);
+extern void ext2_indirect_cache_invalidate(struct super_block *sb,
+                                           u32 block_no);
 
 /* dir.c */
 extern const struct file_operations ext2_dir_operations;

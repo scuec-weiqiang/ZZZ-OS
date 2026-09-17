@@ -1,0 +1,3 @@
+OBJ_$(CONFIG_TEST_MM_ALLOCATOR) += allocator_test.o
+OBJ_$(CONFIG_TEST_MM_BENCH) += allocator_bench.o
+OBJ_$(CONFIG_TEST_MM_FRAGMENTATION) += fragmentation_test.o

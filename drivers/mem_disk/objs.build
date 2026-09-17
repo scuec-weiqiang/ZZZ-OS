@@ -1,1 +1,0 @@
-OBJ_$(CONFIG_MEM_DISK) += mem_disk.o

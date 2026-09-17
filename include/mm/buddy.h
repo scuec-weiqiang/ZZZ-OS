@@ -19,6 +19,24 @@ struct free_area {
     unsigned long nr_free;
 };
 
+struct buddy_memory_stats {
+    u64 total_pages;
+    u64 managed_pages;
+    u64 reserved_pages;
+    u64 used_pages;
+    u64 buddy_free_pages;
+    u64 pcp_free_pages;
+    u64 slab_pages;
+    u64 pagecache_pages;
+};
+
+struct buddy_fragmentation_stats {
+    u64 free_blocks[MAX_ORDER];
+    u64 buddy_free_pages;
+    u64 pcp_free_pages;
+    int largest_free_order;
+};
+
 extern struct free_area free_area[MAX_ORDER];
 
 extern void buddy_init(void);
@@ -29,5 +47,8 @@ extern void free_pages_kva(void *kaddr);
 extern void buddy_test(void);
 extern void check_free_area(void);
 extern void buddy_dump(void);
+extern int buddy_get_memory_stats(struct buddy_memory_stats *stats);
+extern int buddy_get_fragmentation_stats(
+    struct buddy_fragmentation_stats *stats);
 
 #endif /* __KERNEL_BUDDY_H__ */

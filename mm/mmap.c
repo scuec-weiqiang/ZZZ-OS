@@ -157,7 +157,7 @@ static void free_mapped_pages(struct mm_struct *mm, virt_addr_t start, size_t le
         phys_addr_t pa = pgtbl_lookup(mm->pgdir, va);
 
         if (pa != 0) {
-            kfree((void *)KERNEL_VA(ALIGN_DOWN(pa, PAGE_SIZE)));
+            page_free((void *)KERNEL_VA(ALIGN_DOWN(pa, PAGE_SIZE)));
         }
     }
 }

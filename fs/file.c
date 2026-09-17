@@ -597,8 +597,12 @@ void filp_close(struct file *file) {
 }
 
 ssize_t kernel_read(struct file *file, char *buf, size_t len) {
-    RETURN_ERR_IF(file == NULL, -EBADF);
-    RETURN_ERR_IF(file->f_op == NULL || file->f_op->read == NULL, -EINVAL);
+    if (file == NULL) {
+        return -EBADF;
+    }
+    if (file->f_op == NULL || file->f_op->read == NULL) {
+        return -EINVAL;
+    }
     return file->f_op->read(file, buf, len, &file->f_pos);
 }
 
@@ -606,8 +610,12 @@ ssize_t kernel_read_at(struct file *file, loff_t pos, char *buf, size_t len) {
     loff_t saved_pos;
     ssize_t ret;
 
-    RETURN_ERR_IF(file == NULL, -EBADF);
-    RETURN_ERR_IF(file->f_op == NULL || file->f_op->read == NULL, -EINVAL);
+    if (file == NULL) {
+        return -EBADF;
+    }
+    if (file->f_op == NULL || file->f_op->read == NULL) {
+        return -EINVAL;
+    }
 
     saved_pos = file->f_pos;
     file->f_pos = pos;
@@ -618,11 +626,13 @@ ssize_t kernel_read_at(struct file *file, loff_t pos, char *buf, size_t len) {
 }
 
 ssize_t kernel_write(struct file *file, const char *buf, size_t len) {
-	
-    RETURN_ERR_IF(file == NULL, -EBADF);
-	
-    RETURN_ERR_IF(file->f_op == NULL || file->f_op->write == NULL, -EINVAL);
-	
+    if (file == NULL) {
+        return -EBADF;
+    }
+    if (file->f_op == NULL || file->f_op->write == NULL) {
+        return -EINVAL;
+    }
+
     return file->f_op->write(file, buf, len, &file->f_pos);
 }
 

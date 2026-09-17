@@ -174,8 +174,13 @@ struct page *pagecache_get_page(struct address_space *mapping, pgoff_t index, u3
     struct page *page = NULL;
     int ret = 0;
 
-    RETURN_VAL_IF(g_pagecache == NULL, ERR_PTR(-EINVAL));
-    RETURN_VAL_IF(mapping == NULL, ERR_PTR(-EINVAL));
+    if (g_pagecache == NULL) {
+        return ERR_PTR(-EINVAL);
+    }
+
+    if (mapping == NULL) {
+        return ERR_PTR(-EINVAL);
+    }
 
     page = pagecache_lookup_nolock(mapping, index);
     if (page != NULL) {
@@ -190,7 +195,9 @@ struct page *pagecache_get_page(struct address_space *mapping, pgoff_t index, u3
     }
 
     page = pagecache_alloc_page(mapping, index);
-    RETURN_VAL_IF(page == NULL, ERR_PTR(-ENOMEM));
+    if (page == NULL) {
+        return ERR_PTR(-ENOMEM);
+    }
 
     ret = lru_cache_add(g_pagecache, &page->cache_lru_node);
     if (ret < 0) {
@@ -235,14 +242,20 @@ int pagecache_read_page(struct address_space *mapping, pgoff_t index, struct pag
     struct page *page = NULL;
     int ret = 0;
 
-    RETURN_ERR_IF(mapping == NULL, -EINVAL);
-    RETURN_ERR_IF(page_out == NULL, -EINVAL);
+    if (mapping == NULL) {
+        return -EINVAL;
+    }
+    if (page_out == NULL) {
+        return -EINVAL;
+    }
 
     page = pagecache_get_page(mapping, index, FGP_CREAT);
     if (IS_ERR(page)) {
         return PTR_ERR(page);
     }
-    RETURN_ERR_IF(page == NULL, -ENOENT);
+    if (page == NULL) {
+        return -ENOENT;
+    }
 
     lock_page(page);
     if (!PageUptodate(page)) {
@@ -270,7 +283,9 @@ int pagecache_read_page(struct address_space *mapping, pgoff_t index, struct pag
 
 int pagecache_write_page(struct page *page)
 {
-    RETURN_ERR_IF(page == NULL, -EINVAL);
+    if (page == NULL) {
+        return -EINVAL;
+    }
     return pagecache_sync_page(&page->cache_lru_node);
 }
 
@@ -280,8 +295,12 @@ int pagecache_sync_mapping(struct address_space *mapping)
     struct list_head *next = NULL;
     int ret = 0;
 
-    RETURN_ERR_IF(g_pagecache == NULL, -EINVAL);
-    RETURN_ERR_IF(mapping == NULL, -EINVAL);
+    if (g_pagecache == NULL) {
+        return -EINVAL;
+    }
+    if (mapping == NULL) {
+        return -EINVAL;
+    }
 
     pos = g_pagecache->lhead.next;
     while (pos != &g_pagecache->lhead) {
@@ -304,8 +323,12 @@ int pagecache_invalidate_mapping(struct address_space *mapping)
     struct list_head *pos = NULL;
     struct list_head *next = NULL;
 
-    RETURN_ERR_IF(g_pagecache == NULL, -EINVAL);
-    RETURN_ERR_IF(mapping == NULL, -EINVAL);
+    if (g_pagecache == NULL) {
+        return -EINVAL;
+    }
+    if (mapping == NULL) {
+        return -EINVAL;
+    }
 
     pos = g_pagecache->lhead.next;
     while (pos != &g_pagecache->lhead) {
@@ -325,7 +348,9 @@ int pagecache_reclaim_pages(size_t nr_to_scan)
     struct list_head *pos = NULL;
     size_t reclaimed = 0;
 
-    RETURN_ERR_IF(g_pagecache == NULL, -EINVAL);
+    if (g_pagecache == NULL) {
+        return -EINVAL;
+    }
 
     pos = g_pagecache->lhead.prev;
     while (pos != &g_pagecache->lhead && reclaimed < nr_to_scan) {

@@ -97,62 +97,97 @@ void ext2_put_page(struct page *page) {
     pagecache_put_page(page);
 }
 
-static int ext2_readpage(struct page *page) {
-    struct inode *inode= page->mapping->host;
-    struct blkdev *bdev = page->mapping->host->i_sb->s_bdev;
-    u8 *page_buf = (u8*)page_address(page);
+static int ext2_submit_page_batch(struct blkdev *bdev, u8 *page_buf,
+                                  u32 block_size, u32 page_block,
+                                  u32 disk_block, u32 nr_blocks,
+                                  bool write)
+{
+    size_t len;
+    u64 pos;
 
-    u32 block_size = inode->i_sb->s_blocksize;
-    u32 blocks_per_page = PAGE_SIZE / block_size;
-    u32 first_file_block = page->index * blocks_per_page;
+    if (nr_blocks == 0)
+        return 0;
 
-    u32 file_block = 0;
-    u32 disk_block = 0;
+    len = (size_t)nr_blocks * block_size;
+    pos = (u64)disk_block * block_size;
 
-    int ret = -EIO;
+    if (write)
+        return blkdev_write(bdev, page_buf + page_block * block_size,
+                            len, pos);
 
-    for (int i = 0; i < blocks_per_page; i++) {
-        file_block = first_file_block + i;
-        disk_block = ext2_block_mapping(inode, file_block);
-
-        if (disk_block == 0) {
-            memset(page_buf + i * block_size, 0, block_size);
-            continue;
-        }
-
-        u64 pos = (u64)disk_block * block_size;
-        ret = blkdev_read(bdev, page_buf + i * block_size, block_size, pos);
-        if (ret < 0) {
-            return ret;
-        }
-    }
-    return 0;
+    return blkdev_read(bdev, page_buf + page_block * block_size,
+                       len, pos);
 }
 
-static int ext2_writepage(struct page *page) {
-    struct inode *inode = page->mapping->host;
-    struct blkdev *bdev = inode->i_sb->s_bdev;
-    u8 *page_buf = (u8*)page_address(page);
+static int ext2_rwpage(struct page *page, bool write)
+{
+    struct inode *inode;
+    struct blkdev *bdev;
+    u8 *page_buf;
+    u32 block_size;
+    u32 blocks_per_page;
+    u32 first_file_block;
+    u32 batch_page_block = 0;
+    u32 batch_disk_block = 0;
+    u32 batch_blocks = 0;
+    int ret;
 
-    u32 block_size = inode->i_sb->s_blocksize;
-    u32 blocks_per_page = PAGE_SIZE / block_size;
-    u32 first_file_block = page->index * blocks_per_page;
+    if (!page || !page->mapping || !page->mapping->host)
+        return -EINVAL;
 
-    int ret = -EIO;
+    inode = page->mapping->host;
+    bdev = inode->i_sb->s_bdev;
+    page_buf = page_address(page);
+    block_size = inode->i_sb->s_blocksize;
 
-    for (int i = 0; i < blocks_per_page; i++) {
-        u32 file_block = first_file_block + i;
-        int disk_block = ext2_block_mapping(inode, file_block);
+    if (!bdev || block_size == 0 || block_size > PAGE_SIZE ||
+        PAGE_SIZE % block_size != 0)
+        return -EINVAL;
 
-        if (disk_block == 0)
+    blocks_per_page = PAGE_SIZE / block_size;
+    first_file_block = page->index * blocks_per_page;
+
+    if (!write)
+        memset(page_buf, 0, PAGE_SIZE);
+
+    for (u32 i = 0; i < blocks_per_page; i++) {
+        int disk_block = ext2_block_mapping(inode, first_file_block + i);
+
+        if (disk_block < 0)
+            return disk_block;
+
+        if (disk_block != 0 && batch_blocks != 0 &&
+            (u32)disk_block == batch_disk_block + batch_blocks) {
+            batch_blocks++;
             continue;
+        }
 
-        u64 pos = (u64)disk_block * block_size;
-        ret = blkdev_write(bdev, page_buf + i * block_size, block_size, pos);
+        ret = ext2_submit_page_batch(bdev, page_buf, block_size, 
+            batch_page_block, batch_disk_block, batch_blocks, write);
         if (ret < 0)
             return ret;
+
+        batch_blocks = 0;
+        if (disk_block != 0) {
+            batch_page_block = i;
+            batch_disk_block = (u32)disk_block;
+            batch_blocks = 1;
+        }
     }
-    return 0;
+
+    return ext2_submit_page_batch(bdev, page_buf, block_size,
+                                  batch_page_block, batch_disk_block,
+                                  batch_blocks, write);
+}
+
+static int ext2_readpage(struct page *page)
+{
+    return ext2_rwpage(page, false);
+}
+
+static int ext2_writepage(struct page *page)
+{
+    return ext2_rwpage(page, true);
 }
 
 static int ext2_commit_dir_page(struct inode *dir, struct page *page) {

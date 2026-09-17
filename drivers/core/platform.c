@@ -70,9 +70,10 @@ static int platform_drv_probe(struct device *_dev) {
 static int platform_drv_remove(struct device *_dev) {
 	struct platform_driver *drv = to_platform_driver(_dev->driver);
 	struct platform_device *dev = to_platform_device(_dev);
-	int ret;
-
-	ret = drv->remove(dev);
+	int ret = 0;
+    if (drv->remove) {
+        ret = drv->remove(dev);
+    }
 	
 	return ret;
 }
@@ -81,7 +82,7 @@ int platform_driver_unregister(struct platform_driver *pdrv) {
     if (!pdrv) {
         return -1;
     }
-    bus_remove_driver(&pdrv->driver);
+    driver_unregister(&pdrv->driver);
     return 0;
 }
 

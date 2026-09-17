@@ -1,0 +1,6 @@
+OBJ_$(CONFIG_TEST_MEMORY_USAGE) += memory_usage.o
+OBJ_$(CONFIG_TEST_MEMORY_USAGE) += memory_before.o
+OBJ_Y += mm/
+OBJ_Y += block/
+OBJ_Y += fs/
+OBJ_$(CONFIG_TEST_MEMORY_USAGE) += memory_after.o

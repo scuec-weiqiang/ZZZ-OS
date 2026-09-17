@@ -20,7 +20,7 @@
 
     chosen {
         stdout-path = "/soc/uart@10000000";
-        zzz,root-device = "/dev/virt_disk2";
+        zzz,root-device = "/dev/vda2";
         zzz,tty-device = "/dev/ttyS0";
     };
 
@@ -78,8 +78,8 @@
             interrupts-extended = <&plic 10>;
         };
 
-        virt_disk: virt_disk@10001000 {
-            compatible = "wq,virt_disk";
+        virt_blk: virt_blk@10001000 {
+            compatible = "virtio,mmio";
             reg = <0x10001000 0x1000>;
             interrupts-extended = <&plic 11>;
         };

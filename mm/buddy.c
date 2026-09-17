@@ -36,6 +36,7 @@ struct per_cpu_pages
 };
 
 static struct per_cpu_pages pcp[MAX_CPUS];
+static u64 managed_pages;
 
 SPINLOCK_DEFINE(global_buddy_lock);
 
@@ -385,6 +386,7 @@ void free_pages_kva(void *kaddr)
 
 void buddy_init(void) 
 {
+    managed_pages = 0;
     for (unsigned int order = 0; order < MAX_ORDER; order++) {
         INIT_LIST_HEAD(&free_area[order].free_list);
         free_area[order].nr_free = 0;
@@ -404,6 +406,7 @@ void buddy_init(void)
             page->flags = 0;
             page->slab = NULL;
             add_to_free_area(page, 0);
+            managed_pages++;
         }
     }
 
@@ -423,6 +426,88 @@ void buddy_init(void)
         // pcp[i].drains = 0;
     }
 
+}
+
+int buddy_get_memory_stats(struct buddy_memory_stats *stats)
+{
+    unsigned long pcp_flags[MAX_CPUS];
+    unsigned long buddy_flags;
+    u64 free_pages = 0;
+
+    if (!stats)
+        return -1;
+
+    memset(stats, 0, sizeof(*stats));
+
+    /* Keep the existing PCP -> Buddy lock order used by allocation paths. */
+    for (int cpu = 0; cpu < MAX_CPUS; cpu++)
+        pcp_flags[cpu] = spin_lock_irqsave(&pcp[cpu].lock);
+
+    buddy_flags = spin_lock_irqsave(&global_buddy_lock);
+    for (u32 order = 0; order < MAX_ORDER; order++)
+        stats->buddy_free_pages += free_area[order].nr_free << order;
+    for (int cpu = 0; cpu < MAX_CPUS; cpu++)
+        stats->pcp_free_pages += pcp[cpu].count;
+    spin_unlock_irqrestore(&global_buddy_lock, buddy_flags);
+
+    for (int cpu = MAX_CPUS - 1; cpu >= 0; cpu--)
+        spin_unlock_irqrestore(&pcp[cpu].lock, pcp_flags[cpu]);
+
+    /* Include NOMAP/reserved regions so this matches configured RAM size. */
+    stats->total_pages = memblock.memory.total_size / PAGE_SIZE;
+    stats->managed_pages = managed_pages;
+    if (stats->total_pages > stats->managed_pages)
+        stats->reserved_pages = stats->total_pages - stats->managed_pages;
+
+    free_pages = stats->buddy_free_pages + stats->pcp_free_pages;
+    if (stats->managed_pages > free_pages)
+        stats->used_pages = stats->managed_pages - free_pages;
+
+    /* These two values are a diagnostic breakdown of allocated pages. */
+    for (pfn_t pfn = first_pfn; pfn < last_pfn; pfn++) {
+        struct page *page = pfn_to_page(pfn);
+
+        if (!page || PageReserved(page) || PageBuddy(page) || PagePcp(page))
+            continue;
+        if (page->slab)
+            stats->slab_pages++;
+        if (page->mapping)
+            stats->pagecache_pages++;
+    }
+
+    return 0;
+}
+
+int buddy_get_fragmentation_stats(struct buddy_fragmentation_stats *stats)
+{
+    unsigned long pcp_flags[MAX_CPUS];
+    unsigned long buddy_flags;
+
+    if (!stats)
+        return -1;
+
+    memset(stats, 0, sizeof(*stats));
+    stats->largest_free_order = -1;
+
+    /* Match the PCP -> Buddy lock order used by the allocation paths. */
+    for (int cpu = 0; cpu < MAX_CPUS; cpu++)
+        pcp_flags[cpu] = spin_lock_irqsave(&pcp[cpu].lock);
+
+    buddy_flags = spin_lock_irqsave(&global_buddy_lock);
+    for (u32 order = 0; order < MAX_ORDER; order++) {
+        stats->free_blocks[order] = free_area[order].nr_free;
+        stats->buddy_free_pages += free_area[order].nr_free << order;
+        if (free_area[order].nr_free != 0)
+            stats->largest_free_order = order;
+    }
+    for (int cpu = 0; cpu < MAX_CPUS; cpu++)
+        stats->pcp_free_pages += pcp[cpu].count;
+    spin_unlock_irqrestore(&global_buddy_lock, buddy_flags);
+
+    for (int cpu = MAX_CPUS - 1; cpu >= 0; cpu--)
+        spin_unlock_irqrestore(&pcp[cpu].lock, pcp_flags[cpu]);
+
+    return 0;
 }
 
 void buddy_dump(void) 

@@ -7,7 +7,7 @@
 #define __RB_FREE(ptr) do{kfree(ptr);ptr=NULL;}while(0)
 
 #define __BUF_MALLOC(npages) (char*)page_alloc(npages)
-#define __BUF_FREE(buf) __RB_FREE(buf)
+#define __BUF_FREE(buf) do { page_free(buf); (buf) = NULL; } while (0)
 
 void ringbuffer_reset(struct ringbuffer *rb) {
     if (!rb)
@@ -27,7 +27,7 @@ struct ringbuffer* ringbuffer_alloc(size_t capacity) {
     ringbuffer_reset(rb);
     rb->capacity = capacity;
 
-    size_t npages = (capacity + PAGE_SIZE - 1) / PAGE_SIZE * PAGE_SIZE;
+    size_t npages = (capacity + PAGE_SIZE - 1) / PAGE_SIZE;
     rb->buffer = __BUF_MALLOC(npages);
 
     if (!rb->buffer) {

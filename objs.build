@@ -4,3 +4,4 @@ OBJ_Y += fs/
 OBJ_Y += kernel/ 
 OBJ_Y += lib/ 
 OBJ_Y += mm/
+OBJ_Y += test/

@@ -66,7 +66,7 @@ static int ext2_get_tree(struct fs_context *fc) {
     struct super_block *sb = NULL;
     struct ext2_sb_info *sbi = NULL;
     struct ext2_super_block *raw_sb;
-    struct ext2_group_desc  *raw_gdt;
+    struct ext2_group_desc  *raw_gdt = NULL;
 
     struct inode *root_inode = NULL;
     struct dentry *root_dentry = NULL;
@@ -98,7 +98,7 @@ static int ext2_get_tree(struct fs_context *fc) {
         goto bad_magic;
     }
 
-    sbi = kmalloc(sizeof(struct ext2_sb_info));
+    sbi = kzalloc(sizeof(struct ext2_sb_info));
     if (!sbi) {
         
         ret = -ENOMEM;
@@ -175,6 +175,10 @@ static int ext2_get_tree(struct fs_context *fc) {
     sb->s_bdev = bdev;
     sb->s_blocksize = block_size;
 
+    ret = ext2_indirect_cache_init(sbi, block_size);
+    if (ret < 0)
+        goto fail_root_inode;
+
     // Create the root inode and dentry
     root_inode = ext2_iget(sb, EXT2_ROOT_INO);
     if (IS_ERR(root_inode)) {
@@ -187,8 +191,8 @@ static int ext2_get_tree(struct fs_context *fc) {
 
     root_dentry = d_make_root(root_inode);
     if (!root_dentry) {
-        goto fail_root_dentry;
         ret =  -ENOMEM;
+        goto fail_root_dentry;
     }
 
     sb->s_root = root_dentry;
@@ -200,8 +204,11 @@ static int ext2_get_tree(struct fs_context *fc) {
 fail_root_dentry:
     iput(root_inode);
 fail_root_inode:
-fail_gdt:
+    ext2_indirect_cache_destroy(sbi);
+    destroy_super(sb);
 fail_sb:
+fail_gdt:
+    kfree(raw_gdt);
     kfree(sbi);
 fail_sbi:
 bad_magic:
@@ -209,11 +216,28 @@ fail_read_sb:
     kfree(raw_sb);
 fail_raw_sb:
 failed:
+    if (bdev && !IS_ERR(bdev))
+        blkdev_put(bdev);
     return ret;
 }
 
 static void ext2_kill_sb(struct super_block *sb) {
+    struct ext2_sb_info *sbi;
 
+    if (!sb)
+        return;
+
+    sbi = EXT2_SB(sb);
+    if (sbi) {
+        ext2_indirect_cache_destroy(sbi);
+        kfree(sbi->gdt);
+        kfree(sbi->raw_sb);
+        kfree(sbi);
+        sb->s_fs_info = NULL;
+    }
+
+    blkdev_put(sb->s_bdev);
+    destroy_super(sb);
 }
 struct file_system_type ext2_fs_type = {
     .name = "ext2",

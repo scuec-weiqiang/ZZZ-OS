@@ -32,7 +32,7 @@ struct page {
     u32 refcount;
     spinlock_t lock;
     struct address_space *mapping;
-    uintptr_t index;
+    uintptr_t index;  // page cache 中相对于文件的逻辑页号
     void *private;
     struct lru_node cache_lru_node;
     union {

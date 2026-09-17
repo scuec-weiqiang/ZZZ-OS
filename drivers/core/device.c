@@ -45,6 +45,7 @@ int device_register(struct device *dev)
     if (dev->class && !dev->class->registered)
         return -EINVAL;
 
+    INIT_LIST_HEAD(&dev->deferred_node);
     INIT_LIST_HEAD(&dev->bus_node);
     INIT_LIST_HEAD(&dev->class_node);
     INIT_LIST_HEAD(&dev->global_node);
@@ -53,18 +54,16 @@ int device_register(struct device *dev)
         ret = bus_add_device(dev);
         if (ret)
             return ret;
-
-        ret = device_attach(dev);
-        if (ret) {
-            bus_remove_device(dev);
-            return ret;
-        }
     }
 
     if (dev->class)
         list_add_tail(&dev->class->devices, &dev->class_node);
+
     list_add_tail(&device_list, &dev->global_node);
     dev->registered = true;
+
+    if (dev->bus)
+        device_attach(dev);
 
     if (dev->devt) {
         ret = devtmpfs_create_node(dev);
@@ -81,16 +80,45 @@ int device_unregister(struct device *dev)
 {
     if (!dev || !dev->registered)
         return -EINVAL;
+    if (dev->driver) {
+        if (dev->bus->remove) {
+            dev->bus->remove(dev);
+        }
+        dev->driver = NULL;
+    }
 
-    if (dev->devt)
+    if (dev->devt) {
         devtmpfs_remove_node(dev);
+    }
+
     list_del(&dev->global_node);
     if (dev->class)
         list_del(&dev->class_node);
     if (dev->bus)
         bus_remove_device(dev);
     dev->registered = false;
+   
     return 0;
+}
+
+void device_initialize(struct device *dev) 
+{
+    if (!dev) return;
+
+    INIT_LIST_HEAD(&dev->deferred_node);
+    INIT_LIST_HEAD(&dev->bus_node);
+    INIT_LIST_HEAD(&dev->class_node);
+    INIT_LIST_HEAD(&dev->global_node);
+    
+    dev->class = NULL;
+    dev->bus = NULL;
+    dev->driver = NULL;
+    dev->parent = NULL;
+    dev->devt = 0;
+    dev->mode = 0;
+    dev->driver_data = NULL;
+    dev->probe_state = DEVICE_UNBOUND;
+    dev->registered = false;
 }
 
 struct device *device_create(struct class *class, struct device *parent,
@@ -106,6 +134,9 @@ struct device *device_create(struct class *class, struct device *parent,
     dev = kzalloc(sizeof(*dev));
     if (!dev)
         return ERR_PTR(-ENOMEM);
+
+    device_initialize(dev);
+
     dev->name = strdup(name);
     if (!dev->name) {
         kfree(dev);
@@ -117,7 +148,9 @@ struct device *device_create(struct class *class, struct device *parent,
     dev->devt = devt;
     dev->mode = mode;
     dev->driver_data = data;
-
+    dev->probe_state = DEVICE_UNBOUND;
+    dev->registered = false;
+    
     ret = device_register(dev);
     if (ret) {
         kfree((void *)dev->name);

@@ -1,0 +1,2 @@
+OBJ_$(CONFIG_TEST_BLOCK_IO) += blk_io_test.o
+OBJ_$(CONFIG_BLK_READ_BENCH) += blk_read_bench.o

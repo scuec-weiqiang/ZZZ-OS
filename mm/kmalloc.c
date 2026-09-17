@@ -64,6 +64,24 @@ void *page_alloc(size_t npages) {
     
 }
 
+void page_free(void *p)
+{
+    if (p == NULL) {
+        return;
+    }
+
+    switch (alloc_state) {
+    case EARLY_ALLOC:
+        return;
+    case MEMBLOCK_ALLOC:
+        memblock_free(KERNEL_PA(p));
+        return;
+    case NORMAL_ALLOC:
+        free_pages_kva(p);
+        return;
+    }
+}
+
 
 /***************************************************************
  * @description:

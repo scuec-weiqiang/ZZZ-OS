@@ -1,7 +1,7 @@
 OBJ_Y += ext2_bitmap.o
 OBJ_Y += ext2_blk.o
+OBJ_Y += ext2_cache.o
 OBJ_Y += ext2_dir.o
 OBJ_Y += ext2_file.o
 OBJ_Y += ext2_inode.o
 OBJ_Y += ext2_super.o
-

@@ -30,8 +30,8 @@ ZZZ-OS 是一个仍在开发中的类 Unix 操作系统
 
 | 架构       | 平台           | 状态     |
 | -------- | ------------ | ------ |
-| ARMv7-A  | NXP i.MX6ULL | 推荐参考实现 |
-| RISC-V64 | QEMU virt    | 持续完善中  |
+| RISC-V64 | QEMU virt    | 推荐参考实现  |
+| ARMv7-A  | NXP i.MX6ULL | 持续完善中 |
 
 ---
 

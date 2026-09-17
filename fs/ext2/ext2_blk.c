@@ -13,73 +13,66 @@ extern int ext2_release_bno(struct super_block *sb, u32 bno);
 
 int ext2_block_mapping(struct inode *inode, u32 index) {
     struct ext2_inode_info *ei = EXT2_I(inode);
+    struct super_block *sb = inode->i_sb;
     u32 block_size = inode->i_sb->s_blocksize;
     u32 per_block = block_size / sizeof(u32);
-
-    u32 first_index = 0;
-    u32 second_index = 0;
-    u32 third_index = 0;
-    int next_level_index = 0;
-    int ret = -ENOENT;
+    u32 block_no;
+    int ret;
 
     if (index < 12) {
         return ei->i_data[index];
     }
 
-    void *buf = kmalloc(block_size);
-    if (!buf)
-        return -ENOMEM;
-
     index -= 12;
 
     if (index < per_block) {
-        blkdev_read(inode->i_sb->s_bdev, buf, block_size,
-                    (u64)ei->i_data[12] * block_size);
-        ret = ((u32*)buf)[index];
-        goto got;
+        ret = ext2_indirect_cache_read(sb, ei->i_data[12], index,
+                                       &block_no);
+        return ret < 0 ? ret : (int)block_no;
     }
 
     index -= per_block;
 
     if (index < per_block * per_block) {
-        first_index = index / per_block;
-        blkdev_read(inode->i_sb->s_bdev, buf, block_size,
-                    (u64)ei->i_data[13] * block_size);
-        next_level_index = ((u32*)buf)[first_index];
+        ret = ext2_indirect_cache_read(sb, ei->i_data[13],
+                                       index / per_block, &block_no);
+        if (ret < 0 || block_no == 0)
+            return ret < 0 ? ret : 0;
 
-        second_index = index % per_block;
-        blkdev_read(inode->i_sb->s_bdev, buf, block_size,
-                    (u64)next_level_index * block_size);
-
-        ret = ((u32*)buf)[second_index];
-        goto got;
+        ret = ext2_indirect_cache_read(sb, block_no,
+                                       index % per_block, &block_no);
+        return ret < 0 ? ret : (int)block_no;
     }
 
     index -= per_block * per_block;
 
-
     if (index < per_block * per_block * per_block) {
-        first_index = index / (per_block * per_block);
-        blkdev_read(inode->i_sb->s_bdev, buf, block_size,
-                    (u64)ei->i_data[14] * block_size);
-        next_level_index = ((u32*)buf)[first_index];
+        ret = ext2_indirect_cache_read(sb, ei->i_data[14],
+                                       index / (per_block * per_block),
+                                       &block_no);
+        if (ret < 0 || block_no == 0)
+            return ret < 0 ? ret : 0;
 
-        second_index = (index % (per_block * per_block)) / per_block;
-        blkdev_read(inode->i_sb->s_bdev, buf, block_size,
-                    (u64)next_level_index * block_size);
-        int third_level_index = ((u32*)buf)[second_index];
+        ret = ext2_indirect_cache_read(
+            sb, block_no,
+            (index % (per_block * per_block)) / per_block,
+            &block_no);
+        if (ret < 0 || block_no == 0)
+            return ret < 0 ? ret : 0;
 
-        third_index = index % per_block;
-        blkdev_read(inode->i_sb->s_bdev, buf, block_size,
-                    (u64)third_level_index * block_size);
-
-        ret = ((u32*)buf)[third_index];
-        goto got;
+        ret = ext2_indirect_cache_read(sb, block_no,
+                                       index % per_block, &block_no);
+        return ret < 0 ? ret : (int)block_no;
     }
 
-got:
-    kfree(buf);
-    return ret;
+    return -EFBIG;
+}
+
+static int write_indirect_block(struct super_block *sb, u32 block_no,
+                                void *buf, u32 block_size)
+{
+    (void)block_size;
+    return ext2_indirect_cache_write(sb, block_no, buf);
 }
 
 static int read_or_alloc_block(struct super_block *sb, u32 *bno_p, void *buf, u32 block_size) {
@@ -91,8 +84,7 @@ static int read_or_alloc_block(struct super_block *sb, u32 *bno_p, void *buf, u3
             
         *bno_p = new_bno;
         memset(buf, 0, block_size);
-        blkdev_write(sb->s_bdev, buf, block_size, (u64)new_bno * block_size);
-        return 0;
+        return write_indirect_block(sb, new_bno, buf, block_size);
     }
     return blkdev_read(sb->s_bdev, buf, block_size, (u64)*bno_p * block_size);
 }
@@ -103,6 +95,7 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
     struct super_block *sb = inode->i_sb;
     u32 block_size = sb->s_blocksize;
     u32 per_block = block_size / sizeof(u32);
+    int ret;
 
     void *buf = kmalloc(block_size);
     if (!buf)
@@ -119,7 +112,12 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
             }
             ei->i_data[index] = bno;
             memset(buf, 0, block_size);
-            blkdev_write(sb->s_bdev, buf, block_size, (u64)bno * block_size);
+            ret = blkdev_write(sb->s_bdev, buf, block_size,
+                               (u64)bno * block_size);
+            if (ret < 0) {
+                kfree(buf);
+                return ret;
+            }
         }
         kfree(buf);
         
@@ -130,7 +128,7 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
 
  
     if (index < per_block) {
-        int ret = read_or_alloc_block(sb, &ei->i_data[12], buf, block_size);
+        ret = read_or_alloc_block(sb, &ei->i_data[12], buf, block_size);
         if (ret < 0) { kfree(buf); return ret; }
 
         u32 bno = ((u32*)buf)[index];
@@ -138,9 +136,13 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
             bno = ext2_alloc_bno(sb);
             if (bno == 0) { kfree(buf); return -ENOSPC; }
             ((u32*)buf)[index] = bno;
-            blkdev_write(sb->s_bdev, buf, block_size, (u64)ei->i_data[12] * block_size);
+            ret = write_indirect_block(sb, ei->i_data[12], buf,
+                                       block_size);
+            if (ret < 0) { kfree(buf); return ret; }
             memset(buf, 0, block_size);
-            blkdev_write(sb->s_bdev, buf, block_size, (u64)bno * block_size);
+            ret = blkdev_write(sb->s_bdev, buf, block_size,
+                               (u64)bno * block_size);
+            if (ret < 0) { kfree(buf); return ret; }
         }
         kfree(buf);
         return bno;
@@ -153,7 +155,7 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
         u32 first_index = index / per_block;
         u32 second_index = index % per_block;
 
-        int ret = read_or_alloc_block(sb, &ei->i_data[13], buf, block_size);
+        ret = read_or_alloc_block(sb, &ei->i_data[13], buf, block_size);
         if (ret < 0) { kfree(buf); return ret; }
 
         u32 first_bno = ((u32*)buf)[first_index];
@@ -161,20 +163,28 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
             first_bno = ext2_alloc_bno(sb);
             if (first_bno == 0) { kfree(buf); return -ENOSPC; }
             ((u32*)buf)[first_index] = first_bno;
-            blkdev_write(sb->s_bdev, buf, block_size, (u64)ei->i_data[13] * block_size);
+            ret = write_indirect_block(sb, ei->i_data[13], buf,
+                                       block_size);
+            if (ret < 0) { kfree(buf); return ret; }
             memset(buf, 0, block_size);
-            blkdev_write(sb->s_bdev, buf, block_size, (u64)first_bno * block_size);
+            ret = write_indirect_block(sb, first_bno, buf, block_size);
+            if (ret < 0) { kfree(buf); return ret; }
         }
 
-        blkdev_read(sb->s_bdev, buf, block_size, (u64)first_bno * block_size);
+        ret = blkdev_read(sb->s_bdev, buf, block_size,
+                          (u64)first_bno * block_size);
+        if (ret < 0) { kfree(buf); return ret; }
         u32 second_bno = ((u32*)buf)[second_index];
         if (second_bno == 0) {
             second_bno = ext2_alloc_bno(sb);
             if (second_bno == 0) { kfree(buf); return -ENOSPC; }
             ((u32*)buf)[second_index] = second_bno;
-            blkdev_write(sb->s_bdev, buf, block_size, (u64)first_bno * block_size);
+            ret = write_indirect_block(sb, first_bno, buf, block_size);
+            if (ret < 0) { kfree(buf); return ret; }
             memset(buf, 0, block_size);
-            blkdev_write(sb->s_bdev, buf, block_size, (u64)second_bno * block_size);
+            ret = blkdev_write(sb->s_bdev, buf, block_size,
+                               (u64)second_bno * block_size);
+            if (ret < 0) { kfree(buf); return ret; }
         }
         kfree(buf);
         return second_bno;
@@ -188,7 +198,7 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
         u32 second_index = (index % (per_block * per_block)) / per_block;
         u32 third_index = index % per_block;
 
-        int ret = read_or_alloc_block(sb, &ei->i_data[14], buf, block_size);
+        ret = read_or_alloc_block(sb, &ei->i_data[14], buf, block_size);
         if (ret < 0) { kfree(buf); return ret; }
 
         u32 first_bno = ((u32*)buf)[first_index];
@@ -196,31 +206,43 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
             first_bno = ext2_alloc_bno(sb);
             if (first_bno == 0) { kfree(buf); return -ENOSPC; }
             ((u32*)buf)[first_index] = first_bno;
-            blkdev_write(sb->s_bdev, buf, block_size, (u64)ei->i_data[14] * block_size);
+            ret = write_indirect_block(sb, ei->i_data[14], buf,
+                                       block_size);
+            if (ret < 0) { kfree(buf); return ret; }
             memset(buf, 0, block_size);
-            blkdev_write(sb->s_bdev, buf, block_size, (u64)first_bno * block_size);
+            ret = write_indirect_block(sb, first_bno, buf, block_size);
+            if (ret < 0) { kfree(buf); return ret; }
         }
 
-        blkdev_read(sb->s_bdev, buf, block_size, (u64)first_bno * block_size);
+        ret = blkdev_read(sb->s_bdev, buf, block_size,
+                          (u64)first_bno * block_size);
+        if (ret < 0) { kfree(buf); return ret; }
         u32 second_bno = ((u32*)buf)[second_index];
         if (second_bno == 0) {
             second_bno = ext2_alloc_bno(sb);
             if (second_bno == 0) { kfree(buf); return -ENOSPC; }
             ((u32*)buf)[second_index] = second_bno;
-            blkdev_write(sb->s_bdev, buf, block_size, (u64)first_bno * block_size);
+            ret = write_indirect_block(sb, first_bno, buf, block_size);
+            if (ret < 0) { kfree(buf); return ret; }
             memset(buf, 0, block_size);
-            blkdev_write(sb->s_bdev, buf, block_size, (u64)second_bno * block_size);
+            ret = write_indirect_block(sb, second_bno, buf, block_size);
+            if (ret < 0) { kfree(buf); return ret; }
         }
 
-        blkdev_read(sb->s_bdev, buf, block_size, (u64)second_bno * block_size);
+        ret = blkdev_read(sb->s_bdev, buf, block_size,
+                          (u64)second_bno * block_size);
+        if (ret < 0) { kfree(buf); return ret; }
         u32 third_bno = ((u32*)buf)[third_index];
         if (third_bno == 0) {
             third_bno = ext2_alloc_bno(sb);
             if (third_bno == 0) { kfree(buf); return -ENOSPC; }
             ((u32*)buf)[third_index] = third_bno;
-            blkdev_write(sb->s_bdev, buf, block_size, (u64)second_bno * block_size);
+            ret = write_indirect_block(sb, second_bno, buf, block_size);
+            if (ret < 0) { kfree(buf); return ret; }
             memset(buf, 0, block_size);
-            blkdev_write(sb->s_bdev, buf, block_size, (u64)third_bno * block_size);
+            ret = blkdev_write(sb->s_bdev, buf, block_size,
+                               (u64)third_bno * block_size);
+            if (ret < 0) { kfree(buf); return ret; }
         }
         kfree(buf);
         return third_bno;
@@ -268,6 +290,7 @@ static int ext2_release_indirect_branch(struct super_block *sb, u32 bno, int dep
         }
     }
 
+    ext2_indirect_cache_invalidate(sb, bno);
     kfree(buf);
     return ext2_release_bno(sb, bno);
 }

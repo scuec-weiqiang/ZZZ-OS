@@ -748,7 +748,7 @@ static int setup_arg_pages(struct linux_binprm *bprm) {
         int ret = map(mm->pgdir,stack_base + i * PAGE_SIZE,KERNEL_PA(kva),PAGE_SIZE,prot);
           
         if (ret < 0) {
-            kfree(kva);
+            page_free(kva);
             return ret;
         }
         
@@ -773,7 +773,7 @@ static int setup_arg_pages(struct linux_binprm *bprm) {
 
         ret = map(mm->pgdir, sigtramp, KERNEL_PA(kva), PAGE_SIZE, sig_prot);
         if (ret < 0) {
-            kfree(kva);
+            page_free(kva);
             return ret;
         }
     }
@@ -796,7 +796,7 @@ static void clear_arg_pages(struct linux_binprm *bprm) {
         phys_addr_t pa = pgtbl_lookup(mm->pgdir, va);
         if (pa) {
             unmap(mm->pgdir, va, PAGE_SIZE);
-            kfree((void *)KERNEL_VA(ALIGN_DOWN(pa, PAGE_SIZE)));
+            page_free((void *)KERNEL_VA(ALIGN_DOWN(pa, PAGE_SIZE)));
         }
     }
 
@@ -806,7 +806,7 @@ static void clear_arg_pages(struct linux_binprm *bprm) {
         phys_addr_t pa = pgtbl_lookup(mm->pgdir, sigtramp);
         if (pa) {
             unmap(mm->pgdir, sigtramp, PAGE_SIZE);
-            kfree((void *)KERNEL_VA(ALIGN_DOWN(pa, PAGE_SIZE)));
+            page_free((void *)KERNEL_VA(ALIGN_DOWN(pa, PAGE_SIZE)));
         }
     }
     vma_delete(mm, sigtramp, PAGE_SIZE);

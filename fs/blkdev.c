@@ -13,8 +13,10 @@
 
 static LIST_HEAD(g_blk_disks);
 
-static int blkdev_validate_bio(struct bio *bio) {
+static int blkdev_validate_bio(struct bio *bio) 
+{
     u32 block_size = 0;
+    u64 vec_bytes = 0;
 
     CHECK(bio != NULL, "blkdev: invalid bio", return -EINVAL;);
     CHECK(bio->bi_bdev != NULL, "blkdev: bio missing block device", return -ENODEV;);
@@ -26,7 +28,12 @@ static int blkdev_validate_bio(struct bio *bio) {
 
     block_size = bio->bi_bdev->bd_disk->queue->logical_block_size;
     CHECK(block_size != 0, "blkdev: invalid logical block size", return -EINVAL;);
-    CHECK(bio->bi_vcnt >= 0, "blkdev: invalid bio vec count", return -EINVAL;);
+    CHECK(bio->bi_vcnt != 0 && bio->bi_vcnt <= bio->bi_max_vecs,
+          "blkdev: invalid bio vec count", return -EINVAL;);
+    CHECK(bio->bi_size != 0 && mod_u32(bio->bi_size, block_size) == 0,
+          "blkdev: unaligned bio size", return -EINVAL;);
+    CHECK(mod_u64(bio->bi_sector * SECTOR_SIZE, block_size) == 0,
+          "blkdev: unaligned bio sector", return -EINVAL;);
 
     for (int i = 0; i < bio->bi_vcnt; i++) {
         struct bio_vec *bvec = &bio->bi_io_vec[i];
@@ -38,18 +45,19 @@ static int blkdev_validate_bio(struct bio *bio) {
 
         CHECK(bvec->offset + bvec->len <= PAGE_SIZE,
               "blkdev: bio_vec crosses page boundary", return -EINVAL;);
-        CHECK(mod_u32(bvec->offset, block_size) == 0,
-              "blkdev: unaligned bio offset", return -EINVAL;);
-        CHECK(mod_u32(bvec->len, block_size) == 0,
-              "blkdev: unaligned bio length", return -EINVAL;);
+        vec_bytes += bvec->len;
     }
+
+    CHECK(vec_bytes == bio->bi_size,
+          "blkdev: bio size does not match vectors", return -EINVAL;);
 
     return 0;
 }
 
 static dev_t next_devt = 1; // 从 1 开始分配，0 通常保留给特殊用途
 
-int alloc_blkdev_region(dev_t *devt, unsigned int count) {
+int alloc_blkdev_region(dev_t *devt, unsigned int count) 
+{
     if (!devt || count == 0)
         return -EINVAL;
 
@@ -58,11 +66,13 @@ int alloc_blkdev_region(dev_t *devt, unsigned int count) {
     return 0;
 }
 
-static void update_region() {
+static void update_region() 
+{
     next_devt++;
 }
 
-struct blkdev *blkdev_get_by_path(const char *path) {
+struct blkdev *blkdev_get_by_path(const char *path) 
+{
     struct device *dev;
     struct blkdev *bdev;
 
@@ -87,7 +97,8 @@ struct blkdev *blkdev_get_by_path(const char *path) {
     return bdev;
 }
 
-struct blkdev *blkdev_get_by_devnr(dev_t devnr) {
+struct blkdev *blkdev_get_by_devnr(dev_t devnr) 
+{
     struct device *dev;
     struct blkdev *bdev;
 
@@ -105,7 +116,8 @@ struct blkdev *blkdev_get_by_devnr(dev_t devnr) {
     return bdev;
 }
 
-void blkdev_put(struct blkdev *bdev) {
+void blkdev_put(struct blkdev *bdev) 
+{
     if (bdev == NULL) {
         return;
     }
@@ -115,13 +127,17 @@ void blkdev_put(struct blkdev *bdev) {
     }
 }
 
-struct bio *bio_alloc(int nr_vecs) {
+struct bio *bio_alloc(u32 nr_vecs) 
+{
     struct bio *bio = NULL;
-
-    RETURN_VAL_IF(nr_vecs < 0, ERR_PTR(-EINVAL));
+    if (nr_vecs == 0 || nr_vecs > UINT16_MAX) {
+        return ERR_PTR(-EINVAL);
+    }
 
     bio = kzalloc(sizeof(*bio));
-    RETURN_VAL_IF(bio == NULL, ERR_PTR(-ENOMEM));
+    if (!bio) {
+        return ERR_PTR(-ENOMEM);
+    }
 
     if (nr_vecs > 0) {
         bio->bi_io_vec = kzalloc(sizeof(*bio->bi_io_vec) * nr_vecs);
@@ -131,12 +147,17 @@ struct bio *bio_alloc(int nr_vecs) {
         }
     }
 
-    bio->bi_vcnt = nr_vecs;
+    bio->bi_max_vecs = nr_vecs;
+    bio->bi_vcnt = 0;
+    bio->bi_bdev = NULL;
+    bio->bi_sector = 0;
+    bio->bi_size = 0;
     bio->bi_status = 0;
     return bio;
 }
 
-void bio_put(struct bio *bio) {
+void bio_put(struct bio *bio) 
+{
     if (bio == NULL) {
         return;
     }
@@ -147,7 +168,61 @@ void bio_put(struct bio *bio) {
     kfree(bio);
 }
 
-int submit_bio_wait(struct bio *bio) {
+int bio_add_page(struct bio *bio, struct page *page, u32 len, u32 offset)
+{
+    struct bio_vec *bvec;
+
+    if (!bio || !page || len == 0)
+        return -EINVAL;
+
+    if (offset >= PAGE_SIZE || len > PAGE_SIZE - offset)
+        return -EINVAL;
+
+    if (bio->bi_vcnt >= bio->bi_max_vecs)
+        return -ENOSPC;
+
+    if (len > UINT32_MAX - bio->bi_size)
+        return -EOVERFLOW;
+
+    bvec = &bio->bi_io_vec[bio->bi_vcnt++];
+    bvec->page = page;
+    bvec->offset = offset;
+    bvec->len = len;
+    bio->bi_size += len;
+
+    return 0;
+}
+
+static int bio_map_kern_buf(struct bio *bio, void *buf, size_t len)
+{
+    u8 *cursor = buf;
+
+    while (len != 0) {
+        u32 offset = (uintptr_t)cursor & (PAGE_SIZE - 1);
+        size_t chunk = PAGE_SIZE - offset;
+        struct page *page;
+        int ret;
+
+        if (chunk > len)
+            chunk = len;
+
+        page = address_page(cursor);
+        if (!page)
+            return -EFAULT;
+
+        ret = bio_add_page(bio, page, (u32)chunk, offset);
+        if (ret)
+            return ret;
+
+        cursor += chunk;
+        len -= chunk;
+    }
+
+    return 0;
+}
+
+int submit_bio_wait(struct bio *bio) 
+{
     int ret = 0;
 
     ret = blkdev_validate_bio(bio);
@@ -163,163 +238,347 @@ int submit_bio_wait(struct bio *bio) {
     return ret;
 }
 
-int __blkdev_read_raw(struct blkdev *bdev, void *buf, size_t len, u64 pos) {
+static int blkdev_write_partial_block(struct blkdev *bdev, const void *src, size_t len, u64 pos)
+{
+    int ret = 0;
+    struct request_queue *queue = bdev->bd_disk->queue;
+    u32 block_size = queue->logical_block_size;
+    if (block_size == 0 || block_size > PAGE_SIZE)
+        return -EINVAL;
+
+    size_t offset = pos % block_size;
+    u64 block_pos = pos - offset;
+    if (len > block_size - offset)
+        return -EINVAL;
+
+    void *bounce = page_alloc(1);
+    if (!bounce)
+        return -ENOMEM;
+
+    struct page *page = address_page(bounce);
+    if (!page) {
+        ret = -EFAULT;
+        goto out_page;
+    }
+
+    struct bio *bio = bio_alloc(1);
+    if (IS_ERR(bio)) {
+        ret = PTR_ERR(bio);
+        goto out_page;
+    }
+
+    bio->bi_bdev = bdev;
+    bio->bi_sector = block_pos / SECTOR_SIZE; //bi_sector 的单位始终定义为512字节扇区。
+    bio->op = REQ_OP_READ;
+    ret = bio_add_page(bio, page, block_size, 0);
+    if (ret) {
+        goto out_bio;
+    }
+
+    // 读取、修改、写回需要加锁，防止其他线程同时访问同一个块
+    mutex_lock(&queue->rmw_lock);
+    // 先读
+    ret = submit_bio_wait(bio);
+    if (ret) {
+        mutex_unlock(&queue->rmw_lock);
+        goto out_bio;
+    }
+    // 修改
+    memcpy((u8 *)bounce + offset, src, len);
+    // 写回
+    bio->op = REQ_OP_WRITE;
+    ret = submit_bio_wait(bio);
+    mutex_unlock(&queue->rmw_lock);
+
+out_bio:
+    bio_put(bio);
+out_page:
+    page_free(bounce);
+    return ret;
+}
+
+static int blkdev_write_aligned(struct blkdev *bdev, const void *buf, size_t len, u64 pos, size_t *written)
+{
     struct bio *bio = NULL;
-    void *base = NULL;
-    struct page *temp = NULL;
-    u8 *dst = buf;
-    u32 sector_size = 0;
-    u32 sectors_per_page = 0;
-    u32 sector = 0;
-    size_t done = 0;
+    size_t first_offset;
+    size_t nr_vecs;
     int ret = 0;
 
-    if (!bdev || !buf) {
+    if (!bdev || !buf || len == 0)
         return -EINVAL;
-    }
-    if (len == 0) {
-        return 0;
-    }
 
-    sector_size = bdev->bd_disk->logical_block_size;
-    sectors_per_page = div_u32(PAGE_SIZE, sector_size);
-    sector = div_u64(pos, sector_size);
+    if (len > UINT32_MAX)
+        return -EOVERFLOW;
 
-    bio = bio_alloc(1);
+    first_offset = (uintptr_t)buf & (PAGE_SIZE - 1);
+    nr_vecs = (first_offset + len + PAGE_SIZE - 1) / PAGE_SIZE;
 
+    bio = bio_alloc(nr_vecs);
     if (IS_ERR(bio)) {
         return PTR_ERR(bio);
     }
 
-    base = page_alloc(1);
-    if (!base) {
-        ret = -ENOMEM;
+    bio->bi_bdev = bdev;
+    bio->bi_sector = pos / SECTOR_SIZE; //bi_sector 的单位始终定义为512字节扇区。
+    ret = bio_map_kern_buf(bio, (void *)buf, len);
+    if (ret) {
         goto out_bio;
     }
-    temp = address_page(base);
+
+    bio->op = REQ_OP_WRITE;
+    ret = submit_bio_wait(bio);
+    if (written) {
+        *written = bio->bi_size;
+    }
+out_bio:
+    bio_put(bio);
+    return ret;
+}
+
+static int blkdev_read_partial_block(struct blkdev *bdev, void *dst, size_t len, u64 pos)
+{
+    struct request_queue *queue;
+    struct bio *bio = NULL;
+    struct page *page;
+    void *bounce = NULL;
+    u32 block_size;
+    u32 offset;
+    u64 block_pos;
+    int ret;
+
+    if (!bdev || !bdev->bd_disk || !bdev->bd_disk->queue ||
+        !dst || len == 0)
+        return -EINVAL;
+
+    queue = bdev->bd_disk->queue;
+    block_size = queue->logical_block_size;
+
+    if (block_size == 0 || block_size > PAGE_SIZE)
+        return -EINVAL;
+
+    offset = pos % block_size;
+    block_pos = pos - offset;
+
+    if (len > block_size - offset)
+        return -EINVAL;
+
+    bounce = page_alloc(1);
+    if (!bounce)
+        return -ENOMEM;
+
+    page = address_page(bounce);
+    if (!page) {
+        ret = -EFAULT;
+        goto out_page;
+    }
+
+    bio = bio_alloc(1);
+    if (IS_ERR(bio)) {
+        ret = PTR_ERR(bio);
+        bio = NULL;
+        goto out_page;
+    }
 
     bio->bi_bdev = bdev;
-    bio->bi_io_vec[0].page = temp;
-    bio->bi_io_vec[0].len = sector_size;
+    bio->bi_sector = block_pos / SECTOR_SIZE;
     bio->op = REQ_OP_READ;
 
-    while (done < len) {
-        size_t offset_in_sector = mod_u64(pos, sector_size);
-        size_t copy_len = len - done;
-        u32 sector_offset_in_page = mod_u32(sector, sectors_per_page) * sector_size;
-        u8 *src = (u8 *)base + sector_offset_in_page + offset_in_sector;
+    ret = bio_add_page(bio, page, block_size, 0);
+    if (ret)
+        goto out_bio;
 
-        if (copy_len > sector_size - offset_in_sector) {
-            copy_len = sector_size - offset_in_sector;
-        }
+    ret = submit_bio_wait(bio);
+    if (ret)
+        goto out_bio;
 
-        bio->bi_sector = sector;
-        bio->bi_io_vec[0].offset = sector_offset_in_page;
+    memcpy(dst, (u8 *)bounce + offset, len);
 
-        ret = submit_bio_wait(bio);
-        if (ret != 0) {
-            ret = -EIO;
-            goto out_page;
-        }
-
-        memcpy(dst + done, src, copy_len);
-        done += copy_len;
-        pos += copy_len;
-        sector++;
-    }
-
-    ret = 0;
-out_page:
-    free_pages_kva(base);
 out_bio:
     bio_put(bio);
+out_page:
+    page_free(bounce);
     return ret;
 }
 
-int __blkdev_write_raw(struct blkdev *bdev, const void *buf, size_t len, u64 pos) {
+static int blkdev_read_aligned(struct blkdev *bdev, void *buf, size_t len, u64 pos, size_t *read_bytes)
+{
     struct bio *bio = NULL;
-    void *base = NULL;
-    struct page *temp = NULL;
-    const u8 *src = buf;
-    u32 sector_size = 0;
-    u32 sectors_per_page = 0;
-    u32 sector = 0;
-    size_t done = 0;
+    size_t first_offset;
+    size_t nr_vecs;
     int ret = 0;
 
-    if (!bdev || !buf) {
+    if (!bdev || !buf || len == 0)
         return -EINVAL;
-    }
-    if (len == 0) {
-        return 0;
-    }
 
-    sector_size = bdev->bd_disk->logical_block_size;
-    sectors_per_page = div_u32(PAGE_SIZE, sector_size);
-    sector = div_u64(pos, sector_size);
+    if (len > UINT32_MAX)
+        return -EOVERFLOW;
 
-    bio = bio_alloc(1);
+    first_offset = (uintptr_t)buf & (PAGE_SIZE - 1);
+    nr_vecs = (first_offset + len + PAGE_SIZE - 1) / PAGE_SIZE;
+
+    bio = bio_alloc(nr_vecs);
     if (IS_ERR(bio)) {
         return PTR_ERR(bio);
     }
 
-    base = page_alloc(1);
-    if (!base) {
-        ret = -ENOMEM;
+    bio->bi_bdev = bdev;
+    bio->bi_sector = pos / SECTOR_SIZE; //bi_sector 的单位始终定义为512字节扇区。
+    ret = bio_map_kern_buf(bio, buf, len);
+    if (ret) {
         goto out_bio;
     }
-    temp = phys_to_page(KERNEL_PA(base));
 
-    bio->bi_bdev = bdev;
-    bio->bi_io_vec[0].page = temp;
-    bio->bi_io_vec[0].len = sector_size;
+    bio->op = REQ_OP_READ;
+    ret = submit_bio_wait(bio);
+    if (!ret && read_bytes)
+        *read_bytes = bio->bi_size;
 
-    while (done < len) {
-        size_t offset_in_sector = mod_u64(pos, sector_size);
-        size_t copy_len = len - done;
-        u32 sector_offset_in_page = mod_u32(sector, sectors_per_page) * sector_size;
-        u8 *dst = (u8 *)base + sector_offset_in_page;
-
-        if (copy_len > sector_size - offset_in_sector) {
-            copy_len = sector_size - offset_in_sector;
-        }
-
-        bio->bi_sector = sector;
-        bio->bi_io_vec[0].offset = sector_offset_in_page;
-        bio->op = REQ_OP_WRITE;
-
-        if (offset_in_sector != 0 || copy_len != sector_size) {
-            bio->op = REQ_OP_READ;
-            ret = submit_bio_wait(bio);
-            if (ret != 0) {
-                ret = -EIO;
-                goto out_page;
-            }
-            bio->op = REQ_OP_WRITE;
-        }
-
-        memcpy(dst + offset_in_sector, src + done, copy_len);
-
-        ret = submit_bio_wait(bio);
-        if (ret != 0) {
-            ret = -EIO;
-            goto out_page;
-        }
-
-        done += copy_len;
-        pos += copy_len;
-        sector++;
-    }
-
-    ret = 0;
-out_page:
-    free_pages_kva(base);
 out_bio:
     bio_put(bio);
     return ret;
 }
 
-int blkdev_read(struct blkdev *bdev, void *buf, size_t len, u64 pos) {
+
+int __blkdev_read_raw(struct blkdev *bdev, void *buf, size_t len, u64 pos) 
+{
+    u8 *dst = buf;
+    struct request_queue *queue;
+    u32 block_size;
+    size_t done = 0;
+    int ret;
+
+    if (!bdev || !buf)
+        return -EINVAL;
+
+    if (len == 0)
+        return 0;
+
+    queue = bdev->bd_disk->queue;
+    block_size = queue->logical_block_size;
+
+    // 非对齐头部。
+    if (pos % block_size) {
+        size_t head_len;
+
+        head_len = block_size - pos % block_size;
+        if (head_len > len)
+            head_len = len;
+
+        ret = blkdev_read_partial_block(
+            bdev, dst, head_len, pos);
+        if (ret)
+            return ret;
+
+        dst += head_len;
+        pos += head_len;
+        done += head_len;
+    }
+
+    // 如果整个请求都落在第一个非对齐逻辑块里，
+    if (done == len)
+        return 0;
+
+    //  中间完整逻辑块。
+    if (len - done >= block_size) {
+        size_t aligned_len;
+        size_t read_bytes;
+
+        aligned_len = (len - done) -
+                      ((len - done) % block_size);
+
+        ret = blkdev_read_aligned(bdev, dst,
+                                   aligned_len, pos,
+                                   &read_bytes);
+        if (ret)
+            return ret;
+
+        dst += read_bytes;
+        pos += read_bytes;
+        done += read_bytes;
+    }
+
+    // 非对齐尾部,此时 pos 已经位于逻辑块起点，但剩余长度不足一个块。
+    if (done < len) {
+        ret = blkdev_read_partial_block(
+            bdev, dst, len - done, pos);
+        if (ret)
+            return ret;
+    }
+
+    return 0;
+}
+
+int __blkdev_write_raw(struct blkdev *bdev, const void *buf, size_t len, u64 pos)
+{
+    const u8 *src = buf;
+    struct request_queue *queue;
+    u32 block_size;
+    size_t done = 0;
+    int ret;
+
+    if (!bdev || !buf)
+        return -EINVAL;
+
+    if (len == 0)
+        return 0;
+
+    queue = bdev->bd_disk->queue;
+    block_size = queue->logical_block_size;
+
+    // 非对齐头部。
+    if (pos % block_size) {
+        size_t head_len;
+
+        head_len = block_size - pos % block_size;
+        if (head_len > len)
+            head_len = len;
+
+        ret = blkdev_write_partial_block(
+            bdev, src, head_len, pos);
+        if (ret)
+            return ret;
+
+        src += head_len;
+        pos += head_len;
+        done += head_len;
+    }
+
+    // 如果整个请求都落在第一个非对齐逻辑块里，
+    if (done == len)
+        return 0;
+
+    //  中间完整逻辑块。
+    if (len - done >= block_size) {
+        size_t aligned_len;
+        size_t written;
+
+        aligned_len = (len - done) -
+                      ((len - done) % block_size);
+
+        ret = blkdev_write_aligned(bdev, src,
+                                   aligned_len, pos,
+                                   &written);
+        if (ret)
+            return ret;
+
+        src += written;
+        pos += written;
+        done += written;
+    }
+
+    // 非对齐尾部,此时 pos 已经位于逻辑块起点，但剩余长度不足一个块。
+    if (done < len) {
+        ret = blkdev_write_partial_block(
+            bdev, src, len - done, pos);
+        if (ret)
+            return ret;
+    }
+
+    return 0;
+}
+
+int blkdev_read(struct blkdev *bdev, void *buf, size_t len, u64 pos) 
+{
     u64 size;
     u64 real_pos;
 
@@ -335,7 +594,8 @@ int blkdev_read(struct blkdev *bdev, void *buf, size_t len, u64 pos) {
     return __blkdev_read_raw(bdev->bd_contains, buf, len, real_pos);
 }
 
-int blkdev_write(struct blkdev *bdev, const void *buf, size_t len, u64 pos) {
+int blkdev_write(struct blkdev *bdev, const void *buf, size_t len, u64 pos) 
+{
     u64 size;
     u64 real_pos;
 
@@ -344,12 +604,15 @@ int blkdev_write(struct blkdev *bdev, const void *buf, size_t len, u64 pos) {
     if (pos + len > size)
         return -EINVAL;
 
+    // 之前的pos是相对于分区的偏移量，需要转换为相对于整个磁盘的偏移量
     real_pos = (u64)bdev->bd_start_sect * SECTOR_SIZE + pos;
 
     return __blkdev_write_raw(bdev->bd_contains, buf, len, real_pos);
 }
 
-static int guid_is_zero(const u8 guid[16]) {
+
+static int guid_is_zero(const u8 guid[16]) 
+{
     int i;
 
     for (i = 0; i < 16; i++) {
@@ -360,7 +623,11 @@ static int guid_is_zero(const u8 guid[16]) {
     return 1;
 }
 
-int blkdev_register_partition(struct blkdev *whole, int partno, sector_t start, sector_t nr_sectors) {
+int blkdev_register_partition(struct blkdev *whole, 
+                              int partno, 
+                              sector_t start, 
+                              sector_t nr_sectors) 
+{
     struct blkdev *part;
     char name[64];
 
