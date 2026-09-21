@@ -8,8 +8,8 @@ static LIST_HEAD(g_filesystems);
 
 int register_filesystem(struct file_system_type *fs)
 {
-    CHECK(fs != NULL, "fs: invalid filesystem", return -1;);
-    CHECK(fs->name != NULL, "fs: invalid filesystem name", return -1;);
+    ASSERT(fs != NULL, "fs: invalid filesystem");
+    ASSERT(fs->name != NULL, "fs: invalid filesystem name");
 
     INIT_LIST_HEAD(&fs->fs_list);
     list_add(&g_filesystems, &fs->fs_list);
@@ -20,7 +20,7 @@ struct file_system_type *get_fs_type(const char *name)
 {
     struct list_head *pos = NULL;
 
-    CHECK(name != NULL, "fs: invalid filesystem name", return NULL;);
+    ASSERT(name != NULL, "fs: invalid filesystem name");
 
     list_for_each(pos, &g_filesystems) {
         struct file_system_type *fs = container_of(pos, struct file_system_type, fs_list);

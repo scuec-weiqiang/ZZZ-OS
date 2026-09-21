@@ -83,6 +83,7 @@ QEMU_ARGS=(
     -drive "file=${IMAGE},if=none,format=raw,id=disk0" \
     -device virtio-blk-device,drive=disk0,bus=virtio-mmio-bus.0 \
     -global virtio-mmio.force-legacy=false \
+    -S -s
 )
 
 if [ "${GRAPHICS}" -eq 0 ]; then

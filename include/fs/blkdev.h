@@ -117,6 +117,7 @@ void blkdev_put(struct blkdev *bdev);
 
 struct bio *bio_alloc(u32 nr_vecs);
 void bio_put(struct bio *bio);
+int bio_add_page(struct bio *bio, struct page *page, u32 len, u32 offset);
 
 int submit_bio_wait(struct bio *bio);
 

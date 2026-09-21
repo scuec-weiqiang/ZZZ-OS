@@ -102,7 +102,7 @@ static void bgpio_set(struct gpio_chip *gc, unsigned int gpio, int val)
 	unsigned long mask = bgc->pin2mask(bgc, gpio);
 	unsigned long flags;
 
-	flags = spin_lock_irqsave(&bgc->lock);
+	spin_lock_irqsave(&bgc->lock, &flags);
 
 	if (val)
 		bgc->data |= mask;
@@ -132,7 +132,7 @@ static void bgpio_set_set(struct gpio_chip *gc, unsigned int gpio, int val)
 	unsigned long mask = bgc->pin2mask(bgc, gpio);
 	unsigned long flags;
 
-	flags = spin_lock_irqsave(&bgc->lock);
+	spin_lock_irqsave(&bgc->lock, &flags);
 
 	if (val)
 		bgc->data |= mask;
@@ -174,7 +174,7 @@ static void bgpio_set_multiple_single_reg(struct bgpio_chip *bgc,
 	unsigned long flags;
 	unsigned long set_mask, clear_mask;
 
-	flags = spin_lock_irqsave(&bgc->lock);
+	spin_lock_irqsave(&bgc->lock, &flags);
 
 	bgpio_multiple_get_masks(bgc, mask, bits, &set_mask, &clear_mask);
 
@@ -235,7 +235,7 @@ static int bgpio_dir_in(struct gpio_chip *gc, unsigned int gpio)
 	struct bgpio_chip *bgc = to_bgpio_chip(gc);
 	unsigned long flags;
 
-	flags = spin_lock_irqsave(&bgc->lock);
+	spin_lock_irqsave(&bgc->lock, &flags);
 
 	bgc->dir &= ~bgc->pin2mask(bgc, gpio);
 	bgc->write_reg(bgc->reg_dir, bgc->dir);
@@ -252,7 +252,7 @@ static int bgpio_dir_out(struct gpio_chip *gc, unsigned int gpio, int val)
 
 	gc->set(gc, gpio, val);
 
-	flags = spin_lock_irqsave(&bgc->lock);
+	spin_lock_irqsave(&bgc->lock, &flags);
 
 	bgc->dir |= bgc->pin2mask(bgc, gpio);
 	bgc->write_reg(bgc->reg_dir, bgc->dir);
@@ -267,7 +267,7 @@ static int bgpio_dir_in_inv(struct gpio_chip *gc, unsigned int gpio)
 	struct bgpio_chip *bgc = to_bgpio_chip(gc);
 	unsigned long flags;
 
-	flags = spin_lock_irqsave(&bgc->lock);
+	spin_lock_irqsave(&bgc->lock, &flags);
 
 	bgc->dir |= bgc->pin2mask(bgc, gpio);
 	bgc->write_reg(bgc->reg_dir, bgc->dir);
@@ -284,7 +284,7 @@ static int bgpio_dir_out_inv(struct gpio_chip *gc, unsigned int gpio, int val)
 
 	gc->set(gc, gpio, val);
 
-	flags = spin_lock_irqsave(&bgc->lock);
+	spin_lock_irqsave(&bgc->lock, &flags);
 
 	bgc->dir &= ~bgc->pin2mask(bgc, gpio);
 	bgc->write_reg(bgc->reg_dir, bgc->dir);

@@ -38,7 +38,7 @@ static void wait_sleep_on_child(void)
     current_task->status = TASK_SLEEPING;
 
     rq = this_rq();
-    rq_flags = spin_lock_irqsave(&rq->lock);
+    spin_lock_irqsave(&rq->lock, &rq_flags);
     current_task->sched_class->dequeue_task(rq, current_task);
     current_task->wait_reason = wq_head->wait_reason;
     spin_unlock_irqrestore(&rq->lock, rq_flags);
@@ -58,7 +58,7 @@ int do_waitpid(pid_t pid, int *status, int options) {
         unsigned long child_flags;
         int found;
 
-        child_flags = spin_lock_irqsave(&current->lock);
+        spin_lock_irqsave(&current->lock, &child_flags);
         found = wait_find_child_locked(pid, &child);
 
         if (found == 1) {
@@ -77,7 +77,7 @@ int do_waitpid(pid_t pid, int *status, int options) {
 
             task_detach_from_rq(child);
 
-            flags = spin_lock_irqsave(&child->lock);
+            spin_lock_irqsave(&child->lock, &flags);
             child->status = TASK_DEAD;
             release = !child->on_cpu;
             spin_unlock_irqrestore(&child->lock, flags);
@@ -102,15 +102,16 @@ int do_waitpid(pid_t pid, int *status, int options) {
             return -EINTR;
         }
 
-        unsigned long wq_flags = spin_lock_irqsave(&current->wait_child.lock);
-        child_flags = spin_lock_irqsave(&current->lock);
+        unsigned long wq_flags;
+        spin_lock_irqsave(&current->wait_child.lock, &wq_flags);
+        spin_lock_irqsave(&current->lock, &child_flags);
         found = wait_find_child_locked(pid, &child);
         spin_unlock_irqrestore(&current->lock, child_flags);
         if (found == 0) {
             wait_sleep_on_child();
             spin_unlock_irqrestore(&current->wait_child.lock, wq_flags);
             sched();
-            wq_flags = spin_lock_irqsave(&current->wait_child.lock);
+            spin_lock_irqsave(&current->wait_child.lock, &wq_flags);
             if (!list_empty(&current->wait.list)) {
                 wait_queue_remove(&current->wait_child, &current->wait);
             }

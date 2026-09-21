@@ -165,6 +165,7 @@ struct super_block {
 struct address_space_operations {
     int (*readpage)(struct page *page);
     int (*writepage)(struct page *page);
+    int (*readpages)(struct page **pages, u32 nr_pages);
 };
 
 struct address_space {
@@ -183,6 +184,7 @@ struct inode {
     u16 i_mode;
     u32 i_nlink;
     size_t i_size;
+    u64 i_blocks; // 已分配磁盘空间，以 512 字节为单位
     void *i_cdev;
     dev_t i_rdev;
     timespec_t i_atime;
@@ -256,6 +258,13 @@ struct path {
     struct dentry *dentry;
 };
 
+struct file_ra_state {
+    loff_t prev_end;
+    u32 window;
+    bool valid;
+    bool disabled;
+};
+
 struct file {
     struct path f_path;
     struct inode *f_inode;
@@ -264,6 +273,7 @@ struct file {
     u32 f_flags;
     atomic_t f_count;
     void *private_data;
+    struct file_ra_state f_ra; // 有关文件读的预读状态
 };
 
 static inline struct inode *file_inode(const struct file *f)

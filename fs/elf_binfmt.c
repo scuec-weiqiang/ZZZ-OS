@@ -81,12 +81,20 @@ static int elf_map_segment(struct linux_binprm *bprm,
         return 0;
     }
 
-    CHECK(seg->filesz <= seg->memsz, "elf: filesz > memsz", return -1;);
-    CHECK((seg->vaddr & (PAGE_SIZE - 1)) == (seg->offset & (PAGE_SIZE - 1)),
-          "elf: vaddr/offset alignment mismatch", return -1;);
+    if (!(seg->filesz <= seg->memsz)) {
+        printk("%s\n", "elf: filesz > memsz");
+        return -1;
+    }
+    if (!((seg->vaddr & (PAGE_SIZE - 1)) == (seg->offset & (PAGE_SIZE - 1)))) {
+        printk("%s\n", "elf: vaddr/offset alignment mismatch");
+        return -1;
+    }
 
     file_end = seg->offset + seg->filesz;
-    CHECK(file_end <= file_size, "elf: segment exceeds file size", return -1;);
+    if (!(file_end <= file_size)) {
+        printk("%s\n", "elf: segment exceeds file size");
+        return -1;
+    }
 
     seg_start = ALIGN_DOWN(seg->vaddr, PAGE_SIZE);
     seg_end = ALIGN_UP(seg->vaddr + seg->memsz, PAGE_SIZE);
@@ -105,7 +113,10 @@ static int elf_map_segment(struct linux_binprm *bprm,
         loff_t file_off;
 
         kva = page_alloc(1);
-        CHECK(kva != NULL, "elf: page_alloc failed", return -1;);
+        if (!kva) {
+            printk("%s\n", "elf: page_alloc failed");
+            return -1;
+        }
         memset(kva, 0, PAGE_SIZE);
 
         if (map(mm->pgdir, addr, KERNEL_PA(kva), PAGE_SIZE, prot) < 0) {
@@ -146,13 +157,22 @@ static int load_elf_binary(struct linux_binprm *bprm) {
     int ret;
     int i;
 
-    CHECK(bprm != NULL, "elf: bprm is NULL", return -EINVAL;);
-    CHECK(bprm->file != NULL, "elf: file is NULL", return -1;);
-    CHECK(bprm->file->f_inode != NULL, "elf: inode is NULL", return -1;);
-    CHECK(bprm->mm != NULL, "elf: bprm->mm is NULL", return -1;);
+    ASSERT(bprm != NULL, "elf: bprm is NULL");
+    if (!bprm->file) {
+        printk("%s\n", "elf: file is NULL");
+        return -1;
+    }
+    if (!bprm->file->f_inode) {
+        printk("%s\n", "elf: inode is NULL");
+        return -1;
+    }
+    ASSERT(bprm->mm != NULL, "elf: bprm->mm is NULL");
 
     elf_info = elf_parse_file(bprm->file);
-    CHECK(elf_info != NULL, "elf: parse header failed", return -1;);
+    if (!elf_info) {
+        printk("%s\n", "elf: parse header failed");
+        return -1;
+    }
 
     ret = arch_elf_check(elf_info);
     if (ret != 0) {

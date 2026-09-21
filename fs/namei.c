@@ -1,4 +1,5 @@
 #include <fs/namei.h>
+#include <fs/file.h>
 #include <fs/dcache.h>
 #include <fs/fs_struct.h>
 #include <fs/namespace.h>
@@ -216,8 +217,11 @@ int path_lookup(const char *path, struct path *out) {
     struct qstr name;
     int ret;
 
-    CHECK(path != NULL, "fs: invalid path", return -EINVAL;);
-    CHECK(out != NULL, "fs: invalid lookup output", return -EINVAL;);
+    if (!path) {
+        printk("%s\n", "fs: invalid path");
+        return -EINVAL;
+    }
+    ASSERT(out != NULL, "fs: invalid lookup output");
     if (path[0] == '\0')
         return -ENOENT;
 
@@ -278,8 +282,11 @@ int path_lookup_nofollow(const char *path, struct path *out) {
     struct dentry *dentry = NULL;
     int ret;
 
-    CHECK(path != NULL, "fs: invalid path", return -EINVAL;);
-    CHECK(out != NULL, "fs: invalid lookup output", return -EINVAL;);
+    if (!path) {
+        printk("%s\n", "fs: invalid path");
+        return -EINVAL;
+    }
+    ASSERT(out != NULL, "fs: invalid lookup output");
     if (path[0] == '\0')
         return -ENOENT;
 
@@ -422,11 +429,16 @@ err_out:
 }
 
 struct dentry* vfs_lookup(const char* path) {
-    CHECK(path != NULL, "", return NULL;);
+    if (!path) {
+        return NULL;
+    }
 
     struct path resolved;
     int ret = path_lookup(path, &resolved);
-    CHECK(ret == 0, "vfs: path lookup failed", return NULL;);
+    if (ret != 0) {
+        printk("%s\n", "vfs: path lookup failed");
+        return NULL;
+    }
     mntput(resolved.mnt);
     return resolved.dentry;
 }
@@ -473,7 +485,10 @@ struct dentry *vfs_create(const char *path, u16 mode) {
         return NULL;
 
     child_dentry = prepare_child_dentry(resolved_parent.dentry, &child_name);
-    CHECK(child_dentry != NULL, "vfs: d_alloc failed for child dentry", return NULL;);
+    if (!child_dentry) {
+        printk("%s\n", "vfs: d_alloc failed for child dentry");
+        return NULL;
+    }
 
     ret = resolved_parent.dentry->d_inode->i_op->create(resolved_parent.dentry->d_inode, child_dentry, mode);
     path_put(&resolved_parent);
@@ -528,10 +543,15 @@ struct dentry *vfs_symlink(const char *path, const char *target) {
     struct dentry *child_dentry = NULL;
     int ret = 0;
 
-    CHECK(path != NULL && target != NULL, "", return NULL;);
+    if (!(path != NULL && target != NULL)) {
+        return NULL;
+    }
 
     ret = path_parentat(path, &resolved_parent, &child_name);
-    CHECK(ret == 0, "vfs: parent dir lookup failed", return NULL;);
+    if (ret != 0) {
+        printk("%s\n", "vfs: parent dir lookup failed");
+        return NULL;
+    }
 
     if (resolved_parent.dentry == NULL ||
         resolved_parent.dentry->d_inode == NULL ||
@@ -563,7 +583,10 @@ ssize_t vfs_readlink(const char *path, char *buf, size_t size) {
     struct inode *inode;
     ssize_t ret;
 
-    CHECK(path != NULL && buf != NULL, "fs: invalid readlink args", return -EINVAL;);
+    if (!(path != NULL && buf != NULL)) {
+        printk("%s\n", "fs: invalid readlink args");
+        return -EINVAL;
+    }
 
     if (size == 0)
         return 0;
@@ -599,7 +622,10 @@ int vfs_chdir(const char *path) {
     struct path resolved = {0};
     int ret;
 
-    CHECK(path != NULL, "fs: invalid chdir path", return -EINVAL;);
+    if (!path) {
+        printk("%s\n", "fs: invalid chdir path");
+        return -EINVAL;
+    }
 
     ret = path_lookup(path, &resolved);
     if (ret < 0) {
@@ -627,7 +653,10 @@ int vfs_unlink(const char *path) {
     struct qstr last = {0};
     int ret;
 
-    CHECK(path != NULL, "fs: invalid unlink path", return -EINVAL;);
+    if (!path) {
+        printk("%s\n", "fs: invalid unlink path");
+        return -EINVAL;
+    }
 
     ret = path_lookup_nofollow(path, &resolved);
     if (ret < 0) {
@@ -676,7 +705,10 @@ int vfs_rmdir(const char *path) {
     struct qstr last = {0};
     int ret;
 
-    CHECK(path != NULL, "fs: invalid rmdir path", return -EINVAL;);
+    if (!path) {
+        printk("%s\n", "fs: invalid rmdir path");
+        return -EINVAL;
+    }
 
     ret = path_lookup_nofollow(path, &resolved);
     if (ret < 0) {
@@ -730,7 +762,10 @@ int vfs_rename(const char *old_path, const char *new_path) {
     struct inode *inode;
     int ret;
 
-    CHECK(old_path != NULL && new_path != NULL, "fs: invalid rename path", return -EINVAL;);
+    if (!(old_path != NULL && new_path != NULL)) {
+        printk("%s\n", "fs: invalid rename path");
+        return -EINVAL;
+    }
 
     ret = path_lookup_nofollow(old_path, &old_resolved);
     if (ret < 0)
@@ -805,7 +840,10 @@ int vfs_access(const char *path, int mode) {
     u16 perms;
     int ret;
 
-    CHECK(path != NULL, "fs: invalid access path", return -EINVAL;);
+    if (!path) {
+        printk("%s\n", "fs: invalid access path");
+        return -EINVAL;
+    }
 
     if (mode & ~7) {
         return -EINVAL;
@@ -940,27 +978,46 @@ out_put_paths:
 }
 
  __SYSCALL__ long sys_utimensat(struct pt_regs *ctx) {
+    int dirfd = (int)ctx->r[0];
     const char *pathname = (const char *)ctx->r[1];
     const timespec_t *user_times = (const timespec_t *)ctx->r[2];
     int flags = (int)ctx->r[3];
     char path_buf[256];
     struct path path = {0};
+    struct file *file = NULL;
     struct inode *inode;
     timespec_t times[2];
     timespec_t now;
+    bool have_path = false;
     int ret;
 
     if (flags & ~0x100)
         return -EINVAL;
 
-    if (copy_user_string(path_buf, sizeof(path_buf), (uintptr_t)pathname) < 0)
-        return -EFAULT;
+    if (pathname == NULL) {
+        /* libc implements futimens(fd, times) as utimensat(fd, NULL, ...). */
+        if (flags != 0)
+            return -EINVAL;
 
-    ret = (flags & 0x100) ? path_lookup_nofollow(path_buf, &path) : path_lookup(path_buf, &path);
-    if (ret < 0)
-        return ret;
+        file = fd_get_file((unsigned int)dirfd);
+        if (file == NULL)
+            return -EBADF;
+        inode = file->f_inode;
+    } else {
+        if (copy_user_string(path_buf, sizeof(path_buf),
+                             (uintptr_t)pathname) < 0)
+            return -EFAULT;
 
-    inode = path.dentry->d_inode;
+        ret = (flags & AT_SYMLINK_NOFOLLOW) ?
+              path_lookup_nofollow(path_buf, &path) :
+              path_lookup(path_buf, &path);
+        if (ret < 0)
+            return ret;
+
+        have_path = true;
+        inode = path.dentry->d_inode;
+    }
+
     if (inode == NULL) {
         ret = -ENOENT;
         goto out;
@@ -989,7 +1046,9 @@ out_put_paths:
     }
 
 out:
-    path_put(&path);
+    if (have_path)
+        path_put(&path);
+    fd_put_file(file);
     return ret;
 }
 
@@ -1032,4 +1091,3 @@ __SYSCALL__ long sys_symlinkat(struct pt_regs *ctx) {
     dput(dentry);
     return 0;
 }
-

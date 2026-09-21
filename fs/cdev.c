@@ -100,7 +100,7 @@ int alloc_chrdev_region(dev_t *dev,
     strncpy(region->name, name, sizeof(region->name));
     INIT_LIST_HEAD(&region->node);
 
-    flags = spin_lock_irqsave(&chrdev_registry.lock);
+    spin_lock_irqsave(&chrdev_registry.lock, &flags);
 
     for (major = chrdev_registry.dynamic_major_start;
          major >= chrdev_registry.dynamic_major_end;
@@ -158,7 +158,7 @@ int register_chrdev_region(dev_t from,
     strncpy(region->name, name, sizeof(region->name));
     INIT_LIST_HEAD(&region->node);
 
-    flags = spin_lock_irqsave(&chrdev_registry.lock);
+    spin_lock_irqsave(&chrdev_registry.lock, &flags);
 
     list_for_each_entry(iter, &chrdev_registry.regions, node) {
         if (chrdev_region_overlap(region->from,
@@ -187,7 +187,7 @@ void unregister_chrdev_region(dev_t from, unsigned int count)
     if (!chrdev_range_valid(from, count))
         return;
 
-    flags = spin_lock_irqsave(&chrdev_registry.lock);
+    spin_lock_irqsave(&chrdev_registry.lock, &flags);
     list_for_each_entry_safe(region, tmp, &chrdev_registry.regions, node) {
         if (region->from == from && region->count == count) {
             list_del(&region->node);

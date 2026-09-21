@@ -195,7 +195,7 @@ __SYSCALL__ long sys_mmap(struct pt_regs *ctx)
         return ret;
     }
 
-    irq_flags = spin_lock_irqsave(&mm->lock);
+    spin_lock_irqsave(&mm->lock, &irq_flags);
 
     if (flags & MAP_FIXED) {
         if ((addr & (PAGE_SIZE - 1)) != 0) {
@@ -255,7 +255,7 @@ __SYSCALL__ long sys_munmap(struct pt_regs *ctx)
         return -EINVAL;
     }
 
-    irq_flags = spin_lock_irqsave(&mm->lock);
+    spin_lock_irqsave(&mm->lock, &irq_flags);
 
     free_mapped_pages(mm, addr, len);
 
@@ -299,7 +299,7 @@ __SYSCALL__ long sys_mprotect(struct pt_regs *ctx)
         return ret;
     }
 
-    irq_flags = spin_lock_irqsave(&mm->lock);
+    spin_lock_irqsave(&mm->lock, &irq_flags);
 
     ret = vma_protect(mm, addr, len, kprot);
     if (ret < 0) {

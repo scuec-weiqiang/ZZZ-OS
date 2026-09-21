@@ -9,6 +9,9 @@
 #include <os/string.h>
 #include <os/types.h>
 #include <os/utils.h>
+#include <os/errno.h>
+
+_Static_assert(sizeof(struct kmem_cache) <= PAGE_SIZE, "kmem_cache exceeds its allocation");
 
 #define get_slab(list_node) list_entry(list_node, struct slab, list)
 #define obj_to_slab(obj) ((struct slab*)((addr_t)(obj) & PAGE_MASK))
@@ -215,6 +218,10 @@ struct kmem_cache *kmem_cache_create(const char *name, size_t size, size_t align
     }
 
     cache->total_slabs = 0;
+    cache->mag_limit = MAG_SIZE;
+    cache->mag_batch = MAG_SIZE / 2;
+    for (int i = 0; i < MAX_CPUS; i++)
+        cache->cpu[i].global_accesses = 0;
 
     return cache;
 }
@@ -396,19 +403,20 @@ static struct slab* __kmem_cache_free_locked(struct kmem_cache *cache, void *obj
 static void refill_magazine(struct kmem_cache *cache,
                             struct kmem_cache_cpu *cpu_cache)
 {
-    unsigned int target = MAG_SIZE / 2;
+    unsigned int target = cache->mag_batch;
+    unsigned int before = cpu_cache->count;
 
     while (cpu_cache->count < target) {
         void *obj;
         unsigned long flags;
 
-        flags = spin_lock_irqsave(&cache->lock);
+        spin_lock_irqsave(&cache->lock, &flags);
+        cpu_cache->global_accesses++;
         while (cpu_cache->count < target) {
             obj = __kmem_cache_alloc_locked(cache);
             // 如果obj为null，说明需要重新分配一个slab
             if (obj == NULL)
                 break;
-            cpu_cache->refills++;
             cpu_cache->objects[cpu_cache->count++] = obj;
         }
 
@@ -422,25 +430,30 @@ static void refill_magazine(struct kmem_cache *cache,
         if (new_slab == NULL)
             break;
 
-        flags = spin_lock_irqsave(&cache->lock);
+        spin_lock_irqsave(&cache->lock, &flags);
+        cpu_cache->global_accesses++;
         add_slab_locked(cache, new_slab);
         spin_unlock_irqrestore(&cache->lock, flags);
     }
+    if (cpu_cache->count > before)
+        cpu_cache->refills++;
 }
 
 void drain_magazine(struct kmem_cache *cache, struct kmem_cache_cpu *cpu_cache) 
 {
-    struct slab *to_free[MAG_SIZE / 2]; // 用来收集可能需要回收的slab
+    struct slab *to_free[MAG_SIZE]; // 用来收集可能需要回收的slab
     unsigned int nr_slabs = 0;
-    unsigned int nr_objects = MAG_SIZE / 2; // 一次释放一半
+    unsigned int nr_objects = cache->mag_batch;
     unsigned long flags;
 
-    flags = spin_lock_irqsave(&cache->lock);
+    spin_lock_irqsave(&cache->lock, &flags);
+    cpu_cache->global_accesses++;
+    if (cpu_cache->count)
+        cpu_cache->drains++;
 
     while (nr_objects-- && cpu_cache->count != 0) {
         void *obj = cpu_cache->objects[--cpu_cache->count];
         cpu_cache->objects[cpu_cache->count] = NULL;
-        cpu_cache->drains++;
         struct slab *empty = __kmem_cache_free_locked(cache, obj);
         if (empty) {
             to_free[nr_slabs++] = empty;
@@ -456,13 +469,16 @@ void drain_magazine(struct kmem_cache *cache, struct kmem_cache_cpu *cpu_cache)
 
 void *kmem_cache_alloc(struct kmem_cache *cache) 
 {
+    preempt_disable();
     struct kmem_cache_cpu *cpu_cache = &cache->cpu[get_cpuid()];
-    int flags = spin_lock_irqsave(&cpu_cache->lock);
+    unsigned long flags;
+    spin_lock_irqsave(&cpu_cache->lock, &flags);
 
     if (cpu_cache->count != 0) {
         void *obj = cpu_cache->objects[--cpu_cache->count];
         cpu_cache->hits++;
         spin_unlock_irqrestore(&cpu_cache->lock, flags);
+        preempt_enable();
         return obj;
     }
 
@@ -473,6 +489,7 @@ void *kmem_cache_alloc(struct kmem_cache *cache)
     void *obj = cpu_cache->count ?
       cpu_cache->objects[--cpu_cache->count] : NULL;
     spin_unlock_irqrestore(&cpu_cache->lock, flags);
+    preempt_enable();
     return obj;
 }
 
@@ -487,21 +504,62 @@ void kmem_cache_free(void* obj)
         panic("kmem_cache_free: invalid slab magic");
     }
     struct kmem_cache *cache = slab->parent;
+    preempt_disable();
     struct kmem_cache_cpu *cpu_cache  = &cache->cpu[get_cpuid()];
 
-    int flags = spin_lock_irqsave(&cpu_cache->lock);
+    unsigned long flags;
+    spin_lock_irqsave(&cpu_cache->lock, &flags);
 
     for (int i = 0; i < cpu_cache->count; i++) {
         if (cpu_cache->objects[i] == obj)
             panic("magazine double free");
     }
-    if (cpu_cache->count >= MAG_SIZE) {
+    if (cpu_cache->count >= cache->mag_limit) {
         drain_magazine(cache, cpu_cache);
     }
     cpu_cache->objects[cpu_cache->count++] = obj;
 
     spin_unlock_irqrestore(&cpu_cache->lock, flags);
+    preempt_enable();
     return;
+}
+
+void kmem_cache_drain(struct kmem_cache *cache)
+{
+    for (int cpu = 0; cpu < MAX_CPUS; cpu++) {
+        unsigned long flags;
+        struct kmem_cache_cpu *local = &cache->cpu[cpu];
+        spin_lock_irqsave(&local->lock, &flags);
+        while (local->count)
+            drain_magazine(cache, local);
+        spin_unlock_irqrestore(&local->lock, flags);
+    }
+
+    /* 并发 refill 可能留下尚未分配过对象的空 slab */
+    for (;;) {
+        unsigned long flags;
+        spin_lock_irqsave(&cache->lock, &flags);
+        if (list_empty(&cache->free_slabs)) {
+            spin_unlock_irqrestore(&cache->lock, flags);
+            break;
+        }
+        struct slab *slab = get_slab(cache->free_slabs.next);
+        list_del(&slab->list);
+        slab->magic = 0;
+        cache->total_slabs--;
+        spin_unlock_irqrestore(&cache->lock, flags);
+        free_pages_kva(slab);
+    }
+}
+
+int kmem_cache_set_magazine(struct kmem_cache *cache, u32 limit, u32 batch)
+{
+    if (!cache || !batch || batch > limit || limit > MAG_SIZE)
+        return -EINVAL;
+    kmem_cache_drain(cache);
+    cache->mag_limit = limit;
+    cache->mag_batch = batch;
+    return 0;
 }
 
 

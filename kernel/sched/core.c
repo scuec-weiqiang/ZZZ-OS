@@ -23,7 +23,7 @@
 struct rq *global_rq;
 
 struct rq *this_rq(void) {
-    CHECK(global_rq != NULL, "scheduler: runqueue is not initialized", return NULL;);
+    ASSERT(global_rq != NULL, "scheduler: runqueue is not initialized");
     return &global_rq[get_cpuid()];
 }
 
@@ -118,7 +118,7 @@ static const struct sched_class *sched_class_highest(void) {
 static struct task_struct *pick_next_task(struct rq *rq) {
     const struct sched_class *class;
 
-    CHECK(rq != NULL, "scheduler: invalid runqueue", return NULL;);
+    ASSERT(rq != NULL, "scheduler: invalid runqueue");
 
     for (class = sched_class_highest(); class != NULL; class = class->next) {
         struct task_struct *p;
@@ -145,7 +145,7 @@ void task_attach_to_rq(struct task_struct *task) {
     }
     
     rq = &global_rq[ti->cpu];
-    flags = spin_lock_irqsave(&rq->lock);
+    spin_lock_irqsave(&rq->lock, &flags);
     if (list_empty(&task->task_node)) {
         list_add_tail(&rq->tasks, &task->task_node);
         rq->nr_tasks++;
@@ -163,7 +163,7 @@ void task_detach_from_rq(struct task_struct *task) {
     }
 
     rq = &global_rq[ti->cpu];
-    flags = spin_lock_irqsave(&rq->lock);
+    spin_lock_irqsave(&rq->lock, &flags);
     if (!list_empty(&task->task_node)) {
         list_del(&task->task_node);
         if (rq->nr_tasks > -1) {
@@ -204,7 +204,7 @@ void sched_fork(struct task_struct *p) {
     spin_lock_init(&p->wait_child.lock);
     p->wait.private = p;
 
-	flags = spin_lock_irqsave(&p->lock);
+	spin_lock_irqsave(&p->lock, &flags);
 
     cpu = sched_select_task_cpu(p);
     task_thread_info(p)->cpu = cpu;
@@ -263,7 +263,8 @@ void sched_tail(struct task_struct *prev) {
 
     prev->se.sum_exec_runtime += monotonic_ns() - prev->se.exec_start;
 
-    unsigned long flags = spin_lock_irqsave(&prev->lock);
+    unsigned long flags;
+    spin_lock_irqsave(&prev->lock, &flags);
     prev->on_cpu = 0;
     if (prev->status == TASK_DEAD) {
         release = 1;
@@ -315,7 +316,7 @@ void __sched sched(void) {
 
     local_irq_disable();
 
-    flags = spin_lock_irqsave(&rq->lock);
+    spin_lock_irqsave(&rq->lock, &flags);
     next = pick_next_task(rq);
 
     u64 now = monotonic_ns();
@@ -332,7 +333,8 @@ void __sched sched(void) {
         return;
     }
 
-    unsigned long task_flags = spin_lock_irqsave(&next->lock);
+    unsigned long task_flags;
+    spin_lock_irqsave(&next->lock, &task_flags);
     next->on_cpu = 1;
     spin_unlock_irqrestore(&next->lock, task_flags);
 
@@ -352,7 +354,7 @@ void sched_event(struct timer *t, void *arg) {
     const struct sched_class *class;
     unsigned long flags;
 
-    flags = spin_lock_irqsave(&rq->lock);
+    spin_lock_irqsave(&rq->lock, &flags);
     // 通知当前任务的调度类：时间片用完（只设置标志位，不操作队列）
     if (rq->curr->sched_class && rq->curr->sched_class->task_tick)
         rq->curr->sched_class->task_tick(rq, rq->curr);
@@ -398,7 +400,7 @@ __SYSCALL__ long sys_ps(struct pt_regs *ctx)
         struct task_struct *task;
         unsigned long flags;
 
-        flags = spin_lock_irqsave(&rq->lock);
+        spin_lock_irqsave(&rq->lock, &flags);
         list_for_each_entry(task, &rq->tasks, task_node) {
             struct ps_info info;
             const char *comm;
@@ -450,12 +452,12 @@ void sleep_on(struct wait_queue_head *wq_head) {
         return;
     }
     
-    wq_flags = spin_lock_irqsave(&wq_head->lock);
+    spin_lock_irqsave(&wq_head->lock, &wq_flags);
     current_task->status = TASK_SLEEPING;
 
     // 从当前 CPU 的运行队列中移除当前任务，放入等待队列
     rq = this_rq();
-    rq_flags = spin_lock_irqsave(&rq->lock);
+    spin_lock_irqsave(&rq->lock, &rq_flags);
     current_task->sched_class->dequeue_task(rq, current_task);
     spin_unlock_irqrestore(&rq->lock, rq_flags);
 
@@ -471,7 +473,8 @@ void sleep_on(struct wait_queue_head *wq_head) {
 
 void wake_up_one(struct wait_queue_head *wq_head) {
     struct wait_queue *wq, *tmp;
-    int flags = spin_lock_irqsave(&wq_head->lock);
+    unsigned long flags;
+    spin_lock_irqsave(&wq_head->lock, &flags);
     list_for_each_entry_safe(wq, tmp, &wq_head->head, list) {
         struct task_struct *task = wq->private;
         if (task->status == TASK_SLEEPING) {
@@ -487,7 +490,8 @@ void wake_up_one(struct wait_queue_head *wq_head) {
 
 void wake_up_all(struct wait_queue_head *wq_head) {
     struct wait_queue *wq, *tmp;
-    int flags = spin_lock_irqsave(&wq_head->lock);
+    unsigned long flags;
+    spin_lock_irqsave(&wq_head->lock, &flags);
     list_for_each_entry_safe(wq, tmp, &wq_head->head, list) {
         struct task_struct *task = wq->private;
         if (task->status == TASK_SLEEPING) {
@@ -556,12 +560,14 @@ static struct task_struct *create_idle_task(int cpu) {
 
 void sched_init(int boot_cpu) {
     int cpu_num = of_get_cpu_num();
-    CHECK(cpu_num > 0, "scheduler: invalid cpu count", return;);
-    CHECK(boot_cpu >= 0 && boot_cpu < cpu_num,
-          "scheduler: invalid boot cpu", return;);
+    ASSERT(cpu_num > 0, "scheduler: invalid cpu count");
+    ASSERT(boot_cpu >= 0 && boot_cpu < cpu_num, "scheduler: invalid boot cpu");
 
     global_rq = (struct rq *)kmalloc((size_t)cpu_num * sizeof(*global_rq));
-    CHECK(global_rq != NULL, "scheduler: alloc runqueue failed", return;);
+    if (!global_rq) {
+        printk("%s\n", "scheduler: alloc runqueue failed");
+        return;
+    }
 
     for (int cpu = 0; cpu < cpu_num; cpu++) {
         struct rq *rq = &global_rq[cpu];

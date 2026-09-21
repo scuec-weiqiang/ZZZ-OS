@@ -223,7 +223,7 @@ long tty_ioctl(struct tty_struct *tty, unsigned long request, unsigned long arg)
             return -EFAULT;
         }
 
-        flags = spin_lock_irqsave(&tty->lock);
+        spin_lock_irqsave(&tty->lock, &flags);
         tty_termios_to_user(&termios, &tty->termios);
         spin_unlock_irqrestore(&tty->lock, flags);
 
@@ -237,7 +237,7 @@ long tty_ioctl(struct tty_struct *tty, unsigned long request, unsigned long arg)
             return -EFAULT;
         }
 
-        flags = spin_lock_irqsave(&tty->lock);
+        spin_lock_irqsave(&tty->lock, &flags);
         tty_termios2_to_user(&termios2, &tty->termios);
         spin_unlock_irqrestore(&tty->lock, flags);
 
@@ -255,7 +255,7 @@ long tty_ioctl(struct tty_struct *tty, unsigned long request, unsigned long arg)
             return -EFAULT;
         }
 
-        flags = spin_lock_irqsave(&tty->lock);
+        spin_lock_irqsave(&tty->lock, &flags);
         old_termios = tty->termios;
         tty_termios_from_user(&tty->termios, &termios);
         tty_apply_termios(tty);
@@ -275,7 +275,7 @@ long tty_ioctl(struct tty_struct *tty, unsigned long request, unsigned long arg)
             return -EFAULT;
         }
 
-        flags = spin_lock_irqsave(&tty->lock);
+        spin_lock_irqsave(&tty->lock, &flags);
         old_termios = tty->termios;
         tty_termios_from_user(&tty->termios, &termios);
         tty_apply_termios(tty);
@@ -298,7 +298,7 @@ long tty_ioctl(struct tty_struct *tty, unsigned long request, unsigned long arg)
             return -EFAULT;
         }
 
-        flags = spin_lock_irqsave(&tty->lock);
+        spin_lock_irqsave(&tty->lock, &flags);
         old_termios = tty->termios;
         tty_termios2_from_user(&tty->termios, &termios2);
         tty_apply_termios(tty);
@@ -315,7 +315,7 @@ long tty_ioctl(struct tty_struct *tty, unsigned long request, unsigned long arg)
             return -EFAULT;
         }
 
-        flags = spin_lock_irqsave(&tty->lock);
+        spin_lock_irqsave(&tty->lock, &flags);
         winsize = tty->winsize;
         spin_unlock_irqrestore(&tty->lock, flags);
 
@@ -333,7 +333,7 @@ long tty_ioctl(struct tty_struct *tty, unsigned long request, unsigned long arg)
             return -EFAULT;
         }
 
-        flags = spin_lock_irqsave(&tty->lock);
+        spin_lock_irqsave(&tty->lock, &flags);
         tty->winsize = winsize;
         spin_unlock_irqrestore(&tty->lock, flags);
         return 0;
@@ -349,7 +349,7 @@ long tty_ioctl(struct tty_struct *tty, unsigned long request, unsigned long arg)
             return -EFAULT;
         }
 
-        flags = spin_lock_irqsave(&tty->lock);
+        spin_lock_irqsave(&tty->lock, &flags);
         pgrp = tty->pgrp ? tty->pgrp : current->pid;
         spin_unlock_irqrestore(&tty->lock, flags);
 
@@ -367,7 +367,7 @@ long tty_ioctl(struct tty_struct *tty, unsigned long request, unsigned long arg)
             return -EFAULT;
         }
 
-        flags = spin_lock_irqsave(&tty->lock);
+        spin_lock_irqsave(&tty->lock, &flags);
         tty->pgrp = pgrp;
         spin_unlock_irqrestore(&tty->lock, flags);
         return 0;
@@ -557,7 +557,7 @@ int tty_register_device(struct tty_driver *driver, int index, struct device *par
 
     dev = MKDEV(driver->major, driver->minor_start + index);
 
-    snprintk(name, sizeof(name), "%s%u", driver->name, index);
+    snprintf(name, sizeof(name), "%s%u", driver->name, index);
 
     driver->devices[index] = device_create(&tty_class, parent, dev,
                                            S_IFCHR | 0600, driver, name);

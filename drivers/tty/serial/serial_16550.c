@@ -178,7 +178,7 @@ static void serial_16550_start_tx(struct uart_port *port) {
         return;
 
     for (;;) {
-        flags = spin_lock_irqsave(&port->lock);
+        spin_lock_irqsave(&port->lock, &flags);
         if (!ringbuffer_get(&port->state->tx_buf, &ch)) {
             spin_unlock_irqrestore(&port->lock, flags);
             break;
@@ -239,6 +239,23 @@ static irqreturn_t uart_irq_handler(int virq, void *dev_id) {
     return received ? IRQ_HANDLED : IRQ_NONE;
 }
 
+static void uart_console_write(struct console *con, const char *text, size_t length) {
+    struct serial_16550_info *info = uart_info;
+
+    (void)con;
+    if (!info)
+        return;
+
+    for (size_t i = 0; i < length; i++) {
+        uart_putc_info(info, text[i]);
+    }
+}
+
+static struct console uart_console = {
+    .name = "ttyS0",
+    .write = uart_console_write,
+};
+
 static int uart_probe(struct platform_device *pdev) {
     int ret;
     int virq;
@@ -295,8 +312,9 @@ static int uart_probe(struct platform_device *pdev) {
     }
     printk("serial_16550: irq=%d clock=%u\n", virq,
            uart_info->port.uartclk);
-
-    console_register(uart_putc);
+           
+    uart_console.private = &uart_info->port;
+    console_register(&uart_console);
     printk("serial_16550: registered console and uart port\n");
     return 0;
 

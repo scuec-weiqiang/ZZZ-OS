@@ -133,7 +133,7 @@ static int serial_open(struct tty_struct *tty, struct file *filp) {
      * 这里只用 port->lock 保护计数。假设 startup() 不能在
      * 自旋锁内调用，因为它可能申请 IRQ 或执行较慢操作。
      */
-    flags = spin_lock_irqsave(&port->lock);
+    spin_lock_irqsave(&port->lock, &flags);
 
     first_open = (state->port.open_count == 0);
     state->port.open_count++;
@@ -149,7 +149,7 @@ static int serial_open(struct tty_struct *tty, struct file *filp) {
             /*
              * startup 失败必须回滚 open_count。
              */
-            flags = spin_lock_irqsave(&port->lock);
+            spin_lock_irqsave(&port->lock, &flags);
 
             if (state->port.open_count > 0)
                 state->port.open_count--;
@@ -186,7 +186,7 @@ static void serial_close(struct tty_struct *tty, struct file *filp) {
     if (!state || !port || !port->ops)
         return;
 
-    flags = spin_lock_irqsave(&port->lock);
+    spin_lock_irqsave(&port->lock, &flags);
 
     if (state->port.open_count == 0) {
         spin_unlock_irqrestore(&port->lock, flags);
@@ -231,7 +231,7 @@ static ssize_t serial_write(struct tty_struct *tty, const u8 *buf, size_t count)
     if (!state || !port || !port->ops)
         return -ENODEV;
 
-    flags = spin_lock_irqsave(&port->lock);
+    spin_lock_irqsave(&port->lock, &flags);
 
     written = ringbuffer_write(&state->tx_buf, buf, count);
 
@@ -263,7 +263,7 @@ static int serial_write_room(struct tty_struct *tty) {
     if (!state || !port)
         return 0;
 
-    flags = spin_lock_irqsave(&port->lock);
+    spin_lock_irqsave(&port->lock, &flags);
 
     room = ringbuffer_space(&state->tx_buf);
 
@@ -301,7 +301,7 @@ static int serial_chars_in_buffer(struct tty_struct *tty) {
     if (!state || !port)
         return 0;
 
-    flags = spin_lock_irqsave(&port->lock);
+    spin_lock_irqsave(&port->lock, &flags);
 
     count = ringbuffer_count(&state->tx_buf);
 
@@ -324,7 +324,7 @@ static void serial_flush_buffer(struct tty_struct *tty) {
     if (!state || !port)
         return;
 
-    flags = spin_lock_irqsave(&port->lock);
+    spin_lock_irqsave(&port->lock, &flags);
 
     ringbuffer_reset(&state->tx_buf);
 

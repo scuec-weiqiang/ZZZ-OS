@@ -18,38 +18,53 @@ static int blkdev_validate_bio(struct bio *bio)
     u32 block_size = 0;
     u64 vec_bytes = 0;
 
-    CHECK(bio != NULL, "blkdev: invalid bio", return -EINVAL;);
-    CHECK(bio->bi_bdev != NULL, "blkdev: bio missing block device", return -ENODEV;);
-    CHECK(bio->bi_bdev->bd_disk != NULL, "blkdev: bio missing disk", return -ENODEV;);
-    CHECK(bio->bi_bdev->bd_disk->queue != NULL, "blkdev: bio missing queue", return -ENODEV;);
-    CHECK(bio->bi_bdev->bd_disk->queue->fops != NULL &&
-          bio->bi_bdev->bd_disk->queue->fops->submit_bio != NULL,
-          "blkdev: submit_bio op missing", return -ENODEV;);
+    ASSERT(bio != NULL, "blkdev: invalid bio");
+    if (!bio->bi_bdev) {
+        printk("%s\n", "blkdev: bio missing block device");
+        return -ENODEV;
+    }
+    if (!bio->bi_bdev->bd_disk) {
+        printk("%s\n", "blkdev: bio missing disk");
+        return -ENODEV;
+    }
+    if (!bio->bi_bdev->bd_disk->queue) {
+        printk("%s\n", "blkdev: bio missing queue");
+        return -ENODEV;
+    }
+    if (!(bio->bi_bdev->bd_disk->queue->fops != NULL &&
+          bio->bi_bdev->bd_disk->queue->fops->submit_bio != NULL)) {
+        printk("%s\n", "blkdev: submit_bio op missing");
+        return -ENODEV;
+    }
 
     block_size = bio->bi_bdev->bd_disk->queue->logical_block_size;
-    CHECK(block_size != 0, "blkdev: invalid logical block size", return -EINVAL;);
-    CHECK(bio->bi_vcnt != 0 && bio->bi_vcnt <= bio->bi_max_vecs,
-          "blkdev: invalid bio vec count", return -EINVAL;);
-    CHECK(bio->bi_size != 0 && mod_u32(bio->bi_size, block_size) == 0,
-          "blkdev: unaligned bio size", return -EINVAL;);
-    CHECK(mod_u64(bio->bi_sector * SECTOR_SIZE, block_size) == 0,
-          "blkdev: unaligned bio sector", return -EINVAL;);
+    if (!block_size) {
+        printk("%s\n", "blkdev: invalid logical block size");
+        return -EINVAL;
+    }
+    ASSERT(bio->bi_vcnt != 0 && bio->bi_vcnt <= bio->bi_max_vecs, "blkdev: invalid bio vec count");
+    if (!(bio->bi_size != 0 && mod_u32(bio->bi_size, block_size) == 0)) {
+        printk("%s\n", "blkdev: unaligned bio size");
+        return -EINVAL;
+    }
+    if (!(mod_u64(bio->bi_sector * SECTOR_SIZE, block_size) == 0)) {
+        printk("%s\n", "blkdev: unaligned bio sector");
+        return -EINVAL;
+    }
 
     for (int i = 0; i < bio->bi_vcnt; i++) {
         struct bio_vec *bvec = &bio->bi_io_vec[i];
 
-        CHECK(bvec->page != NULL, "blkdev: bio_vec page is NULL", return -EINVAL;);
+        ASSERT(bvec->page != NULL, "blkdev: bio_vec page is NULL");
         if (bvec->len == 0) {
             continue;
         }
 
-        CHECK(bvec->offset + bvec->len <= PAGE_SIZE,
-              "blkdev: bio_vec crosses page boundary", return -EINVAL;);
+        ASSERT(bvec->offset + bvec->len <= PAGE_SIZE, "blkdev: bio_vec crosses page boundary");
         vec_bytes += bvec->len;
     }
 
-    CHECK(vec_bytes == bio->bi_size,
-          "blkdev: bio size does not match vectors", return -EINVAL;);
+    ASSERT(vec_bytes == bio->bi_size, "blkdev: bio size does not match vectors");
 
     return 0;
 }
@@ -642,7 +657,7 @@ int blkdev_register_partition(struct blkdev *whole,
     part->bd_contains = whole;
     part->bd_fops = whole->bd_fops;
 
-    snprintk(name, sizeof(name), "%s%d", whole->bd_disk->disk_name, partno);
+    snprintf(name, sizeof(name), "%s%d", whole->bd_disk->disk_name, partno);
 
     part->bd_devnr = MKDEV(MAJOR(whole->bd_devnr), MINOR(whole->bd_devnr) + partno);
     update_region();
@@ -729,7 +744,10 @@ int blkdev_register(char *name, dev_t devnr, struct gendisk *disk, struct file_o
         }
     }
     bdev = kzalloc(sizeof(*bdev));
-    CHECK(bdev != NULL, "blkdev: alloc block device failed", return -ENOMEM;);
+    if (!bdev) {
+        printk("%s\n", "blkdev: alloc block device failed");
+        return -ENOMEM;
+    }
 
     bdev->bd_disk = disk;
     bdev->bd_start_sect = 0;

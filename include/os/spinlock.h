@@ -83,15 +83,14 @@ static inline int spin_trylock(spinlock_t *lock)
     return ret;
 }
 
-static inline unsigned long spin_lock_irqsave(spinlock_t *lock)
+static inline void spin_lock_irqsave(spinlock_t *lock, unsigned long *flags)
 {
     void *pc = __builtin_return_address(0);
-    unsigned long flags = arch_local_irq_save();
+    (*flags)= arch_local_irq_save();
 
     spin_lock_debug_wait(lock, pc);
     arch_spin_lock(&lock->raw_lock);
     spin_lock_debug_acquired(lock, pc);
-    return flags;
 }
 
 static inline void spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags)

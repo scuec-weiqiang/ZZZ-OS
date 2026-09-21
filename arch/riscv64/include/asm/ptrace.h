@@ -106,4 +106,9 @@ static inline unsigned long user_stack_pointer(struct pt_regs *regs)
 
 extern void arch_user_enter(struct pt_regs *regs) __noreturn;
 
+static inline unsigned long syscall_arg(struct pt_regs *ctx, int index)
+{
+    return ctx->r[index];
+}
+
 #endif

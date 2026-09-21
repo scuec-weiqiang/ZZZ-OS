@@ -25,6 +25,7 @@ struct kmem_cache_cpu {
     unsigned long misses;
     unsigned long refills;
     unsigned long drains;
+    unsigned long global_accesses;
 };
 
 struct kmem_cache {
@@ -33,6 +34,8 @@ struct kmem_cache {
     size_t align;
     unsigned int objects_per_slab;
     unsigned long total_slabs;
+    unsigned int mag_limit;
+    unsigned int mag_batch;
 
     struct list_head full_slabs;
     struct list_head partial_slabs;
@@ -61,6 +64,9 @@ extern void slab_init();
 extern struct kmem_cache* kmem_cache_create(const char *name, size_t size, size_t align);
 extern void *kmem_cache_alloc(struct kmem_cache *cache);
 extern void kmem_cache_free(void *obj);
+/* 调用者保证该 cache 没有并发分配、释放。 */
+extern int kmem_cache_set_magazine(struct kmem_cache *cache, u32 limit, u32 batch);
+extern void kmem_cache_drain(struct kmem_cache *cache);
 
 extern void* __kmalloc(size_t size);
 extern void __kfree(void *obj);

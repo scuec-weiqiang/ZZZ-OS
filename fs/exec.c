@@ -108,8 +108,8 @@ out:
 }
 
 int register_binfmt(struct linux_binfmt *fmt) {
-    CHECK(fmt != NULL, "exec: invalid binfmt", return -1;);
-    CHECK(fmt->load_binary != NULL, "exec: binfmt missing load_binary", return -1;);
+    ASSERT(fmt != NULL, "exec: invalid binfmt");
+    ASSERT(fmt->load_binary != NULL, "exec: binfmt missing load_binary");
 
     INIT_LIST_HEAD(&fmt->lh);
     list_add(&formats, &fmt->lh);
@@ -708,7 +708,7 @@ int search_binary_handler(struct linux_binprm *bprm) {
     struct linux_binfmt *fmt;
     int ret;
 
-    CHECK(bprm != NULL, "exec: bprm is NULL", return -EINVAL;);
+    ASSERT(bprm != NULL, "exec: bprm is NULL");
 
     list_for_each_entry(fmt, &formats, lh) {
         ret = fmt->load_binary(bprm);
@@ -987,7 +987,8 @@ open_failed:
     kfree(bprm);
 failed:
     #ifdef SYS_TRACE_ENABLE
-    printk(RED("[exec] pid=%d exec %s ret=%ld\n"),current->pid, filename, retval);
+    pr_debug("[exec] pid=%d exec %s ret=%ld\n",
+             current->pid, filename, retval);
     #endif
     return retval;
 }

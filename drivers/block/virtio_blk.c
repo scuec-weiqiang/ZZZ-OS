@@ -285,7 +285,8 @@ static int virtio_blk_probe(struct virtio_device *vdev)
     mutex_init(&blk->queue.rmw_lock);
     blk->queue.fops = &virtio_blk_bdops;
     blk->queue.logical_block_size = SECTOR_SIZE;
-    blk->queue.max_hw_sectors = 1;
+    // 按每个扇区占一个数据描述符保守限制，另留请求头和状态
+    blk->queue.max_hw_sectors = blk->vq->num - 2;
     blk->queue.queuedata = blk;
 
     strcpy(blk->disk.disk_name, "vda");

@@ -15,10 +15,16 @@
 #include <os/lru.h>
 
 static int lru_cache_release_node(struct lru_cache *cache, struct lru_node *node) {
-    CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return -1;);
-    CHECK(node != NULL, "ptr <struct lru_node *node> is NULL", return -1;);
-    CHECK(node->hnode.pprev != NULL, "ptr <struct lru_node *node> is not hashed", return -1;);
-    CHECK(!list_empty(&node->lnode), "ptr <struct lru_node *node> is not linked", return -1;);
+    if (!cache) {
+        printk("%s\n", "ptr <struct lru_cache *cache> is NULL");
+        return -1;
+    }
+    if (!node) {
+        printk("%s\n", "ptr <struct lru_node *node> is NULL");
+        return -1;
+    }
+    ASSERT(node->hnode.pprev != NULL, "ptr <struct lru_node *node> is not hashed");
+    ASSERT(!list_empty(&node->lnode), "ptr <struct lru_node *node> is not linked");
 
     hashtable_remove(cache->ht, &node->hnode);
     list_del(&node->lnode);
@@ -37,15 +43,25 @@ static int lru_cache_release_node(struct lru_cache *cache, struct lru_node *node
 struct lru_cache *lru_cache_create(size_t bucket_hint, struct lru_ops *lru_ops, struct hash_ops *hash_ops) {
     struct lru_cache *cache = NULL;
 
-    CHECK(bucket_hint > 0, "Bucket hint must be greater than 0", return NULL;);
-    CHECK(lru_ops != NULL, "LRU ops must not be NULL", return NULL;);
-    CHECK(hash_ops != NULL, "Hash ops must not be NULL", return NULL;);
+    if (!(bucket_hint > 0)) {
+        printk("%s\n", "Bucket hint must be greater than 0");
+        return NULL;
+    }
+    ASSERT(lru_ops != NULL, "LRU ops must not be NULL");
+    ASSERT(hash_ops != NULL, "Hash ops must not be NULL");
 
     cache = (struct lru_cache *)kmalloc(sizeof(struct lru_cache));
-    CHECK(cache != NULL, "Memory allocation for LRU cache failed", return NULL;);
+    if (!cache) {
+        printk("%s\n", "Memory allocation for LRU cache failed");
+        return NULL;
+    }
 
     cache->ht = hashtable_init(bucket_hint, hash_ops);
-    CHECK(cache->ht != NULL, "Initialization of hashtable failed", kfree(cache); return NULL;);
+    if (!cache->ht) {
+        printk("%s\n", "Initialization of hashtable failed");
+        kfree(cache);
+        return NULL;
+    }
 
     cache->bucket_hint = bucket_hint;
     cache->node_count = 0;
@@ -56,7 +72,10 @@ struct lru_cache *lru_cache_create(size_t bucket_hint, struct lru_ops *lru_ops, 
 }
 
 void lru_node_reset(struct lru_node *node) {
-    CHECK(node != NULL, "Node is NULL", return;);
+    if (!node) {
+        printk("%s\n", "Node is NULL");
+        return;
+    }
     hlist_node_init(&node->hnode);
     INIT_LIST_HEAD(&node->lnode);
 }
@@ -64,7 +83,10 @@ void lru_node_reset(struct lru_node *node) {
 void lru_cache_destroy(struct lru_cache *cache) {
     struct list_head *pos = NULL, *n = NULL;
 
-    CHECK(cache != NULL, "Cache is NULL", return;);
+    if (!cache) {
+        printk("%s\n", "Cache is NULL");
+        return;
+    }
 
     list_for_each_safe(pos, n, &cache->lhead)
     {
@@ -77,10 +99,16 @@ void lru_cache_destroy(struct lru_cache *cache) {
 }
 
 int lru_cache_touch(struct lru_cache *cache, struct lru_node *node) {
-    CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return -1;);
-    CHECK(node != NULL, "ptr <struct lru_node *node> is NULL", return -1;);
-    CHECK(node->hnode.pprev != NULL, "ptr <struct lru_node *node> is not hashed", return -1;);
-    CHECK(!list_empty(&node->lnode), "ptr <struct lru_node *node> is not linked", return -1;);
+    if (!cache) {
+        printk("%s\n", "ptr <struct lru_cache *cache> is NULL");
+        return -1;
+    }
+    if (!node) {
+        printk("%s\n", "ptr <struct lru_node *node> is NULL");
+        return -1;
+    }
+    ASSERT(node->hnode.pprev != NULL, "ptr <struct lru_node *node> is not hashed");
+    ASSERT(!list_empty(&node->lnode), "ptr <struct lru_node *node> is not linked");
 
     list_mov(&cache->lhead, &node->lnode);
 
@@ -91,8 +119,14 @@ struct lru_node *lru_cache_find(struct lru_cache *cache, struct lru_node *node) 
     struct hlist_node *hnode = NULL;
     struct lru_node *found = NULL;
 
-    CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return NULL;);
-    CHECK(node != NULL, "ptr <struct lru_node *node> is NULL", return NULL;);
+    if (!cache) {
+        printk("%s\n", "ptr <struct lru_cache *cache> is NULL");
+        return NULL;
+    }
+    if (!node) {
+        printk("%s\n", "ptr <struct lru_node *node> is NULL");
+        return NULL;
+    }
 
     hnode = hashtable_lookup(cache->ht, &node->hnode);
     if (hnode == NULL) {
@@ -107,7 +141,10 @@ struct lru_node *lru_cache_find(struct lru_cache *cache, struct lru_node *node) 
 int lru_cache_evict_tail(struct lru_cache *cache) {
     struct lru_node *victim = NULL;
 
-    CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return -1;);
+    if (!cache) {
+        printk("%s\n", "ptr <struct lru_cache *cache> is NULL");
+        return -1;
+    }
     if (cache->node_count == 0 || list_empty(&cache->lhead)) {
         return 0;
     }
@@ -120,10 +157,16 @@ int lru_cache_add(struct lru_cache *cache, struct lru_node *node)
 {
     int ret = 0;
 
-    CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return -1;);
-    CHECK(node != NULL, "ptr <struct lru_node *node> is NULL", return -1;);
-    CHECK(node->hnode.pprev == NULL, "ptr <struct lru_node *node> already hashed", return -1;);
-    CHECK(list_empty(&node->lnode), "ptr <struct lru_node *node> already linked", return -1;);
+    if (!cache) {
+        printk("%s\n", "ptr <struct lru_cache *cache> is NULL");
+        return -1;
+    }
+    if (!node) {
+        printk("%s\n", "ptr <struct lru_node *node> is NULL");
+        return -1;
+    }
+    ASSERT(node->hnode.pprev == NULL, "ptr <struct lru_node *node> already hashed");
+    ASSERT(list_empty(&node->lnode), "ptr <struct lru_node *node> already linked");
 
     ret = hashtable_insert(cache->ht, &node->hnode);
     if (ret != 0) {
@@ -138,8 +181,14 @@ int lru_cache_add(struct lru_cache *cache, struct lru_node *node)
 
 int lru_cache_remove(struct lru_cache *cache, struct lru_node *node)
 {
-    CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return -1;);
-    CHECK(node != NULL, "ptr <struct lru_node *node> is NULL", return -1;);
+    if (!cache) {
+        printk("%s\n", "ptr <struct lru_cache *cache> is NULL");
+        return -1;
+    }
+    if (!node) {
+        printk("%s\n", "ptr <struct lru_node *node> is NULL");
+        return -1;
+    }
 
     return lru_cache_release_node(cache, node);
 }
@@ -148,8 +197,14 @@ int lru_cache_walk(struct lru_cache *cache, lru_walk_func_t func)
 {
     struct lru_node *pos = NULL, *n = NULL;
 
-    CHECK(cache != NULL, "ptr <struct lru_cache *cache> is NULL", return -1;);
-    CHECK(func != NULL, "ptr <lru_walk_func_t func> is NULL", return -1;);
+    if (!cache) {
+        printk("%s\n", "ptr <struct lru_cache *cache> is NULL");
+        return -1;
+    }
+    if (!func) {
+        printk("%s\n", "ptr <lru_walk_func_t func> is NULL");
+        return -1;
+    }
 
     list_for_each_entry_safe(pos, n, &cache->lhead, lnode)
     {

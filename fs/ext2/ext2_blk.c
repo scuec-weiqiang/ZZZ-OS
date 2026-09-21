@@ -11,6 +11,36 @@
 extern u32 ext2_alloc_bno(struct super_block *sb);
 extern int ext2_release_bno(struct super_block *sb, u32 bno);
 
+static u32 ext2_alloc_inode_block(struct inode *inode)
+{
+    u32 sectors = inode->i_sb->s_blocksize / SECTOR_SIZE;
+    u32 bno;
+
+    if (inode->i_blocks > UINT32_MAX - sectors)
+        return 0;
+    bno = ext2_alloc_bno(inode->i_sb);
+    if (bno) {
+        inode->i_blocks += sectors;
+        inode->i_state = I_DIRTY;
+    }
+    return bno;
+}
+
+static int ext2_release_inode_block(struct inode *inode, u32 bno)
+{
+    u32 sectors = inode->i_sb->s_blocksize / SECTOR_SIZE;
+    int ret;
+
+    if (inode->i_blocks < sectors)
+        return -EIO;
+    ret = ext2_release_bno(inode->i_sb, bno);
+    if (ret == 0) {
+        inode->i_blocks -= sectors;
+        inode->i_state = I_DIRTY;
+    }
+    return ret;
+}
+
 int ext2_block_mapping(struct inode *inode, u32 index) {
     struct ext2_inode_info *ei = EXT2_I(inode);
     struct super_block *sb = inode->i_sb;
@@ -26,30 +56,25 @@ int ext2_block_mapping(struct inode *inode, u32 index) {
     index -= 12;
 
     if (index < per_block) {
-        ret = ext2_indirect_cache_read(sb, ei->i_data[12], index,
-                                       &block_no);
+        ret = ext2_indirect_cache_read(sb, ei->i_data[12], index,&block_no);
         return ret < 0 ? ret : (int)block_no;
     }
 
     index -= per_block;
 
     if (index < per_block * per_block) {
-        ret = ext2_indirect_cache_read(sb, ei->i_data[13],
-                                       index / per_block, &block_no);
+        ret = ext2_indirect_cache_read(sb, ei->i_data[13], index / per_block, &block_no);
         if (ret < 0 || block_no == 0)
             return ret < 0 ? ret : 0;
 
-        ret = ext2_indirect_cache_read(sb, block_no,
-                                       index % per_block, &block_no);
+        ret = ext2_indirect_cache_read(sb, block_no, index % per_block, &block_no);
         return ret < 0 ? ret : (int)block_no;
     }
 
     index -= per_block * per_block;
 
     if (index < per_block * per_block * per_block) {
-        ret = ext2_indirect_cache_read(sb, ei->i_data[14],
-                                       index / (per_block * per_block),
-                                       &block_no);
+        ret = ext2_indirect_cache_read(sb, ei->i_data[14], index / (per_block * per_block), &block_no);
         if (ret < 0 || block_no == 0)
             return ret < 0 ? ret : 0;
 
@@ -60,28 +85,27 @@ int ext2_block_mapping(struct inode *inode, u32 index) {
         if (ret < 0 || block_no == 0)
             return ret < 0 ? ret : 0;
 
-        ret = ext2_indirect_cache_read(sb, block_no,
-                                       index % per_block, &block_no);
+        ret = ext2_indirect_cache_read(sb, block_no, index % per_block, &block_no);
         return ret < 0 ? ret : (int)block_no;
     }
 
     return -EFBIG;
 }
 
-static int write_indirect_block(struct super_block *sb, u32 block_no,
-                                void *buf, u32 block_size)
+static int write_indirect_block(struct super_block *sb, u32 block_no, void *buf, u32 block_size)
 {
     (void)block_size;
     return ext2_indirect_cache_write(sb, block_no, buf);
 }
 
-static int read_or_alloc_block(struct super_block *sb, u32 *bno_p, void *buf, u32 block_size) {
+static int read_or_alloc_block(struct inode *inode, u32 *bno_p, void *buf, u32 block_size) {
+    struct super_block *sb = inode->i_sb;
     if (*bno_p == 0) {
-        u32 new_bno = ext2_alloc_bno(sb);
+        u32 new_bno = ext2_alloc_inode_block(inode);
         if (new_bno == 0) {
             return -ENOSPC;
         }
-            
+
         *bno_p = new_bno;
         memset(buf, 0, block_size);
         return write_indirect_block(sb, new_bno, buf, block_size);
@@ -89,8 +113,8 @@ static int read_or_alloc_block(struct super_block *sb, u32 *bno_p, void *buf, u3
     return blkdev_read(sb->s_bdev, buf, block_size, (u64)*bno_p * block_size);
 }
 
-int ext2_block_set_mapping(struct inode *inode, u32 index) {
-    
+int ext2_block_set_mapping(struct inode *inode, u32 index) 
+{
     struct ext2_inode_info *ei = EXT2_I(inode);
     struct super_block *sb = inode->i_sb;
     u32 block_size = sb->s_blocksize;
@@ -104,7 +128,7 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
     if (index < 12) {
         
         if (ei->i_data[index] == 0) {
-            u32 bno = ext2_alloc_bno(sb);
+            u32 bno = ext2_alloc_inode_block(inode);
             if (bno == 0) {
                 kfree(buf);
                 
@@ -128,12 +152,12 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
 
  
     if (index < per_block) {
-        ret = read_or_alloc_block(sb, &ei->i_data[12], buf, block_size);
+        ret = read_or_alloc_block(inode, &ei->i_data[12], buf, block_size);
         if (ret < 0) { kfree(buf); return ret; }
 
         u32 bno = ((u32*)buf)[index];
         if (bno == 0) {
-            bno = ext2_alloc_bno(sb);
+            bno = ext2_alloc_inode_block(inode);
             if (bno == 0) { kfree(buf); return -ENOSPC; }
             ((u32*)buf)[index] = bno;
             ret = write_indirect_block(sb, ei->i_data[12], buf,
@@ -155,12 +179,12 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
         u32 first_index = index / per_block;
         u32 second_index = index % per_block;
 
-        ret = read_or_alloc_block(sb, &ei->i_data[13], buf, block_size);
+        ret = read_or_alloc_block(inode, &ei->i_data[13], buf, block_size);
         if (ret < 0) { kfree(buf); return ret; }
 
         u32 first_bno = ((u32*)buf)[first_index];
         if (first_bno == 0) {
-            first_bno = ext2_alloc_bno(sb);
+            first_bno = ext2_alloc_inode_block(inode);
             if (first_bno == 0) { kfree(buf); return -ENOSPC; }
             ((u32*)buf)[first_index] = first_bno;
             ret = write_indirect_block(sb, ei->i_data[13], buf,
@@ -176,7 +200,7 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
         if (ret < 0) { kfree(buf); return ret; }
         u32 second_bno = ((u32*)buf)[second_index];
         if (second_bno == 0) {
-            second_bno = ext2_alloc_bno(sb);
+            second_bno = ext2_alloc_inode_block(inode);
             if (second_bno == 0) { kfree(buf); return -ENOSPC; }
             ((u32*)buf)[second_index] = second_bno;
             ret = write_indirect_block(sb, first_bno, buf, block_size);
@@ -198,12 +222,12 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
         u32 second_index = (index % (per_block * per_block)) / per_block;
         u32 third_index = index % per_block;
 
-        ret = read_or_alloc_block(sb, &ei->i_data[14], buf, block_size);
+        ret = read_or_alloc_block(inode, &ei->i_data[14], buf, block_size);
         if (ret < 0) { kfree(buf); return ret; }
 
         u32 first_bno = ((u32*)buf)[first_index];
         if (first_bno == 0) {
-            first_bno = ext2_alloc_bno(sb);
+            first_bno = ext2_alloc_inode_block(inode);
             if (first_bno == 0) { kfree(buf); return -ENOSPC; }
             ((u32*)buf)[first_index] = first_bno;
             ret = write_indirect_block(sb, ei->i_data[14], buf,
@@ -219,7 +243,7 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
         if (ret < 0) { kfree(buf); return ret; }
         u32 second_bno = ((u32*)buf)[second_index];
         if (second_bno == 0) {
-            second_bno = ext2_alloc_bno(sb);
+            second_bno = ext2_alloc_inode_block(inode);
             if (second_bno == 0) { kfree(buf); return -ENOSPC; }
             ((u32*)buf)[second_index] = second_bno;
             ret = write_indirect_block(sb, first_bno, buf, block_size);
@@ -234,7 +258,7 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
         if (ret < 0) { kfree(buf); return ret; }
         u32 third_bno = ((u32*)buf)[third_index];
         if (third_bno == 0) {
-            third_bno = ext2_alloc_bno(sb);
+            third_bno = ext2_alloc_inode_block(inode);
             if (third_bno == 0) { kfree(buf); return -ENOSPC; }
             ((u32*)buf)[third_index] = third_bno;
             ret = write_indirect_block(sb, second_bno, buf, block_size);
@@ -252,8 +276,9 @@ int ext2_block_set_mapping(struct inode *inode, u32 index) {
     return -EFBIG;
 }
 
-static int ext2_release_indirect_branch(struct super_block *sb, u32 bno, int depth)
+static int ext2_release_indirect_branch(struct inode *inode, u32 bno, int depth)
 {
+    struct super_block *sb = inode->i_sb;
     u32 block_size = sb->s_blocksize;
     u32 per_block = block_size / sizeof(u32);
     u32 *buf;
@@ -279,9 +304,9 @@ static int ext2_release_indirect_branch(struct super_block *sb, u32 bno, int dep
         }
 
         if (depth == 1) {
-            ret = ext2_release_bno(sb, buf[i]);
+            ret = ext2_release_inode_block(inode, buf[i]);
         } else {
-            ret = ext2_release_indirect_branch(sb, buf[i], depth - 1);
+            ret = ext2_release_indirect_branch(inode, buf[i], depth - 1);
         }
 
         if (ret < 0) {
@@ -292,20 +317,18 @@ static int ext2_release_indirect_branch(struct super_block *sb, u32 bno, int dep
 
     ext2_indirect_cache_invalidate(sb, bno);
     kfree(buf);
-    return ext2_release_bno(sb, bno);
+    return ext2_release_inode_block(inode, bno);
 }
 
 int ext2_free_inode_blocks(struct inode *inode)
 {
     struct ext2_inode_info *ei;
-    struct super_block *sb;
     int ret;
 
     if (inode == NULL || inode->i_sb == NULL) {
         return -EINVAL;
     }
 
-    sb = inode->i_sb;
     ei = EXT2_I(inode);
 
     ret = pagecache_sync_mapping(inode->i_mapping);
@@ -322,7 +345,7 @@ int ext2_free_inode_blocks(struct inode *inode)
         if (ei->i_data[i] == 0) {
             continue;
         }
-        ret = ext2_release_bno(sb, ei->i_data[i]);
+        ret = ext2_release_inode_block(inode, ei->i_data[i]);
         if (ret < 0) {
             return ret;
         }
@@ -330,7 +353,7 @@ int ext2_free_inode_blocks(struct inode *inode)
     }
 
     if (ei->i_data[EXT2_IND_BLOCK] != 0) {
-        ret = ext2_release_indirect_branch(sb, ei->i_data[EXT2_IND_BLOCK], 1);
+        ret = ext2_release_indirect_branch(inode, ei->i_data[EXT2_IND_BLOCK], 1);
         if (ret < 0) {
             return ret;
         }
@@ -338,7 +361,7 @@ int ext2_free_inode_blocks(struct inode *inode)
     }
 
     if (ei->i_data[EXT2_DIND_BLOCK] != 0) {
-        ret = ext2_release_indirect_branch(sb, ei->i_data[EXT2_DIND_BLOCK], 2);
+        ret = ext2_release_indirect_branch(inode, ei->i_data[EXT2_DIND_BLOCK], 2);
         if (ret < 0) {
             return ret;
         }
@@ -346,7 +369,7 @@ int ext2_free_inode_blocks(struct inode *inode)
     }
 
     if (ei->i_data[EXT2_TIND_BLOCK] != 0) {
-        ret = ext2_release_indirect_branch(sb, ei->i_data[EXT2_TIND_BLOCK], 3);
+        ret = ext2_release_indirect_branch(inode, ei->i_data[EXT2_TIND_BLOCK], 3);
         if (ret < 0) {
             return ret;
         }

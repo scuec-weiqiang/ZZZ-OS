@@ -515,7 +515,7 @@ int tty_insert_flip_string_and_push_buffer(struct tty_port *port, const u8 *char
     struct tty_bufhead *buf = &port->buf;
     unsigned long flags;
 
-    flags = spin_lock_irqsave(&port->lock);
+    spin_lock_irqsave(&port->lock, &flags);
     size = tty_insert_flip_string(port, chars, size);
     if (size)
         tty_flip_buffer_commit(buf->tail);

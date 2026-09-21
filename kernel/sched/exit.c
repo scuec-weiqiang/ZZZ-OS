@@ -34,7 +34,7 @@ static void clear_child_tid_user(struct task_struct *task)
         return;
     }
 
-    flags = spin_lock_irqsave(&mm->lock);
+    spin_lock_irqsave(&mm->lock, &flags);
     for (size_t i = 0; i < sizeof(zero); i++) {
         virt_addr_t va = (virt_addr_t)uaddr + i;
         struct vma *vma = vma_find(mm, va);
@@ -59,23 +59,21 @@ out_unlock:
 
 struct task_struct *choose_reaper(struct task_struct *child) {
     if (child->flags & PF_KTHREAD)
-        return kthreadd_task;   // PID 2
+        return kthreadd_task;   // 内核进程交给 PID 2回收
     else
-        return find_task_by_pid(1);       // PID 1
+        return find_task_by_pid(1); // 用户态进程交给 PID 1 init
 }
 
 void reparent_children(struct task_struct *parent) {
     struct task_struct *child, *n, *reaper;
     unsigned long parent_flags;
 
-    parent_flags = spin_lock_irqsave(&parent->lock);
+    spin_lock_irqsave(&parent->lock, &parent_flags);
     list_for_each_entry_safe(child, n, &parent->children, sibling) {
-        unsigned long reaper_flags;
-
         list_del(&child->sibling);
         // dprintk("reparent child pid=%d to init\n", child->pid);
         reaper = choose_reaper(child);
-        // reaper_flags = spin_lock_irqsave(&reaper->lock);
+        // spin_lock_irqsave(&reaper->lock, &reaper_flags);
         child->parent = reaper;
         list_add_tail(&reaper->children, &child->sibling);
         // spin_unlock_irqrestore(&reaper->lock, reaper_flags);
@@ -103,7 +101,7 @@ void __noreturn do_exit(int code) {
     //         (rq && rq->curr) ? rq->curr->pid : -1,
     //         code);
 
-    flags = spin_lock_irqsave(&rq->lock);
+    spin_lock_irqsave(&rq->lock, &flags);
 
     curr->exit_code = code;
     curr->status = TASK_ZOMBIE;
@@ -124,9 +122,10 @@ void __noreturn do_exit(int code) {
         curr->vfork_done = NULL;
     }
 
-    if (curr->parent) {
-        send_signal(curr->parent, SIGCHLD);
-        wake_up_one(&curr->parent->wait_child);
+    struct task_struct *parent = curr->parent;
+    if (parent) {
+        send_signal(parent, SIGCHLD);
+        wake_up_one(&parent->wait_child);
     }
 
     sched();

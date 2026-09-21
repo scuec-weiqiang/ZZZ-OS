@@ -2,8 +2,8 @@
 OBJ_Y += hashtable.o
 OBJ_Y += lru.o
 OBJ_Y += string.o
+OBJ_Y += vsprintf.o
 OBJ_Y += utils.o
 OBJ_Y += rand.o
 OBJ_Y += ringbuffer.o
-
 

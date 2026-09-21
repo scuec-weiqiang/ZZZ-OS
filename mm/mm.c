@@ -49,7 +49,10 @@ static int highest_possible_level(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr
 }
 
 int map(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, pgprot_t flags) {
-    CHECK(pgtbl != NULL || size == 0, "pgtbl is NULL or size = 0", return -1;);
+    if (!(pgtbl != NULL || size == 0)) {
+        printk("%s\n", "pgtbl is NULL or size = 0");
+        return -1;
+    }
     size = ALIGN_UP(size, PAGE_SIZE);
     uintptr_t va = ALIGN_DOWN(vaddr, PAGE_SIZE);
     uintptr_t pa = ALIGN_DOWN(paddr, PAGE_SIZE);
@@ -61,7 +64,8 @@ int map(pgtable_t *pgtbl, virt_addr_t vaddr, phys_addr_t paddr, size_t size, pgp
         // printk("map: va=%xu to pa=%xu with flags %xu at level %d, map_size=%xu\n", va, pa, flags, target_level, map_size);
         int ret = pgtbl_map(pgtbl, va, pa, target_level, flags);
         if (ret < 0) {
-            printk(RED("error: failed to map va=%xu to pa=%xu at level %d\n"), va, pa, target_level);
+            pr_err("failed to map va=%xu to pa=%xu at level %d\n",
+                   va, pa, target_level);
             return ret;
         }
 
@@ -100,7 +104,10 @@ int remap(pgtable_t *pgtbl, virt_addr_t vaddr, size_t size, pgprot_t flags) {
 }
 
 int unmap(pgtable_t *pgtbl, virt_addr_t va, size_t size) {
-    CHECK(pgtbl != NULL, "mm is NULL", return -1;);
+    if (!pgtbl) {
+        printk("%s\n", "mm is NULL");
+        return -1;
+    }
     size = ALIGN_UP(size, PAGE_SIZE);
     va = ALIGN_DOWN(va, PAGE_SIZE);
     uintptr_t start = va;
@@ -197,7 +204,10 @@ void mm_destroy(struct mm_struct *mm) {
 }
 
 int do_mmap(struct mm_struct *mm, virt_addr_t vaddr, size_t size, pgprot_t flags) {
-    CHECK(mm != NULL, "mm is NULL", return -1;);
+    if (!mm) {
+        printk("%s\n", "mm is NULL");
+        return -1;
+    }
 
     size = ALIGN_UP(size, PAGE_SIZE);
     uintptr_t va = ALIGN_DOWN(vaddr, PAGE_SIZE);
@@ -208,13 +218,22 @@ int do_mmap(struct mm_struct *mm, virt_addr_t vaddr, size_t size, pgprot_t flags
 }
 
 int do_unmap(struct mm_struct *mm, virt_addr_t va, size_t size) {
-    CHECK(mm != NULL, "mm is NULL", return -1;);
-    CHECK(mm->pgdir != NULL, "mm pgdir is NULL", return -1;);
+    if (!mm) {
+        printk("%s\n", "mm is NULL");
+        return -1;
+    }
+    if (!mm->pgdir) {
+        printk("%s\n", "mm pgdir is NULL");
+        return -1;
+    }
 
     size = ALIGN_UP(size, PAGE_SIZE);
     va = ALIGN_DOWN(va, PAGE_SIZE);
 
-    CHECK(vma_delete(mm, va, size) == 0, "vma delete failed", return -1;);
+    if (!(vma_delete(mm, va, size) == 0)) {
+        printk("%s\n", "vma delete failed");
+        return -1;
+    }
     return unmap(mm->pgdir, va, size);
 }
 
@@ -247,15 +266,17 @@ void copy_kernel_mapping(struct mm_struct *dest_mm) {
     int root_entries;
     int kernel_start_index;
 
-    CHECK(dest_mm != NULL, "copy_kernel_mapping: dest_mm is NULL", return;);
-    CHECK(dest_mm->pgdir != NULL, "copy_kernel_mapping: dest pgdir is NULL", return;);
-    CHECK(init_mm.pgdir != NULL, "copy_kernel_mapping: init pgdir is NULL", return;);
+    ASSERT(dest_mm != NULL, "copy_kernel_mapping: dest_mm is NULL");
+    ASSERT(dest_mm->pgdir != NULL, "copy_kernel_mapping: dest pgdir is NULL");
+    ASSERT(init_mm.pgdir != NULL, "copy_kernel_mapping: init pgdir is NULL");
 
     root_entries = init_mm.pgdir->features->level[0].table_size / sizeof(pte_t);
     kernel_start_index = pgtbl_level_index(init_mm.pgdir, 0, KERNEL_VA_BASE);
 
-    CHECK(kernel_start_index >= 0 && kernel_start_index < root_entries,
-          "copy_kernel_mapping: invalid kernel start index", return;);
+    if (!(kernel_start_index >= 0 && kernel_start_index < root_entries)) {
+        printk("%s\n", "copy_kernel_mapping: invalid kernel start index");
+        return;
+    }
     pgtbl_copy(dest_mm->pgdir, init_mm.pgdir, 0,
                kernel_start_index, root_entries - kernel_start_index);
 }

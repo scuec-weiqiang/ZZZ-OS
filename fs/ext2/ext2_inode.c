@@ -100,6 +100,8 @@ static struct ext2_inode *ext2_get_inode(struct super_block *sb, u32 ino) {
 
 /* 把inode信息写回磁盘 */
 int ext2_write_inode(struct inode *inode) {
+	if (inode->i_blocks > UINT32_MAX)
+		return -EFBIG;
 	struct ext2_inode_info *ei = EXT2_I(inode);
 	struct ext2_sb_info *sbi = EXT2_SB(inode->i_sb);
 	u32 block_size = inode->i_sb->s_blocksize;
@@ -125,7 +127,7 @@ int ext2_write_inode(struct inode *inode) {
 	raw_inode->i_mtime = inode->i_mtime.tv_sec;
 	raw_inode->i_dtime = ei->i_dtime;
 	raw_inode->i_links_count = inode->i_nlink;
-	raw_inode->i_blocks = (inode->i_size + 511) / 512;
+	raw_inode->i_blocks = inode->i_blocks;
 	raw_inode->i_flags = ei->i_flags;
 
 	for (int n = 0; n < EXT2_N_BLOCKS; n++)
@@ -160,6 +162,7 @@ struct inode *ext2_new_inode(struct inode *dir, u16 mode) {
 	inode->i_mode = mode;
 	inode->i_nlink = S_ISDIR(mode) ? 2 : 1;
 	inode->i_size = 0;
+	inode->i_blocks = 0;
 	inode->i_atime = inode->i_ctime = inode->i_mtime =
 		(timespec_t){ .tv_sec = 0, .tv_nsec = 0 };
 	inode->i_state = I_DIRTY;
@@ -226,6 +229,7 @@ struct inode* ext2_iget(struct super_block *sb, u32 ino) {
     inode->i_nlink = raw_inode->i_links_count;
     inode->i_mode = mode_from_ext2(raw_inode->i_mode);
     inode->i_size = raw_inode->i_size;
+    inode->i_blocks = raw_inode->i_blocks;
     inode->i_atime.tv_sec = raw_inode->i_atime;
     inode->i_ctime.tv_sec = raw_inode->i_ctime;
     inode->i_mtime.tv_sec = raw_inode->i_mtime;

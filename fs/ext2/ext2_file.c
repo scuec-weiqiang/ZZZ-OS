@@ -72,12 +72,21 @@ static ssize_t ext2_file_write(struct file *fp, const char *buf, size_t size, lo
 
         page_buf = page_address(page);
 
+        lock_page(page);
+        ret = pagecache_mark_dirty_range(page, page_offset, bytes_to_copy,
+                                        inode->i_sb->s_blocksize);
+        if (ret < 0) {
+            unlock_page(page);
+            ext2_put_page(page);
+            break;
+        }
+
         memcpy((u8 *)page_buf + page_offset,
                buf + bytes_written,
                bytes_to_copy);
 
         SetPageUptodate(page);
-        SetPageDirty(page);
+        unlock_page(page);
 
         ret = pagecache_write_page(page);
 
@@ -105,48 +114,46 @@ static ssize_t ext2_file_write(struct file *fp, const char *buf, size_t size, lo
 
 static ssize_t ext2_file_read(struct file *fp, char *buf, size_t size, loff_t *ppos) {
     ssize_t bytes_read = 0;
-    pgoff_t start_page = (*ppos) / PAGE_SIZE;
-    pgoff_t end_page = ((*ppos) + size - 1) / PAGE_SIZE;
-    u32 page_offset = 0;
-    u32 bytes_to_copy = 0;
+    loff_t pos = *ppos;
+    int ret = 0;
 
-    if (size == 0) {
+    if (pos < 0)
+        return -EINVAL;
+
+    if (size == 0 || pos >= fp->f_inode->i_size)
         return 0;
-    } else if (*ppos >= fp->f_inode->i_size) {
-        return 0; // 已经到达文件末尾
-    } else if ((*ppos + size) > fp->f_inode->i_size) {
-        size = fp->f_inode->i_size - *ppos; // 调整size以不超过文件大小
-    }
 
-    for (pgoff_t i = start_page; i <= end_page; ++i)
-    {
-        struct page *page = ext2_get_page(fp->f_inode, i);
-        
-        if (IS_ERR(page)) {
-            return PTR_ERR(page); // 读取页面失败
-        }
-        void *page_buf = page_address(page);
-        if(i == start_page) {
-            page_offset = (*ppos) % PAGE_SIZE;
-            if(size < PAGE_SIZE - page_offset) {
-                bytes_to_copy = size;
-            } else {
-                bytes_to_copy = PAGE_SIZE - page_offset;
-            }
-        } else if(i == end_page) {
-            page_offset = 0;
-            bytes_to_copy = (((*ppos) + size - 1) % PAGE_SIZE) + 1;
-        } else {
-            page_offset = 0;
-            bytes_to_copy = PAGE_SIZE;
-        }
+    if (size > fp->f_inode->i_size - pos)
+        size = fp->f_inode->i_size - pos;
 
-        memcpy(buf + bytes_read, page_buf + page_offset, bytes_to_copy);
+    struct file_ra_state *ra = &fp->f_ra;
+    // 这次读写的起始位置是否和上次读写的结束位置相连, 如果是, 则说明是顺序读写, 否则说明是随机读写
+    bool sequential = ra->valid && (pos == ra->prev_end);
+    bool allow_readahead = sequential && !ra->disabled;
+
+    while ((size_t)bytes_read < size) {
+        struct page *page;
+        size_t offset = pos % PAGE_SIZE;
+        size_t length = PAGE_SIZE - offset;
+
+        if (length > size - bytes_read)
+            length = size - bytes_read;
+        ret = pagecache_read_page(fp->f_inode->i_mapping,
+                                  pos / PAGE_SIZE, allow_readahead, &page);
+        if (ret < 0)
+            break;
+        memcpy(buf + bytes_read, (u8 *)page_address(page) + offset, length);
         ext2_put_page(page);
-        bytes_read += bytes_to_copy;
+        bytes_read += length;
+        pos += length;
+        allow_readahead = !ra->disabled;
     }
-    *ppos += bytes_read;
-    return bytes_read;
+    if (bytes_read > 0) {
+        ra->prev_end = pos;
+        ra->valid = true;
+    }
+    *ppos = pos;
+    return bytes_read ? bytes_read : ret;
 }
 
 extern off_t generic_file_lseek(struct file *file, off_t offset, int whence);

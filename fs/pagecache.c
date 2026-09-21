@@ -49,13 +49,11 @@ static int pagecache_sync_page(struct lru_node *node)
     struct page *page = container_of(node, struct page, cache_lru_node);
     int ret = 0;
 
-    CHECK(page != NULL, "pagecache: invalid page node", return -1;);
+    ASSERT(page != NULL, "pagecache: invalid page node");
 
     lock_page(page);
     if (PageDirty(page)) {
-        CHECK(pagecache_can_writeback(page), "pagecache: dirty page has no writeback op",
-              unlock_page(page);
-              return -1;);
+        ASSERT(pagecache_can_writeback(page), "pagecache: dirty page has no writeback op");
 
         SetPageWriteback(page);
         ret = page->mapping->a_ops->writepage(page);
@@ -73,7 +71,7 @@ static int pagecache_free_page(struct lru_node *node)
 {
     struct page *page = container_of(node, struct page, cache_lru_node);
 
-    CHECK(page != NULL, "pagecache: invalid free page", return -1;);
+    ASSERT(page != NULL, "pagecache: invalid free page");
 
     if (page->mapping != NULL) {
         spin_lock(&page->mapping->lock);
@@ -87,6 +85,7 @@ static int pagecache_free_page(struct lru_node *node)
     page->index = 0;
     page->private = NULL;
     page->refcount = 0;
+    page->dirty_blocks = 0;
 
     page_clear_flag(page, PAGE_LOCKED | PAGE_UPTODATE |
                           PAGE_DIRTY | PAGE_WRITEBACK);
@@ -127,13 +126,17 @@ static struct page *pagecache_alloc_page(struct address_space *mapping, pgoff_t 
 {
     struct page *page = alloc_pages(0);
 
-    CHECK(page != NULL, "pagecache: alloc page failed", return NULL;);
+    if (!page) {
+        printk("%s\n", "pagecache: alloc page failed");
+        return NULL;
+    }
 
     page->refcount = 0;
     spin_lock_init(&page->lock);
     page->mapping = mapping;
     page->index = index;
     page->private = NULL;
+    page->dirty_blocks = 0;
     lru_node_reset(&page->cache_lru_node);
     memset(pagecache_data(page), 0, PAGE_SIZE);
     return page;
@@ -141,7 +144,7 @@ static struct page *pagecache_alloc_page(struct address_space *mapping, pgoff_t 
 
 static int pagecache_try_reclaim_one(struct page *page)
 {
-    CHECK(page != NULL, "pagecache: invalid reclaim page", return -1;);
+    ASSERT(page != NULL, "pagecache: invalid reclaim page");
 
     lock_page(page);
     if (page->refcount != 0 || PageWriteback(page) ||
@@ -157,7 +160,10 @@ static int pagecache_try_reclaim_one(struct page *page)
 int pagecache_init(void)
 {
     g_pagecache = lru_cache_create(PAGECACHE_BUCKET_HINT, &pagecache_lru_ops, &pagecache_hash_ops);
-    CHECK(g_pagecache != NULL, "pagecache: init failed", return -1;);
+    if (!g_pagecache) {
+        printk("%s\n", "pagecache: init failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -237,9 +243,14 @@ void pagecache_put_page(struct page *page)
     }
 }
 
-int pagecache_read_page(struct address_space *mapping, pgoff_t index, struct page **page_out)
+int pagecache_read_page(struct address_space *mapping, pgoff_t index,
+                        bool allow_readahead, struct page **page_out)
 {
     struct page *page = NULL;
+    struct page *pages[PAGECACHE_RA_MAX_PAGES];
+    struct page *batch[PAGECACHE_RA_MAX_PAGES];
+    u32 nr_pages = 1;
+    u32 nr_batch = 0;
     int ret = 0;
 
     if (mapping == NULL) {
@@ -247,6 +258,14 @@ int pagecache_read_page(struct address_space *mapping, pgoff_t index, struct pag
     }
     if (page_out == NULL) {
         return -EINVAL;
+    }
+    *page_out = NULL;
+    if (mapping->host == NULL) {
+        return -EINVAL;
+    }
+    if (mapping->host->i_size == 0 ||
+        index > (mapping->host->i_size - 1) / PAGE_SIZE) {
+        return -ENOENT;
     }
 
     page = pagecache_get_page(mapping, index, FGP_CREAT);
@@ -258,19 +277,68 @@ int pagecache_read_page(struct address_space *mapping, pgoff_t index, struct pag
     }
 
     lock_page(page);
-    if (!PageUptodate(page)) {
-        if (mapping->a_ops == NULL || mapping->a_ops->readpage == NULL) {
-            unlock_page(page);
-            pagecache_put_page(page);
-            return -EINVAL;
-        }
-
-        ret = mapping->a_ops->readpage(page);
-        if (ret == 0) {
-            SetPageUptodate(page);
-        }
+    if (PageUptodate(page)) {
+        unlock_page(page);
+        *page_out = page;
+        return 0;
     }
     unlock_page(page);
+
+    if (!mapping->a_ops || !mapping->a_ops->readpage) {
+        pagecache_put_page(page);
+        return -EINVAL;
+    }
+
+    pages[0] = page;
+    // 先取得所有引用再加页锁，避免分配时回收缓存又锁住当前页，导致死锁
+    if (allow_readahead && mapping->a_ops->readpages) {
+        u64 size = mapping->host->i_size;
+        pgoff_t last = size ? (size - 1) / PAGE_SIZE : 0;
+
+        for (u32 i = 1; size && index <= last && i < PAGECACHE_RA_MAX_PAGES && i <= last - index; i++) {
+            struct page *next = pagecache_get_page(mapping, index + i, FGP_CREAT);
+            if (IS_ERR(next) || !next) {
+                break;
+            }
+            pages[nr_pages++] = next;
+        }
+    }
+
+    for (u32 i = 0; i < nr_pages; i++)
+        lock_page(pages[i]);
+
+    // 取得额外页面期间，当前页可能已被其他读取填好
+    if (PageUptodate(page))
+        goto out_unlock;
+    if (PageDirty(page) || PageWriteback(page)) {
+        ret = -EIO;
+        goto out_unlock;
+    }
+
+    for (u32 i = 0; i < nr_pages; i++) {
+        if (!PageUptodate(pages[i]) && !PageDirty(pages[i]) &&!PageWriteback(pages[i])) {
+            batch[nr_batch++] = pages[i];}
+    }
+    if (nr_batch > 1) {
+        ret = mapping->a_ops->readpages(batch, nr_batch);
+        if (ret == 0) {
+            for (u32 i = 0; i < nr_batch; i++)
+                SetPageUptodate(batch[i]);
+        }
+    }
+    
+    // 批量失败只重读调用者需要的当前页
+    if (!PageUptodate(page)) {
+        ret = mapping->a_ops->readpage(page);
+        if (ret == 0)
+            SetPageUptodate(page);
+    }
+
+out_unlock:
+    for (u32 i = nr_pages; i > 0; i--)
+        unlock_page(pages[i - 1]);
+    for (u32 i = 1; i < nr_pages; i++)
+        pagecache_put_page(pages[i]);
 
     if (ret < 0) {
         pagecache_put_page(page);

@@ -12,7 +12,8 @@ void init_completion(struct completion *x)
 void wait_for_completion(struct completion *x)
 {
     while (1) {
-        int flags = spin_lock_irqsave(&x->wait.lock);
+        unsigned long flags;
+        spin_lock_irqsave(&x->wait.lock, &flags);
         if (x->done > 0) {
             x->done--;
             spin_unlock_irqrestore(&x->wait.lock, flags);

@@ -40,7 +40,7 @@ void free_file(struct file *file) {
 }
 
 #define SYSCALL_PATH_MAX 256
-#define SYSCALL_IO_CHUNK 512
+#define SYSCALL_IO_CHUNK 4096
 
 #define F_DUPFD 0
 #define F_GETFD 1
@@ -181,10 +181,8 @@ off_t generic_file_lseek(struct file *file, off_t offset, int whence) {
     return newpos;
 }
 
-__SYSCALL__ long sys_read(struct pt_regs *ctx) {
-    int fd = (int)ctx->r[0];
-    char *user_buf = (char *)ctx->r[1];
-    size_t len = ctx->r[2];
+
+SYSCALL_DEFINE3(read, int, fd, char __user *, user_buf, size_t, len) {
     struct file *file;
     char *kbuf;
     size_t done = 0;
@@ -198,7 +196,6 @@ __SYSCALL__ long sys_read(struct pt_regs *ctx) {
         return -EBADF;
     if (file->f_flags & O_WRONLY)
         return -EACCES;
-
     kbuf = kmalloc(SYSCALL_IO_CHUNK);
     if (kbuf == NULL)
         return -ENOMEM;
@@ -226,15 +223,13 @@ __SYSCALL__ long sys_read(struct pt_regs *ctx) {
         if ((size_t)ret < chunk)
             break;
     }
+    ret = (ssize_t)done;
     // dprintk("sys_read fd=%d read_len=%lu\n", fd, done);
     kfree(kbuf);
-    return (ssize_t)done;
+    return ret;
 }
 
-__SYSCALL__ long sys_write(struct pt_regs *ctx) {
-    int fd = (int)ctx->r[0];
-    const char *user_buf = (const char *)ctx->r[1];
-    size_t len = ctx->r[2];
+SYSCALL_DEFINE3(write, int, fd, const char __user *, user_buf, size_t, len) {
     struct file *file;
     char *kbuf;
     size_t done = 0;
@@ -282,15 +277,14 @@ __SYSCALL__ long sys_write(struct pt_regs *ctx) {
     return (ssize_t)done;
 }
 
-__SYSCALL__ long sys_open(struct pt_regs *ctx) {
-    uintptr_t user_path = ctx->r[0];
-    int flags = (int)ctx->r[1];
+SYSCALL_DEFINE2(open, const char __user *, user_path, int, flags) 
+{
     char path[SYSCALL_PATH_MAX];
     struct file *file;
     int fd;
 
     memset(path, 0, SYSCALL_PATH_MAX);
-    if (copy_user_string(path, sizeof(path), user_path) < 0)
+    if (copy_user_string(path, sizeof(path), (uintptr_t)user_path) < 0)
         return -EFAULT;
 
     file = filp_open(path, (u32)flags);
@@ -1083,7 +1077,7 @@ __SYSCALL__ long sys_fstat(struct pt_regs *ctx) {
         st.st_mtim.tv_sec = inode->i_mtime.tv_sec;        // 修改时间
         st.st_ctim.tv_sec = inode->i_ctime.tv_sec;        // 创建时间
         st.st_blksize = 512;
-        st.st_blocks = (inode->i_size + 511) / 512;
+        st.st_blocks = inode->i_blocks;
 
        
         if (S_ISREG(inode->i_mode)) {
@@ -1133,7 +1127,7 @@ __SYSCALL__ long sys_stat(struct pt_regs *ctx) {
         st.st_mtim.tv_sec = inode->i_mtime.tv_sec;        // 修改时间
         st.st_ctim.tv_sec = inode->i_ctime.tv_sec;        // 创建时间
         st.st_blksize = 512;
-        st.st_blocks = (inode->i_size + 511) / 512;
+        st.st_blocks = inode->i_blocks;
 
        
         if (S_ISREG(inode->i_mode)) {

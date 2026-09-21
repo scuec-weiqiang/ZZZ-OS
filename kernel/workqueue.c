@@ -10,7 +10,8 @@ static int system_work_thread(void *arg) {
     struct work_struct *next_work = NULL;
     
     while(1) {
-        int flags = spin_lock_irqsave(&system_wq->lock);
+        unsigned long flags;
+        spin_lock_irqsave(&system_wq->lock, &flags);
 
         if (list_empty(&system_wq->work_list)) {
             spin_unlock_irqrestore(&system_wq->lock,flags);

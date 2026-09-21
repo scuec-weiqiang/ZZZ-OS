@@ -93,7 +93,8 @@ int virtqueue_add(struct virtqueue *vq,
     if (!vq || !bufs || num_bufs == 0)
         return -EINVAL;
 
-    unsigned long irq_flags = spin_lock_irqsave(&vq->lock);
+    unsigned long irq_flags;
+    spin_lock_irqsave(&vq->lock, &irq_flags);
 
     if (vq->num_free < num_bufs) {
         spin_unlock_irqrestore(&vq->lock, irq_flags);
@@ -146,7 +147,8 @@ void *virtqueue_get_buf(struct virtqueue *vq, unsigned int *len)
     if (!vq || !len)
         return NULL;
 
-    unsigned long irq_flags = spin_lock_irqsave(&vq->lock);
+    unsigned long irq_flags;
+    spin_lock_irqsave(&vq->lock, &irq_flags);
 
     if (vq->last_used_idx == vq->used->idx) {
         spin_unlock_irqrestore(&vq->lock, irq_flags);

@@ -64,6 +64,9 @@ struct wait_queue_head {
     .head = LIST_HEAD_INIT((name).head), \
 }
 
+#define WAIT_QUEUE_HEAD(name) \
+    struct wait_queue_head name = WAIT_QUEUE_INIT(name)
+
 static inline void init_waitqueue_head(struct wait_queue_head *wq_head, int wait_reason) {
     spin_lock_init(&wq_head->lock);
     INIT_LIST_HEAD(&wq_head->head);

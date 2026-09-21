@@ -12,7 +12,8 @@ int iterate_dir(struct file *file, struct dir_context *ctx) {
 
 	res = -ENOENT;
 	if (S_ISDIR(inode->i_mode)) {
-		int flags = spin_lock_irqsave(&inode->i_lock);
+		unsigned long flags;
+		spin_lock_irqsave(&inode->i_lock, &flags);
 		ctx->pos = file->f_pos;
 		
 		res = file->f_op->iterate(file, ctx);

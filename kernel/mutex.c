@@ -11,7 +11,7 @@ int mutex_trylock(struct mutex *m) {
     unsigned long flags;
     int ret = 0;
 
-    flags = spin_lock_irqsave(&m->lock);
+    spin_lock_irqsave(&m->lock, &flags);
     if (!m->locked) {
         m->locked = 1;
         ret = 1;
@@ -26,7 +26,7 @@ void mutex_lock(struct mutex *m) {
     struct task_struct *task = current;
 
     for (;;) {
-        flags = spin_lock_irqsave(&m->lock);
+        spin_lock_irqsave(&m->lock, &flags);
 
         if (!m->locked) {
             m->locked = 1;
@@ -48,7 +48,7 @@ void mutex_lock(struct mutex *m) {
 void mutex_unlock(struct mutex *m) {
     unsigned long flags;
 
-    flags = spin_lock_irqsave(&m->lock);
+    spin_lock_irqsave(&m->lock, &flags);
 
     if (!m->locked) {
         spin_unlock_irqrestore(&m->lock, flags);

@@ -4,10 +4,7 @@
 #include <asm/ptrace.h>
 #include <os/types.h>
 
-static inline unsigned long syscall_arg(struct pt_regs *ctx, int index)
-{
-    return ctx->r[index];
-}
+
 
 #define SYSCALL_DEFINE0(name)                                             \
     static long __do_sys_##name(void);                                    \

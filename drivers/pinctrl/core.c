@@ -126,7 +126,7 @@ int pinctrl_select_state(struct device *dev, const char *state_name)
         return state_index;
     }
 
-    snprintk(prop_name, sizeof(prop_name), "pinctrl-%d", state_index);
+    snprintf(prop_name, sizeof(prop_name), "pinctrl-%d", state_index);
     phandles = of_get_property(dev->of_node, prop_name, &len);
     if (!phandles || len < sizeof(u32)) {
         return -ENOENT;

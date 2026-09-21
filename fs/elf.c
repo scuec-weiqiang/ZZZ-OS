@@ -9,19 +9,37 @@ static int elf_check_image(struct file *file, unsigned char ident[EI_NIDENT])
 {
     ssize_t nread;
 
-    CHECK(file != NULL, "elf: file is NULL", return -1;);
-    CHECK(file->f_inode != NULL, "elf: inode is NULL", return -1;);
-    CHECK(file->f_inode->i_size >= sizeof(struct Elf32_Ehdr),
-          "elf: image too small", return -1;);
+    if (!file) {
+        printk("%s\n", "elf: file is NULL");
+        return -1;
+    }
+    if (!file->f_inode) {
+        printk("%s\n", "elf: inode is NULL");
+        return -1;
+    }
+    if (!(file->f_inode->i_size >= sizeof(struct Elf32_Ehdr))) {
+        printk("%s\n", "elf: image too small");
+        return -1;
+    }
 
     nread = kernel_read_at(file, 0, (char *)ident, EI_NIDENT);
-    CHECK(nread == EI_NIDENT, "elf: failed to read ident", return -1;);
+    if (!(nread == EI_NIDENT)) {
+        printk("%s\n", "elf: failed to read ident");
+        return -1;
+    }
 
-    CHECK(ident[0] == 0x7f && ident[1] == 'E' && ident[2] == 'L' && ident[3] == 'F',
-          "elf: bad magic", return -1;);
-    CHECK(ident[5] == ELFDATA2LSB, "elf: only little-endian supported", return -1;);
-    CHECK(ident[4] == ELFCLASS32 || ident[4] == ELFCLASS64,
-          "elf: unsupported class", return -1;);
+    if (!(ident[0] == 0x7f && ident[1] == 'E' && ident[2] == 'L' && ident[3] == 'F')) {
+        printk("%s\n", "elf: bad magic");
+        return -1;
+    }
+    if (!(ident[5] == ELFDATA2LSB)) {
+        printk("%s\n", "elf: only little-endian supported");
+        return -1;
+    }
+    if (!(ident[4] == ELFCLASS32 || ident[4] == ELFCLASS64)) {
+        printk("%s\n", "elf: unsupported class");
+        return -1;
+    }
 
     return 0;
 }
@@ -53,28 +71,53 @@ static int elf_load32(struct file *file, struct elf_info *info)
     int i;
 
     nread = kernel_read_at(file, 0, (char *)&ehdr, sizeof(ehdr));
-    CHECK(nread == sizeof(ehdr), "elf32: header truncated", return -1;);
+    if (!(nread == sizeof(ehdr))) {
+        printk("%s\n", "elf32: header truncated");
+        return -1;
+    }
 
     // dump_elf32_ehdr(&ehdr);
 
-    CHECK(ehdr.e_type == ET_EXEC, "elf32: only ET_EXEC supported", return -1;);
-    CHECK(ehdr.e_phoff != 0, "elf32: missing phdr table", return -1;);
-    CHECK(ehdr.e_phnum != 0, "elf32: no program headers", return -1;);
-    CHECK(ehdr.e_phentsize == sizeof(struct Elf32_Phdr),
-          "elf32: unexpected phdr size", return -1;);
-    CHECK(ehdr.e_entry != 0, "elf32: entry is 0", return -1;);
+    if (!(ehdr.e_type == ET_EXEC)) {
+        printk("%s\n", "elf32: only ET_EXEC supported");
+        return -1;
+    }
+    if (!ehdr.e_phoff) {
+        printk("%s\n", "elf32: missing phdr table");
+        return -1;
+    }
+    if (!ehdr.e_phnum) {
+        printk("%s\n", "elf32: no program headers");
+        return -1;
+    }
+    if (!(ehdr.e_phentsize == sizeof(struct Elf32_Phdr))) {
+        printk("%s\n", "elf32: unexpected phdr size");
+        return -1;
+    }
+    if (!ehdr.e_entry) {
+        printk("%s\n", "elf32: entry is 0");
+        return -1;
+    }
 
     phdr_bytes = (size_t)ehdr.e_phnum * sizeof(struct Elf32_Phdr);
-    CHECK((u64)ehdr.e_phoff + phdr_bytes <= file->f_inode->i_size,
-          "elf32: phdr table out of range", return -1;);
+    if (!((u64)ehdr.e_phoff + phdr_bytes <= file->f_inode->i_size)) {
+        printk("%s\n", "elf32: phdr table out of range");
+        return -1;
+    }
 
     phdrs = kmalloc(phdr_bytes);
-    CHECK(phdrs != NULL, "elf32: alloc phdrs failed", return -1;);
+    if (!phdrs) {
+        printk("%s\n", "elf32: alloc phdrs failed");
+        return -1;
+    }
 
     nread = kernel_read_at(file, ehdr.e_phoff, (char *)phdrs, phdr_bytes);
     if (nread != (ssize_t)phdr_bytes) {
         kfree(phdrs);
-        CHECK(0, "elf32: failed to read phdrs", return -1;);
+        if (!(0)) {
+            printk("%s\n", "elf32: failed to read phdrs");
+            return -1;
+        }
     }
 
     info->elf_class = ELFCLASS32;
@@ -114,25 +157,50 @@ static int elf_load64(struct file *file, struct elf_info *info)
     int i;
 
     nread = kernel_read_at(file, 0, (char *)&ehdr, sizeof(ehdr));
-    CHECK(nread == sizeof(ehdr), "elf64: header truncated", return -1;);
+    if (!(nread == sizeof(ehdr))) {
+        printk("%s\n", "elf64: header truncated");
+        return -1;
+    }
 
-    CHECK(ehdr.e_type == ET_EXEC, "elf64: only ET_EXEC supported", return -1;);
-    CHECK(ehdr.e_phoff != 0, "elf64: missing phdr table", return -1;);
-    CHECK(ehdr.e_phnum != 0, "elf64: no program headers", return -1;);
-    CHECK(ehdr.e_phentsize == sizeof(struct Elf64_Phdr),
-          "elf64: unexpected phdr size", return -1;);
-    CHECK(ehdr.e_entry != 0, "elf64: entry is 0", return -1;);
-    CHECK(ehdr.e_phoff + (u64)ehdr.e_phnum * sizeof(struct Elf64_Phdr) <= file->f_inode->i_size,
-          "elf64: phdr table out of range", return -1;);
+    if (!(ehdr.e_type == ET_EXEC)) {
+        printk("%s\n", "elf64: only ET_EXEC supported");
+        return -1;
+    }
+    if (!ehdr.e_phoff) {
+        printk("%s\n", "elf64: missing phdr table");
+        return -1;
+    }
+    if (!ehdr.e_phnum) {
+        printk("%s\n", "elf64: no program headers");
+        return -1;
+    }
+    if (!(ehdr.e_phentsize == sizeof(struct Elf64_Phdr))) {
+        printk("%s\n", "elf64: unexpected phdr size");
+        return -1;
+    }
+    if (!ehdr.e_entry) {
+        printk("%s\n", "elf64: entry is 0");
+        return -1;
+    }
+    if (!(ehdr.e_phoff + (u64)ehdr.e_phnum * sizeof(struct Elf64_Phdr) <= file->f_inode->i_size)) {
+        printk("%s\n", "elf64: phdr table out of range");
+        return -1;
+    }
 
     phdr_bytes = (size_t)ehdr.e_phnum * sizeof(struct Elf64_Phdr);
     phdrs = kmalloc(phdr_bytes);
-    CHECK(phdrs != NULL, "elf64: alloc phdrs failed", return -1;);
+    if (!phdrs) {
+        printk("%s\n", "elf64: alloc phdrs failed");
+        return -1;
+    }
 
     nread = kernel_read_at(file, ehdr.e_phoff, (char *)phdrs, phdr_bytes);
     if (nread != (ssize_t)phdr_bytes) {
         kfree(phdrs);
-        CHECK(0, "elf64: failed to read phdrs", return -1;);
+        if (!(0)) {
+            printk("%s\n", "elf64: failed to read phdrs");
+            return -1;
+        }
     }
 
     info->elf_class = ELFCLASS64;
@@ -172,7 +240,10 @@ struct elf_info *elf_parse_file(struct file *file)
     }
 
     info = kmalloc(sizeof(*info));
-    CHECK(info != NULL, "elf: alloc info failed", return NULL;);
+    if (!info) {
+        printk("%s\n", "elf: alloc info failed");
+        return NULL;
+    }
     memset(info, 0, sizeof(*info));
 
     if (ident[4] == ELFCLASS32) {

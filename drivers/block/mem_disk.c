@@ -27,10 +27,15 @@ static int mem_disk_submit_bio(struct blkdev *bdev, struct bio *bio)
     struct mem_disk *disk = NULL;
     sector_t sector = 0;
 
-    CHECK(bdev != NULL, "mem_disk: invalid block device", return -EINVAL;);
-    CHECK(bio != NULL, "mem_disk: invalid bio", return -EINVAL;);
-    CHECK(bdev->bd_disk != NULL && bdev->bd_disk->private_data != NULL,
-          "mem_disk: missing private data", return -ENODEV;);
+    if (!bdev) {
+        printk("%s\n", "mem_disk: invalid block device");
+        return -EINVAL;
+    }
+    ASSERT(bio != NULL, "mem_disk: invalid bio");
+    if (!(bdev->bd_disk != NULL && bdev->bd_disk->private_data != NULL)) {
+        printk("%s\n", "mem_disk: missing private data");
+        return -ENODEV;
+    }
     disk = bdev->bd_disk->private_data;
 
     sector = bdev_sector_offset(bdev, bio->bi_sector);
@@ -40,24 +45,29 @@ static int mem_disk_submit_bio(struct blkdev *bdev, struct bio *bio)
         u8 *page_base = NULL;
         u32 done = 0;
 
-        CHECK(bvec->page != NULL, "mem_disk: bio_vec page is NULL", return -EINVAL;);
+        ASSERT(bvec->page != NULL, "mem_disk: bio_vec page is NULL");
         if (bvec->len == 0) {
             continue;
         }
 
-        CHECK(bvec->offset + bvec->len <= PAGE_SIZE,
-              "mem_disk: bio_vec crosses page boundary", return -EINVAL;);
-        CHECK((bvec->offset % MEM_DISK_SECTOR_SIZE) == 0,
-              "mem_disk: unaligned bio offset", return -EINVAL;);
-        CHECK((bvec->len % MEM_DISK_SECTOR_SIZE) == 0,
-              "mem_disk: unaligned bio length", return -EINVAL;);
+        ASSERT(bvec->offset + bvec->len <= PAGE_SIZE, "mem_disk: bio_vec crosses page boundary");
+        if (!((bvec->offset % MEM_DISK_SECTOR_SIZE) == 0)) {
+            printk("%s\n", "mem_disk: unaligned bio offset");
+            return -EINVAL;
+        }
+        if (!((bvec->len % MEM_DISK_SECTOR_SIZE) == 0)) {
+            printk("%s\n", "mem_disk: unaligned bio length");
+            return -EINVAL;
+        }
 
         page_base = (u8 *)page_address(bvec->page) + bvec->offset;
         while (done < bvec->len) {
             u64 disk_off = (u64)sector * MEM_DISK_SECTOR_SIZE;
 
-            CHECK(disk_off + MEM_DISK_SECTOR_SIZE <= disk->size_bytes,
-                  "mem_disk: bio exceeds disk size", return -EIO;);
+            if (!(disk_off + MEM_DISK_SECTOR_SIZE <= disk->size_bytes)) {
+                printk("%s\n", "mem_disk: bio exceeds disk size");
+                return -EIO;
+            }
 
             spin_lock(&disk->lock);
             if (bio->op == REQ_OP_READ) {
@@ -86,12 +96,22 @@ static int mem_disk_register(struct mem_disk *disk)
     int ret = 0;
     size_t total_sectors = 0;
 
-    CHECK(disk != NULL, "mem_disk: invalid disk", return -EINVAL;);
-    CHECK(disk->data != NULL, "mem_disk: backing store is not mapped", return -EINVAL;);
-    CHECK(disk->size_bytes >= MEM_DISK_SECTOR_SIZE,
-          "mem_disk: backing store is too small", return -EINVAL;);
-    CHECK((disk->size_bytes % MEM_DISK_SECTOR_SIZE) == 0,
-          "mem_disk: backing store size must align to sector size", return -EINVAL;);
+    if (!disk) {
+        printk("%s\n", "mem_disk: invalid disk");
+        return -EINVAL;
+    }
+    if (!disk->data) {
+        printk("%s\n", "mem_disk: backing store is not mapped");
+        return -EINVAL;
+    }
+    if (!(disk->size_bytes >= MEM_DISK_SECTOR_SIZE)) {
+        printk("%s\n", "mem_disk: backing store is too small");
+        return -EINVAL;
+    }
+    if (!((disk->size_bytes % MEM_DISK_SECTOR_SIZE) == 0)) {
+        printk("%s\n", "mem_disk: backing store size must align to sector size");
+        return -EINVAL;
+    }
     total_sectors = disk->size_bytes / MEM_DISK_SECTOR_SIZE;
 
     memset(&mem_disk_queue, 0, sizeof(mem_disk_queue));
@@ -111,8 +131,10 @@ static int mem_disk_register(struct mem_disk *disk)
     dev_t devnr;
     alloc_blkdev_region(&devnr, 1);
     ret = blkdev_register("ram_disk", devnr, &mem_disk_gendisk, NULL);
-    CHECK(ret == 0, "mem_disk: register block device failed",
-          return ret;);
+    if (ret != 0) {
+        printk("%s\n", "mem_disk: register block device failed");
+        return ret;
+    }
 
     printk("mem_disk: mapped pa=%xu va=%xu size=%xu bytes\n",
            (unsigned)disk->phys_base, (unsigned)disk->data, (unsigned)disk->size_bytes);
@@ -125,17 +147,23 @@ static int mem_disk_probe(struct platform_device *pdev)
 {
     struct resource *res = NULL;
 
-    CHECK(pdev != NULL, "mem_disk: invalid platform device", return -EINVAL;);
+    ASSERT(pdev != NULL, "mem_disk: invalid platform device");
 
     res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-    CHECK(res != NULL, "mem_disk: missing mem resource", return -ENODEV;);
+    if (!res) {
+        printk("%s\n", "mem_disk: missing mem resource");
+        return -ENODEV;
+    }
 
     memset(&mem_disk_dev, 0, sizeof(mem_disk_dev));
     spin_lock_init(&mem_disk_dev.lock);
     mem_disk_dev.phys_base = res->start;
     mem_disk_dev.size_bytes = res->size;
     mem_disk_dev.data = (void *)platform_ioremap_resource(pdev, 0);
-    CHECK(mem_disk_dev.data != NULL, "mem_disk: ioremap failed", return -ENOMEM;);
+    if (!mem_disk_dev.data) {
+        printk("%s\n", "mem_disk: ioremap failed");
+        return -ENOMEM;
+    }
 
     dev_set_drvdata(&pdev->dev, &mem_disk_dev);
     return mem_disk_register(&mem_disk_dev);
@@ -145,7 +173,7 @@ static int mem_disk_remove(struct platform_device *pdev)
 {
     struct mem_disk *disk = NULL;
 
-    CHECK(pdev != NULL, "mem_disk: invalid platform device", return -EINVAL;);
+    ASSERT(pdev != NULL, "mem_disk: invalid platform device");
 
     disk = dev_get_drvdata(&pdev->dev);
     if (disk != NULL && disk->data != NULL) {

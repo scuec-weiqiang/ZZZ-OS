@@ -113,8 +113,14 @@ static int ramfs_qstr_is_dotdot(const struct qstr *name) {
 static int ramfs_inode_refresh(struct inode *inode) {
     struct ramfs_node *node = RAMFS_NODE(inode);
 
-    CHECK(inode != NULL, "fs: invalid ramfs inode", return -1;);
-    CHECK(node != NULL, "fs: invalid ramfs private node", return -1;);
+    if (!inode) {
+        printk("%s\n", "fs: invalid ramfs inode");
+        return -1;
+    }
+    if (!node) {
+        printk("%s\n", "fs: invalid ramfs private node");
+        return -1;
+    }
 
     inode->i_ino = node->ino;
     inode->i_mode = node->mode;
@@ -135,10 +141,16 @@ static struct ramfs_node *ramfs_node_create(struct super_block *sb, struct ramfs
     struct ramfs_sb_info *sbi = RAMFS_SB(sb);
     struct ramfs_node *node = NULL;
 
-    CHECK(sbi != NULL, "fs: invalid ramfs sb info", return NULL;);
+    if (!sbi) {
+        printk("%s\n", "fs: invalid ramfs sb info");
+        return NULL;
+    }
 
     node = kmalloc(sizeof(*node));
-    CHECK(node != NULL, "fs: alloc ramfs node failed", return NULL;);
+    if (!node) {
+        printk("%s\n", "fs: alloc ramfs node failed");
+        return NULL;
+    }
     memset(node, 0, sizeof(*node));
 
     node->ino = sbi->next_ino++;
@@ -160,19 +172,37 @@ static int ramfs_dir_add_child(struct ramfs_node *dir, const char *name, struct 
     struct ramfs_dentry *entry = NULL;
     size_t len = 0;
 
-    CHECK(dir != NULL && S_ISDIR(dir->mode), "fs: invalid ramfs dir", return -1;);
-    CHECK(name != NULL, "fs: invalid ramfs child name", return -1;);
-    CHECK(child != NULL, "fs: invalid ramfs child node", return -1;);
-    CHECK(ramfs_find_child(dir, name, strlen(name)) == NULL, "fs: ramfs child already exists",
-          return -1;);
+    if (!(dir != NULL && S_ISDIR(dir->mode))) {
+        printk("%s\n", "fs: invalid ramfs dir");
+        return -1;
+    }
+    if (!name) {
+        printk("%s\n", "fs: invalid ramfs child name");
+        return -1;
+    }
+    if (!child) {
+        printk("%s\n", "fs: invalid ramfs child node");
+        return -1;
+    }
+    if (!(ramfs_find_child(dir, name, strlen(name)) == NULL)) {
+        printk("%s\n", "fs: ramfs child already exists");
+        return -1;
+    }
 
     entry = kmalloc(sizeof(*entry));
-    CHECK(entry != NULL, "fs: alloc ramfs dir entry failed", return -1;);
+    if (!entry) {
+        printk("%s\n", "fs: alloc ramfs dir entry failed");
+        return -1;
+    }
     memset(entry, 0, sizeof(*entry));
 
     len = strlen(name);
     entry->name = kmalloc(len + 1);
-    CHECK(entry->name != NULL, "fs: alloc ramfs dir entry name failed", kfree(entry); return -1;);
+    if (!entry->name) {
+        printk("%s\n", "fs: alloc ramfs dir entry name failed");
+        kfree(entry);
+        return -1;
+    }
     memcpy(entry->name, name, len);
     entry->name[len] = '\0';
     entry->node = child;
@@ -191,8 +221,14 @@ static int ramfs_dir_remove_child(struct ramfs_node *dir, const char *name, u16 
     struct list_head *pos;
     struct list_head *next;
 
-    CHECK(dir != NULL && S_ISDIR(dir->mode), "fs: invalid ramfs dir", return -1;);
-    CHECK(name != NULL, "fs: invalid ramfs child name", return -1;);
+    if (!(dir != NULL && S_ISDIR(dir->mode))) {
+        printk("%s\n", "fs: invalid ramfs dir");
+        return -1;
+    }
+    if (!name) {
+        printk("%s\n", "fs: invalid ramfs child name");
+        return -1;
+    }
 
     list_for_each_safe(pos, next, &dir->u.dir.children) {
         struct ramfs_dentry *entry = container_of(pos, struct ramfs_dentry, sibling);
@@ -232,24 +268,42 @@ static struct inode *ramfs_new_inode(struct inode *dir, u16 mode, struct qstr *n
     struct ramfs_node *dir_node = RAMFS_NODE(dir);
     struct ramfs_node *new_node = NULL;
 
-    CHECK(sb != NULL, "fs: invalid ramfs new inode sb", return NULL;);
-    CHECK(dir_node != NULL && S_ISDIR(dir_node->mode), "fs: invalid ramfs new inode dir",
-          return NULL;);
-    CHECK(name != NULL, "fs: invalid ramfs new inode name", return NULL;);
-    CHECK(ramfs_find_child(dir_node, name->name, name->len) == NULL, "fs: ramfs entry exists",
-          return NULL;);
+    if (!sb) {
+        printk("%s\n", "fs: invalid ramfs new inode sb");
+        return NULL;
+    }
+    if (!(dir_node != NULL && S_ISDIR(dir_node->mode))) {
+        printk("%s\n", "fs: invalid ramfs new inode dir");
+        return NULL;
+    }
+    if (!name) {
+        printk("%s\n", "fs: invalid ramfs new inode name");
+        return NULL;
+    }
+    if (!(ramfs_find_child(dir_node, name->name, name->len) == NULL)) {
+        printk("%s\n", "fs: ramfs entry exists");
+        return NULL;
+    }
 
     new_node = ramfs_node_create(sb, dir_node, mode, 0);
-    CHECK(new_node != NULL, "fs: create ramfs node failed", return NULL;);
+    if (!new_node) {
+        printk("%s\n", "fs: create ramfs node failed");
+        return NULL;
+    }
 
-    CHECK(ramfs_dir_add_child(dir_node, name->name, new_node) == 0, "fs: add ramfs child failed",
-          return NULL;);
+    if (!(ramfs_dir_add_child(dir_node, name->name, new_node) == 0)) {
+        printk("%s\n", "fs: add ramfs child failed");
+        return NULL;
+    }
     return ramfs_iget(sb, new_node->ino);
 }
 
 static struct inode *ramfs_alloc_inode(struct super_block *sb) {
     struct inode *inode = kmalloc(sizeof(*inode));
-    CHECK(inode != NULL, "fs: alloc ramfs inode failed", return NULL;);
+    if (!inode) {
+        printk("%s\n", "fs: alloc ramfs inode failed");
+        return NULL;
+    }
     memset(inode, 0, sizeof(*inode));
     inode->i_sb = sb;
     return inode;
@@ -262,8 +316,14 @@ static void ramfs_destroy_inode(struct inode *inode) {
 static int ramfs_write_inode(struct inode *inode) {
     struct ramfs_node *node = RAMFS_NODE(inode);
 
-    CHECK(inode != NULL, "fs: invalid ramfs inode", return -1;);
-    CHECK(node != NULL, "fs: invalid ramfs private node", return -1;);
+    if (!inode) {
+        printk("%s\n", "fs: invalid ramfs inode");
+        return -1;
+    }
+    if (!node) {
+        printk("%s\n", "fs: invalid ramfs private node");
+        return -1;
+    }
 
     node->mode = inode->i_mode;
     node->nlink = inode->i_nlink;
@@ -298,8 +358,14 @@ static ssize_t ramfs_file_read(struct file *file, char *buf, size_t len, loff_t 
     struct ramfs_node *node = RAMFS_NODE(file->f_inode);
     size_t avail = 0;
 
-    CHECK(node != NULL && S_ISREG(node->mode), "fs: invalid ramfs file read", return -1;);
-    CHECK(buf != NULL && ppos != NULL, "fs: invalid ramfs file read args", return -1;);
+    if (!(node != NULL && S_ISREG(node->mode))) {
+        printk("%s\n", "fs: invalid ramfs file read");
+        return -1;
+    }
+    if (!(buf != NULL && ppos != NULL)) {
+        printk("%s\n", "fs: invalid ramfs file read args");
+        return -1;
+    }
 
     if ((u32)(*ppos) >= node->size) {
         return 0;
@@ -323,8 +389,14 @@ static ssize_t ramfs_file_write(struct file *file, const char *buf, size_t len, 
     u32 new_cap = 0;
     char *new_data = NULL;
 
-    CHECK(node != NULL && S_ISREG(node->mode), "fs: invalid ramfs file write", return -1;);
-    CHECK(buf != NULL && ppos != NULL, "fs: invalid ramfs file write args", return -1;);
+    if (!(node != NULL && S_ISREG(node->mode))) {
+        printk("%s\n", "fs: invalid ramfs file write");
+        return -1;
+    }
+    if (!(buf != NULL && ppos != NULL)) {
+        printk("%s\n", "fs: invalid ramfs file write args");
+        return -1;
+    }
 
     end = (u32)(*ppos) + (u32)len;
     if (end > node->u.reg.capacity) {
@@ -333,7 +405,10 @@ static ssize_t ramfs_file_write(struct file *file, const char *buf, size_t len, 
             new_cap <<= 1;
         }
         new_data = kmalloc(new_cap);
-        CHECK(new_data != NULL, "fs: grow ramfs file failed", return -1;);
+        if (!new_data) {
+            printk("%s\n", "fs: grow ramfs file failed");
+            return -1;
+        }
         memset(new_data, 0, new_cap);
         if (node->u.reg.data != NULL && node->size > 0) {
             memcpy(new_data, node->u.reg.data, node->size);
@@ -359,7 +434,10 @@ static int ramfs_readdir(struct file *fp, struct dir_context *ctx) {
     loff_t entry_pos = 2;
     int ret;
 
-    CHECK(node != NULL && S_ISDIR(node->mode), "fs: invalid ramfs readdir", return -ENOTDIR;);
+    if (!(node != NULL && S_ISDIR(node->mode))) {
+        printk("%s\n", "fs: invalid ramfs readdir");
+        return -ENOTDIR;
+    }
 
     if (ctx->pos == 0) {
         ret = ctx->actor(ctx, ".", 1, 1, node->ino, DT_DIR);
@@ -451,8 +529,10 @@ static struct dentry *ramfs_lookup(struct inode *dir, struct dentry *dentry, uns
     ino_t ino = 0;
 
     (void)flags;
-    CHECK(dir_node != NULL && S_ISDIR(dir_node->mode), "fs: invalid ramfs lookup dir",
-          return NULL;);
+    if (!(dir_node != NULL && S_ISDIR(dir_node->mode))) {
+        printk("%s\n", "fs: invalid ramfs lookup dir");
+        return NULL;
+    }
 
     if (ramfs_qstr_is_dot(&dentry->d_name)) {
         ino = dir_node->ino;
@@ -467,7 +547,10 @@ static struct dentry *ramfs_lookup(struct inode *dir, struct dentry *dentry, uns
     }
 
     inode = ramfs_iget(dir->i_sb, ino);
-    CHECK(inode != NULL, "fs: ramfs iget failed", return NULL;);
+    if (!inode) {
+        printk("%s\n", "fs: ramfs iget failed");
+        return NULL;
+    }
 
     d_add(dentry, inode);
 
@@ -479,9 +562,14 @@ static int ramfs_do_create(struct inode *dir, struct dentry *dentry, u16 mode, d
 
     struct inode *new_inode = NULL;
 
-    CHECK(dir_node != NULL && S_ISDIR(dir_node->mode), "fs: invalid ramfs create dir", return -1;);
-    CHECK(ramfs_find_child(dir_node, dentry->d_name.name, dentry->d_name.len) == NULL,
-          "fs: ramfs entry exists", return -1;);
+    if (!(dir_node != NULL && S_ISDIR(dir_node->mode))) {
+        printk("%s\n", "fs: invalid ramfs create dir");
+        return -1;
+    }
+    if (!(ramfs_find_child(dir_node, dentry->d_name.name, dentry->d_name.len) == NULL)) {
+        printk("%s\n", "fs: ramfs entry exists");
+        return -1;
+    }
 
     new_inode = ramfs_new_inode(dir, mode, &dentry->d_name);
     new_inode->i_rdev = dev;
@@ -508,11 +596,18 @@ static int ramfs_unlink(struct inode *dir, struct dentry *dentry) {
     struct ramfs_node *child_node;
     timespec_t now;
 
-    CHECK(dir_node != NULL && S_ISDIR(dir_node->mode), "fs: invalid ramfs unlink dir",
-          return -EINVAL;);
-    CHECK(dentry != NULL && dentry->d_inode != NULL, "fs: invalid ramfs unlink dentry",
-          return -ENOENT;);
-    CHECK(!S_ISDIR(dentry->d_inode->i_mode), "fs: ramfs unlink dir", return -EISDIR;);
+    if (!(dir_node != NULL && S_ISDIR(dir_node->mode))) {
+        printk("%s\n", "fs: invalid ramfs unlink dir");
+        return -EINVAL;
+    }
+    if (!(dentry != NULL && dentry->d_inode != NULL)) {
+        printk("%s\n", "fs: invalid ramfs unlink dentry");
+        return -ENOENT;
+    }
+    if (!(!S_ISDIR(dentry->d_inode->i_mode))) {
+        printk("%s\n", "fs: ramfs unlink dir");
+        return -EISDIR;
+    }
 
     if (ramfs_dir_remove_child(dir_node, dentry->d_name.name, dentry->d_name.len, &child_node) <
         0) {
@@ -539,15 +634,24 @@ static int ramfs_rmdir(struct inode *dir, struct dentry *dentry) {
     struct ramfs_node *child_node;
     timespec_t now;
 
-    CHECK(dir_node != NULL && S_ISDIR(dir_node->mode), "fs: invalid ramfs rmdir dir",
-          return -EINVAL;);
-    CHECK(dentry != NULL && dentry->d_inode != NULL, "fs: invalid ramfs rmdir dentry",
-          return -ENOENT;);
-    CHECK(S_ISDIR(dentry->d_inode->i_mode), "fs: ramfs rmdir non-dir", return -ENOTDIR;);
+    if (!(dir_node != NULL && S_ISDIR(dir_node->mode))) {
+        printk("%s\n", "fs: invalid ramfs rmdir dir");
+        return -EINVAL;
+    }
+    if (!(dentry != NULL && dentry->d_inode != NULL)) {
+        printk("%s\n", "fs: invalid ramfs rmdir dentry");
+        return -ENOENT;
+    }
+    if (!(S_ISDIR(dentry->d_inode->i_mode))) {
+        printk("%s\n", "fs: ramfs rmdir non-dir");
+        return -ENOTDIR;
+    }
 
     child_node = RAMFS_NODE(dentry->d_inode);
-    CHECK(child_node != NULL && S_ISDIR(child_node->mode), "fs: invalid ramfs rmdir child",
-          return -ENOTDIR;);
+    if (!(child_node != NULL && S_ISDIR(child_node->mode))) {
+        printk("%s\n", "fs: invalid ramfs rmdir child");
+        return -ENOTDIR;
+    }
     if (!list_empty(&child_node->u.dir.children)) {
         return -ENOTEMPTY;
     }
@@ -595,7 +699,10 @@ struct inode_operations ramfs_dir_iops = {
 };
 
 static int ramfs_init_fs_context(struct fs_context *fc) {
-    CHECK(fc != NULL, "fs: invalid ramfs fs_context", return -1;);
+    if (!fc) {
+        printk("%s\n", "fs: invalid ramfs fs_context");
+        return -1;
+    }
     return 0;
 }
 
@@ -606,13 +713,23 @@ static int ramfs_get_tree(struct fs_context *fc) {
     struct inode *root_inode = NULL;
     struct dentry *root_dentry = NULL;
 
-    CHECK(fc != NULL, "fs: invalid ramfs fs_context", return -1;);
+    if (!fc) {
+        printk("%s\n", "fs: invalid ramfs fs_context");
+        return -1;
+    }
 
     sb = alloc_super(fc->fs_type);
-    CHECK(sb != NULL, "fs: alloc ramfs super failed", return -1;);
+    if (!sb) {
+        printk("%s\n", "fs: alloc ramfs super failed");
+        return -1;
+    }
 
     sbi = kmalloc(sizeof(*sbi));
-    CHECK(sbi != NULL, "fs: alloc ramfs sb info failed", destroy_super(sb); return -1;);
+    if (!sbi) {
+        printk("%s\n", "fs: alloc ramfs sb info failed");
+        destroy_super(sb);
+        return -1;
+    }
     memset(sbi, 0, sizeof(*sbi));
     sbi->next_ino = 1;
     INIT_LIST_HEAD(&sbi->nodes);
@@ -623,16 +740,28 @@ static int ramfs_get_tree(struct fs_context *fc) {
     sb->s_fs_info = sbi;
 
     root_node = ramfs_node_create(sb, NULL, S_IFDIR | 0755, 0);
-    CHECK(root_node != NULL, "fs: alloc ramfs root node failed", kfree(sbi); destroy_super(sb);
-          return -1;);
+    if (!root_node) {
+        printk("%s\n", "fs: alloc ramfs root node failed");
+        kfree(sbi);
+        destroy_super(sb);
+        return -1;
+    }
     root_node->parent = root_node;
 
     root_inode = ramfs_iget(sb, root_node->ino);
-    CHECK(root_inode != NULL, "fs: alloc ramfs root inode failed", destroy_super(sb); return -1;);
+    if (!root_inode) {
+        printk("%s\n", "fs: alloc ramfs root inode failed");
+        destroy_super(sb);
+        return -1;
+    }
 
     root_dentry = d_make_root(root_inode);
-    CHECK(root_dentry != NULL, "fs: alloc ramfs root dentry failed", iput(root_inode);
-          destroy_super(sb); return -1;);
+    if (!root_dentry) {
+        printk("%s\n", "fs: alloc ramfs root dentry failed");
+        iput(root_inode);
+        destroy_super(sb);
+        return -1;
+    }
 
     iput(root_inode);
     sb->s_root = root_dentry;
@@ -687,15 +816,28 @@ int ramfs_debug_ls(const char *path) {
     struct ramfs_node *node = NULL;
     struct list_head *pos = NULL;
 
-    CHECK(path != NULL, "fs: invalid ls path", return -1;);
+    if (!path) {
+        printk("%s\n", "fs: invalid ls path");
+        return -1;
+    }
 
     dentry = vfs_lookup(path);
-    CHECK(dentry != NULL, "fs: ls lookup failed", return -1;);
-    CHECK(dentry->d_inode != NULL, "fs: ls negative dentry", dput(dentry); return -1;);
+    if (!dentry) {
+        printk("%s\n", "fs: ls lookup failed");
+        return -1;
+    }
+    if (!dentry->d_inode) {
+        printk("%s\n", "fs: ls negative dentry");
+        dput(dentry);
+        return -1;
+    }
 
     node = RAMFS_NODE(dentry->d_inode);
-    CHECK(node != NULL && S_ISDIR(node->mode), "fs: ls target is not directory", dput(dentry);
-          return -1;);
+    if (!(node != NULL && S_ISDIR(node->mode))) {
+        printk("%s\n", "fs: ls target is not directory");
+        dput(dentry);
+        return -1;
+    }
 
     list_for_each(pos, &node->u.dir.children) {
         struct ramfs_dentry *entry = container_of(pos, struct ramfs_dentry, sibling);

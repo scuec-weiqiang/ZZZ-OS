@@ -29,6 +29,7 @@ struct address_space;
 
 struct page {
     u32 flags;
+    u8 dirty_blocks;  // 每位对应一个文件系统块；脏页中为 0 表示整页脏
     u32 refcount;
     spinlock_t lock;
     struct address_space *mapping;

@@ -8,14 +8,12 @@
 
 int main(int argc, char *argv[])
 {
-    static const char entered[] = "init: entered user mode\n";
     int fd;
     pid_t self;
 
     (void)argc;
     (void)argv;
 
-    write(1, entered, sizeof(entered) - 1);
 
     self = getpid();
     if (getsid(0) != self && setsid() < 0) {
@@ -35,7 +33,7 @@ int main(int argc, char *argv[])
    
     pid_t pid = fork();
 
-    printf("after fork, pid=%d\n", pid);
+    // printf("after fork, pid=%d\n", pid);
 
     char *child_argv[] = { "/bin/dash", NULL };
 
@@ -47,10 +45,10 @@ int main(int argc, char *argv[])
     NULL
 };
     if (pid == 0) {
-        printf("now pid = %d\n",getpid());
+        // printf("now pid = %d\n",getpid());
         execve("/bin/dash", child_argv, envp);
     } else {
-        printf("now pid = %d\n",getpid());
+        // printf("now pid = %d\n",getpid());
         wait(NULL);
     }
     return 0;

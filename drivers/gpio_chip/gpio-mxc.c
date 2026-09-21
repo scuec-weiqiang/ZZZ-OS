@@ -265,13 +265,13 @@ static int mxc_gpio_probe(struct platform_device *pdev) {
 		goto out_bgpio_remove;
 
 	list_add_tail(&mxc_gpio_ports, &port->node);
-dprintk("gpio-mxc init success\n");
+	dprintk("gpio-mxc init success\n");
 	return 0;
  
  out_bgpio_remove:
 	 bgpio_remove(&port->bgc);
  out_bgio:
-	 dprintk("%s failed with errno %d\n",err);
+	 pr_err("gpio-mxc: probe failed with errno %d\n", err);
 	 return err;
 }
  

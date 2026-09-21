@@ -21,7 +21,7 @@ int do_page_fault(struct mm_struct *mm, virt_addr_t fault_addr, int fault_flags)
         return -1;
     }
 
-    flags = spin_lock_irqsave(&mm->lock);
+    spin_lock_irqsave(&mm->lock, &flags);
 
     vma = vma_find(mm, fault_addr);
     if (IS_ERR(vma)) {

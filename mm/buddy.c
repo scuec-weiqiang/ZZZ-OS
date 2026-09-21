@@ -19,6 +19,7 @@
 #include <os/utils.h>
 #include <os/spinlock.h>
 #include <os/of_cpu.h>
+#include <os/errno.h>
 
 struct per_cpu_pages 
 {
@@ -212,9 +213,9 @@ static void __buddy_free_locked(struct page *page)
 static unsigned int pcp_refill(struct per_cpu_pages *ppcp)
 {
     unsigned int nr = 0;
-    int flags;
+    unsigned long flags;
 
-    flags = spin_lock_irqsave(&global_buddy_lock);
+    spin_lock_irqsave(&global_buddy_lock, &flags);
 
     while (nr < ppcp->batch) {
         struct page *page = __buddy_alloc_locked(0);
@@ -232,7 +233,7 @@ static unsigned int pcp_refill(struct per_cpu_pages *ppcp)
     spin_unlock_irqrestore(&global_buddy_lock, flags);
 
     if (nr != 0)
-        pcp->refills++;
+        ppcp->refills++;
 
     return nr;
 }
@@ -242,9 +243,9 @@ static unsigned int pcp_drain(struct per_cpu_pages *pcp,
                               unsigned int nr_to_drain)
 {
     unsigned int nr = 0;
-    int flags;
+    unsigned long flags;
 
-    flags = spin_lock_irqsave(&global_buddy_lock);
+    spin_lock_irqsave(&global_buddy_lock, &flags);
 
     while (nr < nr_to_drain && pcp->head != NULL) {
         struct page *page = pcp->head;
@@ -295,10 +296,10 @@ static void __pcp_push(struct per_cpu_pages *pcp, struct page *page)
 
 static struct page *buddy_alloc(unsigned int order)
 {
-    int flags;
+    unsigned long flags;
     struct page *page;
 
-    flags = spin_lock_irqsave(&global_buddy_lock);
+    spin_lock_irqsave(&global_buddy_lock, &flags);
     page = __buddy_alloc_locked(order);
     spin_unlock_irqrestore(&global_buddy_lock, flags);
 
@@ -307,8 +308,8 @@ static struct page *buddy_alloc(unsigned int order)
 
 static void buddy_free(struct page *page) 
 {
-    int flags;
-    flags = spin_lock_irqsave(&global_buddy_lock);
+    unsigned long flags;
+    spin_lock_irqsave(&global_buddy_lock, &flags);
     __buddy_free_locked(page);
     spin_unlock_irqrestore(&global_buddy_lock, flags);
 }
@@ -317,15 +318,16 @@ struct page *alloc_pages(unsigned int order)
 {
     struct per_cpu_pages *ppcp;
     struct page *page;
-    int flags;
+    unsigned long flags;
 
     // 只有分配一页的请求才走per cpu，否则走全局
     if (order != 0)
         return buddy_alloc(order);
 
+    preempt_disable();
     ppcp = &pcp[get_cpuid()];
 
-    flags = spin_lock_irqsave(&ppcp->lock);
+    spin_lock_irqsave(&ppcp->lock, &flags);
 
     page = __pcp_pop(ppcp);
     if (page == NULL) {
@@ -341,13 +343,15 @@ struct page *alloc_pages(unsigned int order)
     if (page != NULL)
         prepare_allocated_page(page);
 
+    preempt_enable();
+
     return page;
 }
 
 void free_pages(struct page *page)
 {
     struct per_cpu_pages *ppcp;
-    int flags;
+    unsigned long flags;
 
     if (page == NULL)
         return;
@@ -357,9 +361,10 @@ void free_pages(struct page *page)
         return;
     }
 
+    preempt_disable();
     ppcp = &pcp[get_cpuid()];
 
-    flags = spin_lock_irqsave(&ppcp->lock);
+    spin_lock_irqsave(&ppcp->lock, &flags);
 
     __pcp_push(ppcp, page);
 
@@ -367,6 +372,39 @@ void free_pages(struct page *page)
         pcp_drain(ppcp, ppcp->batch);
 
     spin_unlock_irqrestore(&ppcp->lock, flags);
+    preempt_enable();
+}
+
+int pcp_get_stats(int cpu, struct pcp_stats *stats)
+{
+    unsigned long flags;
+    if (cpu < 0 || cpu >= MAX_CPUS || !stats)
+        return -EINVAL;
+    struct per_cpu_pages *p = &pcp[cpu];
+    spin_lock_irqsave(&p->lock, &flags);
+    *stats = (struct pcp_stats){
+        .hits = p->hits, .misses = p->misses,
+        .refills = p->refills, .drains = p->drains,
+        .count = p->count, .high = p->high, .batch = p->batch,
+    };
+    spin_unlock_irqrestore(&p->lock, flags);
+    return 0;
+}
+
+int pcp_configure(u32 high, u32 batch)
+{
+    if (!batch || high < batch)
+        return -EINVAL;
+    for (int cpu = 0; cpu < MAX_CPUS; cpu++) {
+        unsigned long flags;
+        struct per_cpu_pages *p = &pcp[cpu];
+        spin_lock_irqsave(&p->lock, &flags);
+        pcp_drain(p, p->count);
+        p->high = high;
+        p->batch = batch;
+        spin_unlock_irqrestore(&p->lock, flags);
+    }
+    return 0;
 }
 
 void* alloc_pages_kva(size_t npages) 
@@ -418,8 +456,8 @@ void buddy_init(void)
         spin_lock_init(&pcp[i].lock);
         pcp[i].head = NULL;
         pcp[i].count = 0;
-        pcp[i].high = 32;
-        pcp[i].batch = 8;
+        pcp[i].high = 64;
+        pcp[i].batch = 16;
         // pcp[i].hits = 0;
         // pcp[i].misses = 0;
         // pcp[i].refills = 0;
@@ -441,9 +479,9 @@ int buddy_get_memory_stats(struct buddy_memory_stats *stats)
 
     /* Keep the existing PCP -> Buddy lock order used by allocation paths. */
     for (int cpu = 0; cpu < MAX_CPUS; cpu++)
-        pcp_flags[cpu] = spin_lock_irqsave(&pcp[cpu].lock);
+        spin_lock_irqsave(&pcp[cpu].lock, &pcp_flags[cpu]);
 
-    buddy_flags = spin_lock_irqsave(&global_buddy_lock);
+    spin_lock_irqsave(&global_buddy_lock, &buddy_flags);
     for (u32 order = 0; order < MAX_ORDER; order++)
         stats->buddy_free_pages += free_area[order].nr_free << order;
     for (int cpu = 0; cpu < MAX_CPUS; cpu++)
@@ -491,9 +529,9 @@ int buddy_get_fragmentation_stats(struct buddy_fragmentation_stats *stats)
 
     /* Match the PCP -> Buddy lock order used by the allocation paths. */
     for (int cpu = 0; cpu < MAX_CPUS; cpu++)
-        pcp_flags[cpu] = spin_lock_irqsave(&pcp[cpu].lock);
+        spin_lock_irqsave(&pcp[cpu].lock, &pcp_flags[cpu]);
 
-    buddy_flags = spin_lock_irqsave(&global_buddy_lock);
+    spin_lock_irqsave(&global_buddy_lock, &buddy_flags);
     for (u32 order = 0; order < MAX_ORDER; order++) {
         stats->free_blocks[order] = free_area[order].nr_free;
         stats->buddy_free_pages += free_area[order].nr_free << order;

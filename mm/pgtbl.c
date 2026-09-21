@@ -430,7 +430,10 @@ walk_action_t unmap_cb(pgtable_t *pgtbl, pte_t *pte, int level, virt_addr_t va, 
 }
 
 int pgtbl_walk(pgtable_t *pgtbl, virt_addr_t va, int target_level, pgtbl_walk_cb cb, void *arg) {
-    CHECK(pgtbl != NULL && pgtbl->root != NULL, "pgtbl is NULL", return -EINVAL;);
+    if (!(pgtbl != NULL && pgtbl->root != NULL)) {
+        printk("%s\n", "pgtbl is NULL");
+        return -EINVAL;
+    }
 
     pte_t *table = (pte_t *)pgtbl->root;
 
@@ -512,7 +515,10 @@ void pgtbl_switch_to(pgtable_t *pgtbl) {
 }
 
 int pgtbl_level_index(pgtable_t *pgtbl, int level, virt_addr_t va) {
-    CHECK(pgtbl != NULL, "pgtbl is NULL", return -1;);
+    if (!pgtbl) {
+        printk("%s\n", "pgtbl is NULL");
+        return -1;
+    }
     return arch_pgtbl_level_index(pgtbl, level, va);
 }
 

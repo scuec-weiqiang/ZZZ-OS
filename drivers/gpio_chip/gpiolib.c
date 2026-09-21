@@ -111,7 +111,7 @@ struct gpio_desc *of_gpiod_get(struct device *dev, const char *con_id) {
         if (len == 0 || len > 25)
             return ERR_PTR(-EINVAL);
     
-        snprintk(prop_name, len + 7, "%s-gpios", con_id);
+        snprintf(prop_name, len + 7, "%s-gpios", con_id);
     }
 
     struct of_phandle_args args;
@@ -150,7 +150,8 @@ int gpiod_request(struct gpio_desc *desc, const char *con_id) {
 
     spinlock_t *lock = &desc->chip->lock;
 
-    int flags = spin_lock_irqsave(lock);
+    unsigned long flags;
+    spin_lock_irqsave(lock, &flags);
     desc->requested = 1;
     desc->label = con_id;
 
@@ -166,7 +167,8 @@ void gpiod_free(struct gpio_desc *desc) {
 
     spinlock_t *lock = &desc->chip->lock;
 
-    int flags = spin_lock_irqsave(lock);
+    unsigned long flags;
+    spin_lock_irqsave(lock, &flags);
     desc->requested = 0;
     desc->label = NULL;
     spin_unlock_irqrestore(lock, flags);
@@ -255,7 +257,8 @@ int gpiod_is_active_low(struct gpio_desc *desc) {
 // void gpiod_set_consumer_name(struct gpio_desc *desc, const char *name) {
 //     spinlock_t *lock = &desc->chip->lock;
 
-//     int flags = spin_lock_irqsave(lock);
+//     unsigned long flags;
+//     spin_lock_irqsave(lock, &flags);
 //     desc->label = name;
 //     spin_unlock_irqrestore(lock, flags);
 // }

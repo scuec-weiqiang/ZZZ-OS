@@ -20,11 +20,13 @@ struct secondary_data {
 extern unsigned long cpu_online_map;
 
 static inline int cpu_online(int cpu) {
-    return (int)((cpu_online_map >> (unsigned long)cpu) & 1UL);
+    unsigned long online = __atomic_load_n(&cpu_online_map, __ATOMIC_ACQUIRE);
+    return (int)((online >> (unsigned long)cpu) & 1UL);
 }
 
 static inline void set_cpu_online(int cpu) {
-    cpu_online_map |= (1UL << (unsigned long)cpu);
+    __atomic_fetch_or(&cpu_online_map, 1UL << (unsigned long)cpu,
+                      __ATOMIC_RELEASE);
 }
 
 static inline int get_cpuid(void) {

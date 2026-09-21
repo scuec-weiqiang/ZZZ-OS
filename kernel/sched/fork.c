@@ -121,7 +121,7 @@ struct task_struct* find_task_by_pid(pid_t pid) {
         struct task_struct *task;
         unsigned long flags;
 
-        flags = spin_lock_irqsave(&rq->lock);
+        spin_lock_irqsave(&rq->lock, &flags);
         list_for_each_entry(task, &rq->tasks, task_node) {
             if (task->pid == pid) {
                 spin_unlock_irqrestore(&rq->lock, flags);
@@ -271,7 +271,7 @@ static void free_signal_struct(struct signal_struct *sig) {
 static void set_parent_child(struct task_struct *parent, struct task_struct *child) {
     unsigned long flags;
 
-    flags = spin_lock_irqsave(&parent->lock);
+    spin_lock_irqsave(&parent->lock, &flags);
     child->parent = parent;
     child->ppid = parent->pid;
     list_add_tail(&parent->children, &child->sibling);
@@ -285,7 +285,7 @@ static void clear_parent_child(struct task_struct *parent, struct task_struct *c
         return;
     }
 
-    flags = spin_lock_irqsave(&parent->lock);
+    spin_lock_irqsave(&parent->lock, &flags);
     child->parent = NULL;
     list_del(&child->sibling);
     spin_unlock_irqrestore(&parent->lock, flags);
@@ -369,7 +369,7 @@ static struct mm_struct *dup_mm(struct mm_struct *oldmm, unsigned long flags) {
         goto fail;
     }
 
-    lock_flags = spin_lock_irqsave(&oldmm->lock);
+    spin_lock_irqsave(&oldmm->lock, &lock_flags);
     
     mm->start_stack = oldmm->start_stack;
     mm->stack_top = oldmm->stack_top;
@@ -687,7 +687,7 @@ void wake_up_process(struct task_struct *p) {
     }
 
     rq = &global_rq[ti->cpu];
-    flags = spin_lock_irqsave(&rq->lock);
+    spin_lock_irqsave(&rq->lock, &flags);
     p->sched_class->enqueue_task(rq, p);
     spin_unlock_irqrestore(&rq->lock, flags);
 

@@ -17,12 +17,21 @@ static struct vfsmount *g_root_mnt;
 int vfs_kern_mount(struct fs_context *fc, struct vfsmount **mnt_out) {
     struct vfsmount *mnt = NULL;
 
-    CHECK(fc != NULL, "fs: invalid fs_context for mount", return -1;);
-    CHECK(fc->root != NULL, "fs: fs_context has no root", return -1;);
-    CHECK(mnt_out != NULL, "fs: invalid mount output", return -1;);
+    if (!fc) {
+        printk("%s\n", "fs: invalid fs_context for mount");
+        return -1;
+    }
+    if (!fc->root) {
+        printk("%s\n", "fs: fs_context has no root");
+        return -1;
+    }
+    ASSERT(mnt_out != NULL, "fs: invalid mount output");
 
     mnt = kmalloc(sizeof(*mnt));
-    CHECK(mnt != NULL, "fs: alloc vfsmount failed", return -1;);
+    if (!mnt) {
+        printk("%s\n", "fs: alloc vfsmount failed");
+        return -1;
+    }
 
     mnt->mnt_sb = fc->root->d_sb;
 
@@ -38,8 +47,14 @@ int vfs_kern_mount(struct fs_context *fc, struct vfsmount **mnt_out) {
 
 /* 将根挂载点初始化为新建的挂载点 */
 int init_mount_tree(struct vfsmount *mnt) {
-    CHECK(mnt != NULL, "fs: invalid root mount", return -1;);
-    CHECK(g_root_mnt == NULL, "fs: mount tree already initialized", return -1;);
+    if (!mnt) {
+        printk("%s\n", "fs: invalid root mount");
+        return -1;
+    }
+    if (!(g_root_mnt == NULL)) {
+        printk("%s\n", "fs: mount tree already initialized");
+        return -1;
+    }
 
     g_root_mnt = mnt;
 
@@ -59,39 +74,71 @@ int vfs_mount_fs(const char *fs_name, const char *source, const char *target, u3
     struct dentry *mountpoint = NULL;
     int ret = 0;
 
-    CHECK(fs_name != NULL, "fs: invalid mount fs name", return -1;);
-    CHECK(target != NULL, "fs: invalid mount target", return -1;);
+    if (!fs_name) {
+        printk("%s\n", "fs: invalid mount fs name");
+        return -1;
+    }
+    if (!target) {
+        printk("%s\n", "fs: invalid mount target");
+        return -1;
+    }
 
     dprintk("mount_fs: fs=%s target=%s\n", fs_name, target);
     fs_type = get_fs_type(fs_name);
-    CHECK(fs_type != NULL, "fs: mount fs type not found", return -1;);
+    if (!fs_type) {
+        printk("%s\n", "fs: mount fs type not found");
+        return -1;
+    }
 
     dprintk("mount_fs: lookup target %s\n", target);
     mountpoint = vfs_lookup(target);
     
-    CHECK(mountpoint != NULL, "fs: mount target lookup failed", return -1;);
-    CHECK(mountpoint->d_inode != NULL, "fs: mount target is negative dentry", dput(mountpoint); return -1;);
-    CHECK(S_ISDIR(mountpoint->d_inode->i_mode), "fs: mount target is not a directory", dput(mountpoint); return -1;);
-    CHECK(vfs_search_mount(mountpoint, &mnt) != 0, "fs: mount target already mounted", dput(mountpoint); return -1;);
+    if (!mountpoint) {
+        printk("%s\n", "fs: mount target lookup failed");
+        return -1;
+    }
+    if (!mountpoint->d_inode) {
+        printk("%s\n", "fs: mount target is negative dentry");
+        dput(mountpoint);
+        return -1;
+    }
+    if (!(S_ISDIR(mountpoint->d_inode->i_mode))) {
+        printk("%s\n", "fs: mount target is not a directory");
+        dput(mountpoint);
+        return -1;
+    }
+    if (!(vfs_search_mount(mountpoint, &mnt) != 0)) {
+        printk("%s\n", "fs: mount target already mounted");
+        dput(mountpoint);
+        return -1;
+    }
 
     dprintk("mount_fs: alloc fs_context for %s\n", fs_name);
     fc = fs_context_for_mount(fs_type, sb_flags);
-    CHECK(fc != NULL, "fs: alloc mount fs_context failed", dput(mountpoint); return -1;);
+    if (!fc) {
+        printk("%s\n", "fs: alloc mount fs_context failed");
+        dput(mountpoint);
+        return -1;
+    }
 
     fc->source = source;
     dprintk("mount_fs: get_tree for %s\n", fs_name);
     ret = vfs_get_tree(fc);
-    CHECK(ret == 0, "fs: get_tree for mount failed",
-          put_fs_context(fc);
-          dput(mountpoint);
-          return ret;);
+    if (ret != 0) {
+        printk("%s\n", "fs: get_tree for mount failed");
+        put_fs_context(fc);
+        dput(mountpoint);
+        return ret;
+    }
 
     dprintk("mount_fs: kern_mount for %s\n", fs_name);
     ret = vfs_kern_mount(fc, &mnt);
-    CHECK(ret == 0, "fs: create mount failed",
-          put_fs_context(fc);
-          dput(mountpoint);
-          return ret;);
+    if (ret != 0) {
+        printk("%s\n", "fs: create mount failed");
+        put_fs_context(fc);
+        dput(mountpoint);
+        return ret;
+    }
 
     mnt->mnt_mountpoint = dget(mountpoint);
     list_add_tail(&g_mounts, &mnt->mnt_list);
@@ -103,8 +150,14 @@ int vfs_mount_fs(const char *fs_name, const char *source, const char *target, u3
 }
 
 int vfs_kern_unmount(struct vfsmount *mnt) {
-    CHECK(mnt != NULL, "fs: invalid mount point", return -1;);
-    CHECK(mnt == g_root_mnt, "fs: only root mount can be unmounted", return -1;);
+    if (!mnt) {
+        printk("%s\n", "fs: invalid mount point");
+        return -1;
+    }
+    if (!(mnt == g_root_mnt)) {
+        printk("%s\n", "fs: only root mount can be unmounted");
+        return -1;
+    }
 
     g_root_mnt = NULL;
     list_del(&mnt->mnt_list);
@@ -115,8 +168,11 @@ int vfs_kern_unmount(struct vfsmount *mnt) {
 int vfs_search_mount(struct dentry *dentry, struct vfsmount **mnt_out) {
     struct list_head *pos = NULL;
 
-    CHECK(dentry != NULL, "fs: invalid dentry for mount search", return -1;);
-    CHECK(mnt_out != NULL, "fs: invalid mount output", return -1;);
+    if (!dentry) {
+        printk("%s\n", "fs: invalid dentry for mount search");
+        return -1;
+    }
+    ASSERT(mnt_out != NULL, "fs: invalid mount output");
 
     list_for_each(pos, &g_mounts) {
         struct vfsmount *mnt = container_of(pos, struct vfsmount, mnt_list);
@@ -133,8 +189,11 @@ int vfs_get_mnt_parent(struct vfsmount *mnt, struct path *parent) {
     struct list_head *pos = NULL;
     struct dentry *mountpoint_parent = NULL;
 
-    CHECK(mnt != NULL, "fs: invalid mount for parent lookup", return -EINVAL;);
-    CHECK(parent != NULL, "fs: invalid parent path output", return -EINVAL;);
+    if (!mnt) {
+        printk("%s\n", "fs: invalid mount for parent lookup");
+        return -EINVAL;
+    }
+    ASSERT(parent != NULL, "fs: invalid parent path output");
 
     if (mnt == g_root_mnt) {
         parent->mnt = mntget(g_root_mnt);

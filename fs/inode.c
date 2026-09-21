@@ -76,7 +76,10 @@ static struct hash_ops inode_hash_ops = {
 
 int icache_init(void) {
     g_icache = lru_cache_create(128, &inode_lru_ops, &inode_hash_ops);
-    CHECK(g_icache != NULL, "fs: create icache failed", return -1;);
+    if (!g_icache) {
+        printk("%s\n", "fs: create icache failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -90,7 +93,10 @@ void icache_destroy(void) {
 struct inode *new_inode(struct super_block *sb) {
     struct inode *inode = NULL;
 
-    CHECK(sb != NULL, "fs: invalid super for inode", return ERR_PTR(-EINVAL););
+    if (!sb) {
+        printk("%s\n", "fs: invalid super for inode");
+        return ERR_PTR(-EINVAL);
+    }
     if (sb->s_op != NULL && sb->s_op->alloc_inode != NULL) {
         inode = sb->s_op->alloc_inode(sb);
         if (IS_ERR(inode)) {
@@ -98,11 +104,15 @@ struct inode *new_inode(struct super_block *sb) {
         }
     } else {
         inode = kmalloc(sizeof(*inode));
-        CHECK(inode != NULL, "fs: alloc inode failed", return ERR_PTR(-ENOMEM););
+        if (!inode) {
+            printk("%s\n", "fs: alloc inode failed");
+            return ERR_PTR(-ENOMEM);
+        }
         memset(inode, 0, sizeof(*inode));
     }
 
     inode->i_sb = sb;
+    inode->i_blocks = 0;
     inode->i_mapping = &inode->i_data;
     inode->i_data.host = inode;
     inode->i_data.a_ops = NULL;
@@ -119,8 +129,11 @@ struct inode *iget(struct super_block *sb, ino_t ino) {
     struct lru_node *found = NULL;
     struct inode *inode = NULL;
 
-    CHECK(sb != NULL, "fs: invalid super for iget", return ERR_PTR(-EINVAL););
-    CHECK(g_icache != NULL, "fs: icache is not initialized", return ERR_PTR(-EINVAL););
+    if (!sb) {
+        printk("%s\n", "fs: invalid super for iget");
+        return ERR_PTR(-EINVAL);
+    }
+    ASSERT(g_icache != NULL, "fs: icache is not initialized");
 
     memset(&key, 0, sizeof(key));
     key.i_sb = sb;
@@ -137,7 +150,10 @@ struct inode *iget(struct super_block *sb, ino_t ino) {
 
     inode = new_inode(sb);
 
-    CHECK(inode != NULL, "fs: new inode failed", return ERR_PTR(-ENOMEM););
+    if (!inode) {
+        printk("%s\n", "fs: new inode failed");
+        return ERR_PTR(-ENOMEM);
+    }
     inode->i_ino = ino;
     inode->i_state = I_NEW;
     int ret = lru_cache_add(g_icache, &inode->d_lru_cache_node);
@@ -155,7 +171,10 @@ struct inode *iget(struct super_block *sb, ino_t ino) {
 }
 
 struct inode *igrab(struct inode *inode) {
-    CHECK(inode != NULL, "fs: invalid igrab inode", return NULL;);
+    if (!inode) {
+        printk("%s\n", "fs: invalid igrab inode");
+        return NULL;
+    }
 
     inode_lock(inode);
     inode->i_count++;

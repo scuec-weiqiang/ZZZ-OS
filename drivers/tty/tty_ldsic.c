@@ -17,7 +17,7 @@ int tty_register_ldisc(struct tty_ldisc_ops *new_ldisc) {
 	if (new_ldisc->num < N_TTY || new_ldisc->num >= NR_LDISCS)
 		return -EINVAL;
 
-	flags = spin_lock_irqsave(&tty_ldiscs_lock);
+	spin_lock_irqsave(&tty_ldiscs_lock, &flags);
 	tty_ldiscs[new_ldisc->num] = new_ldisc;
 	spin_unlock_irqrestore(&tty_ldiscs_lock, flags);
 
@@ -27,7 +27,7 @@ int tty_register_ldisc(struct tty_ldisc_ops *new_ldisc) {
 void tty_unregister_ldisc(struct tty_ldisc_ops *ldisc) {
 	unsigned long flags;
 
-	flags = spin_lock_irqsave(&tty_ldiscs_lock);
+	spin_lock_irqsave(&tty_ldiscs_lock, &flags);
 	tty_ldiscs[ldisc->num] = NULL;
 	spin_unlock_irqrestore(&tty_ldiscs_lock, flags);
 }
@@ -36,7 +36,7 @@ static struct tty_ldisc_ops *get_ldops(int disc) {
 	unsigned long flags;
 	struct tty_ldisc_ops *ldops, *ret;
 
-	flags = spin_lock_irqsave(&tty_ldiscs_lock);
+	spin_lock_irqsave(&tty_ldiscs_lock, &flags);
 	ret = ERR_PTR(-EINVAL);
 	ldops = tty_ldiscs[disc];
     ret = ERR_PTR(-EAGAIN);
@@ -51,7 +51,7 @@ static struct tty_ldisc_ops *get_ldops(int disc) {
 static void put_ldops(struct tty_ldisc_ops *ldops) {
 	unsigned long flags;
 
-	flags = spin_lock_irqsave(&tty_ldiscs_lock);
+	spin_lock_irqsave(&tty_ldiscs_lock, &flags);
 	atomic_dec(&ldops->refcnt);
 	spin_unlock_irqrestore(&tty_ldiscs_lock, flags);
 }

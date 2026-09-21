@@ -7,6 +7,7 @@
 #include <os/kmalloc.h>
 #include <os/string.h>
 #include <os/bitops.h>
+#include <os/check.h>
 #include "ext2_types.h"
 
 extern int ext2_block_mapping(struct inode *inode, u32 index);
@@ -140,8 +141,8 @@ static int ext2_rwpage(struct page *page, bool write)
     page_buf = page_address(page);
     block_size = inode->i_sb->s_blocksize;
 
-    if (!bdev || block_size == 0 || block_size > PAGE_SIZE ||
-        PAGE_SIZE % block_size != 0)
+    if (!bdev || block_size < 512 || block_size > PAGE_SIZE ||
+        PAGE_SIZE % block_size != 0 || PAGE_SIZE / block_size > 8)
         return -EINVAL;
 
     blocks_per_page = PAGE_SIZE / block_size;
@@ -151,10 +152,25 @@ static int ext2_rwpage(struct page *page, bool write)
         memset(page_buf, 0, PAGE_SIZE);
 
     for (u32 i = 0; i < blocks_per_page; i++) {
-        int disk_block = ext2_block_mapping(inode, first_file_block + i);
+        int disk_block;
+
+        if (write && page->dirty_blocks &&
+            !(page->dirty_blocks & (1U << i))) {
+            ret = ext2_submit_page_batch(bdev, page_buf, block_size,
+                                        batch_page_block, batch_disk_block,
+                                        batch_blocks, write);
+            if (ret < 0)
+                return ret;
+            batch_blocks = 0;
+            continue;
+        }
+
+        disk_block = ext2_block_mapping(inode, first_file_block + i);
 
         if (disk_block < 0)
             return disk_block;
+        if (write && page->dirty_blocks && disk_block == 0)
+            return -EIO;
 
         if (disk_block != 0 && batch_blocks != 0 &&
             (u32)disk_block == batch_disk_block + batch_blocks) {
@@ -180,9 +196,162 @@ static int ext2_rwpage(struct page *page, bool write)
                                   batch_blocks, write);
 }
 
+static int ext2_read_batch(struct bio *bio)
+{
+    int ret;
+
+    if (!bio->bi_size)
+        return 0;
+    ret = submit_bio_wait(bio);
+    bio->bi_size = 0;
+    bio->bi_vcnt = 0;
+    return ret;
+}
+
+// 上层持有页面引用并保证读入期间不被修改，页状态由上层更新
+// 上层提供一些缓存页，ext2找出缓存页对应的磁盘块，将能连续读取的部分合并成一个批次提交给块设备
+int ext2_readpages(struct page **pages, u32 nr_pages)
+{
+    struct inode *inode;
+    struct address_space *mapping;
+    struct blkdev *bdev;
+    struct request_queue *queue;
+    struct bio *bio;
+    u32 block_size;
+    u32 max_bytes;
+    u32 nr_vecs;
+    u64 file_size;
+    int ret = 0;
+
+    if (!nr_pages) {
+        return 0;
+    }
+
+    ASSERT(pages != NULL, "ext2: missing page array");
+    ASSERT(pages[0] != NULL, "ext2: missing first page");
+    ASSERT(pages[0]->mapping != NULL, "ext2: page has no mapping");
+
+    mapping = pages[0]->mapping;
+    inode = mapping->host;
+    ASSERT(inode != NULL, "ext2: mapping has no inode");
+    ASSERT(inode->i_sb != NULL, "ext2: inode has no superblock");
+  
+    block_size = inode->i_sb->s_blocksize;
+    if (!block_size || block_size > PAGE_SIZE || PAGE_SIZE % block_size || block_size % SECTOR_SIZE)
+        return -EINVAL;
+
+    bdev = inode->i_sb->s_bdev;
+    if (!bdev || !bdev->bd_disk || !bdev->bd_disk->queue)
+        return -ENODEV;
+    queue = bdev->bd_disk->queue;
+    if (!queue->logical_block_size || block_size % queue->logical_block_size)
+        return -EINVAL;
+    
+
+    // 计算一次 BIO 最大可提交的字节数，确保 BIO 不会超过块设备队列的限制
+    max_bytes = queue->max_hw_sectors * SECTOR_SIZE;
+    if (max_bytes < block_size) {
+        return -EINVAL;
+    }
+
+    file_size = inode->i_size;
+
+    // 检查页数组的有效性；EOF 之后的页允许传入，内容填零
+    for (u32 i = 0; i < nr_pages; i++) {
+        struct page *page = pages[i];
+
+        ASSERT(page != NULL, "ext2: missing page");
+        ASSERT(page->mapping == mapping, "ext2: pages have different mappings");
+        ASSERT(!PageDirty(page), "ext2: cannot overwrite dirty page");
+        ASSERT(!PageUptodate(page), "ext2: page is already uptodate");
+        ASSERT(!PageWriteback(page), "ext2: page is under writeback");
+        ASSERT(!i || page->index > pages[i - 1]->index, "ext2: page indexes must be strictly increasing");
+        if ((u64)page->index > UINT32_MAX / (PAGE_SIZE / block_size))
+            return -EFBIG;
+    }
+
+    // 限制临时 BIO 大小,页数更多时分批处理，不依赖预读窗口
+    nr_vecs = nr_pages < 16 ? nr_pages : 16;
+    bio = bio_alloc(nr_vecs);
+    if (IS_ERR(bio))
+        return PTR_ERR(bio);
+    bio->op = REQ_OP_READ;
+    bio->bi_bdev = bdev;
+
+    for (u32 i = 0; i < nr_pages; i++) {
+        struct page *page = pages[i];
+        u64 page_pos = (u64)page->index * PAGE_SIZE;
+
+        memset(pagecache_data(page), 0, PAGE_SIZE);
+        for (u32 offset = 0; offset < PAGE_SIZE; offset += block_size) {
+            u64 pos = page_pos + offset;
+            sector_t sector;
+            struct bio_vec *last;
+            bool extend;
+            int disk_block;
+
+            if (pos >= file_size) break;
+            disk_block = ext2_block_mapping(inode, pos / block_size);
+            if (disk_block < 0) {
+                ret = disk_block;
+                goto out;
+            }
+            // 文件块未分配，提交前面已收集的批次
+            if (!disk_block) {
+                ret = ext2_read_batch(bio);
+                if (ret < 0)
+                    goto out;
+                continue;
+            }
+
+            sector = (u64)disk_block * block_size / SECTOR_SIZE;
+            last = bio->bi_vcnt ? &bio->bi_io_vec[bio->bi_vcnt - 1] : NULL;
+            // 如果当前块与上一个块连续，且 BIO 还没满，则合并到同一个 BIO
+            extend = last && (last->page == page) && (last->offset + last->len == offset);
+
+            // 如果当前块与 BIO 中的最后一个块不连续，或者 BIO 已满，则提交当前 BIO
+            if (bio->bi_size && (sector != bio->bi_sector + bio->bi_size / SECTOR_SIZE || bio->bi_size > max_bytes - block_size || (!extend && bio->bi_vcnt == bio->bi_max_vecs))) {
+                ret = ext2_read_batch(bio);
+                if (ret < 0)
+                    goto out;
+                extend = false;
+            }
+
+            // 如果 BIO 为空，则设置 BIO 的起始扇区
+            if (!bio->bi_size) {
+                bio->bi_sector = sector;
+            }
+
+            // 合并
+            if (extend) {
+                last->len += block_size;
+                bio->bi_size += block_size;
+            } else {
+                ret = bio_add_page(bio, page, block_size, offset);
+                if (ret < 0)
+                    goto out;
+            }
+        }
+    }
+    // 防止循环结束h后还有未提交的 BIO
+    ret = ext2_read_batch(bio);
+    if (ret == 0) {
+        for (u32 i = 0; i < nr_pages; i++) {
+            u64 pos = (u64)pages[i]->index * PAGE_SIZE;
+            if (pos < file_size && file_size - pos < PAGE_SIZE) {
+                size_t valid = file_size - pos;
+                memset((u8 *)pagecache_data(pages[i]) + valid, 0, PAGE_SIZE - valid);
+            }
+        }
+    }
+out:
+    bio_put(bio);
+    return ret;
+}
+
 static int ext2_readpage(struct page *page)
 {
-    return ext2_rwpage(page, false);
+    return ext2_readpages(&page, 1);
 }
 
 static int ext2_writepage(struct page *page)
@@ -195,7 +364,7 @@ static int ext2_commit_dir_page(struct inode *dir, struct page *page) {
 
     SetPageDirty(page);
 
-    ret = ext2_writepage(page);
+    ret = pagecache_write_page(page);
     if (ret < 0)
         return ret;
 
@@ -206,6 +375,7 @@ static int ext2_commit_dir_page(struct inode *dir, struct page *page) {
 
 const struct address_space_operations ext2_aops = {
     .readpage = ext2_readpage,
+    .readpages = ext2_readpages,
     .writepage = ext2_writepage,
 };
 

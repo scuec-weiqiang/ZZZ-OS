@@ -22,7 +22,7 @@ __SYSCALL__ long sys_brk(struct pt_regs *ctx)
         return 0;
     }
 
-    flags = spin_lock_irqsave(&mm->lock);
+    spin_lock_irqsave(&mm->lock, &flags);
 
     if (new_brk == 0) {
         ret = mm->brk;

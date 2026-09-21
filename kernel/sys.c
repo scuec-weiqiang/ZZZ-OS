@@ -33,7 +33,7 @@ int task_pgrp_exists(pid_t pgid) {
         struct task_struct *task;
         unsigned long flags;
 
-        flags = spin_lock_irqsave(&rq->lock);
+        spin_lock_irqsave(&rq->lock, &flags);
         list_for_each_entry(task, &rq->tasks, task_node) {
             if (task->signal != NULL && task->signal->pgrp == pgid) {
                 spin_unlock_irqrestore(&rq->lock, flags);
@@ -64,14 +64,14 @@ int send_signal_to_pgrp(pid_t pgid, int sig) {
         struct task_struct *task, *tmp;
         unsigned long flags;
 
-        flags = spin_lock_irqsave(&rq->lock);
+        spin_lock_irqsave(&rq->lock, &flags);
 	list_for_each_entry_safe(task, tmp, &rq->tasks, task_node) {
             if (task->signal != NULL && task->signal->pgrp == pgid) {
                 task->signal_pending |= 1UL << sig;
                 sent++;
                 spin_unlock_irqrestore(&rq->lock, flags);
                 wake_up_process(task);
-                flags = spin_lock_irqsave(&rq->lock);
+                spin_lock_irqsave(&rq->lock, &flags);
             }
         }
         spin_unlock_irqrestore(&rq->lock, flags);

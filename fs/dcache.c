@@ -83,7 +83,10 @@ static struct hash_ops dentry_hash_ops = {
 int dcache_init(void)
 {
     g_dcache = lru_cache_create(128, &dentry_lru_ops, &dentry_hash_ops);
-    CHECK(g_dcache != NULL, "fs: create dcache failed", return -1;);
+    if (!g_dcache) {
+        printk("%s\n", "fs: create dcache failed");
+        return -1;
+    }
     return 0;
 }
 
@@ -99,9 +102,15 @@ struct dentry *d_lookup(struct dentry *parent, const struct qstr *name) {
     struct dentry key;
     struct lru_node *found = NULL;
 
-    CHECK(g_dcache != NULL, "fs: dcache is not initialized", return NULL;);
-    CHECK(parent != NULL, "fs: invalid lookup parent", return NULL;);
-    CHECK(name != NULL && name->name != NULL, "fs: invalid lookup name", return NULL;);
+    ASSERT(g_dcache != NULL, "fs: dcache is not initialized");
+    if (!parent) {
+        printk("%s\n", "fs: invalid lookup parent");
+        return NULL;
+    }
+    if (!(name != NULL && name->name != NULL)) {
+        printk("%s\n", "fs: invalid lookup name");
+        return NULL;
+    }
 
     memset(&key, 0, sizeof(key));
     key.d_parent = parent;
@@ -120,14 +129,24 @@ struct dentry *d_lookup(struct dentry *parent, const struct qstr *name) {
 static struct dentry *d_alloc_n(struct dentry *parent, const char *name, u32 len) {
     struct dentry *dentry = NULL;
 
-    CHECK(name != NULL, "fs: invalid dentry name", return NULL;);
+    if (!name) {
+        printk("%s\n", "fs: invalid dentry name");
+        return NULL;
+    }
 
     dentry = kmalloc(sizeof(*dentry));
-    CHECK(dentry != NULL, "fs: alloc dentry failed", return NULL;);
+    if (!dentry) {
+        printk("%s\n", "fs: alloc dentry failed");
+        return NULL;
+    }
     memset(dentry, 0, sizeof(*dentry));
 
     dentry->d_name.name = kmalloc(len + 1);
-    CHECK(dentry->d_name.name != NULL, "fs: alloc qstr failed", kfree(dentry); return NULL;);
+    if (!dentry->d_name.name) {
+        printk("%s\n", "fs: alloc qstr failed");
+        kfree(dentry);
+        return NULL;
+    }
     memcpy(dentry->d_name.name, name, len);
     dentry->d_name.name[len] = '\0';
     dentry->d_name.len = len;
@@ -144,33 +163,40 @@ static struct dentry *d_alloc_n(struct dentry *parent, const char *name, u32 len
         list_add(&parent->d_subdirs, &dentry->d_child);
     }
 
-    CHECK(g_dcache != NULL, "fs: dcache is not initialized",
-          dentry_unlink(dentry);
-          kfree(dentry->d_name.name);
-          kfree(dentry);
-          return NULL;);
+    ASSERT(g_dcache != NULL, "fs: dcache is not initialized");
 
-    CHECK(lru_cache_add(g_dcache, &dentry->d_lru_cache_node) == 0, "fs: cache dentry failed",
-          dentry_unlink(dentry);
-          kfree(dentry->d_name.name);
-          kfree(dentry);
-          return NULL;);
+    if (!(lru_cache_add(g_dcache, &dentry->d_lru_cache_node) == 0)) {
+        printk("%s\n", "fs: cache dentry failed");
+        dentry_unlink(dentry);
+        kfree(dentry->d_name.name);
+        kfree(dentry);
+        return NULL;
+    }
 
     return dentry;
 }
 
 struct dentry *d_alloc(struct dentry *parent, const char *name) {
-    CHECK(name != NULL, "fs: invalid dentry name", return NULL;);
+    if (!name) {
+        printk("%s\n", "fs: invalid dentry name");
+        return NULL;
+    }
     return d_alloc_n(parent, name, strlen(name));
 }
 
 struct dentry *d_alloc_qstr(struct dentry *parent, const struct qstr *name) {
-    CHECK(name != NULL && name->name != NULL, "fs: invalid qstr name", return NULL;);
+    if (!(name != NULL && name->name != NULL)) {
+        printk("%s\n", "fs: invalid qstr name");
+        return NULL;
+    }
     return d_alloc_n(parent, name->name, name->len);
 }
 
 void d_add(struct dentry *dentry, struct inode *inode) {
-    CHECK(dentry != NULL, "fs: invalid d_add dentry", return;);
+    if (!dentry) {
+        printk("%s\n", "fs: invalid d_add dentry");
+        return;
+    }
 
     dentry_lock(dentry);
     if (dentry->d_inode != NULL) {
@@ -193,10 +219,16 @@ void d_destroy(struct dentry *dentry) {
 struct dentry *d_make_root(struct inode *root_inode) {
     struct dentry *root = NULL;
 
-    CHECK(root_inode != NULL, "fs: invalid root inode", return NULL;);
+    if (!root_inode) {
+        printk("%s\n", "fs: invalid root inode");
+        return NULL;
+    }
 
     root = d_alloc(NULL, "/");
-    CHECK(root != NULL, "fs: alloc root dentry failed", return NULL;);
+    if (!root) {
+        printk("%s\n", "fs: alloc root dentry failed");
+        return NULL;
+    }
 
     d_add(root, root_inode);
     root->d_parent = root;
@@ -205,7 +237,10 @@ struct dentry *d_make_root(struct inode *root_inode) {
 }
 
 struct dentry *dget(struct dentry *dentry) {
-    CHECK(dentry != NULL, "fs: invalid dget dentry", return NULL;);
+    if (!dentry) {
+        printk("%s\n", "fs: invalid dget dentry");
+        return NULL;
+    }
 
     // dentry_lock(dentry);
     dentry->d_count++;

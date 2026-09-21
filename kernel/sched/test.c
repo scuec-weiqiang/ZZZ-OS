@@ -21,8 +21,8 @@ static int sched_kthread_test_worker(void *arg)
     struct sched_kthread_test_arg *cfg = (struct sched_kthread_test_arg *)arg;
     struct task_struct *task = current;
 
-    CHECK(cfg != NULL, "sched test: worker arg is NULL", panic("sched test worker failed\n"););
-    CHECK(task != NULL, "sched test: current task is NULL", panic("sched test worker failed\n"););
+    ASSERT(cfg != NULL, "sched test: worker arg is NULL");
+    ASSERT(task != NULL, "sched test: current task is NULL");
 
     for (int i = 0; i < cfg->rounds; i++) {
         printk("[sched-test] cpu=%du pid=%xu task=%s round=%d/%d\n",
@@ -47,7 +47,7 @@ void sched_kthread_test(void)
     struct task_struct *task_a, *task_b;
 
 
-    CHECK(global_rq != NULL, "sched test: scheduler is not initialized", return;);
+    ASSERT(global_rq != NULL, "sched test: scheduler is not initialized");
     if (sched_kthread_test_started) {
         printk("[sched-test] already started, skip duplicate launch\n");
         return;

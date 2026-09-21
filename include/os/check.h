@@ -21,25 +21,16 @@ static inline void __check_fail(const char *expr, const char *file, int line, co
 
 // #define NDEBUG
 
-#ifdef NDEBUG
-    #define CHECK(expr,msg,ret)\
-        do{\
-            if(!(expr))\
-            {\
-                if(msg) { printk("%s\n", msg); }\
-                ret\
-            }\
-        }while(0)
-#else
-    #define CHECK(expr,msg,ret)\
-        do{\
-            if(!(expr))\
-            {\
-                __check_fail(#expr, __FILE__, __LINE__, __func__);\
-                if(msg) { printk("%s\n", msg); }\
-                ret\
-            }\
-        }while(0)
+#define ASSERT(expr, msg) \
+    do { \
+        if (!(expr)) { \
+            panic("ASSERT failed: %s, function %s, file %s, line %d: %s\n", \
+                  #expr, __func__, __FILE__, __LINE__, (msg)); \
+            __builtin_unreachable(); \
+        } \
+    } while (0)
+
+#ifndef NDEBUG
     
     #define WARN_ONCE(expr,msg,...)\
         do{\

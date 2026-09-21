@@ -19,6 +19,16 @@ struct free_area {
     unsigned long nr_free;
 };
 
+struct pcp_stats {
+    /* refill/drain 按批次计数，不是页数。 */
+    u64 hits, misses, refills, drains;
+    u32 count, high, batch;
+};
+
+int pcp_get_stats(int cpu, struct pcp_stats *stats);
+/* 排空所有 CPU 的 PCP 后更新参数，各 CPU 分别加锁。 */
+int pcp_configure(u32 high, u32 batch);
+
 struct buddy_memory_stats {
     u64 total_pages;
     u64 managed_pages;

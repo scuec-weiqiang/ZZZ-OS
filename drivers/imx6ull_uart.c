@@ -3,8 +3,8 @@
  * @Description  :  
  * @Author       : scuec_weiqiang scuec_weiqiang@qq.com
  * @Date         : 2026-03-12 00:25:01
- * @LastEditTime : 2026-03-26 00:04:55
- * @LastEditors  : scuec_weiqiang scuec_weiqiang@qq.com
+ * @LastEditTime : 2026-09-19 17:56:26
+ * @LastEditors  : WeiQiang scuec_weiqiang@qq.com
  * @Copyright    : G AUTOMOBILE RESEARCH INSTITUTE CO.,LTD Copyright (c) 2026.
 */
 
@@ -175,7 +175,7 @@ static int uart_rxbuf_is_full(void) {
 static void uart_rxbuf_push(char ch) {
     unsigned long flags;
 
-    flags = spin_lock_irqsave(&uart_rxbuf.lock);
+    spin_lock_irqsave(&uart_rxbuf.lock, &flags);
     if (!uart_rxbuf_is_full()) {
         uart_rxbuf.data[uart_rxbuf.head] = ch;
         uart_rxbuf.head = (uart_rxbuf.head + 1) % UART_RX_BUF_SIZE;
@@ -187,7 +187,7 @@ static int uart_rxbuf_pop(char *ch) {
     unsigned long flags;
     int ok = 0;
 
-    flags = spin_lock_irqsave(&uart_rxbuf.lock);
+    spin_lock_irqsave(&uart_rxbuf.lock, &flags);
     if (!uart_rxbuf_is_empty()) {
         *ch = uart_rxbuf.data[uart_rxbuf.tail];
         uart_rxbuf.tail = (uart_rxbuf.tail + 1) % UART_RX_BUF_SIZE;
@@ -284,6 +284,18 @@ static struct file_operations uart_file_ops = {
     .write = uart_write,
 };
 
+static void uart_console_write(struct console *con, const char *text, size_t length) {
+    (void)con;
+    for (size_t i = 0; i < length; i++) {
+        putc(text[i]);
+    }
+}
+
+struct console uart_console = {
+    .name = "uart_console",
+    .write = uart_console_write,
+    .private = NULL,
+};
 
 static int uart_probe(struct platform_device *pdev) {
     struct device_node *node = of_find_node_by_compatible("imx6ull,uart");
@@ -307,7 +319,8 @@ static int uart_probe(struct platform_device *pdev) {
     irq_request(virq, uart_iqr, "uart0_irq",NULL);
     irq_enable(virq);
 
-    console_register(putc);
+    // uart_console.private = &
+    console_register(&uart_console);
 
     dev_t devnr;
     alloc_chrdev_region(&devnr, 0, 1, "uart0");

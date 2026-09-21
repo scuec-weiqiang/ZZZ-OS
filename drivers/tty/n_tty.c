@@ -81,7 +81,7 @@ static void n_tty_flush_buffer(struct tty_struct *tty) {
         return;
 
     ldata = tty->disc_data;
-    flags = spin_lock_irqsave(&ldata->read_lock);
+    spin_lock_irqsave(&ldata->read_lock, &flags);
     ringbuffer_reset(&ldata->read_buf);
     ldata->canon_head = 0;
     ldata->line_start = 0;
@@ -155,7 +155,7 @@ static void n_tty_receive_buf(struct tty_struct *tty, const unsigned char *cp,
 
     ldata = tty->disc_data;
 
-    flags = spin_lock_irqsave(&ldata->read_lock);
+    spin_lock_irqsave(&ldata->read_lock, &flags);
     for (i = 0; i < count; i++) {
         unsigned char echo_ch;
         bool echo_erase;
@@ -171,7 +171,7 @@ static void n_tty_receive_buf(struct tty_struct *tty, const unsigned char *cp,
         if (echo_ch)
             n_tty_echo_char(tty, echo_ch);
 
-        flags = spin_lock_irqsave(&ldata->read_lock);
+        spin_lock_irqsave(&ldata->read_lock, &flags);
     }
     spin_unlock_irqrestore(&ldata->read_lock, flags);
 
@@ -206,7 +206,7 @@ static ssize_t n_tty_read(struct tty_struct *tty, struct file *file, char *buf, 
     while (nr > 0) {
         unsigned char ch;
 
-        flags = spin_lock_irqsave(&ldata->read_lock);
+        spin_lock_irqsave(&ldata->read_lock, &flags);
 
         if (ringbuffer_empty(&ldata->read_buf)) {
             if (canonical && ldata->line_count > 0) {
@@ -248,7 +248,7 @@ static ssize_t n_tty_read(struct tty_struct *tty, struct file *file, char *buf, 
         nr--;
 
         if (canonical && ch == '\n') {
-            flags = spin_lock_irqsave(&ldata->read_lock);
+            spin_lock_irqsave(&ldata->read_lock, &flags);
             if (ldata->line_count > 0)
                 ldata->line_count--;
             spin_unlock_irqrestore(&ldata->read_lock, flags);
@@ -297,7 +297,7 @@ static ssize_t n_tty_chars_in_buffer(struct tty_struct *tty) {
         return 0;
 
     ldata = tty->disc_data;
-    flags = spin_lock_irqsave(&ldata->read_lock);
+    spin_lock_irqsave(&ldata->read_lock, &flags);
     count = ringbuffer_count(&ldata->read_buf);
     spin_unlock_irqrestore(&ldata->read_lock, flags);
     return (ssize_t)count;
